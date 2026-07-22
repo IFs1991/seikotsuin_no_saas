@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "phase": "ISOLATED_STAGING_SOURCE_REPLAY_CATALOG_CAPTURE",
+  "status": "NOT_RUN",
+  "authorization": {
+    "isolatedStagingConnectionAuthorized": false,
+    "cleanMigrationReplayAuthorized": false,
+    "postReplayCatalogCaptureAuthorized": false,
+    "representativeSeedAuthorized": false,
+    "fullQualificationAuthorized": false,
+    "restoreProjectCreationAuthorized": false,
+    "productionConnectionAuthorized": false,
+    "readyTransitionAuthorized": false,
+    "mergeAuthorized": false,
+    "commercialReleaseAuthorized": false,
+    "indexRetirementAuthorized": false
+  },
+  "governanceProposal": {
+    "path": "staging-execution-approval-packet.yaml",
+    "sha256": "5396cf70a2b81d9e831b95460a28508d2ed271ed3e59f92e8025b9b454a87563"
+  },
+  "sourceProjectProvisioningApproval": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "sourceProjectProvisioningResult": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "sourceIdentityBootstrapApproval": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "sourceIdentityBootstrapResult": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "phaseCommandLedger": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "preExecutionFreeze": {
+    "migrationInputContract": {
+      "path": "migration-input-contract.json",
+      "sha256": "NOT_CAPTURED"
+    },
+    "targetGuardImplementation": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "sourceIdentityCollector": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "migrationReplayCollector": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "postReplayCatalogCollector": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "migrationHistoryCollector": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "credentialContract": {
+      "path": "integration-credential-contract.proposed.json",
+      "sha256": "NOT_CAPTURED"
+    },
+    "credentialProviderConfiguration": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "toolVersionOutputs": {
+      "node": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+      "supabaseCli": {
+        "path": "NOT_CAPTURED",
+        "sha256": "NOT_CAPTURED"
+      },
+      "psql": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+    },
+    "toolBinaries": {
+      "supabaseCli": {
+        "path": "NOT_CAPTURED",
+        "sha256": "903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118"
+      },
+      "psql": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+    }
+  },
+  "target": {
+    "gitCommit": "NOT_CAPTURED",
+    "baseCommit": "4475e1c641c2ff18f66021ee65cfecfceaa6b7ab",
+    "migrationHead": "20260718011731",
+    "environmentProjectRef": "NOT_CAPTURED",
+    "systemIdentifier": "NOT_CAPTURED"
+  },
+  "approvedCommandIds": [
+    "PR12-CMD-003",
+    "PR12-CMD-004",
+    "PR12-CMD-005",
+    "PR12-CMD-006",
+    "PR12-CMD-007",
+    "PR12-CMD-007A",
+    "PR12-CMD-008A"
+  ],
+  "postBootstrapReapproval": {
+    "bootstrapResultMustBePass": true,
+    "approvalMustBeAfterBootstrapCapturedAt": true,
+    "systemIdentifierMustEqualBootstrapResult": true,
+    "automaticContinuationAuthorized": false
+  },
+  "approval": {
+    "approvedBy": "UNASSIGNED",
+    "approvedAt": "NOT_CAPTURED",
+    "expiresAt": "NOT_CAPTURED",
+    "evidencePath": "NOT_CAPTURED",
+    "evidenceSha256": "NOT_CAPTURED"
+  },
+  "owners": {
+    "commercialReleaseOwner": "UNASSIGNED",
+    "supabasePlatformOwner": "UNASSIGNED",
+    "databaseMigrationOperator": "UNASSIGNED",
+    "disasterRecoveryOperator": "UNASSIGNED",
+    "securityTenantReviewer": "UNASSIGNED",
+    "clinicalDataPrivacyReviewer": "UNASSIGNED",
+    "billingMessagingSandboxOwner": "UNASSIGNED",
+    "siteReliabilityOwner": "UNASSIGNED",
+    "incidentCommander": "UNASSIGNED",
+    "cleanupOwner": "UNASSIGNED",
+    "evidenceCustodian": "UNASSIGNED"
+  },
+  "notes": "This phase may authorize only source identity, immutable clean replay, ordered history, Advisor-before capture, and fresh post-replay catalog/API-setting capture. It must stop before representative seed, performance, security/API matrices, backup, or restore."
+}

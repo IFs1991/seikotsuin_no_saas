@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "resultType": "SOURCE_MIGRATION_REPLAY_DRY_RUN",
+  "status": "NOT_RUN",
+  "projectRef": "NOT_CAPTURED",
+  "gitCommit": "NOT_CAPTURED",
+  "commandId": "PR12-CMD-005",
+  "capturedAt": "NOT_CAPTURED",
+  "runtimeIdentity": {
+    "projectRef": "NOT_CAPTURED",
+    "projectUrl": "NOT_CAPTURED",
+    "databaseHost": "NOT_CAPTURED",
+    "databaseConnectionMode": "DIRECT",
+    "databaseUser": "postgres",
+    "databaseVersion": "NOT_CAPTURED",
+    "systemIdentifier": "NOT_CAPTURED"
+  },
+  "migrationInputContract": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "databaseMutationPerformed": false,
+  "exitCode": "NOT_CAPTURED",
+  "alreadyAppliedMigrationCount": "NOT_CAPTURED",
+  "pendingMigrationCount": "NOT_CAPTURED",
+  "orderedPendingMigrations": [],
+  "migrationHead": "20260718011731",
+  "migrationSetSha256": "82aee8f14e126997b8361837587159a179964c460c0d3d18b975c3af17371c07"
+}

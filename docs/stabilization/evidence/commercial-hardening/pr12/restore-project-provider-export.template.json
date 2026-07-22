@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "exportType": "SUPABASE_RESTORE_PROJECT_PROVIDER_EXPORT",
+  "status": "NOT_RUN",
+  "provider": "SUPABASE_DASHBOARD_AND_MANAGEMENT_API",
+  "captureMethod": "HASH_BOUND_DASHBOARD_ACTION_AND_PROVIDER_READ_ONLY_OBSERVATIONS",
+  "actionId": "PR12-ACTION-017",
+  "selectedBackup": {
+    "sourceProjectRef": "NOT_CAPTURED",
+    "backupId": "NOT_CAPTURED",
+    "backupMetadataPath": "NOT_CAPTURED",
+    "backupMetadataSha256": "NOT_CAPTURED",
+    "backupInventoryRawPath": "NOT_CAPTURED",
+    "backupInventoryRawSha256": "NOT_CAPTURED",
+    "watermarkValue": "NOT_CAPTURED"
+  },
+  "preActionProjectInventory": {
+    "observedAt": "NOT_CAPTURED",
+    "rawArtifact": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+  },
+  "dashboardActionEvidence": {
+    "method": "SUPABASE_DASHBOARD_RESTORE_TO_NEW_PROJECT",
+    "sourceProjectRef": "NOT_CAPTURED",
+    "backupId": "NOT_CAPTURED",
+    "requestedProjectName": "seikotsuin-pr12-isolated-restore-20260719",
+    "actionStartedAt": "NOT_CAPTURED",
+    "restoreConfirmationAt": "NOT_CAPTURED",
+    "rawArtifact": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+  },
+  "providerOperationIdentifier": {
+    "availability": "NOT_CAPTURED",
+    "value": null,
+    "rawArtifact": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+  },
+  "projectObservation": {
+    "httpMethod": "GET",
+    "endpoint": "NOT_CAPTURED",
+    "httpStatus": "NOT_CAPTURED",
+    "projectRef": "NOT_CAPTURED",
+    "organizationId": "NOT_CAPTURED",
+    "projectName": "seikotsuin-pr12-isolated-restore-20260719",
+    "region": "NOT_CAPTURED",
+    "status": "NOT_CAPTURED",
+    "providerCreatedAt": "NOT_CAPTURED",
+    "databaseHost": "NOT_CAPTURED",
+    "databaseVersion": "NOT_CAPTURED",
+    "observedAt": "NOT_CAPTURED",
+    "rawArtifact": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+  },
+  "computeObservation": {
+    "httpMethod": "GET",
+    "endpoint": "NOT_CAPTURED",
+    "httpStatus": "NOT_CAPTURED",
+    "projectRef": "NOT_CAPTURED",
+    "addonVariant": "ci_large",
+    "status": "NOT_CAPTURED",
+    "observedAt": "NOT_CAPTURED",
+    "rawArtifact": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+  },
+  "sourceMirroredConfiguration": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "restoreMirroredConfiguration": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "mirrorComparison": {
+    "region": "NOT_RUN",
+    "compute": "NOT_RUN",
+    "diskAttributes": "NOT_RUN",
+    "sslEnforcement": "NOT_RUN",
+    "networkRestrictions": "NOT_RUN",
+    "status": "NOT_RUN"
+  },
+  "costQuote": {
+    "sourceProjectRef": "NOT_CAPTURED",
+    "backupId": "NOT_CAPTURED",
+    "currency": "NOT_CAPTURED",
+    "cadence": "NOT_CAPTURED",
+    "lineItems": [],
+    "normalizedTotalUsd": "NOT_CAPTURED",
+    "observedAt": "NOT_CAPTURED",
+    "acceptedAt": "NOT_CAPTURED",
+    "acceptedBy": "UNASSIGNED",
+    "rawArtifact": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+  },
+  "rawProviderArtifacts": [],
+  "capturedAt": "NOT_CAPTURED",
+  "capturedBy": "UNASSIGNED"
+}

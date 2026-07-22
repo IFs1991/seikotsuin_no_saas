@@ -31,9 +31,12 @@ scope:
   - local specification and contract preparation
   - immutable PR11 performance gate freeze
   - complete COMM gate inventory
+  - fresh-post-replay-catalog security target inventory, complete tracked proposal baseline, and owner classification proposal
+  - direct-Postgres relational integrity diagnostic and state-transition contract
   - fail-closed evidence schema, semantic hash verifier, and privacy scanner
   - isolated staging and DR runbook
   - staging execution approval packet
+  - six-stage approval bindings with mandatory stops after provisioning, bootstrap, replay/catalog, source qualification/backup, and restore creation
   - non-mutating local verification
   - independent read-only audits
   - Draft PR creation and required CI observation
@@ -68,6 +71,13 @@ frozen_facts:
   normalized_physical_hash: 94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86
 authorization:
   draft_pr_creation_authorized: true
+  source_project_provisioning_authorized: false
+  source_identity_and_configuration_bootstrap_authorized: false
+  source_replay_catalog_capture_authorized: false
+  source_full_qualification_authorized: false
+  restore_project_creation_authorized: false
+  restore_target_validation_authorized: false
+  isolated_staging_connection_authorized: false
   isolated_staging_execution_authorized: false
   ready_transition_authorized: false
   merge_authorized: false
@@ -83,7 +93,7 @@ tdd:
   audit_red_observed: true
   audit_red_result: 1_suite_failed_5_failed_5_passed
   audit_red_reason: fail_open_manifest_missing_security_restore_fields_domestic_phone_gap_and_unresolved_sentinel_drift
-  green_result: PASS_26_OF_26
+  green_result: NOT_CAPTURED_PENDING_FINAL_TREE_VERIFICATION
 local_verification: NOT_RUN
 independent_audits: NOT_RUN
 required_ci_same_head: NOT_RUN
@@ -91,4 +101,5 @@ evidence: []
 residual_risk:
   - All isolated-staging, hosted SLO, Data API, GraphQL, backup, restore, and RTO/RPO evidence remains NOT_RUN.
   - Exact owners, environment, commands, side effects, time, and cost remain unresolved in the approval packet.
+  - The fresh post-replay catalog is not captured; all 86 tracked public rows, including 48 UNKNOWN rows, plus two Auth targets lack final owner approval, so the security target inventory is not executable.
 notes: Preparation authority does not convert any commercial blocking gate to PASS.

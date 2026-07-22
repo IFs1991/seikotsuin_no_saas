@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "resultType": "CLEAN_MIGRATION_REPLAY_OPERATION",
+  "status": "NOT_RUN",
+  "projectRef": "NOT_CAPTURED",
+  "gitCommit": "NOT_CAPTURED",
+  "commandId": "PR12-CMD-007",
+  "startedAt": "NOT_CAPTURED",
+  "completedAt": "NOT_CAPTURED",
+  "durationSeconds": "NOT_CAPTURED",
+  "runtimeIdentity": {
+    "projectRef": "NOT_CAPTURED",
+    "projectUrl": "NOT_CAPTURED",
+    "databaseHost": "NOT_CAPTURED",
+    "databaseConnectionMode": "DIRECT",
+    "databaseUser": "postgres",
+    "databaseVersion": "NOT_CAPTURED",
+    "systemIdentifier": "NOT_CAPTURED"
+  },
+  "migrationInputContract": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "preconditionResult": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "dryRunResult": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "exitCode": "NOT_CAPTURED",
+  "appliedMigrationCount": "NOT_CAPTURED",
+  "orderedAppliedMigrations": [],
+  "migrationHead": "20260718011731",
+  "migrationSetSha256": "82aee8f14e126997b8361837587159a179964c460c0d3d18b975c3af17371c07",
+  "failedMigration": null,
+  "lockTimeoutObserved": "NOT_CAPTURED",
+  "statementTimeoutObserved": "NOT_CAPTURED"
+}

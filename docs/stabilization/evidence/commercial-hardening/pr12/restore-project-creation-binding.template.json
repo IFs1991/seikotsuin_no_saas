@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "phase": "RESTORE_PROJECT_CREATION",
+  "status": "NOT_RUN",
+  "authorization": {
+    "restoreProjectCreationAuthorized": false,
+    "restoreProjectConnectionAuthorized": false,
+    "postRestoreValidationAuthorized": false,
+    "sourceProjectMutationAuthorized": false,
+    "productionConnectionAuthorized": false,
+    "readyTransitionAuthorized": false,
+    "mergeAuthorized": false,
+    "commercialReleaseAuthorized": false,
+    "indexRetirementAuthorized": false
+  },
+  "sourceExecutionApproval": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "selectedBackup": {
+    "sourceProjectRef": "NOT_CAPTURED",
+    "backupId": "NOT_CAPTURED",
+    "backupMetadataPath": "NOT_CAPTURED",
+    "backupMetadataSha256": "NOT_CAPTURED",
+    "backupInventoryRawPath": "NOT_CAPTURED",
+    "backupInventoryRawSha256": "NOT_CAPTURED",
+    "watermarkValue": "NOT_CAPTURED"
+  },
+  "sourceExternalSideEffectInventory": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "restoreSelection": {
+    "sourceProjectRef": "NOT_CAPTURED",
+    "organizationId": "NOT_CAPTURED",
+    "backupId": "NOT_CAPTURED",
+    "backupMetadataSha256": "NOT_CAPTURED",
+    "requestedName": "seikotsuin-pr12-isolated-restore-20260719",
+    "prohibitedProjectRefs": ["qnanuoqveidwvacvbhqp"]
+  },
+  "expectedMirroredState": {
+    "freshSourceConfigurationSnapshot": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "sameRegion": true,
+    "computeAddonVariant": "ci_large",
+    "diskAttributes": "EXACT_SOURCE_SNAPSHOT_MATCH_REQUIRED",
+    "sslEnforcement": "EXACT_SOURCE_SNAPSHOT_MATCH_REQUIRED",
+    "networkRestrictions": "EXACT_SOURCE_SNAPSHOT_MATCH_REQUIRED",
+    "databaseVersionIsPostCreationObservationNotRequestInput": true
+  },
+  "lifecycle": {
+    "restoreMaximumHoursFromCreation": 24,
+    "cleanupDisposition": "DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION",
+    "fundedThrough": "NOT_CAPTURED",
+    "fundingCeilingUsd": 50,
+    "cleanupOwner": "UNASSIGNED",
+    "automaticDeletionAuthorized": false,
+    "deletionRequiresSeparateApproval": true,
+    "extensionRequiresSeparateApproval": true
+  },
+  "cost": {
+    "proposedBudgetCeilingUsd": 50,
+    "quote": {
+      "sourceProjectRef": "NOT_CAPTURED",
+      "backupId": "NOT_CAPTURED",
+      "currency": "NOT_CAPTURED",
+      "cadence": "NOT_CAPTURED",
+      "lineItems": [],
+      "normalizedTotalUsd": "NOT_CAPTURED",
+      "observedAt": "NOT_CAPTURED",
+      "rawArtifact": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+    },
+    "actualDashboardQuoteAccepted": false,
+    "acceptedAt": "NOT_CAPTURED",
+    "acceptedBy": "UNASSIGNED"
+  },
+  "clockPolicy": {
+    "maximumAllowedClockSkewSeconds": "UNASSIGNED",
+    "maximumRpoObservationLeadSeconds": "UNASSIGNED",
+    "ownerAccepted": false,
+    "collectorStatus": "NOT_IMPLEMENTED",
+    "rtoRpoPassAllowed": false
+  },
+  "approval": {
+    "approvedBy": "UNASSIGNED",
+    "approvedAt": "NOT_CAPTURED",
+    "expiresAt": "NOT_CAPTURED",
+    "evidencePath": "NOT_CAPTURED",
+    "evidenceSha256": "NOT_CAPTURED"
+  },
+  "owners": {
+    "commercialReleaseOwner": "UNASSIGNED",
+    "supabasePlatformOwner": "UNASSIGNED",
+    "databaseMigrationOperator": "UNASSIGNED",
+    "disasterRecoveryOperator": "UNASSIGNED",
+    "securityTenantReviewer": "UNASSIGNED",
+    "clinicalDataPrivacyReviewer": "UNASSIGNED",
+    "billingMessagingSandboxOwner": "UNASSIGNED",
+    "siteReliabilityOwner": "UNASSIGNED",
+    "incidentCommander": "UNASSIGNED",
+    "cleanupOwner": "UNASSIGNED",
+    "evidenceCustodian": "UNASSIGNED"
+  },
+  "separationOfDuties": {
+    "approvedByMustDifferFrom": [
+      "supabasePlatformOwner",
+      "databaseMigrationOperator",
+      "disasterRecoveryOperator",
+      "securityTenantReviewer",
+      "clinicalDataPrivacyReviewer",
+      "billingMessagingSandboxOwner",
+      "siteReliabilityOwner",
+      "incidentCommander",
+      "cleanupOwner",
+      "evidenceCustodian"
+    ]
+  },
+  "notes": "Freeze the selected physical backup, PASS source side-effect inventory, fresh source mirrored-configuration snapshot, Dashboard quote, funding, and owners before the Dashboard Restore to a New Project mutation. Region, compute, disk, SSL, network, and database version are never accepted as unproved request inputs. fundedThrough must cover at least 24 hours after the latest permitted provider-created time. This template never authorizes connection or post-restore validation."
+}

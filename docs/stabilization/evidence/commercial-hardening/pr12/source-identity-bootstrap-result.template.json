@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "phase": "ISOLATED_STAGING_SOURCE_IDENTITY_BOOTSTRAP_RESULT",
+  "resultType": "SOURCE_IDENTITY_CLOCK_OPERATION",
+  "status": "NOT_RUN",
+  "approval": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "commandId": "PR12-CMD-004A",
+  "gitCommit": "NOT_CAPTURED",
+  "runtimeIdentity": {
+    "projectRef": "NOT_CAPTURED",
+    "projectUrl": "NOT_CAPTURED",
+    "databaseHost": "NOT_CAPTURED",
+    "databaseConnectionMode": "DIRECT",
+    "databaseUser": "postgres",
+    "databaseVersion": "NOT_CAPTURED",
+    "systemIdentifier": "NOT_CAPTURED"
+  },
+  "sourceDatabaseUtc": "NOT_CAPTURED",
+  "preReplayPlatformConfiguration": {
+    "dataApi": {
+      "enabled": "NOT_CAPTURED",
+      "serviceHealthy": "NOT_CAPTURED",
+      "directEndpointReachable": "NOT_CAPTURED",
+      "exposedSchemas": [],
+      "automaticallyExposeNewTablesAndFunctions": "NOT_CAPTURED",
+      "rawObservation": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+    },
+    "auth": {
+      "anonymousSignInEnabled": "NOT_CAPTURED",
+      "emailProviderConfigured": "NOT_CAPTURED",
+      "smsProviderConfigured": "NOT_CAPTURED",
+      "oauthProvidersEnabled": [],
+      "realEmailSmsOrOAuthDeliveryConfigured": "NOT_CAPTURED",
+      "rawObservation": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+    },
+    "graphQl": {
+      "installedVersion": "NOT_CAPTURED",
+      "enabled": "NOT_CAPTURED",
+      "configuredApiSchemas": [],
+      "exposedSchemas": [],
+      "introspectionEnabled": "NOT_CAPTURED",
+      "rawObservation": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+    },
+    "comparison": {
+      "status": "NOT_RUN",
+      "mismatches": []
+    }
+  },
+  "capturedAt": "NOT_CAPTURED",
+  "commandStdout": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "mandatoryStopObserved": false,
+  "notes": "A PASS result must be the exact PR12-CMD-004A stdout, match the Stage 1 provisioning result, prove the read-only Data API/Auth/GraphQL configuration from family-specific raw artifacts, and may be used only by a separately signed replay approval."
+}

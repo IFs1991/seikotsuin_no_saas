@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "contractId": "PR12-REPRESENTATIVE-DATA-PROPOSAL-001",
+  "status": "PROPOSED_OWNER_APPROVAL_REQUIRED",
+  "executionStatus": "NOT_RUN",
+  "classification": "SYNTHETIC",
+  "volume": "74 explicit persistent rows plus exact captured platform/trigger-derived rows; canonical PR11 probe rows are transaction-scoped and rolled back",
+  "sourceSha256": "b06ae82ee4da29aa6fff6796b4c9a9720948df9783d047c4479bb72750e0696a",
+  "sourceSha256Method": "SHA-256 of the four source SHA-256/path lines in sources order, separated and terminated by LF",
+  "expiresAt": "NOT_CAPTURED",
+  "productionSnapshotAllowed": false,
+  "patientPiiAllowed": false,
+  "sources": [
+    {
+      "path": "supabase/seed.sql",
+      "sha256": "376d2982befda40f5ac9781ccea5bf7049ee9d357f7ea9a9155ec36f2323ca5a",
+      "purpose": "tracked bootstrap fixture"
+    },
+    {
+      "path": "scripts/e2e/fixtures.mjs",
+      "sha256": "252f036b61f3b3f0d20bb9ec7341593c4c0d5c6033758411b6ea43a7b9b7b60c",
+      "purpose": "tenant and Auth actor identities"
+    },
+    {
+      "path": "scripts/e2e/seed-e2e-data.mjs",
+      "sha256": "3ef80d134d1eccb3f7f46788f9acd3107c20f7bcd893472e3e2e9e87487a6272",
+      "purpose": "flow-representative persistent data"
+    },
+    {
+      "path": "scripts/e2e/validate-e2e-fixtures.mjs",
+      "sha256": "12343648835040aa2fe2de3e29184084d641236bfe80f46c23c45df7d4af3a6e",
+      "purpose": "fixture collision and identity preflight"
+    }
+  ],
+  "explicitPersistentRowTargets": {
+    "supabaseSeedSubtotal": 4,
+    "e2eSubtotal": 70,
+    "combinedSubtotal": 74,
+    "byRelation": {
+      "public.clinics": 3,
+      "auth.users": 6,
+      "auth.identities": 6,
+      "public.profiles": 6,
+      "public.staff": 5,
+      "public.user_permissions": 5,
+      "public.customers": 5,
+      "public.menus": 2,
+      "public.resources": 3,
+      "public.reservations": 12,
+      "public.patients": 5,
+      "public.ai_comments": 1,
+      "public.user_sessions": 2,
+      "public.security_events": 2,
+      "public.audit_logs": 2,
+      "public.staff_shifts": 7,
+      "public.staff_preferences": 2
+    }
+  },
+  "derivedRows": {
+    "allowed": true,
+    "rule": "Every trigger-generated or platform-generated row must be counted and hash-bound after load; an unexplained row is seed drift.",
+    "exactCount": "NOT_CAPTURED",
+    "byRelation": "NOT_CAPTURED"
+  },
+  "dataIntegrityHashContract": {
+    "contractId": "PR12-DATA-INTEGRITY-HASH-V1",
+    "status": "PROPOSED_OWNER_APPROVAL_REQUIRED",
+    "transaction": "REPEATABLE_READ_READ_ONLY",
+    "hashAlgorithm": "SHA-256",
+    "relationSet": "EXACT_KEYS_OF_ALL_ROW_COUNTS",
+    "relationOrder": "UTF8_BYTEWISE_ASCENDING_QUALIFIED_RELATION",
+    "primaryKeyOrder": "ASC_NULLS_FIRST_IN_DECLARED_PRIMARY_KEY_COLUMN_ORDER",
+    "missingPrimaryKeyPolicy": "ABORT",
+    "collectorPath": "NOT_CAPTURED",
+    "collectorSha256": "NOT_CAPTURED",
+    "relations": "NOT_CAPTURED",
+    "rowProjection": "FULL_ROW_TO_JSONB_INCLUDING_PUBLIC_RESERVATIONS_UPDATED_AT",
+    "rowEncoding": "UTF8_BYTE_LENGTH_COLON_JSONB_TEXT_LF",
+    "queryEvidence": "OWNER_FROZEN_LITERAL_SQL_AND_UTF8_SHA256_PER_RELATION_REQUIRED",
+    "perRelationDigest": "SHA256_OF_CONCATENATED_ROW_ENCODINGS",
+    "aggregateEncoding": "UTF8 <relation> TAB <rowCount> TAB <querySha256> TAB <digestSha256> LF in relationOrder",
+    "aggregateDataHash": "SHA256_OF_AGGREGATE_ENCODING",
+    "schemaProjection": "NORMALIZED_COLUMN_CONSTRAINT_POLICY_TRIGGER_HELPER_FK_ACL_CATALOG_V1",
+    "aggregateSchemaHash": "SHA256_OF_AGGREGATE_ENCODING",
+    "physicalStructureProjection": "RELATION_AND_INDEX_NAMES_RELKIND_PERSISTENCE_ACCESS_METHOD_NORMALIZED_INDEX_DEFINITION_UNIQUE_PRIMARY_EXCLUSION_PREDICATE_VALID_READY_LIVE_ONLY",
+    "excludedVolatilePhysicalFields": [
+      "oid",
+      "relfilenode",
+      "bytes",
+      "pages",
+      "tuples",
+      "statistics"
+    ],
+    "aggregateEnvironmentPhysicalStructureHash": "SHA256_OF_AGGREGATE_ENCODING",
+    "rawRowsPersisted": false,
+    "watermarkColumn": "public.reservations.updated_at",
+    "watermarkColumnIncluded": true
+  },
+  "tenantShape": {
+    "qualificationTenantRoots": 2,
+    "bootstrapTenantRoots": 1,
+    "totalPersistentRootClinics": 3,
+    "persistentClinics": 3,
+    "applicationAuthActors": 6,
+    "requiredRolesMissingFromPersistentFixture": ["therapist"],
+    "securityMatrixMayCreateTransactionScopedActors": true,
+    "hostedAuthActorCreationContract": "NOT_CAPTURED"
+  },
+  "canonicalProbeVolume": {
+    "contract": "frozen-pr11-performance-contract.json",
+    "transactionScoped": true,
+    "rolledBack": true,
+    "includes": [
+      "10,000 sparse plus 10,000 dense block rows, 20,000 total",
+      "10,000-row sparse and dense block inserts",
+      "2,000-row shift and RLS auxiliary writes",
+      "250-row RLS read stop"
+    ],
+    "mutationAllowed": false
+  },
+  "representativeness": {
+    "flowRepresentative": true,
+    "tenantBoundaryRepresentative": true,
+    "persistentCapacityRepresentative": false,
+    "limitation": "The tracked E2E seed is small and most operational rows belong to clinic A. It does not model 500 daily reservations, 50 resources, or multi-year retention.",
+    "ownerDecisionRequired": "Approve this as a flow/security qualification dataset or require a separately reviewed deterministic volume generator before execution."
+  },
+  "privacy": {
+    "syntheticNamesOnly": true,
+    "reservedOrNonDeliverableEmailDomainsOnly": true,
+    "syntheticPhoneValuesPresent": true,
+    "machineScanRequired": true,
+    "namedHumanReviewRequired": true,
+    "rawFixtureValuesAllowedInCommittedEvidence": false
+  },
+  "retention": {
+    "sourceMaximumHoursFromProjectProvisioning": 72,
+    "restoreMaximumHoursFromRestoreProjectCreation": 24,
+    "hoursAfterQualificationEnd": "NOT_USED_FOR_COST_BOUNDING",
+    "automaticDeletionAuthorized": false,
+    "cleanupRequiresSeparateOwnerApproval": true,
+    "executionRequiresFundedRetentionAndCleanupDecisionBeforeProvisioning": true,
+    "budgetCeilingEnforceableWithoutDeletionApproval": false
+  },
+  "implementationReadiness": {
+    "postLoadExactRowAndHashValidator": "NOT_IMPLEMENTED",
+    "hostedTherapistActorProvisioning": "NOT_IMPLEMENTED",
+    "hostedEphemeralPasswordAdapter": "NOT_IMPLEMENTED",
+    "executionAuthorized": false
+  }
+}

@@ -1,0 +1,576 @@
+{
+  "schemaVersion": 1,
+  "ledgerId": "PR12-STAGING-COMMAND-LEDGER-PROPOSAL-001",
+  "status": "PROPOSED_NOT_EXECUTABLE",
+  "executionStatus": "NOT_RUN",
+  "executionAuthorized": false,
+  "cleanupOrProjectDeletionCommandsAllowed": false,
+  "cleanupRequiresSeparateApproval": true,
+  "shell": "PowerShell_7",
+  "workingDirectory": "C:\\tmp\\pr12-isolated-qualification",
+  "supabaseCli": {
+    "path": "C:\\tmp\\pr12-supabase-cli-2.109.0\\bin\\supabase.exe",
+    "version": "2.109.0",
+    "executableSha256": "903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118",
+    "officialArchivePath": "C:\\tmp\\pr12-supabase-cli-2.109.0\\supabase_2.109.0_windows_amd64.zip",
+    "officialArchiveSha256": "d2b687ec3427fe7847cf7a8f603413fa8d4331f6fdbbc825eea6aa34a64d686b"
+  },
+  "psql": {
+    "path": "NOT_CAPTURED",
+    "requiredMajor": 17
+  },
+  "targetGuard": {
+    "status": "NOT_IMPLEMENTED",
+    "implementationPath": "NOT_IMPLEMENTED",
+    "requiredForEveryRemoteCommand": true,
+    "approvedBindingEnvironmentName": "PR12_APPROVED_STAGING_BINDING",
+    "approvedSourceProjectRef": "NOT_CAPTURED",
+    "approvedRestoreProjectRef": "NOT_CAPTURED",
+    "prohibitedProjectRefs": ["qnanuoqveidwvacvbhqp"],
+    "sourceAndRestoreMustDiffer": true,
+    "currentGitHeadMustMatchBinding": true,
+    "bindingHashAndExpiryMustPass": true,
+    "currentLinkMetadataMustMatchBeforeAndAfterEveryLinkedCommand": true,
+    "projectUrlHostMustMatchApprovedRef": true,
+    "databaseConnectionMode": "DIRECT",
+    "databaseHostMustEqualDbDotProjectRefDotSupabaseDotCo": true,
+    "databaseUserMustEqualPostgres": true,
+    "sourceSystemIdentifierCaptureMode": "CAPTURE_ONCE_THEN_REQUIRE_EXACT_MATCH",
+    "sourceIdentityBootstrapCommandId": "PR12-CMD-004A",
+    "preKnownSystemIdentifierRequiredForBootstrap": false,
+    "bootstrapGuardMustMatchProvisioningResultIdentity": true,
+    "capturedSystemIdentifierRequiredForEverySubsequentSourceDatabaseCommand": true,
+    "restoreCreationRequiresSelectedBackupApprovalBinding": true,
+    "restoreConnectionRequiresPostCreationSupplementalBinding": true,
+    "runtimeIdentityEvidenceRequiredBeforeEveryRemoteDatabaseCommandExceptBootstrap": true,
+    "dotenvLoadingAllowed": false,
+    "inheritParentEnvironmentAllowed": false,
+    "ambientGenericCredentialFallbackAllowed": false,
+    "committedFixturePasswordsAllowedOnHosted": false,
+    "abortBeforeCredentialUseOrMutationOnMismatch": true
+  },
+  "credentialValuesInCommandTextAllowed": false,
+  "finalExecutableLedgerMetadataContract": {
+    "requiredPerCommandFields": [
+      "id",
+      "redactedCommand",
+      "phase",
+      "remoteContact",
+      "mutating",
+      "mutationScope"
+    ],
+    "mutatingType": "boolean",
+    "nonMutatingScope": "NONE",
+    "restoreQualificationMutationDerivation": "phase=post_restore_qualification AND mutating=true AND mutationScope=SYNTHETIC_QUALIFICATION_ONLY",
+    "manifestAndSupplementalMutationIdsMustExactlyEqualDerivedLedgerIds": true,
+    "manifestValidationIdsMustExactlyEqualEveryPostRestoreQualificationAndSideEffectLedgerId": true,
+    "sourceIdentityBootstrapCommandCount": 1,
+    "sourceIdentityBootstrapMustPrecedeLinkHistoryAdvisorAndReplay": true,
+    "restoreCreationCommandCount": 1,
+    "backupWatermarkCommandCount": 1,
+    "backupInventoryCommandCount": 1,
+    "dedicatedRestoreResultCommandsRequired": [
+      "integrity",
+      "securityMatrix",
+      "dataApi",
+      "graphQl",
+      "externalSideEffects",
+      "finalization"
+    ],
+    "eachRestoreResultMustBeExactDedicatedCommandStdout": true,
+    "familySpecificRawObservationReconciliationRequired": true,
+    "finalizationMustBeNonMutating": true,
+    "projectCleanupOrDeletionPatternAllowed": false,
+    "proposalStringMutationLabelsMustBeNormalizedBeforeApproval": true
+  },
+  "highRiskPhasePolicies": {
+    "source_identity_bootstrap": {
+      "remoteContact": true,
+      "allowedMutationScopes": ["NONE"]
+    },
+    "backup_watermark": {
+      "remoteContact": true,
+      "allowedMutationScopes": ["SYNTHETIC_BACKUP_WATERMARK_ONLY"]
+    },
+    "backup_inventory": {
+      "remoteContact": true,
+      "allowedMutationScopes": ["NONE"]
+    },
+    "restore_project_creation": {
+      "remoteContact": true,
+      "allowedMutationScopes": ["RESTORE_PROJECT_CREATION"]
+    },
+    "post_restore_qualification": {
+      "remoteContact": true,
+      "allowedMutationScopes": ["NONE", "SYNTHETIC_QUALIFICATION_ONLY"]
+    },
+    "post_restore_side_effects": {
+      "remoteContact": true,
+      "allowedMutationScopes": ["NONE"]
+    }
+  },
+  "evidenceCaptureRequirements": {
+    "appliesToEveryCommandAndDashboardAction": true,
+    "requiredFields": [
+      "id",
+      "redacted command or exact action",
+      "approved binding hash",
+      "target identity fingerprint",
+      "UTC start and end timestamps",
+      "exit code or Dashboard outcome",
+      "stdout path and SHA-256",
+      "stderr path and SHA-256",
+      "expected and observed side effects",
+      "operator"
+    ],
+    "stdoutStderrMayContainCredentialValues": false,
+    "artifactPaths": "NOT_CAPTURED"
+  },
+  "commands": [
+    {
+      "id": "PR12-CMD-000",
+      "phase": "approval_freeze",
+      "purpose": "validate exact HEAD, phase approval hashes, expiry, owner separation, project denylist, and finalized execution-contract compatibility before any remote contact",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": false,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "The pre-execution phase-binding and finalized-contract validator is not implemented."
+    },
+    {
+      "id": "PR12-CMD-000A",
+      "phase": "tool_freeze",
+      "purpose": "capture Node, Supabase CLI, psql versions and the pinned Supabase binary SHA-256",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "candidateCommand": "node --version; supabase --version; psql --version; Get-FileHash -Algorithm SHA256 <pinned-supabase.exe>",
+      "remoteContact": false,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "Exact psql path/version and hash-bound stdout/stderr collector are not captured."
+    },
+    {
+      "id": "PR12-CMD-001",
+      "phase": "offline_freeze",
+      "purpose": "capture exact Git head",
+      "redactedCommand": "git rev-parse HEAD",
+      "remoteContact": false,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": true
+    },
+    {
+      "id": "PR12-CMD-002",
+      "phase": "offline_freeze",
+      "purpose": "verify preparation and immutable local contracts with Node 24",
+      "redactedCommand": "fnm exec --using=24 node scripts/commercial-hardening/verify-pr12-preparation.mjs",
+      "remoteContact": false,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": true
+    },
+    {
+      "id": "PR12-CMD-004A",
+      "phase": "source_identity_bootstrap",
+      "purpose": "as the first and only Stage 2 remote command, capture source project/direct database identity, PostgreSQL version, system identifier, database UTC, and raw read-only Data API/Auth/GraphQL platform configuration without requiring a pre-known system identifier",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "candidateCommand": "Invoke-Pr12SourceIdentityBootstrap -Approval <identity-bootstrap-binding> -ProvisioningResult <provisioning-result>",
+      "remoteContact": true,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "mandatoryStopAfterCommand": true,
+      "implementationBlocker": "The pre-link identity/clock plus Data API/Auth/GraphQL raw configuration collector, exact stdout envelope, capture-once system identifier guard, and mandatory post-capture stop are not implemented."
+    },
+    {
+      "id": "PR12-CMD-003",
+      "phase": "staging_identity",
+      "purpose": "after separate post-bootstrap replay approval, guard and link only to the approved isolated source project whose captured system identifier matches",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "candidateCommand": "supabase link --project-ref <approved-source-ref>",
+      "remoteContact": true,
+      "mutating": true,
+      "mutationScope": "LOCAL_LINK_METADATA_ONLY",
+      "authorizedNow": false,
+      "implementationBlocker": "A fail-closed post-bootstrap binding, denylist, expiry, HEAD, URL, captured database identity, and link-metadata guard must wrap this action."
+    },
+    {
+      "id": "PR12-CMD-004",
+      "phase": "staging_preflight",
+      "purpose": "capture local and remote migration history after captured target identity verification and post-bootstrap reapproval",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "candidateCommand": "supabase migration list --linked",
+      "remoteContact": true,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "Guarded linked-command adapter and stdout/stderr artifact paths are not implemented."
+    },
+    {
+      "id": "PR12-CMD-005",
+      "phase": "staging_preflight",
+      "purpose": "preview exact remote migration replay",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "candidateCommand": "supabase db push --linked --include-all --dry-run",
+      "remoteContact": true,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "Guarded linked-command adapter and empty-target precondition are not implemented."
+    },
+    {
+      "id": "PR12-CMD-006",
+      "phase": "advisor_before",
+      "purpose": "capture security and performance Advisor baseline",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "candidateCommand": "supabase db advisors --linked --type all --level info --fail-on error",
+      "remoteContact": true,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "Guarded linked-command adapter and normalized Advisor artifact collector are not implemented."
+    },
+    {
+      "id": "PR12-CMD-007",
+      "phase": "migration_replay",
+      "purpose": "apply immutable migrations through 20260718011731",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "candidateCommand": "supabase db push --linked --include-all --yes",
+      "remoteContact": true,
+      "mutating": true,
+      "mutationScope": "ISOLATED_SCHEMA_REPLAY_ONLY",
+      "authorizedNow": false,
+      "timeoutSeconds": 900,
+      "expectedSideEffect": "schema, migration history, indexes, policies, functions, triggers, grants, and WAL in the isolated source project only",
+      "implementationBlocker": "Guarded apply adapter, clean-target assertion, migration-duration collector, and post-apply parity check are not implemented."
+    },
+    {
+      "id": "PR12-CMD-007A",
+      "phase": "post_replay_catalog_capture",
+      "purpose": "capture the fresh post-replay public r/p relation catalog, required Auth targets, complete Data API ACL object catalog, Data API settings, and GraphQL installed/enabled/introspection settings",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": true,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "The guarded post-replay catalog/settings collector and hash-bound capture envelope are not implemented."
+    },
+    {
+      "id": "PR12-CMD-008A",
+      "phase": "migration_replay",
+      "purpose": "prove post-apply migration history ends exactly at 20260718011731 with no missing, extra, or reordered migration",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": true,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "The guarded post-apply migration-history parity collector is not implemented."
+    },
+    {
+      "id": "PR12-CMD-008B",
+      "phase": "source_execution_approval_freeze",
+      "purpose": "verify the owner-approved full source qualification binding against the fresh replay/catalog result, exact HEAD, owners, expiry, matrices, collectors, and immutable contract hashes before representative seed or qualification",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": false,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "The final source-execution phase-binding validator is not implemented and the full qualification binding is not approved."
+    },
+    {
+      "id": "PR12-CMD-008",
+      "phase": "representative_seed",
+      "purpose": "load tracked bootstrap and E2E synthetic data with hosted-only ephemeral Auth passwords",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "candidateCommand": "hosted seed adapter using PR12-specific process-environment inputs",
+      "remoteContact": true,
+      "mutating": true,
+      "mutationScope": "SYNTHETIC_REPRESENTATIVE_DATA_ONLY",
+      "authorizedNow": false,
+      "expectedSideEffect": "74 explicit synthetic rows plus captured platform/trigger-derived rows in the isolated source project only",
+      "implementationBlocker": "Direct seed.sql and E2E seed scripts are unsafe for hosted use because they lack target guards and contain or load committed credentials; a reviewed adapter is required."
+    },
+    {
+      "id": "PR12-CMD-009",
+      "phase": "representative_data_parity",
+      "purpose": "verify exact rows, derived rows, source hashes, tenant roots, and normalized data hash",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": true,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "The post-load exact-row and normalized-hash validator is not implemented."
+    },
+    {
+      "id": "PR12-CMD-010",
+      "phase": "schema_and_type_parity",
+      "purpose": "capture migration parity, schema drift, generated types, frozen historical logical/normalized-physical facts, hosted environment physical-structure hash, helpers, triggers, FK and ACL parity",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "candidateCommand": "supabase gen types --project-id <approved-source-ref> --lang typescript --schema public",
+      "remoteContact": true,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "A guarded collector with hash-bound output and exact diff checks is not implemented."
+    },
+    {
+      "id": "PR12-CMD-011",
+      "phase": "canonical_pr11",
+      "purpose": "execute byte-frozen canonical PR11 gates in frozen order",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": true,
+      "mutating": true,
+      "mutationScope": "CANONICAL_PROBE_TRANSACTION_ONLY",
+      "authorizedNow": false,
+      "implementationBlocker": "Existing PR11 runners are local-only; the hosted adapter must preserve probes, actors, JWT, GUCs, thresholds, and order."
+    },
+    {
+      "id": "PR12-CMD-012",
+      "phase": "hosted_slo",
+      "purpose": "run the frozen warm-up and three hosted workload samples",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": true,
+      "mutating": true,
+      "mutationScope": "SYNTHETIC_HOSTED_WORKLOAD_ONLY",
+      "authorizedNow": false,
+      "implementationBlocker": "Hosted metrics collector, pacing model, request payload matrix, and monitoring sources are not implemented."
+    },
+    {
+      "id": "PR12-CMD-013",
+      "phase": "security_auth_tenant",
+      "purpose": "execute tenant CRUD, Auth/JWT/role, RLS/ACL, helper, trigger, FK, cascade and service-role matrices",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": true,
+      "mutating": true,
+      "mutationScope": "SYNTHETIC_SECURITY_MATRIX_ONLY",
+      "authorizedNow": false,
+      "implementationBlocker": "Exact hash-pinned security matrix and hosted runner are not implemented."
+    },
+    {
+      "id": "PR12-CMD-014",
+      "phase": "data_api_graphql",
+      "purpose": "capture configuration and execute direct anon/authenticated/service_role Data API and GraphQL matrices",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": true,
+      "mutating": true,
+      "mutationScope": "SYNTHETIC_API_MATRIX_ONLY",
+      "authorizedNow": false,
+      "implementationBlocker": "Exact Data API and GraphQL configuration/direct-role matrices and runner are not implemented."
+    },
+    {
+      "id": "PR12-CMD-015",
+      "phase": "billing_integrations",
+      "purpose": "execute COMM-BILL gates using Stripe test mode and disabled messaging paths",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": true,
+      "mutating": true,
+      "mutationScope": "SANDBOX_BILLING_ONLY",
+      "authorizedNow": false,
+      "implementationBlocker": "Stripe test owner, isolated webhook harness, Upstash disposition, and exact billing matrix are unresolved."
+    },
+    {
+      "id": "PR12-CMD-016",
+      "phase": "advisor_after",
+      "purpose": "capture and diff Advisor security/performance results",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "candidateCommand": "supabase db advisors --linked --type all --level info --fail-on error",
+      "remoteContact": true,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "Guarded Advisor collector and deterministic before/after diff are not implemented."
+    },
+    {
+      "id": "PR12-CMD-017",
+      "phase": "backup_watermark",
+      "purpose": "update exactly one fixed synthetic reservation watermark and capture before/after database UTC values",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "candidateCommand": "update public.reservations set updated_at = clock_timestamp() where id = '00000000-0000-0000-0000-00000000f005'; require affected rows = 1",
+      "remoteContact": true,
+      "mutating": true,
+      "mutationScope": "SYNTHETIC_BACKUP_WATERMARK_ONLY",
+      "authorizedNow": false,
+      "implementationBlocker": "The guarded single-row transaction, affected-row assertion, and secret-free evidence collector are not implemented."
+    },
+    {
+      "id": "PR12-CMD-016A",
+      "phase": "external_side_effects",
+      "purpose": "after all source service-role REST/RPC/GraphQL calls and the final approved source mutation, re-inject only the PR12_SOURCE_ service-role credential in memory, scan the actual browser build, client responses, application logs, command streams, and evidence artifacts, persist only hashes/counts, scrub the credential, then prove Stripe is test-only, real email/LINE/SMS sends are zero, workers/cron/queues/webhooks/bulk sync are disabled, and duplicate or pending side effects are zero; no later source mutation may occur before backup capture",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": true,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "The late target-prefixed in-memory service-role non-exposure scanner and hash-pinned family-specific integration state, provider-receipt, and duplicate-side-effect collector are not implemented."
+    },
+    {
+      "id": "PR12-CMD-017A",
+      "phase": "backup_inventory",
+      "purpose": "capture the fresh provider backup inventory, select the first completed physical backup whose provider inserted_at is at or after the post-watermark baseline, bind provider observation UTC and source identity, and hash the normalized metadata record; watermark containment remains unproven until restore",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": true,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "Physical backup bytes are not downloadable; a backup-metadata and watermark evidence collector is not implemented."
+    },
+    {
+      "id": "PR12-CMD-017B",
+      "phase": "restore_creation_approval_stop",
+      "purpose": "stop after backup capture and require a hash-pinned RESTORE_PROJECT_CREATION approval bound to backup ID, metadata SHA-256, watermark, exact request, cost, funding, and owner separation",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": false,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "restore-project-creation-binding.template.json remains NOT_RUN and must be approved before the Dashboard mutation"
+    },
+    {
+      "id": "PR12-ACTION-017",
+      "phase": "restore_project_creation",
+      "purpose": "select an eligible physical backup and restore it to a new isolated project",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "candidateAction": "Supabase Dashboard Restore to a New Project after source identity, backup ID, watermark, Tokyo, Large, and cost-preview verification",
+      "remoteContact": true,
+      "mutating": true,
+      "mutationScope": "RESTORE_PROJECT_CREATION",
+      "authorizedNow": false,
+      "implementationBlocker": "Backup inventory/evidence capture and the selected-backup RESTORE_PROJECT_CREATION approval are not finalized; post-creation connection still requires a separate supplemental binding."
+    },
+    {
+      "id": "PR12-CMD-018",
+      "phase": "restore_identity",
+      "purpose": "as the first supplemental-approved restore database command, capture and verify restore ref, URL, direct host/user, database version, system identifier, and clock_timestamp() UTC before any other restore command",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "candidateCommand": "guarded direct PostgreSQL read-only identity and SELECT clock_timestamp() collector",
+      "remoteContact": true,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "A separately approved restore binding and fail-closed source!=restore/denylist/direct-identity guard plus hash-bound clock collector are required."
+    },
+    {
+      "id": "PR12-CMD-019",
+      "phase": "post_restore_qualification",
+      "purpose": "capture restore migration/schema/data/history/types parity as dedicated command stdout reconciled to a fresh DIRECT_POSTGRES raw observation envelope",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": true,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "The dedicated restore integrity collector, raw-evidence hash chain, and supplemental-binding guard are not implemented."
+    },
+    {
+      "id": "PR12-CMD-019S",
+      "phase": "post_restore_qualification",
+      "purpose": "execute and capture the fresh restore security/Auth/tenant matrix as dedicated command stdout reconciled case-by-case to raw HTTP, SQLSTATE, row/mutation, ACL, and RLS observations",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": true,
+      "mutating": true,
+      "mutationScope": "SYNTHETIC_QUALIFICATION_ONLY",
+      "authorizedNow": false,
+      "implementationBlocker": "The restore-scoped security collector and raw-evidence hash chain are not implemented."
+    },
+    {
+      "id": "PR12-CMD-019D",
+      "phase": "post_restore_qualification",
+      "purpose": "execute and capture the fresh restore Data API matrix as dedicated command stdout reconciled role-by-role to raw REST HTTP, row, ACL/RLS, and configuration observations",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": true,
+      "mutating": true,
+      "mutationScope": "SYNTHETIC_QUALIFICATION_ONLY",
+      "authorizedNow": false,
+      "implementationBlocker": "The restore-scoped Data API collector and raw-evidence hash chain are not implemented."
+    },
+    {
+      "id": "PR12-CMD-019G",
+      "phase": "post_restore_qualification",
+      "purpose": "capture the fresh restore GraphQL matrix as dedicated command stdout reconciled role-by-role to raw GraphQL HTTP, endpoint, row, and configuration observations",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": true,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "The restore-scoped GraphQL collector and raw-evidence hash chain are not implemented."
+    },
+    {
+      "id": "PR12-CMD-019A",
+      "phase": "post_restore_side_effects",
+      "purpose": "after all restore service-role REST/RPC/GraphQL calls, re-inject only the PR12_RESTORE_ service-role credential in memory, scan the actual browser build, client responses, application logs, command streams, and evidence artifacts, persist only hashes/counts, scrub the credential, and prove restore-target external operations remain disabled/sandboxed and duplicate side effects remain zero before service RTO closes",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": true,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "The late restore-target in-memory service-role non-exposure scanner plus integration-state and duplicate collector is not implemented."
+    },
+    {
+      "id": "PR12-CMD-019F",
+      "phase": "post_restore_qualification",
+      "purpose": "hash-bind all dedicated restore results after the external-side-effect gate and close service RTO as a non-mutating finalization stdout",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": true,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "The non-mutating final operation collector and proposed action-start RTO clock reconciliation are not implemented."
+    },
+    {
+      "id": "PR12-CMD-020",
+      "phase": "evidence_privacy",
+      "purpose": "terminally scan the immutable manifest after the named conditional human privacy sign-off exists; leave COMM-OPS-011 NOT_RUN for in-memory final-verifier derivation and produce no evidence artifact afterward",
+      "redactedCommand": "NOT_IMPLEMENTED",
+      "remoteContact": false,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "authorizedNow": false,
+      "implementationBlocker": "Final evidence directory and named reviewer are not captured."
+    }
+  ],
+  "outOfManifestFinalVerification": {
+    "command": "fnm exec --using=24 node scripts/commercial-hardening/verify-pr12-evidence-manifest.mjs --manifest <approved-evidence-manifest>",
+    "mustRunAfterCommandId": "PR12-CMD-020",
+    "stdoutOrStderrRedirectionAllowed": false,
+    "evidenceArtifactCreationAllowed": false,
+    "manifestCommandEntryAllowed": false,
+    "successObservation": "interactive_or_CI_exit_code_only",
+    "failureEffect": "ABORT_NO_GO"
+  },
+  "provisioningActions": {
+    "sourceProject": {
+      "actionId": "PR12-ACTION-003",
+      "method": "OWNER_MANAGEMENT_API_CREATE_PROJECT",
+      "httpMethod": "POST",
+      "endpoint": "https://api.supabase.com/v1/projects",
+      "name": "seikotsuin-pr12-isolated-qualification-20260719",
+      "plan": "pro",
+      "region": "ap-northeast-1",
+      "compute": "large",
+      "authorizedNow": false,
+      "requiresSeparateProvisioningBinding": true
+    },
+    "restoreProject": {
+      "method": "RESTORE_TO_NEW_PROJECT_ACTION_PR12-ACTION-017",
+      "name": "seikotsuin-pr12-isolated-restore-20260719",
+      "authorizedNow": false,
+      "requiresSupplementalPostCreationBinding": true
+    }
+  },
+  "recovery": {
+    "onFailure": "stop_preserve_evidence_and_request_owner_decision",
+    "automaticCleanupAllowed": false,
+    "destructiveRollbackAllowed": false,
+    "appendOnlyForwardFixRequiresSeparateApproval": true
+  },
+  "knownBlockers": [
+    "source project ref and source provisioning approval are not captured",
+    "restore project ref cannot be captured until restore creation and then requires supplemental approval",
+    "fail-closed target guard and hosted credential/seed adapter are not implemented",
+    "psql path and exact version are not captured",
+    "post-load row/hash, schema/type, hosted PR11, hosted SLO, security, API, GraphQL, billing, Advisor diff, backup, and post-restore collectors are not implemented",
+    "exact security, Data API, GraphQL, billing, and request matrices are not hash-pinned",
+    "credential store, Upstash decision, and named owners are unassigned"
+  ],
+  "notes": "This JSON is owner-reviewable proposal input, not an executable command ledger. Candidate commands are explanatory only. Every remote or mutating entry is NOT_IMPLEMENTED and authorizedNow=false until a fail-closed adapter and final approved execution ledger replace this proposal."
+}

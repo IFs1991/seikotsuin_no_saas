@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "resultType": "SOURCE_EXTERNAL_SIDE_EFFECT_INVENTORY_RESULT",
+  "status": "NOT_RUN",
+  "commandId": "PR12-CMD-016A",
+  "gitCommit": "NOT_CAPTURED",
+  "projectRef": "NOT_CAPTURED",
+  "capturedAt": "NOT_CAPTURED",
+  "runtimeIdentity": {
+    "projectRef": "NOT_CAPTURED",
+    "projectUrl": "NOT_CAPTURED",
+    "databaseHost": "NOT_CAPTURED",
+    "databaseConnectionMode": "DIRECT",
+    "databaseUser": "postgres",
+    "databaseVersion": "NOT_CAPTURED",
+    "systemIdentifier": "NOT_CAPTURED"
+  },
+  "integrationContract": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+  "credentialContract": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+  "credentialProviderConfiguration": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "drScopeInventory": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "observationFamilies": [
+    "DATABASE_EXTENSION_STATE",
+    "PG_CRON_JOB_INVENTORY",
+    "PG_NET_QUEUE_INVENTORY",
+    "DATABASE_WEBHOOK_TRIGGER_INVENTORY",
+    "WRAPPER_FDW_INVENTORY",
+    "STRIPE_CONFIGURATION_AND_DISPATCH",
+    "EMAIL_CONFIGURATION_AND_DISPATCH",
+    "LINE_CONFIGURATION_AND_DISPATCH",
+    "SMS_CONFIGURATION_AND_DISPATCH",
+    "INBOUND_WEBHOOK_CONFIGURATION",
+    "WORKER_CRON_QUEUE_CONFIGURATION",
+    "BULK_IMPORT_SYNC_CONFIGURATION",
+    "EXTERNAL_RATE_LIMIT_NAMESPACE",
+    "DUPLICATE_SIDE_EFFECT_SCAN"
+  ],
+  "rawEvidence": [],
+  "observations": [],
+  "mode": "NOT_CAPTURED",
+  "attemptedRealDispatchCount": null,
+  "providerRealDispatchCount": null,
+  "duplicateCount": null,
+  "pendingExternalOperationCount": null,
+  "productionIdentityDetected": "NOT_CAPTURED",
+  "secretValuesCaptured": false,
+  "privacyScanStatus": "NOT_RUN",
+  "serviceRoleNonExposure": { "status": "NOT_RUN", "evidence": [] },
+  "evidence": []
+}

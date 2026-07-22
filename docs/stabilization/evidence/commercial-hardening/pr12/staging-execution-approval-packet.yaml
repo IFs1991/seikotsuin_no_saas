@@ -2,6 +2,7 @@ schema_version: 1
 id: PR12-STAGING-APPROVAL-PACKET-001
 title: Owner packet for isolated staging migration, qualification, and DR drill
 status: NOT_RUN
+proposal_status: OWNER_REVIEW_REQUIRED
 blocking: true
 prepared_for_branch: codex/commercial-hardening-pr12-isolated-qualification
 base_commit: 4475e1c641c2ff18f66021ee65cfecfceaa6b7ab
@@ -16,33 +17,154 @@ machine_readable_execution_binding:
   approved_binding_sha256: NOT_CAPTURED
   status: NOT_RUN
   must_be_parsed_and_matched_by_execution_verifier: true
+authorization_phases:
+  source_project_provisioning:
+    template: source-project-provisioning-binding.template.json
+    action_id: PR12-ACTION-003
+    method: OWNER_MANAGEMENT_API_CREATE_PROJECT
+    http_method: POST
+    endpoint: https://api.supabase.com/v1/projects
+    maximum_execution_count: 1
+    approved_binding_path: NOT_CAPTURED
+    approved_binding_sha256: NOT_CAPTURED
+    authorized: false
+    expiry: NOT_CAPTURED
+  source_identity_and_configuration_bootstrap:
+    template: source-identity-bootstrap-binding.template.json
+    result_template: source-identity-bootstrap-result.template.json
+    approved_binding_path: NOT_CAPTURED
+    approved_binding_sha256: NOT_CAPTURED
+    result_path: NOT_CAPTURED
+    result_sha256: NOT_CAPTURED
+    first_and_only_remote_command_id: PR12-CMD-004A
+    authorized: false
+    expiry: NOT_CAPTURED
+  source_replay_and_catalog_capture:
+    template: source-replay-catalog-capture-binding.template.json
+    result_template: source-replay-catalog-capture-result.template.json
+    approved_binding_path: NOT_CAPTURED
+    approved_binding_sha256: NOT_CAPTURED
+    result_path: NOT_CAPTURED
+    result_sha256: NOT_CAPTURED
+    authorized: false
+    expiry: NOT_CAPTURED
+  source_qualification_and_backup_capture:
+    template: staging-execution-binding.template.json
+    approved_binding_path: NOT_CAPTURED
+    approved_binding_sha256: NOT_CAPTURED
+    authorized: false
+    expiry: NOT_CAPTURED
+  restore_project_creation:
+    template: restore-project-creation-binding.template.json
+    approved_binding_path: NOT_CAPTURED
+    approved_binding_sha256: NOT_CAPTURED
+    selected_backup_id: NOT_CAPTURED
+    selected_backup_metadata_sha256: NOT_CAPTURED
+    authorized: false
+    expiry: NOT_CAPTURED
+  restore_target_validation:
+    template: restore-execution-supplemental-binding.template.json
+    approved_binding_path: NOT_CAPTURED
+    approved_binding_sha256: NOT_CAPTURED
+    authorized: false
+    expiry: NOT_CAPTURED
+  mandatory_stop_between_phases: true
 decision:
   draft_pr_creation_authorized: true
+  source_project_provisioning_authorized: false
+  source_identity_and_configuration_bootstrap_authorized: false
+  source_replay_and_catalog_capture_authorized: false
+  source_full_qualification_and_backup_capture_authorized: false
+  isolated_staging_connection_authorized: false
   isolated_staging_execution_authorized: false
+  restore_project_creation_authorized: false
+  restore_project_connection_authorized: false
+  post_restore_validation_authorized: false
   ready_transition_authorized: false
   merge_authorized: false
   production_connection_authorized: false
   commercial_release_authorized: false
   index_retirement_authorized: false
+official_platform_source_review:
+  verified_at: '2026-07-20'
+  authority: SUPABASE_PRIMARY_DOCUMENTATION_AND_CHANGELOG_ONLY
+  data_api_custom_schemas: https://supabase.com/docs/guides/api/using-custom-schemas
+  automatic_exposure_change: https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically
+  pg_graphql_enablement_change: https://supabase.com/changelog/42180-breaking-change-pg-graphql-no-longer-enabled-automatically-within-approx-3-weeks
+  pg_graphql_introspection_change: https://supabase.com/changelog/46320-breaking-change-in-pg-graphql-1-6-0-graphql-introspection-disabled-by-default
+  graphql_security: https://supabase.com/docs/guides/graphql/security
+  database_backups: https://supabase.com/docs/guides/platform/backups
+  restore_to_new_project: https://supabase.com/docs/guides/platform/clone-project
+  compute_and_disk: https://supabase.com/docs/guides/platform/compute-and-disk
+  compute_usage: https://supabase.com/docs/guides/platform/manage-your-usage/compute
+  pricing: https://supabase.com/pricing
+  frozen_interpretation:
+    - public is the only proposed exposed Data API schema; graphql_public is not proposed
+    - automatic exposure is disabled and explicit grants remain separate from RLS
+    - pg_graphql and introspection are disabled proposals whose actual installed/enabled states must be captured
+    - restore-to-new-project is paid-plan database-centered and requires post-restore reconfiguration/side-effect review
+    - Large is 2-core ARM dedicated, 8 GB, USD 0.1517 per project-hour before organization-specific credit
+  actual_dashboard_state_and_quote_still_required: true
 environment:
   project_ref: NOT_CAPTURED
-  project_name: UNASSIGNED
-  region: UNASSIGNED
-  database_tier: UNASSIGNED
+  project_name: seikotsuin-pr12-isolated-qualification-20260719
+  project_name_state: PROPOSED_OWNER_APPROVAL_REQUIRED
+  organization_plan: PRO
+  organization_id: NOT_CAPTURED
+  region: ap-northeast-1
+  region_name: Northeast Asia (Tokyo)
+  database_tier: LARGE
+  compute_characteristics: 2-core ARM dedicated / 8 GB memory
+  tier_state: PROPOSED_OWNER_APPROVAL_REQUIRED
+  production_tier_parity: NOT_CAPTURED
+  qualification_scope_if_approved: Large only; a different production tier requires reapproval and rerun.
+  prohibited_project_refs:
+    - qnanuoqveidwvacvbhqp
   database_version: NOT_CAPTURED
-  expected_database_size: NOT_CAPTURED
-  expected_pool_mode_and_size: NOT_CAPTURED
+  required_database_major: 17
+  expected_database_size: less_than_1_gib_after_fixtures_and_probes
+  expected_pool_mode_and_size: capture direct/session pool limits read-only; session pool is observation-only and is not an approved qualification execution path
+  approved_database_connection_mode: DIRECT
+  database_host_contract: db.<approved-project-ref>.supabase.co
+  database_user_contract: postgres
+  source_project_maximum_lifetime_hours: 72
+  source_funding_must_cover_hours_after_provisioning_approval_expiry: 72
+  restore_project:
+    project_ref: NOT_CAPTURED
+    project_name: seikotsuin-pr12-isolated-restore-20260719
+    region: ap-northeast-1
+    database_tier: LARGE
+    creation_method: Supabase Restore to a New Project
+  provisioning_configuration_proposal:
+    data_api_enabled: true
+    exposed_schemas:
+      - public
+    automatically_expose_new_tables_and_functions: false
+    grant_and_rls_policy: migration_defined_explicit_grants_and_rls_no_owner_override
+    pg_graphql_enabled: false
+    graphql_introspection_enabled: false
+    anonymous_auth_enabled: false
+    real_email_sms_oauth_delivery_configured: false
+    any_change_requires_reapproval: true
 representative_data:
-  source: NOT_CAPTURED
-  classification: SYNTHETIC_OR_ANONYMIZED_ONLY
-  data_volume: NOT_CAPTURED
-  table_row_targets: NOT_CAPTURED
-  source_sha256: NOT_CAPTURED
+  contract_path: representative-data-contract.proposed.json
+  contract_sha256: 67907af4a24bfe24a0f3c95dafe13031e77e55d79a44d6e9f1ede67f50746c79
+  contract_state: PROPOSED_OWNER_APPROVAL_REQUIRED
+  source: hash-pinned supabase seed plus tracked E2E synthetic fixture
+  classification: SYNTHETIC
+  data_volume: 74 explicit persistent rows plus captured platform/trigger-derived rows; canonical PR11 probes are transaction-scoped
+  table_row_targets: contract byRelation map; every post-load count and normalized data hash must match
+  source_sha256: b06ae82ee4da29aa6fff6796b4c9a9720948df9783d047c4479bb72750e0696a
   patient_pii_allowed: false
   patient_pii_observed: NOT_CAPTURED
   safety_review_owner: UNASSIGNED
   human_privacy_review_status: NOT_RUN
   human_privacy_review_evidence: NOT_CAPTURED
+  persistent_capacity_representative: false
+  capacity_owner_decision: Approve the small flow/security fixture or require a reviewed volume generator before execution.
+  source_maximum_hours_from_project_provisioning: 72
+  restore_maximum_hours_from_restore_project_creation: 24
+  retention_after_qualification_is_not_the_cost_clock: true
 workload:
   canonical_pr11_contract: frozen-pr11-performance-contract.json
   canonical_pr11_contract_status: FROZEN
@@ -50,51 +172,201 @@ workload:
   canonical_aggregation: median
   canonical_paired_sample_order: before_after_after_before_before_after
   canonical_threshold_change_allowed: false
-  hosted_workload: NOT_CAPTURED
-  hosted_concurrency: NOT_CAPTURED
-  hosted_sample_order: NOT_CAPTURED
-  hosted_duration: NOT_CAPTURED
-  hosted_slo: NOT_CAPTURED
+  hosted_contract_path: hosted-slo-contract.proposed.json
+  hosted_contract_sha256: f34afb02c6f1191f806314f112c4b13b80f0a407e77a4a26d66c26cceefcd499
+  hosted_contract_state: PROPOSED_OWNER_APPROVAL_REQUIRED
+  hosted_workload: Supabase hosted Auth/Data API plus local Node 24 server-side harness; read-heavy, mixed CRUD, read-heavy repeat
+  hosted_concurrency: 50
+  hosted_sample_order: sample_1_read_heavy_c50 -> sample_2_mixed_crud_c50 -> sample_3_read_heavy_repeat_c50
+  hosted_duration: 300-second unscored warmup plus three 600-second scored samples
+  hosted_slo: each sample and pooled result must pass; zero sample discard or reorder
+  hosted_collector_status: NOT_IMPLEMENTED
+  exact_request_payload_matrix: NOT_CAPTURED
 hosted_slo_thresholds:
-  p95_ms: NOT_CAPTURED
-  p99_ms: NOT_CAPTURED
-  minimum_throughput_per_second: NOT_CAPTURED
-  maximum_5xx_rate: NOT_CAPTURED
-  maximum_timeout_rate: NOT_CAPTURED
+  p95_ms: 2000
+  p99_ms: 3000
+  minimum_throughput_per_second: 20
+  maximum_unexpected_failed_requests: 0
+  maximum_5xx_rate_percent: 0
+  maximum_timeout_rate_percent: 0
+  http_request_timeout_seconds: 10
 database_abort_thresholds:
-  maximum_cpu_percent: NOT_CAPTURED
-  minimum_pool_headroom_percent: NOT_CAPTURED
-  maximum_lock_wait_ms: NOT_CAPTURED
-  maximum_wal_bytes: NOT_CAPTURED
-  maximum_migration_duration_seconds: NOT_CAPTURED
+  maximum_cpu_percent: 75
+  cpu_window_seconds: 300
+  minimum_pool_headroom_percent: 25
+  pool_window_seconds: 120
+  maximum_lock_wait_ms: 1000
+  maximum_scored_workload_wal_bytes: 268435456
+  maximum_migration_duration_seconds: 900
 dr:
-  backup_restore_method: NOT_CAPTURED
-  backup_scope: NOT_CAPTURED
-  restore_target: NOT_CAPTURED
-  restore_point: NOT_CAPTURED
-  source_watermark: NOT_CAPTURED
-  rto_start_event: NOT_CAPTURED
-  rto_end_event: NOT_CAPTURED
-  rto_measurement_clock_and_source: NOT_CAPTURED
-  rpo_durable_watermark_definition: NOT_CAPTURED
-  rpo_observation_event: NOT_CAPTURED
-  rpo_measurement_clock_and_source: NOT_CAPTURED
-  rto_threshold_seconds: NOT_CAPTURED
-  rpo_threshold_seconds: NOT_CAPTURED
+  contract_path: dr-contract.proposed.json
+  contract_sha256: 9bd4b1002dc2456d0bd063aa5be06cbb24f7acf4b2b7ff9411331d780fe279ed
+  contract_state: PROPOSED_OWNER_APPROVAL_REQUIRED
+  backup_restore_method: Supabase Pro daily physical backup -> Restore to a New Project (Beta)
+  pitr_enabled: false
+  logical_fallback_without_reapproval: false
+  backup_scope: database schema/data/indexes/roles/permissions/Auth users/migration history
+  excluded_scope: Storage object bodies, Edge Functions, Auth settings/API keys, and Realtime settings; zero Storage objects required
+  restore_target: new same-region Large project seikotsuin-pr12-isolated-restore-20260719
+  restore_point: first completed physical backup whose provider inserted_at is at or after the post-watermark baseline; fixed-watermark containment is proven only after restore
+  source_watermark: public.reservations id 00000000-0000-0000-0000-00000000f005 updated_at
+  rto_start_event: owner-approved PR12-ACTION-017 Restore to a New Project action start UTC, before provider restore begins
+  rto_end_event: after target availability and every post-restore schema/data/Auth/tenant/API/service-role/external-side-effect gate passes; evidence privacy is a later release-evidence gate outside service RTO
+  rto_measurement_clock_and_source: operator monotonic elapsed interval from PR12-ACTION-017 through PR12-CMD-019F, corroborated by provider/source-database/restore-database/operator UTC
+  rpo_durable_watermark_definition: committed updated_at of the fixed synthetic reservation included in the selected backup
+  rpo_observation_event: immediately before restore confirmation
+  rpo_measurement_clock_and_source: source database clock_timestamp UTC minus restored watermark; operator UTC is an independent skew-bound anchor; restore database proves the restored watermark
+  static_verifier_clock_capability: ACTION_START_TO_PR12_CMD_019F_MONOTONIC_AND_FOUR_SOURCE_SKEW_IMPLEMENTED_AND_NEGATIVE_TESTED
+  runtime_clock_provenance_collector_status: NOT_IMPLEMENTED
+  runtime_numeric_skew_input_collector_status: NOT_IMPLEMENTED
+  backup_watermark_command_contract:
+    exact_command_count: 1
+    phase: backup_watermark
+    mutation_scope: SYNTHETIC_BACKUP_WATERMARK_ONLY
+    affected_rows: 1
+    before_value_required: true
+    after_value_required: true
+    before_and_after_must_differ: true
+    relation_primary_key_and_timestamp_column_must_match_dr_contract: true
+    candidate_sql_and_command_id_must_match_dr_contract: true
+    exact_stdout_and_hash_binding_required: true
+    approval_must_precede_command: true
+  backup_inventory_command_contract:
+    exact_command_count: 1
+    phase: backup_inventory
+    mutation_scope: NONE
+    exact_stdout_and_hash_binding_required: true
+    watermark_command_id_and_value_required: true
+    raw_provider_inventory_binding_required: true
+    selected_backup_provider_inserted_at_must_be_at_or_after_post_watermark_baseline: true
+    provider_observed_at_must_be_inside_collector_command_window: true
+    watermark_containment_status_before_restore: PROVEN_ONLY_AFTER_RESTORE
+    captured_at_must_equal_collector_command_end: true
+  excluded_manual_scope_evidence:
+    projection_contract: dr-platform-config-projection-contract-v1.json
+    official_openapi_revalidation_required_immediately_before_approval: true
+    source_command_id: PR12-CMD-016A
+    restore_command_id: PR12-CMD-019A
+    final_comparison_command_id: PR12-CMD-019F
+    empty_management_api_lists:
+      - storage/buckets
+      - functions
+    dashboard_read_replica_refs_must_be_empty: true
+    full_schema_hash_only_projections:
+      - AuthConfigResponse
+      - RealtimeConfigResponse
+      - StorageConfigResponse
+    database_query_set_id: PR12-DR-DATABASE-CATALOG-V1
+    realtime_publication_tables:
+      - public.chat_messages
+      - public.notifications
+    target_credential_provider_binding_required: true
+    credential_or_raw_config_values_may_be_persisted: false
+  source_result_provenance:
+    exact_stdout_command_ids:
+      migration_history: PR12-CMD-008A
+      row_and_hash_integrity: PR12-CMD-009
+      generated_types: PR12-CMD-010
+      canonical_pr11: PR12-CMD-011
+      hosted_slo: PR12-CMD-012
+      migration_duration: PR12-CMD-007
+    source_runtime_identity_and_commit_required: true
+    captured_at_must_equal_command_end: true
+    every_observed_at_must_be_inside_command_window: true
+    canonical_gate_counts:
+      primary_execution: 9
+      primary_wal: 6
+      auxiliary_execution: 2
+      auxiliary_wal: 2
+      plan: 8
+      semantic: 5
+      total: 32
+    canonical_metric_samples_and_medians_recomputed: true
+    canonical_plan_and_semantic_facts_recomputed: true
+    hosted_latency_percentiles_recomputed_from_raw_population: true
+    hosted_counters_rates_monitoring_and_pooled_wal_recomputed: true
+  post_restore_result_provenance:
+    dedicated_command_stdout_required:
+      - integrity
+      - security_matrix
+      - data_api
+      - graphql
+    fresh_restore_runtime_identity_required: true
+    captured_at_must_equal_command_end: true
+    fresh_command_scoped_raw_evidence_required: true
+    source_evidence_reuse_allowed: false
+    raw_evidence_sets_must_be_disjoint: true
+    family_specific_raw_observation_reconciliation_required: true
+    non_mutating_finalization_must_hash_bind_every_result: true
+  rto_threshold_seconds: 28800
+  rpo_threshold_seconds: 86400
   reference_internal_rto_seconds: 28800
   reference_internal_rpo_seconds: 86400
-  reference_targets_owner_approved_for_commercial_contract: false
+  reference_targets_owner_approved_for_this_drill: false
+  stricter_product_target: RTO 1800 seconds / RPO 900 seconds in docs/repitte_requirements.md
+  stricter_target_resolved_by_owner: false
+  pass_meaning: An 8h/24h drill PASS does not prove the 30m/15m product target.
+  maximum_wait_for_eligible_backup_hours: 36
+  maximum_allowed_clock_skew_seconds: UNASSIGNED
+  clock_skew_owner_decision: UNASSIGNED
+  rto_rpo_pass_allowed_before_clock_skew_approval: false
+  required_clock_sources:
+    - Supabase provider operation UTC
+    - source database clock_timestamp UTC
+    - restore database clock_timestamp UTC
+    - operator UTC wall-clock anchor
+  operator_monotonic_elapsed_timer_required_separately: true
+  rto_rpo_pass_currently_possible: false
 integrations:
-  stripe_mode: UNASSIGNED
+  contract_path: integration-credential-contract.proposed.json
+  contract_sha256: 9c70a291017c201da56aefe06485b4cb9122f33badb5336f948f1f084a05c103
+  contract_state: PROPOSED_OWNER_APPROVAL_REQUIRED
+  source_mode: SANDBOXED
+  restore_mode: DISABLED
+  source_stripe_mode: TEST_MODE_SANDBOX_ONLY
+  restore_stripe_mode: DISABLED_NO_CREDENTIALS_OR_ENDPOINT
   stripe_required_for_comm_bill: TEST_MODE_SANDBOX_REQUIRED
-  email: UNASSIGNED
-  line_or_sms: UNASSIGNED
-  webhook_destinations: UNASSIGNED
-  cron_and_queue_consumers: UNASSIGNED
-  external_bulk_import_or_sync: DISABLED_REQUIRED
-  unattended_batch: DISABLED_REQUIRED
+  stripe_live_charge_allowed: false
+  email: DISABLED_OUTBOX_ENQUEUE_ONLY
+  line_or_sms: DISABLED_NO_CREDENTIALS
+  webhook_destinations: STRIPE_TEST_TO_APPROVED_ISOLATED_HARNESS_ONLY
+  resend_and_line_webhooks: DISABLED
+  cron_and_queue_consumers: DISABLED
+  database_webhooks_pg_net_wrappers: DISABLED_OR_ABSENT_REQUIRED
+  external_bulk_import_or_sync: DISABLED
+  unattended_batch: DISABLED
+  upstash_or_external_rate_limit: UNASSIGNED
+  upstash_positive_execution_allowed_while_unassigned: false
+  side_effect_collector_contract: PR12-SIDE-EFFECT-COLLECTOR-V2
+  side_effect_descriptor_path: external-side-effect-collector-descriptors-v2.json
+  side_effect_descriptor_sha256: c5b11dbb2cd4f676e2cef46bda3c1fd65e1311cbc14eed49f3addc4392cb98b9
+  side_effect_collector_status: NOT_IMPLEMENTED
+  raw_mode_or_configuration_self_attestation_allowed: false
+  normalized_state_must_derive_from_fixed_probe_and_raw_facts: true
   no_real_send_or_charge_without_separate_approval: true
 data_api:
+  acl_inventory_proposal_path: data-api-acl-inventory.proposed.json
+  acl_inventory_proposal_sha256: bf6b315e4644b360593f0d0fa2e11c80e2db2d5a5b6ca5ba0a44a95239ac9a32
+  acl_inventory_proposal_status: PROPOSED_OWNER_APPROVAL_REQUIRED
+  acl_inventory_owner: UNASSIGNED
+  executable_acl_inventory_authority: nested_in_hash_bound_data_api_matrix
+  post_replay_catalog_collector_status: NOT_IMPLEMENTED
+  post_replay_catalog_query_contract_sha256: NOT_CAPTURED
+  independent_settings_and_pg_catalog_raw_command: NOT_IMPLEMENTED
+  synchronized_catalog_and_matrix_omission_can_pass: false
+  acl_matrix_collector_status: NOT_IMPLEMENTED
+  provisioning_proposal_enabled: true
+  provisioning_proposal_exposed_schemas:
+    - public
+  provisioning_proposal_automatic_exposure: false
+  configured_state_capture_method: OWNER_READ_ONLY_BROWSER_ACCESSIBILITY_SNAPSHOT_HASH_BOUND_AS_MANIFEST_ARTIFACT
+  configured_state_may_be_inferred_from_health: false
+  service_health_is_separate: true
+  direct_endpoint_smoke: FIXED_SERVICE_ROLE_GET_REST_V1_OPENAPI_HTTP_200_AND_BODY_SHAPE
+  default_privilege_query_contract: PR12-DATA-API-DEFAULT-PRIVILEGES-V2
+  default_privilege_exact_row_count: 48
+  default_privilege_dimensions: 2_owners_x_2_scopes_x_3_object_types_x_4_grantees
+  service_role_only_default_grant_counts_as_public_automatic_exposure: false
   enabled_state: NOT_CAPTURED
   exposed_schemas: NOT_CAPTURED
   automatically_expose_new_tables_and_functions: NOT_CAPTURED
@@ -102,34 +374,132 @@ data_api:
   supabase_admin_default_privileges: NOT_CAPTURED
   schema_usage_contract: NOT_CAPTURED
   relation_column_sequence_function_acl_contract: NOT_CAPTURED
+  acl_inventory_required_object_kinds:
+    - SCHEMA
+    - RELATION
+    - COLUMN
+    - SEQUENCE
+    - FUNCTION
+    - DEFAULT_PRIVILEGE
+  acl_inventory_exact_case_set: NOT_CAPTURED
+  acl_inventory_exact_case_formula: exact catalog object x applicable privilege x anon/authenticated/service_role
+  acl_inventory_missing_extra_or_duplicate_tuple_allowed: false
+  acl_inventory_source_restore_catalog_parity_required: true
+  source_acl_evidence_reuse_after_restore_allowed: false
   intended_role_object_operation_matrix: NOT_CAPTURED
   intended_role_object_operation_matrix_sha256: NOT_CAPTURED
+  direct_role_frozen_case_count: 10
+  direct_role_required_coverage:
+    - anon relation ACL deny
+    - anon column ACL deny
+    - authenticated relation ACL deny
+    - authenticated sensitive-column ACL deny
+    - authenticated A-to-B RLS filtered
+    - authenticated B-to-A RLS filtered
+    - authenticated relation same-tenant allow
+    - authenticated column same-tenant allow
+    - service_role REST allow
+    - service_role RPC public.normalize_customer_phone(text) allow
+  service_role_rpc_method_and_path: POST /rest/v1/rpc/normalize_customer_phone
+  direct_role_catalog_binding_required: object ID/kind/identity, ACL case ID, role, SELECT-or-EXECUTE privilege, and effective grant
+  direct_role_http_binding_required: method, path, request-body SHA-256, expected/observed response-body SHA-256
   acl_and_rls_independent_verdict_required: true
+  direct_role_case_fields:
+    - case_id
+    - case_class
+    - role
+    - target
+    - operation
+    - expected_and_observed_http_status
+    - expected_and_observed_sql_executed
+    - expected_and_observed_sqlstate
+    - expected_and_observed_row_count
+    - expected_and_observed_mutation_count
+    - expected_and_observed_acl_outcome
+    - expected_and_observed_rls_outcome
+    - expected_and_observed_endpoint_outcome
+  summary_covered_case_ids_required: true
 graphql:
+  provisioning_proposal_pg_graphql_enabled: false
+  provisioning_proposal_introspection_enabled: false
   installed_version: NOT_CAPTURED
+  installed_version_null_allowed: true
+  installed_and_endpoint_enabled_are_independent: true
+  configured_api_schemas_cross_bound_to_postgrest_db_schema: true
+  endpoint_and_introspection_classification_derived_from_fixed_query_and_sanitized_body: true
+  http_5xx_is_abort: true
   enabled_state: NOT_CAPTURED
   exposed_schemas: NOT_CAPTURED
   introspection_state: NOT_CAPTURED
   intended_role_field_operation_matrix: NOT_CAPTURED
   intended_role_field_operation_matrix_sha256: NOT_CAPTURED
   disabled_endpoint_rejection_matrix: NOT_CAPTURED
+  direct_role_case_fields_same_as_data_api: true
+  disabled_case_requires_http_rejection_sql_not_executed_and_acl_rls_not_evaluated: true
+  summary_covered_case_ids_required: true
+auth_configuration:
+  safe_projection_contract: PR12-AUTH-SAFE-PROJECTION-V2
+  raw_management_response_retention_allowed: false
+  exact_inspected_field_set_hash_required: true
+  field_presence_boolean_only: true
+  email_auth_provider_and_smtp_delivery_are_independent: true
+  phone_auth_provider_and_sms_delivery_are_independent: true
+  smtp_sms_oauth_hook_presence_is_fail_closed: true
+  expected_real_external_delivery_or_hook_configured: false
+  actual_state: NOT_CAPTURED
+  collector_status: NOT_IMPLEMENTED
 security_matrix:
   matrix_path: NOT_CAPTURED
   security_matrix_sha256: NOT_CAPTURED
   matrix_owner: UNASSIGNED
-  actor_and_jwt_acquisition_method: NOT_CAPTURED
-  target_relations_and_functions: NOT_CAPTURED
+  actor_and_jwt_acquisition_method: HOSTED_AUTH_PASSWORD_SIGN_IN_AND_REFRESH
+  sign_in_operation: signInWithPassword
+  refresh_operation: refreshSession
+  raw_token_material_evidence_allowed: false
+  jwt_signing_secret_acquisition_allowed: false
+  fabricated_user_jwt_allowed: false
+  hosted_auth_provenance_collector_status: NOT_IMPLEMENTED
+  target_inventory_proposal_path: security-target-inventory.proposed.json
+  target_inventory_proposal_sha256: a87899df1b40799c063315f6293727ef88dddfd2f1d00258cb4b235f49fabe5e
+  target_classification_proposal_path: security-target-classification.proposed.json
+  target_classification_proposal_sha256: 21d2f08c78b98a036a2538d7a0ec36cc96f72dd6ad2bb7bbb9874d477c754342
+  execution_target_inventory_path: NOT_CAPTURED
+  execution_target_inventory_sha256: NOT_CAPTURED
+  execution_target_inventory_id: NOT_CAPTURED
+  target_inventory_owner: UNASSIGNED
+  target_inventory_status: PROPOSED_OWNER_APPROVAL_REQUIRED
+  target_relations_and_functions: POST_REPLAY_CATALOG_NOT_CAPTURED
+  derivation_inputs:
+    - fresh post-replay pg_catalog public relkind r/p mother set
+    - required Auth targets auth.identities and auth.users
+    - tracked 86-row public classification draft as proposal-completeness baseline only
+    - separately hash-bound owner-approved classification for every catalog relation
+    - representative fixture relations as coverage subset only
+  exact_target_inventory_frozen_before_execution: false
+  matrix_may_self_select_targets: false
+  missing_extra_duplicate_or_unclassified_target_aborts: true
+  tracked_public_relation_proposal_count: 86
+  required_auth_relation_count: 2
+  provisional_total_before_fresh_catalog: 88
+  current_unknown_public_relation_count: 48
+  all_catalog_relations_owner_approved: false
+  draft_or_unassigned_classification_allows_execution: false
   required_roles:
     - anon
     - authenticated
     - service_role
     - all_application_roles_from_frozen_fixture
+    - postgres_for_direct_transaction_scoped_relational_integrity_only
   required_tenant_operations:
     - read
     - insert
     - update
     - delete
   required_auth_cases:
+    - permissions_query_error
+    - permissions_row_missing
+    - profile_status_query_error
+    - profile_row_missing
     - inactive_profile
     - expired_manager_assignment
     - revoked_manager_assignment
@@ -139,26 +509,105 @@ security_matrix:
     - malformed_jwt
     - expired_jwt
     - cross_clinic
-    - missing_or_null_resource
+  required_relational_integrity_cases:
+    - missing_resource
+    - null_resource
     - parent_rehome
-    - resource_and_clinic_cascade
+    - resource_delete_cascade
+    - clinic_delete_cascade
   required_expected_result_fields:
+    - case_class
+    - expected_decision
     - expected_http_status
     - expected_sqlstate
     - expected_row_count
+    - expected_mutation_count
+    - expected_direct_affected_rows
     - expected_acl_verdict
     - expected_rls_verdict
+    - expected_error_diagnostic
+    - expected_state_transitions
+    - expected_transaction_end_command
+    - expected_transaction_end_status
+    - observed_state_results
+    - observed_transaction_end_command
+    - observed_transaction_end_status
+    - observed_rollback_completed_at
+    - observed_post_rollback_checked_at
+  nonwaivable_semantics:
+    application_role_cross_tenant_crud: DENY; 0 returned rows; 0 affected rows; ACL allowed to evaluate RLS; RLS filters or rejects
+    empty_malformed_or_expired_jwt: AUTH_REJECTED_BEFORE_DB; HTTP 401; ACL and RLS not evaluated
+    inactive_assignment_authority_or_stale_jwt: AUTHORITY_FAIL_CLOSED; 0 returned rows; 0 affected rows
+    permissions_or_profile_query_error: AUTHORITY_LOOKUP_FAIL_CLOSED; HTTP 503; protected operation, ACL, and RLS not evaluated; 0 returned rows; 0 affected rows
+    permissions_or_profile_row_missing: AUTHORITY_LOOKUP_FAIL_CLOSED; HTTP 403; protected operation, ACL, and RLS not evaluated; 0 returned rows; 0 affected rows
+    anon_without_session: ANON_NO_SESSION; 0 returned rows; 0 affected rows
+    service_role: SERVER_ONLY_PRIVILEGED_PATH; never counted as RLS tenant-isolation proof
+    missing_or_null_resource: direct postgres transaction-scoped INSERT public.blocks; SQLSTATE 23503; exact resources.id not found diagnostic; attempted block absent; sentinels unchanged
+    parent_rehome: direct postgres transaction-scoped UPDATE public.resources; SQLSTATE 23503; blocks_resource_id_fkey diagnostic; resource clinic and referencing block hashes unchanged; sentinels unchanged
+    resource_delete_cascade: direct postgres transaction-scoped parent DELETE affects exactly 1 direct row; resource and dependent block transition present-to-absent; unrelated and other-tenant hashes unchanged
+    clinic_delete_cascade: direct postgres transaction-scoped parent DELETE affects exactly 1 direct row; clinic, resource, and dependent block transition present-to-absent; other-tenant hashes unchanged
+    relational_integrity_acl_or_rls_reuse_allowed: false
+    relational_integrity_transaction_rollback_required: true
+    relational_integrity_expected_transaction_end_command: ROLLBACK
+    relational_integrity_expected_transaction_end_status: COMMAND_OK
+    relational_integrity_post_rollback_state_must_equal_before_state: true
+    relational_integrity_post_rollback_exists_and_sha256_required: true
+    tenant_denial_same_operation_positive_control_required: true
+    tenant_positive_control_actor_rule: distinct target-tenant counterpart with the same application role and a refreshed Hosted Auth JWT; non-application denial uses the frozen active authenticated control actor
+    tenant_positive_control_raw_observation_must_be_distinct_and_one_to_one: true
+    tenant_positive_write_mutation_and_direct_affected_rows: 1
+    tenant_positive_transaction_end: ROLLBACK / COMMAND_OK
+    tenant_positive_state_contract: read hash unchanged; insert absent-present-rollback absent; update A-B-rollback A; delete present-absent-rollback present
+  service_role_non_exposure:
+    collector_status: NOT_IMPLEMENTED
+    source_late_scan_command_id: PR12-CMD-016A
+    restore_late_scan_command_id: PR12-CMD-019A
+    source_scan_must_follow_command: PR12-CMD-014
+    restore_scan_must_follow_commands:
+      - PR12-CMD-019D
+      - PR12-CMD-019G
+    exact_value_scan_method: IN_MEMORY_EXACT_VALUE_AND_PATTERN_SCAN
+    raw_value_persistence_allowed: false
+    credential_reinjection: target-prefixed value only, in memory for the late scan, then scrubbed
+    source_and_restore_reports_must_differ: true
+    exact_covered_cases:
+      - data_api_service_role_rest
+      - data_api_service_role_rpc_normalize_customer_phone
+      - graphql_service_role
+    per_case_binding: raw observation ID, raw artifact path/SHA-256, producing command, observedAt, and target credential fingerprint
+    required_domains:
+      - BROWSER_BUILD
+      - CLIENT_RESPONSE
+      - APPLICATION_LOG
+      - COMMAND_STREAM_AND_EVIDENCE
+    per_domain_requirements: non-empty hash-bound file inventory, file/byte totals, exactMatchCount 0, patternFindingCount 0
+    command_stream_inventory_must_include_every_covered_raw_artifact: true
+    credential_binding: target-specific service-role fingerprint from PR12-TARGET-CREDENTIAL-PRESENCE-V1
+  post_restore_structured_result_required:
+    - restore_ref_bound_security_matrix
+    - restore_ref_bound_data_api_matrix
+    - restore_ref_bound_graphql_matrix
+  generic_post_restore_pass_may_substitute: false
   exact_matrix_frozen_before_execution: false
+  authority_lookup_query_error_induction_method: NOT_CAPTURED
+  authority_lookup_induction_configuration_sha256: NOT_CAPTURED
+  authority_lookup_failure_collector_status: NOT_IMPLEMENTED
+  authority_lookup_pass_currently_possible: false
+  stale_jwt_authority_snapshot_and_token_clock_collector_status: NOT_IMPLEMENTED
+  auth_session_acquisition_command_and_expiry_skew_contract: NOT_CAPTURED
+  relational_fixture_selector_set: NOT_CAPTURED
+  relational_snapshot_selector_query_hash_row_count_chronology_collector_status: NOT_IMPLEMENTED
+  relational_integrity_pass_currently_possible: false
 credentials:
-  credential_contract_path: NOT_CAPTURED
-  credential_contract_sha256: NOT_CAPTURED
-  channel: UNASSIGNED
+  credential_contract_path: integration-credential-contract.proposed.json
+  credential_contract_sha256: 9c70a291017c201da56aefe06485b4cb9122f33badb5336f948f1f084a05c103
+  channel: process_environment
   required_channel: process_environment
   storage: UNASSIGNED
   required_storage: owner_approved_server_secret_store
-  retrieval: UNASSIGNED
+  retrieval: interactive_owner_injection_into_ephemeral_server_subprocess
   required_retrieval: ephemeral_server_subprocess_injection
-  logging: UNASSIGNED
+  logging: redacted_variable_names_only
   required_logging: redacted_variable_names_only
   storage_requirement: SECURE_SERVER_SIDE_CHANNEL
   command_line_or_url_allowed: false
@@ -169,8 +618,107 @@ credentials:
   log_secret_value_allowed: false
   url_allowed: false
   hosted_jwt_signing_secret_acquisition_allowed: false
+  committed_fixture_passwords_on_hosted_allowed: false
+  hosted_fixture_password_source: owner_approved_secret_store_ephemeral_unique_per_actor_minimum_32_characters
   service_role_or_secret_key_server_only: true
   fingerprint_storage: SHA256_ONLY_IF_OWNER_APPROVED
+  target_key_presence_collector_id: PR12-TARGET-CREDENTIAL-PRESENCE-V1
+  target_key_presence_must_be_non_empty_runtime_derived: true
+  empty_string_fingerprint_allowed: false
+  independent_dr_key_presence_self_claim_allowed: false
+  target_key_presence_collector_status: NOT_IMPLEMENTED
+  credential_channels:
+    shared_provider:
+      provider: UNASSIGNED
+      required_parent_environment_names:
+        - PR12_SUPABASE_ACCESS_TOKEN
+        - PR12_PSQL_EXE
+      exact_child_process_mappings:
+        SUPABASE_ACCESS_TOKEN: PR12_SUPABASE_ACCESS_TOKEN
+    source:
+      target_kind: SOURCE
+      required_parent_environment_names:
+        - PR12_SOURCE_DB_PASSWORD
+        - PR12_SOURCE_PROJECT_REF
+        - PR12_SOURCE_SUPABASE_URL
+        - PR12_SOURCE_ANON_KEY
+        - PR12_SOURCE_SERVICE_ROLE_KEY
+        - PR12_SOURCE_PGHOST
+        - PR12_SOURCE_PGPORT
+        - PR12_SOURCE_PGDATABASE
+        - PR12_SOURCE_PGUSER
+        - PR12_SOURCE_PGPASSWORD
+        - PR12_SOURCE_HOSTED_ACTOR_PASSWORD_MAP_JSON
+      optional_sandbox_parent_environment_names:
+        - PR12_SOURCE_STRIPE_TEST_SECRET_KEY
+        - PR12_SOURCE_STRIPE_TEST_WEBHOOK_SECRET
+      exact_child_process_mappings:
+        SUPABASE_DB_PASSWORD: PR12_SOURCE_DB_PASSWORD
+        NEXT_PUBLIC_SUPABASE_URL: PR12_SOURCE_SUPABASE_URL
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: PR12_SOURCE_ANON_KEY
+        SUPABASE_SERVICE_ROLE_KEY: PR12_SOURCE_SERVICE_ROLE_KEY
+        PGHOST: PR12_SOURCE_PGHOST
+        PGPORT: PR12_SOURCE_PGPORT
+        PGDATABASE: PR12_SOURCE_PGDATABASE
+        PGUSER: PR12_SOURCE_PGUSER
+        PGPASSWORD: PR12_SOURCE_PGPASSWORD
+        PR12_HOSTED_ACTOR_PASSWORD_MAP_JSON: PR12_SOURCE_HOSTED_ACTOR_PASSWORD_MAP_JSON
+        STRIPE_SECRET_KEY: PR12_SOURCE_STRIPE_TEST_SECRET_KEY
+        STRIPE_WEBHOOK_SECRET: PR12_SOURCE_STRIPE_TEST_WEBHOOK_SECRET
+    restore:
+      target_kind: RESTORE
+      required_parent_environment_names:
+        - PR12_RESTORE_DB_PASSWORD
+        - PR12_RESTORE_PROJECT_REF
+        - PR12_RESTORE_SUPABASE_URL
+        - PR12_RESTORE_ANON_KEY
+        - PR12_RESTORE_SERVICE_ROLE_KEY
+        - PR12_RESTORE_PGHOST
+        - PR12_RESTORE_PGPORT
+        - PR12_RESTORE_PGDATABASE
+        - PR12_RESTORE_PGUSER
+        - PR12_RESTORE_PGPASSWORD
+        - PR12_RESTORE_HOSTED_ACTOR_PASSWORD_MAP_JSON
+      optional_sandbox_parent_environment_names: []
+      exact_child_process_mappings:
+        SUPABASE_DB_PASSWORD: PR12_RESTORE_DB_PASSWORD
+        NEXT_PUBLIC_SUPABASE_URL: PR12_RESTORE_SUPABASE_URL
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: PR12_RESTORE_ANON_KEY
+        SUPABASE_SERVICE_ROLE_KEY: PR12_RESTORE_SERVICE_ROLE_KEY
+        PGHOST: PR12_RESTORE_PGHOST
+        PGPORT: PR12_RESTORE_PGPORT
+        PGDATABASE: PR12_RESTORE_PGDATABASE
+        PGUSER: PR12_RESTORE_PGUSER
+        PGPASSWORD: PR12_RESTORE_PGPASSWORD
+        PR12_HOSTED_ACTOR_PASSWORD_MAP_JSON: PR12_RESTORE_HOSTED_ACTOR_PASSWORD_MAP_JSON
+    common_isolation_rules:
+      inherit_parent_environment: false
+      ambient_generic_fallback_allowed: false
+      unset_every_generic_child_before_mapping: true
+      source_and_restore_parent_sets_must_be_disjoint: true
+  child_environment_must_be_scrubbed_before_mapping: true
+  child_environment_inheritance_allowed: false
+  forbidden_locations:
+    - command_line_arguments
+    - database_url
+    - browser_or_bundle
+    - client_response
+    - source_control
+    - dotenv_file
+    - stdout_or_stderr
+    - evidence_artifact
+    - application_log
+comm_gates:
+  evidence_map_path: comm-gate-evidence-map-v1.json
+  evidence_map_sha256: fd9b62cec9005404061e2a9876a29f7b4caf811d4faa305f054279acbd68e419
+  map_status: DESIGN_FROZEN_EXECUTION_BLOCKED
+  gate_count: 54
+  family_count: 6
+  unknown_claims_fail_closed: true
+  generic_self_attestation_allowed: false
+  typed_claim_registry_status: NOT_IMPLEMENTED
+  execution_pass_allowed: false
+  current_gate_status: all 54 COMM gates remain NOT_RUN
 cli:
   required_node_major: 24
   exact_node_version: NOT_CAPTURED
@@ -186,7 +734,8 @@ cli:
   observed_path_cli: 2.109.1
   validated_ephemeral_cli: 2.109.0
   official_release_tag: v2.109.0
-  official_windows_asset_sha256: d2b687ec3427fe7847cf7a8f603413fa8d4331f6fdbbc825eea6aa34a64d686b
+  validated_executable_sha256: 903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118
+  official_windows_archive_sha256: d2b687ec3427fe7847cf7a8f603413fa8d4331f6fdbbc825eea6aa34a64d686b
   pinned_cli_help_verified: true
   verified_help_subcommands:
     - link
@@ -196,31 +745,144 @@ cli:
     - db_advisors
     - gen_types
     - status
-  exact_commands: NOT_CAPTURED
-  exact_commands_blocker: Resolve the owner-approved project, data, backup, restore, and credential method before freezing commands.
+  command_ledger_path: staging-command-ledger.proposed.json
+  command_ledger_sha256: b89f0cc0dfe629c0bfb538594159e2b4f0b0269553d484207ecc5677efef75f6
+  exact_commands: PROPOSED_NOT_EXECUTABLE
+  exact_commands_blocker: Fail-closed binding/target guard, hosted credential and seed adapter, post-load row/hash and schema/type collectors, canonical PR11 and hosted SLO runners, security/Auth/tenant/Data API/GraphQL/COMM claim/COMM-BILL matrices, Advisor diff, backup metadata/watermark, post-restore, side-effect, and privacy collectors remain NOT_IMPLEMENTED.
+  executable_command_metadata_required:
+    - id
+    - redactedCommand
+    - phase
+    - remoteContact
+    - mutating
+    - mutationScope
+  unknown_phase_or_mutation_scope_allowed: false
+  cleanup_or_project_deletion_commands_allowed: false
+  cleanup_requires_separate_approval_and_ledger: true
+  phase_sequence:
+    - source_project_provisioning
+    - source_identity_and_configuration_bootstrap
+    - source_replay_and_catalog_capture
+    - source_qualification_and_backup_capture
+    - restore_project_creation
+    - restore_target_validation
+  phase_local_command_boundaries:
+    source_identity_and_configuration_bootstrap:
+      first_command_id: PR12-CMD-004A
+      last_command_id: PR12-CMD-004A
+      required_configuration_families:
+        - DATA_API
+        - AUTH
+        - GRAPHQL
+      mandatory_stop_before_replay: true
+      system_identifier_is_captured_not_preknown: true
+    source_replay_and_catalog_capture:
+      first_command_id: PR12-CMD-003
+      last_command_id: PR12-CMD-008A
+      ordered_command_ids:
+        - PR12-CMD-003
+        - PR12-CMD-004
+        - PR12-CMD-005
+        - PR12-CMD-006
+        - PR12-CMD-007
+        - PR12-CMD-007A
+        - PR12-CMD-008A
+      required_catalog_command_id: PR12-CMD-007A
+      representative_seed_allowed: false
+      full_qualification_allowed: false
+    source_qualification_and_backup_capture:
+      first_command_id: PR12-CMD-008B
+      last_command_id: PR12-CMD-017A
+      ordered_command_ids:
+        - PR12-CMD-008B
+        - PR12-CMD-008
+        - PR12-CMD-009
+        - PR12-CMD-010
+        - PR12-CMD-011
+        - PR12-CMD-012
+        - PR12-CMD-013
+        - PR12-CMD-014
+        - PR12-CMD-015
+        - PR12-CMD-016
+        - PR12-CMD-017
+        - PR12-CMD-016A
+        - PR12-CMD-017A
+      requires_source_replay_result: true
+      requires_fresh_catalog_owner_review: true
+      requires_zero_unknown_classifications: true
 expected_side_effects:
-  status: NOT_CAPTURED
+  status: PROPOSED_OWNER_APPROVAL_REQUIRED
   potential:
+    - one new isolated billable Supabase source project with Pro plan, Large compute, and initial provider-managed database/project state via PR12-ACTION-003
     - isolated project link metadata
     - migration history and schema writes
     - synthetic or anonymized fixture writes
     - performance probe transaction-local writes and WAL
-    - backup artifact creation
-    - isolated restore project writes
-    - sandboxed webhook or billing events if explicitly enabled
+    - Supabase physical backup selection and new restore-project creation
+    - isolated restore project creation plus only supplemental-approved synthetic qualification writes; target-specific Auth/API/Storage/Realtime/extension reconfiguration is not authorized and must stop for a separate ledger
+    - Stripe test objects and test webhook events only if explicitly approved
   production_side_effects_allowed: false
 time_and_cost:
-  estimated_elapsed_time: NOT_CAPTURED
-  estimated_platform_cost: NOT_CAPTURED
-  estimated_cost: NOT_CAPTURED
+  estimated_operator_time: 6_to_8_hours
+  estimated_calendar_time: 6_to_44_hours_including_up_to_36_hours_backup_wait
+  source_compute_assumption: Large at USD 0.1517/hour for at most 72 hours
+  restore_compute_assumption: Large at USD 0.1517/hour for at most 24 hours
+  compute_subtotal_before_credits_usd: 14.5632
+  new_pro_plan_if_required_usd: 25
+  proposed_budget_ceiling_usd: 50
+  excluded_from_estimate: taxes, egress, disk overage, logs, app hosting, existing usage, and currency conversion
+  pitr_cost_usd: 0
+  billing_warning: paid projects cannot be paused and continue billing until separately approved deletion
+  actual_dashboard_quote: NOT_CAPTURED
+  budget_ceiling_enforceable_without_cleanup_approval: false
+  funded_retention_and_cleanup_decision_required_before_provisioning: true
+  cleanup_disposition: DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION
+  funded_through: NOT_CAPTURED
+  source_funding_requirement: funded_through must be at least 72 hours after source-provisioning approval expiry
+  restore_funding_requirement: funded_through must be at least 24 hours after restore-creation approval expiry
+  funding_ceiling_usd: 50
+  billing_extension_after_source_72h_or_restore_24h_requires_separate_funded_approval: true
 owners:
-  staging_owner: UNASSIGNED
-  migration_operator: UNASSIGNED
-  restore_owner: UNASSIGNED
-  monitoring_owner: UNASSIGNED
-  incident_owner: UNASSIGNED
-  security_reviewer: UNASSIGNED
-  release_approver: UNASSIGNED
+  commercial_release_owner: UNASSIGNED
+  supabase_platform_owner: UNASSIGNED
+  database_migration_operator: UNASSIGNED
+  disaster_recovery_operator: UNASSIGNED
+  security_tenant_reviewer: UNASSIGNED
+  clinical_data_privacy_reviewer: UNASSIGNED
+  billing_messaging_sandbox_owner: UNASSIGNED
+  site_reliability_owner: UNASSIGNED
+  incident_commander: UNASSIGNED
+  evidence_custodian: UNASSIGNED
+  cleanup_owner: UNASSIGNED
+  approver_must_differ_from_all_operators_and_reviewers: true
+  required_role_labels:
+    - Commercial Release Owner
+    - Supabase Platform Owner
+    - Database Migration Operator
+    - Disaster Recovery Operator
+    - Security and Tenant Isolation Reviewer
+    - Clinical Data Privacy Reviewer
+    - Billing and Messaging Sandbox Owner
+    - Site Reliability Owner
+    - Incident Commander
+    - Cleanup Owner
+    - Release Evidence Custodian
+canary_monitoring_and_incident_plan:
+  production_canary_authorized: false
+  canary_cohort: UNASSIGNED
+  traffic_percentage: UNASSIGNED
+  observation_window: UNASSIGNED
+  deploy_order_and_feature_flags: NOT_CAPTURED
+  monitoring_source_and_query_ids: NOT_CAPTURED
+  monitoring_collector_status: NOT_IMPLEMENTED
+  paging_route: UNASSIGNED
+  acknowledgement_deadline: UNASSIGNED
+  mitigation_deadline: UNASSIGNED
+  smoke_24h_72h_artifacts: NOT_CAPTURED
+  abort_action: stop new traffic, disable only the approved affected flag, preserve evidence, invoke incident owner
+  destructive_migration_rollback_allowed: false
+  forward_fix_requires_new_commit_and_separate_approval: true
+  comm_ops_007_through_010_pass_currently_possible: false
 recovery:
   destructive_rollback_allowed: false
   pr11_rollback_is_data_restore: false
@@ -230,20 +892,34 @@ recovery:
   cleanup_or_project_deletion: separate_owner_approval_required
 approval_checklist:
   exact_head_sha: NOT_CAPTURED
-  project_region_tier: NOT_CAPTURED
-  representative_data_and_volume: NOT_CAPTURED
-  workload_concurrency_order_and_hosted_slo: NOT_CAPTURED
-  database_abort_thresholds: NOT_CAPTURED
-  backup_restore_and_rto_rpo: NOT_CAPTURED
-  rto_rpo_event_and_clock_definitions: NOT_CAPTURED
+  project_region_tier: PROPOSED_REF_NOT_CAPTURED
+  representative_data_and_volume: PROPOSED_CAPACITY_ACCEPTANCE_REQUIRED
+  workload_concurrency_order_and_hosted_slo: PROPOSED_COLLECTOR_NOT_IMPLEMENTED
+  database_abort_thresholds: PROPOSED
+  backup_restore_and_rto_rpo: PROPOSED_BACKUP_ID_NOT_CAPTURED
+  rto_rpo_event_and_clock_definitions: PROPOSED
   security_tenant_auth_jwt_role_matrix: NOT_CAPTURED
   data_api_and_graphql_matrices: NOT_CAPTURED
+  data_api_acl_catalog_and_exact_cross_product: NOT_CAPTURED_COLLECTORS_NOT_IMPLEMENTED
   machine_readable_execution_binding: NOT_CAPTURED
+  source_project_provisioning_binding: NOT_CAPTURED
+  source_identity_bootstrap_binding: NOT_CAPTURED
+  source_identity_bootstrap_result: NOT_CAPTURED
+  source_replay_catalog_capture_binding: NOT_CAPTURED
+  source_replay_catalog_capture_result: NOT_CAPTURED
+  final_source_qualification_binding: NOT_CAPTURED
+  selected_backup_restore_creation_binding: NOT_CAPTURED
+  restore_target_supplemental_binding: NOT_CAPTURED
   privacy_machine_and_human_review: NOT_CAPTURED
-  integrations_and_billing_sandbox: NOT_CAPTURED
-  exact_commands_and_side_effects: NOT_CAPTURED
-  credential_channel: NOT_CAPTURED
-  time_cost_and_owners: NOT_CAPTURED
+  integrations_and_billing_sandbox: PROPOSED_UPSTASH_UNASSIGNED
+  exact_commands_and_side_effects: PROPOSED_ADAPTERS_NOT_IMPLEMENTED
+  credential_channel: PROPOSED_PROVIDER_UNASSIGNED
+  time_cost_and_owners: PROPOSED_NAMES_AND_QUOTE_NOT_CAPTURED
+  funded_retention_and_cleanup_decision: UNASSIGNED
+  stricter_product_rto_rpo_authority_decision: UNASSIGNED
+  maximum_allowed_clock_skew_seconds: UNASSIGNED
+  maximum_rpo_observation_lead_seconds: UNASSIGNED
+  comm_claim_collectors_and_registry: NOT_IMPLEMENTED
   approval_expiry_and_revalidation: NOT_CAPTURED
 owner_decision: UNASSIGNED
 approved_by: UNASSIGNED
@@ -261,5 +937,14 @@ revalidation:
   invalidated_at_expiry: true
 evidence: []
 residual_risk:
-  - The packet intentionally blocks execution because project, commands, thresholds, data, DR method, owners, time, and cost are unresolved.
-notes: No isolated staging project was contacted or created while preparing this packet.
+  - No safe existing isolated staging project was found; the source and restore refs do not yet exist or are not captured.
+  - The proposed persistent dataset is flow/security representative but not capacity representative.
+  - Large qualification does not prove a different production tier.
+  - Restore to a New Project is Beta and does not copy Storage object bodies, Auth settings/API keys, Edge Functions, or Realtime settings.
+  - The hosted canonical PR11 adapter, hosted SLO collector/request matrix, and post-load exact-row validator are not implemented.
+  - The fail-closed target/credential/seed adapter and security, Data API ACL catalog/matrix, API, GraphQL, billing, backup, restore, and side-effect collectors are not implemented.
+  - Safe authority lookup query-error induction, dedicated hosted Auth actor provisioning, stale-authority/token-expiry/skew evidence, and relational selector/query/timestamp collectors are not implemented; COMM-AUTH-002 and related COMM-TENANT gates cannot PASS.
+  - The immutable 54-gate COMM claim map is defined, but its typed collector registry is incomplete; execution PASS is intentionally impossible.
+  - Maximum acceptable clock skew across provider, database, and operator clocks is UNASSIGNED; RTO/RPO PASS is blocked.
+  - Named owners, secure secret-store provider, exact API/GraphQL matrices, psql version, application URL, actual Dashboard quote, cleanup funding, and stricter RTO/RPO authority decision remain blockers.
+notes: No isolated staging project was contacted or created while concretizing this proposal. This file remains NOT_RUN. All provisioning, remote, restore, Ready, merge, production, and release authorizations remain false.

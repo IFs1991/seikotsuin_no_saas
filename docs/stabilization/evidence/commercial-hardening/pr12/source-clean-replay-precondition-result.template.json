@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "resultType": "SOURCE_CLEAN_REPLAY_PRECONDITION",
+  "status": "NOT_RUN",
+  "projectRef": "NOT_CAPTURED",
+  "gitCommit": "NOT_CAPTURED",
+  "commandId": "PR12-CMD-004",
+  "capturedAt": "NOT_CAPTURED",
+  "runtimeIdentity": {
+    "projectRef": "NOT_CAPTURED",
+    "projectUrl": "NOT_CAPTURED",
+    "databaseHost": "NOT_CAPTURED",
+    "databaseConnectionMode": "DIRECT",
+    "databaseUser": "postgres",
+    "databaseVersion": "NOT_CAPTURED",
+    "systemIdentifier": "NOT_CAPTURED"
+  },
+  "databaseMutationPerformed": false,
+  "scope": {
+    "applicationSchemas": ["public"],
+    "platformAndExtensionOwnedSchemasExcluded": true,
+    "databaseWideEmptyClaimed": false
+  },
+  "migrationHistory": {
+    "appliedMigrationCount": "NOT_CAPTURED",
+    "orderedAppliedMigrations": []
+  },
+  "applicationCatalog": {
+    "relationCount": "NOT_CAPTURED",
+    "routineCount": "NOT_CAPTURED",
+    "typeCount": "NOT_CAPTURED",
+    "unexpectedApplicationSchemas": []
+  },
+  "applicationStateEmpty": "NOT_CAPTURED"
+}

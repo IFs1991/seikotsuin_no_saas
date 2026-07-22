@@ -9,14 +9,20 @@
     "qualificationId",
     "status",
     "source",
+    "commGateEvidenceMap",
     "environment",
     "credentialHandling",
     "toolVersions",
+    "toolBinaries",
     "timing",
     "commands",
     "artifacts",
     "rowCounts",
     "hashes",
+    "cleanReplay",
+    "integrityResults",
+    "drScopeInventory",
+    "sourceStructuredResults",
     "representativeData",
     "performance",
     "gates",
@@ -52,26 +58,64 @@
         "approvalPacketSha256": { "$ref": "#/$defs/sha256OrPlaceholder" }
       }
     },
+    "commGateEvidenceMap": { "$ref": "#/$defs/artifactBinding" },
     "environment": {
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "organizationId",
+        "organizationPlan",
         "projectRef",
         "projectName",
+        "projectUrl",
+        "databaseHost",
+        "databaseConnectionMode",
+        "databaseUser",
         "region",
         "databaseTier",
         "databaseVersion",
         "systemIdentifier",
+        "authProvisioning",
         "dataApi",
         "graphQl"
       ],
       "properties": {
+        "organizationId": { "type": "string", "minLength": 1 },
+        "organizationPlan": { "type": "string", "minLength": 1 },
         "projectRef": { "type": "string", "minLength": 1 },
         "projectName": { "type": "string", "minLength": 1 },
+        "projectUrl": { "type": "string", "minLength": 1 },
+        "databaseHost": { "type": "string", "minLength": 1 },
+        "databaseConnectionMode": { "enum": ["DIRECT", "NOT_CAPTURED"] },
+        "databaseUser": { "type": "string", "minLength": 1 },
         "region": { "type": "string", "minLength": 1 },
         "databaseTier": { "type": "string", "minLength": 1 },
         "databaseVersion": { "type": "string", "minLength": 1 },
         "systemIdentifier": { "type": "string", "minLength": 1 },
+        "authProvisioning": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "anonymousSignInEnabled",
+            "realEmailSmsOrOAuthDeliveryConfigured",
+            "hostedFixturePasswords",
+            "hostedUserJwtAcquisitionMethod",
+            "jwtSigningSecretAcquisitionAllowed",
+            "fabricatedUserJwtAllowed",
+            "tokenValueCaptureAllowed"
+          ],
+          "properties": {
+            "anonymousSignInEnabled": { "type": "boolean" },
+            "realEmailSmsOrOAuthDeliveryConfigured": { "type": "boolean" },
+            "hostedFixturePasswords": { "type": "string" },
+            "hostedUserJwtAcquisitionMethod": {
+              "enum": ["HOSTED_AUTH_PASSWORD_SIGN_IN_AND_REFRESH"]
+            },
+            "jwtSigningSecretAcquisitionAllowed": { "const": false },
+            "fabricatedUserJwtAllowed": { "const": false },
+            "tokenValueCaptureAllowed": { "const": false }
+          }
+        },
         "dataApi": {
           "type": "object",
           "additionalProperties": false,
@@ -80,11 +124,14 @@
             "matrixId",
             "matrixPath",
             "matrixSha256",
+            "aclCatalogPath",
+            "aclCatalogSha256",
             "exposedSchemas",
             "automaticGrants",
             "defaultPrivileges",
             "schemaUsage",
             "objectAcl",
+            "aclInventoryResults",
             "directRoleResults",
             "aclVerdict",
             "rlsVerdict"
@@ -94,6 +141,8 @@
             "matrixId": { "type": "string" },
             "matrixPath": { "type": "string" },
             "matrixSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+            "aclCatalogPath": { "type": "string" },
+            "aclCatalogSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
             "exposedSchemas": {
               "type": "array",
               "items": { "type": "string" }
@@ -110,6 +159,10 @@
             },
             "schemaUsage": { "$ref": "#/$defs/gateResult" },
             "objectAcl": { "$ref": "#/$defs/gateResult" },
+            "aclInventoryResults": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/dataApiAclResult" }
+            },
             "directRoleResults": {
               "type": "array",
               "items": { "$ref": "#/$defs/directRoleResult" }
@@ -174,6 +227,8 @@
         "logExposureAllowed",
         "sourceControlExposureAllowed",
         "urlExposureAllowed",
+        "targetResults",
+        "crossTargetIsolation",
         "status",
         "evidence"
       ],
@@ -192,6 +247,39 @@
         "logExposureAllowed": { "type": ["boolean", "string"] },
         "sourceControlExposureAllowed": { "type": ["boolean", "string"] },
         "urlExposureAllowed": { "type": ["boolean", "string"] },
+        "targetResults": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "restore"],
+          "properties": {
+            "source": { "$ref": "#/$defs/credentialTargetResult" },
+            "restore": { "$ref": "#/$defs/credentialTargetResult" }
+          }
+        },
+        "crossTargetIsolation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "projectRefsDiffer",
+            "databaseHostsDiffer",
+            "anonKeyFingerprintsDiffer",
+            "serviceRoleKeyFingerprintsDiffer",
+            "databasePasswordFingerprintsDiffer"
+          ],
+          "properties": {
+            "status": { "$ref": "#/$defs/status" },
+            "projectRefsDiffer": { "type": ["boolean", "string"] },
+            "databaseHostsDiffer": { "type": ["boolean", "string"] },
+            "anonKeyFingerprintsDiffer": { "type": ["boolean", "string"] },
+            "serviceRoleKeyFingerprintsDiffer": {
+              "type": ["boolean", "string"]
+            },
+            "databasePasswordFingerprintsDiffer": {
+              "type": ["boolean", "string"]
+            }
+          }
+        },
         "status": { "$ref": "#/$defs/status" },
         "evidence": { "type": "array", "items": { "type": "string" } }
       }
@@ -201,6 +289,15 @@
       "minProperties": 1,
       "required": ["node", "supabaseCli", "psql"],
       "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "toolBinaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["supabaseCli", "psql"],
+      "properties": {
+        "supabaseCli": { "$ref": "#/$defs/toolBinary" },
+        "psql": { "$ref": "#/$defs/toolBinary" }
+      }
     },
     "timing": {
       "type": "object",
@@ -221,6 +318,10 @@
         "required": [
           "id",
           "redactedCommand",
+          "phase",
+          "remoteContact",
+          "mutating",
+          "mutationScope",
           "startedAt",
           "endedAt",
           "exitCode",
@@ -232,6 +333,10 @@
         "properties": {
           "id": { "type": "string", "minLength": 1 },
           "redactedCommand": { "type": "string", "minLength": 1 },
+          "phase": { "type": "string", "minLength": 1 },
+          "remoteContact": { "type": "boolean" },
+          "mutating": { "type": "boolean" },
+          "mutationScope": { "type": "string", "minLength": 1 },
           "startedAt": { "type": "string", "minLength": 1 },
           "endedAt": { "type": "string", "minLength": 1 },
           "exitCode": { "type": ["integer", "null"] },
@@ -253,12 +358,84 @@
     "hashes": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["logicalHash", "physicalHash", "schemaHash", "dataHash"],
+      "required": [
+        "logicalHash",
+        "historicalNormalizedPhysicalHash",
+        "environmentPhysicalStructureHash",
+        "schemaHash",
+        "preWatermarkDataHash",
+        "backupDataHash"
+      ],
       "properties": {
         "logicalHash": { "$ref": "#/$defs/sha256OrPlaceholder" },
-        "physicalHash": { "$ref": "#/$defs/sha256OrPlaceholder" },
+        "historicalNormalizedPhysicalHash": {
+          "$ref": "#/$defs/sha256OrPlaceholder"
+        },
+        "environmentPhysicalStructureHash": {
+          "$ref": "#/$defs/sha256OrPlaceholder"
+        },
         "schemaHash": { "$ref": "#/$defs/sha256OrPlaceholder" },
-        "dataHash": { "$ref": "#/$defs/sha256OrPlaceholder" }
+        "preWatermarkDataHash": {
+          "$ref": "#/$defs/sha256OrPlaceholder"
+        },
+        "backupDataHash": { "$ref": "#/$defs/sha256OrPlaceholder" }
+      }
+    },
+    "cleanReplay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "precondition",
+        "dryRun",
+        "apply",
+        "postApplyMigrationHistory"
+      ],
+      "properties": {
+        "status": { "$ref": "#/$defs/status" },
+        "precondition": { "$ref": "#/$defs/artifactBinding" },
+        "dryRun": { "$ref": "#/$defs/artifactBinding" },
+        "apply": { "$ref": "#/$defs/artifactBinding" },
+        "postApplyMigrationHistory": {
+          "$ref": "#/$defs/artifactBinding"
+        }
+      }
+    },
+    "integrityResults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "migrationHistory",
+        "generatedTypes",
+        "source",
+        "postWatermarkSource",
+        "restore"
+      ],
+      "properties": {
+        "migrationHistory": { "$ref": "#/$defs/artifactBinding" },
+        "generatedTypes": { "$ref": "#/$defs/artifactBinding" },
+        "source": { "$ref": "#/$defs/artifactBinding" },
+        "postWatermarkSource": { "$ref": "#/$defs/artifactBinding" },
+        "restore": { "$ref": "#/$defs/artifactBinding" }
+      }
+    },
+    "drScopeInventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "restore", "comparison"],
+      "properties": {
+        "source": { "$ref": "#/$defs/artifactBinding" },
+        "restore": { "$ref": "#/$defs/artifactBinding" },
+        "comparison": { "$ref": "#/$defs/artifactBinding" }
+      }
+    },
+    "sourceStructuredResults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["securityMatrix", "dataApiGraphQl"],
+      "properties": {
+        "securityMatrix": { "$ref": "#/$defs/artifactBinding" },
+        "dataApiGraphQl": { "$ref": "#/$defs/artifactBinding" }
       }
     },
     "representativeData": {
@@ -298,6 +475,7 @@
         "auxiliaryWalResults",
         "planResults",
         "semanticResults",
+        "canonicalObservation",
         "hostedSlo"
       ],
       "properties": {
@@ -330,6 +508,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/namedResult" }
         },
+        "canonicalObservation": { "$ref": "#/$defs/artifactBinding" },
         "hostedSlo": {
           "type": "object",
           "additionalProperties": false,
@@ -341,7 +520,11 @@
             "sampleOrder",
             "durationSeconds",
             "thresholds",
-            "observed",
+            "sampleResults",
+            "pooledResult",
+            "migrationDurationSeconds",
+            "migrationReplay",
+            "observation",
             "status",
             "evidence"
           ],
@@ -353,7 +536,17 @@
             "sampleOrder": { "type": "array", "items": { "type": "string" } },
             "durationSeconds": { "type": ["number", "null"] },
             "thresholds": { "$ref": "#/$defs/hostedSloThresholds" },
-            "observed": { "$ref": "#/$defs/hostedSloObserved" },
+            "sampleResults": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/hostedSloResult" }
+            },
+            "pooledResult": { "$ref": "#/$defs/hostedSloResult" },
+            "migrationDurationSeconds": {
+              "type": ["number", "null"],
+              "minimum": 0
+            },
+            "migrationReplay": { "$ref": "#/$defs/artifactBinding" },
+            "observation": { "$ref": "#/$defs/artifactBinding" },
             "status": { "$ref": "#/$defs/status" },
             "evidence": { "type": "array", "items": { "type": "string" } }
           }
@@ -365,10 +558,18 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "status", "evidence"],
+        "required": [
+          "id",
+          "status",
+          "evidence",
+          "resultArtifactPath",
+          "resultArtifactSha256"
+        ],
         "properties": {
           "id": { "type": "string", "minLength": 1 },
           "status": { "$ref": "#/$defs/status" },
+          "resultArtifactPath": { "type": "string", "minLength": 1 },
+          "resultArtifactSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
           "evidence": {
             "type": "array",
             "minItems": 1,
@@ -381,17 +582,24 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "environmentProjectRef",
         "matrixId",
         "contractPath",
         "contractSha256",
         "roles",
         "jwtCases",
         "tenantCrudCases",
+        "targets",
+        "tenantDirections",
+        "targetCatalogPath",
+        "targetCatalogSha256",
+        "authTokenProvenance",
         "rows",
         "serviceRoleBoundary",
         "aclRlsIndependence"
       ],
       "properties": {
+        "environmentProjectRef": { "type": "string", "minLength": 1 },
         "matrixId": { "type": "string", "minLength": 1 },
         "contractPath": { "type": "string", "minLength": 1 },
         "contractSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
@@ -401,22 +609,105 @@
           "type": "array",
           "items": { "type": "string" }
         },
+        "targets": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "tenantDirections": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "targetCatalogPath": { "type": "string" },
+        "targetCatalogSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+        "authTokenProvenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "acquisitionMethod",
+            "actorSetSha256",
+            "issuer",
+            "actorSessions",
+            "rawTokenMaterialCaptured",
+            "jwtSigningSecretAcquired",
+            "fabricatedUserJwtUsed",
+            "status",
+            "evidence"
+          ],
+          "properties": {
+            "acquisitionMethod": {
+              "enum": ["HOSTED_AUTH_PASSWORD_SIGN_IN_AND_REFRESH"]
+            },
+            "actorSetSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+            "issuer": { "type": "string" },
+            "actorSessions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "actorId",
+                  "authUserId",
+                  "sessionId",
+                  "signInObservationId",
+                  "refreshObservationId",
+                  "signInTokenHandleId",
+                  "refreshedTokenHandleId",
+                  "refreshRotated",
+                  "status"
+                ],
+                "properties": {
+                  "actorId": { "type": "string" },
+                  "authUserId": { "type": "string" },
+                  "sessionId": { "type": "string" },
+                  "signInObservationId": { "type": "string" },
+                  "refreshObservationId": { "type": "string" },
+                  "signInTokenHandleId": { "type": "string" },
+                  "refreshedTokenHandleId": { "type": "string" },
+                  "refreshRotated": { "type": ["boolean", "null"] },
+                  "status": { "$ref": "#/$defs/status" }
+                }
+              }
+            },
+            "rawTokenMaterialCaptured": { "type": ["boolean", "null"] },
+            "jwtSigningSecretAcquired": { "type": ["boolean", "null"] },
+            "fabricatedUserJwtUsed": { "type": ["boolean", "null"] },
+            "status": { "$ref": "#/$defs/status" },
+            "evidence": { "type": "array", "items": { "type": "string" } }
+          }
+        },
         "rows": {
           "type": "array",
           "items": { "$ref": "#/$defs/securityMatrixRow" }
         },
-        "serviceRoleBoundary": { "$ref": "#/$defs/gateResult" },
+        "serviceRoleBoundary": {
+          "$ref": "#/$defs/gateResult"
+        },
         "aclRlsIndependence": { "$ref": "#/$defs/gateResult" }
       }
     },
     "externalSideEffects": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["mode", "duplicateCount", "evidence"],
+      "required": ["source", "restore", "comparison"],
       "properties": {
-        "mode": { "enum": ["DISABLED", "SANDBOXED", "NOT_CAPTURED"] },
-        "duplicateCount": { "type": ["integer", "null"], "minimum": 0 },
-        "evidence": { "type": "array", "items": { "type": "string" } }
+        "source": { "$ref": "#/$defs/sideEffectTargetResult" },
+        "restore": { "$ref": "#/$defs/sideEffectTargetResult" },
+        "comparison": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "sourceAndRestoreArtifactsDiffer",
+            "requiredFamiliesMatch"
+          ],
+          "properties": {
+            "status": { "$ref": "#/$defs/status" },
+            "sourceAndRestoreArtifactsDiffer": {
+              "type": ["boolean", "string"]
+            },
+            "requiredFamiliesMatch": { "type": ["boolean", "string"] }
+          }
+        }
       }
     },
     "backup": {
@@ -424,20 +715,32 @@
       "additionalProperties": false,
       "required": [
         "status",
+        "backupId",
         "method",
         "scope",
         "capturedAt",
         "sourceWatermark",
+        "watermarkCommandId",
+        "captureCommandId",
+        "watermarkOperation",
+        "postWatermarkSourceIntegrity",
         "artifactPath",
         "artifactSha256",
         "evidence"
       ],
       "properties": {
         "status": { "$ref": "#/$defs/status" },
+        "backupId": { "type": "string" },
         "method": { "type": "string" },
         "scope": { "type": "string" },
         "capturedAt": { "type": "string" },
         "sourceWatermark": { "type": "string" },
+        "watermarkCommandId": { "type": "string" },
+        "captureCommandId": { "type": "string" },
+        "watermarkOperation": { "$ref": "#/$defs/artifactBinding" },
+        "postWatermarkSourceIntegrity": {
+          "$ref": "#/$defs/artifactBinding"
+        },
         "artifactPath": { "type": "string" },
         "artifactSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
         "evidence": { "type": "array", "items": { "type": "string" } }
@@ -448,6 +751,21 @@
       "additionalProperties": false,
       "required": [
         "status",
+        "creationApprovalPath",
+        "creationApprovalSha256",
+        "creationCommandId",
+        "supplementalApprovalPath",
+        "supplementalApprovalSha256",
+        "targetEnvironment",
+        "providerEvidencePath",
+        "providerEvidenceSha256",
+        "providerCreatedAt",
+        "restoreReadyObservedAt",
+        "retentionDeadline",
+        "cleanupDeadline",
+        "fundedThrough",
+        "validationCommandIds",
+        "mutationCommandIds",
         "restoreSource",
         "restorePoint",
         "rtoStartEvent",
@@ -456,6 +774,11 @@
         "rpoWatermarkDefinition",
         "rpoObservationEvent",
         "rpoMeasurementClockAndSource",
+        "rtoStartedAt",
+        "restoreConfirmationAt",
+        "postRestoreQualificationCompletedAt",
+        "rpoObservedAt",
+        "restoredWatermark",
         "rtoThresholdSeconds",
         "rpoThresholdSeconds",
         "rtoSeconds",
@@ -464,6 +787,60 @@
       ],
       "properties": {
         "status": { "$ref": "#/$defs/status" },
+        "creationApprovalPath": { "type": "string" },
+        "creationApprovalSha256": {
+          "$ref": "#/$defs/sha256OrPlaceholder"
+        },
+        "creationCommandId": { "type": "string" },
+        "supplementalApprovalPath": { "type": "string" },
+        "supplementalApprovalSha256": {
+          "$ref": "#/$defs/sha256OrPlaceholder"
+        },
+        "targetEnvironment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "organizationId",
+            "projectRef",
+            "projectName",
+            "region",
+            "databaseTier",
+            "databaseVersion",
+            "systemIdentifier",
+            "projectUrl",
+            "databaseHost",
+            "databaseConnectionMode",
+            "databaseUser"
+          ],
+          "properties": {
+            "organizationId": { "type": "string" },
+            "projectRef": { "type": "string" },
+            "projectName": { "type": "string" },
+            "region": { "type": "string" },
+            "databaseTier": { "type": "string" },
+            "databaseVersion": { "type": "string" },
+            "systemIdentifier": { "type": "string" },
+            "projectUrl": { "type": "string" },
+            "databaseHost": { "type": "string" },
+            "databaseConnectionMode": { "type": "string" },
+            "databaseUser": { "type": "string" }
+          }
+        },
+        "providerEvidencePath": { "type": "string" },
+        "providerEvidenceSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+        "providerCreatedAt": { "type": "string" },
+        "restoreReadyObservedAt": { "type": "string" },
+        "retentionDeadline": { "type": "string" },
+        "cleanupDeadline": { "type": "string" },
+        "fundedThrough": { "type": "string" },
+        "validationCommandIds": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "mutationCommandIds": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "restoreSource": { "type": "string" },
         "restorePoint": { "type": "string" },
         "rtoStartEvent": { "type": "string" },
@@ -472,6 +849,11 @@
         "rpoWatermarkDefinition": { "type": "string" },
         "rpoObservationEvent": { "type": "string" },
         "rpoMeasurementClockAndSource": { "type": "string" },
+        "rtoStartedAt": { "type": "string" },
+        "restoreConfirmationAt": { "type": "string" },
+        "postRestoreQualificationCompletedAt": { "type": "string" },
+        "rpoObservedAt": { "type": "string" },
+        "restoredWatermark": { "type": "string" },
         "rtoThresholdSeconds": { "type": ["number", "null"], "minimum": 0 },
         "rpoThresholdSeconds": { "type": ["number", "null"], "minimum": 0 },
         "rtoSeconds": { "type": ["number", "null"], "minimum": 0 },
@@ -488,7 +870,8 @@
         "tenantIsolation",
         "authBoundary",
         "dataApiBoundary",
-        "graphQlBoundary"
+        "graphQlBoundary",
+        "structuredResults"
       ],
       "properties": {
         "schemaParity": { "$ref": "#/$defs/gateResult" },
@@ -496,18 +879,49 @@
         "tenantIsolation": { "$ref": "#/$defs/gateResult" },
         "authBoundary": { "$ref": "#/$defs/gateResult" },
         "dataApiBoundary": { "$ref": "#/$defs/gateResult" },
-        "graphQlBoundary": { "$ref": "#/$defs/gateResult" }
+        "graphQlBoundary": { "$ref": "#/$defs/gateResult" },
+        "structuredResults": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["securityMatrix", "dataApi", "graphQl"],
+          "properties": {
+            "securityMatrix": { "$ref": "#/$defs/artifactBinding" },
+            "dataApi": { "$ref": "#/$defs/artifactBinding" },
+            "graphQl": { "$ref": "#/$defs/artifactBinding" }
+          }
+        }
       }
     },
     "ownership": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["owner", "approver", "stagingOperator", "incidentOwner"],
+      "required": [
+        "approver",
+        "commercialReleaseOwner",
+        "supabasePlatformOwner",
+        "databaseMigrationOperator",
+        "disasterRecoveryOperator",
+        "securityTenantReviewer",
+        "clinicalDataPrivacyReviewer",
+        "billingMessagingSandboxOwner",
+        "siteReliabilityOwner",
+        "incidentCommander",
+        "cleanupOwner",
+        "evidenceCustodian"
+      ],
       "properties": {
-        "owner": { "type": "string", "minLength": 1 },
         "approver": { "type": "string", "minLength": 1 },
-        "stagingOperator": { "type": "string", "minLength": 1 },
-        "incidentOwner": { "type": "string", "minLength": 1 }
+        "commercialReleaseOwner": { "type": "string", "minLength": 1 },
+        "supabasePlatformOwner": { "type": "string", "minLength": 1 },
+        "databaseMigrationOperator": { "type": "string", "minLength": 1 },
+        "disasterRecoveryOperator": { "type": "string", "minLength": 1 },
+        "securityTenantReviewer": { "type": "string", "minLength": 1 },
+        "clinicalDataPrivacyReviewer": { "type": "string", "minLength": 1 },
+        "billingMessagingSandboxOwner": { "type": "string", "minLength": 1 },
+        "siteReliabilityOwner": { "type": "string", "minLength": 1 },
+        "incidentCommander": { "type": "string", "minLength": 1 },
+        "cleanupOwner": { "type": "string", "minLength": 1 },
+        "evidenceCustodian": { "type": "string", "minLength": 1 }
       }
     },
     "privacyScan": {
@@ -518,6 +932,8 @@
         "scannedAt",
         "scannerVersion",
         "findingCount",
+        "coverageMode",
+        "scannedArtifactCount",
         "machineScanCommandId",
         "machineScanEvidence",
         "manualReviewStatus",
@@ -530,6 +946,10 @@
         "scannedAt": { "type": "string", "minLength": 1 },
         "scannerVersion": { "type": "string", "minLength": 1 },
         "findingCount": { "type": ["integer", "null"], "minimum": 0 },
+        "coverageMode": {
+          "enum": ["EXACT_MANIFEST_ARTIFACTS_EXCEPT_SCANNER_STREAMS"]
+        },
+        "scannedArtifactCount": { "type": ["integer", "null"], "minimum": 1 },
         "machineScanCommandId": { "type": "string", "minLength": 1 },
         "machineScanEvidence": {
           "type": "array",
@@ -590,7 +1010,8 @@
                   },
                   "schemaUsage": { "$ref": "#/$defs/passedGateResult" },
                   "objectAcl": { "$ref": "#/$defs/passedGateResult" },
-                  "directRoleResults": { "minItems": 3 },
+                  "aclInventoryResults": { "minItems": 6 },
+                  "directRoleResults": { "minItems": 10, "maxItems": 10 },
                   "aclVerdict": { "$ref": "#/$defs/passedGateResult" },
                   "rlsVerdict": { "$ref": "#/$defs/passedGateResult" }
                 }
@@ -657,6 +1078,10 @@
               "properties": {
                 "id": { "$ref": "#/$defs/concreteString" },
                 "redactedCommand": { "$ref": "#/$defs/concreteString" },
+                "phase": { "$ref": "#/$defs/concreteString" },
+                "remoteContact": { "type": "boolean" },
+                "mutating": { "type": "boolean" },
+                "mutationScope": { "$ref": "#/$defs/concreteString" },
                 "startedAt": { "$ref": "#/$defs/concreteString" },
                 "endedAt": { "$ref": "#/$defs/concreteString" },
                 "exitCode": { "const": 0 },
@@ -675,9 +1100,31 @@
           "hashes": {
             "properties": {
               "logicalHash": { "$ref": "#/$defs/sha256" },
-              "physicalHash": { "$ref": "#/$defs/sha256" },
+              "historicalNormalizedPhysicalHash": {
+                "$ref": "#/$defs/sha256"
+              },
+              "environmentPhysicalStructureHash": {
+                "$ref": "#/$defs/sha256"
+              },
               "schemaHash": { "$ref": "#/$defs/sha256" },
-              "dataHash": { "$ref": "#/$defs/sha256" }
+              "preWatermarkDataHash": { "$ref": "#/$defs/sha256" },
+              "backupDataHash": { "$ref": "#/$defs/sha256" }
+            }
+          },
+          "integrityResults": {
+            "properties": {
+              "migrationHistory": {
+                "properties": { "sha256": { "$ref": "#/$defs/sha256" } }
+              },
+              "generatedTypes": {
+                "properties": { "sha256": { "$ref": "#/$defs/sha256" } }
+              },
+              "source": {
+                "properties": { "sha256": { "$ref": "#/$defs/sha256" } }
+              },
+              "restore": {
+                "properties": { "sha256": { "$ref": "#/$defs/sha256" } }
+              }
             }
           },
           "representativeData": {
@@ -717,6 +1164,14 @@
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
+                  "sampleResults": { "minItems": 3, "maxItems": 3 },
+                  "pooledResult": {
+                    "properties": { "status": { "const": "PASS" } }
+                  },
+                  "migrationDurationSeconds": {
+                    "type": "number",
+                    "minimum": 0
+                  },
                   "status": { "const": "PASS" },
                   "evidence": { "minItems": 1 }
                 }
@@ -727,38 +1182,127 @@
             "minItems": 54,
             "items": {
               "properties": {
-                "status": { "const": "PASS" },
-                "evidence": { "minItems": 1 }
+                "status": { "enum": ["PASS", "NOT_RUN"] },
+                "evidence": { "minItems": 1 },
+                "resultArtifactPath": { "$ref": "#/$defs/concreteString" },
+                "resultArtifactSha256": { "$ref": "#/$defs/sha256" }
               }
             }
           },
           "securityMatrix": {
             "properties": {
+              "environmentProjectRef": { "$ref": "#/$defs/concreteString" },
               "matrixId": { "$ref": "#/$defs/concreteString" },
               "contractPath": { "$ref": "#/$defs/concreteString" },
               "contractSha256": { "$ref": "#/$defs/sha256" },
               "roles": { "minItems": 3 },
               "jwtCases": { "minItems": 7 },
               "tenantCrudCases": { "minItems": 4 },
+              "targets": { "minItems": 1 },
+              "tenantDirections": { "minItems": 2 },
+              "targetCatalogPath": { "$ref": "#/$defs/concreteString" },
+              "targetCatalogSha256": { "$ref": "#/$defs/sha256" },
+              "authTokenProvenance": {
+                "properties": {
+                  "actorSetSha256": { "$ref": "#/$defs/sha256" },
+                  "issuer": { "$ref": "#/$defs/concreteString" },
+                  "actorSessions": {
+                    "minItems": 1,
+                    "items": {
+                      "properties": {
+                        "actorId": { "$ref": "#/$defs/concreteString" },
+                        "authUserId": { "$ref": "#/$defs/concreteString" },
+                        "sessionId": { "$ref": "#/$defs/concreteString" },
+                        "signInObservationId": {
+                          "$ref": "#/$defs/concreteString"
+                        },
+                        "refreshObservationId": {
+                          "$ref": "#/$defs/concreteString"
+                        },
+                        "signInTokenHandleId": {
+                          "$ref": "#/$defs/concreteString"
+                        },
+                        "refreshedTokenHandleId": {
+                          "$ref": "#/$defs/concreteString"
+                        },
+                        "refreshRotated": { "const": true },
+                        "status": { "const": "PASS" }
+                      }
+                    }
+                  },
+                  "rawTokenMaterialCaptured": { "const": false },
+                  "jwtSigningSecretAcquired": { "const": false },
+                  "fabricatedUserJwtUsed": { "const": false },
+                  "status": { "const": "PASS" },
+                  "evidence": { "minItems": 1 }
+                }
+              },
               "rows": { "minItems": 1 },
-              "serviceRoleBoundary": { "$ref": "#/$defs/passedGateResult" },
+              "serviceRoleBoundary": {
+                "$ref": "#/$defs/passedGateResult"
+              },
               "aclRlsIndependence": { "$ref": "#/$defs/passedGateResult" }
             }
           },
           "externalSideEffects": {
             "properties": {
-              "mode": { "enum": ["DISABLED", "SANDBOXED"] },
-              "duplicateCount": { "const": 0 },
-              "evidence": { "minItems": 1 }
+              "source": {
+                "properties": {
+                  "status": { "const": "PASS" },
+                  "mode": { "enum": ["DISABLED", "SANDBOXED"] },
+                  "attemptedRealDispatchCount": { "const": 0 },
+                  "providerRealDispatchCount": { "const": 0 },
+                  "duplicateCount": { "const": 0 },
+                  "pendingExternalOperationCount": { "const": 0 },
+                  "productionIdentityDetected": { "const": false },
+                  "commandId": { "$ref": "#/$defs/concreteString" },
+                  "capturedAt": { "$ref": "#/$defs/concreteString" },
+                  "artifactPath": { "$ref": "#/$defs/concreteString" },
+                  "artifactSha256": { "$ref": "#/$defs/sha256" },
+                  "serviceRoleNonExposure": {
+                    "$ref": "#/$defs/passedServiceRoleBoundaryResult"
+                  },
+                  "evidence": { "minItems": 1 }
+                }
+              },
+              "restore": {
+                "properties": {
+                  "status": { "const": "PASS" },
+                  "mode": { "enum": ["DISABLED", "SANDBOXED"] },
+                  "attemptedRealDispatchCount": { "const": 0 },
+                  "providerRealDispatchCount": { "const": 0 },
+                  "duplicateCount": { "const": 0 },
+                  "pendingExternalOperationCount": { "const": 0 },
+                  "productionIdentityDetected": { "const": false },
+                  "commandId": { "$ref": "#/$defs/concreteString" },
+                  "capturedAt": { "$ref": "#/$defs/concreteString" },
+                  "artifactPath": { "$ref": "#/$defs/concreteString" },
+                  "artifactSha256": { "$ref": "#/$defs/sha256" },
+                  "serviceRoleNonExposure": {
+                    "$ref": "#/$defs/passedServiceRoleBoundaryResult"
+                  },
+                  "evidence": { "minItems": 1 }
+                }
+              },
+              "comparison": {
+                "properties": {
+                  "status": { "const": "PASS" },
+                  "sourceAndRestoreArtifactsDiffer": { "const": true },
+                  "requiredFamiliesMatch": { "const": true }
+                }
+              }
             }
           },
           "backup": {
             "properties": {
               "status": { "const": "PASS" },
+              "backupId": { "$ref": "#/$defs/concreteString" },
               "method": { "$ref": "#/$defs/concreteString" },
               "scope": { "$ref": "#/$defs/concreteString" },
               "capturedAt": { "$ref": "#/$defs/concreteString" },
               "sourceWatermark": { "$ref": "#/$defs/concreteString" },
+              "watermarkCommandId": { "$ref": "#/$defs/concreteString" },
+              "captureCommandId": { "$ref": "#/$defs/concreteString" },
               "artifactPath": { "$ref": "#/$defs/concreteString" },
               "artifactSha256": { "$ref": "#/$defs/sha256" },
               "evidence": { "minItems": 1 }
@@ -767,6 +1311,28 @@
           "restore": {
             "properties": {
               "status": { "const": "PASS" },
+              "creationApprovalPath": { "$ref": "#/$defs/concreteString" },
+              "creationApprovalSha256": { "$ref": "#/$defs/sha256" },
+              "creationCommandId": { "$ref": "#/$defs/concreteString" },
+              "supplementalApprovalPath": {
+                "$ref": "#/$defs/concreteString"
+              },
+              "supplementalApprovalSha256": { "$ref": "#/$defs/sha256" },
+              "providerEvidencePath": { "$ref": "#/$defs/concreteString" },
+              "providerEvidenceSha256": { "$ref": "#/$defs/sha256" },
+              "providerCreatedAt": { "$ref": "#/$defs/concreteString" },
+              "restoreReadyObservedAt": { "$ref": "#/$defs/concreteString" },
+              "retentionDeadline": { "$ref": "#/$defs/concreteString" },
+              "cleanupDeadline": { "$ref": "#/$defs/concreteString" },
+              "fundedThrough": { "$ref": "#/$defs/concreteString" },
+              "validationCommandIds": {
+                "minItems": 1,
+                "items": { "$ref": "#/$defs/concreteString" }
+              },
+              "mutationCommandIds": {
+                "minItems": 1,
+                "items": { "$ref": "#/$defs/concreteString" }
+              },
               "restoreSource": { "$ref": "#/$defs/concreteString" },
               "restorePoint": { "$ref": "#/$defs/concreteString" },
               "rtoStartEvent": { "$ref": "#/$defs/concreteString" },
@@ -779,6 +1345,13 @@
               "rpoMeasurementClockAndSource": {
                 "$ref": "#/$defs/concreteString"
               },
+              "rtoStartedAt": { "$ref": "#/$defs/concreteString" },
+              "restoreConfirmationAt": { "$ref": "#/$defs/concreteString" },
+              "postRestoreQualificationCompletedAt": {
+                "$ref": "#/$defs/concreteString"
+              },
+              "rpoObservedAt": { "$ref": "#/$defs/concreteString" },
+              "restoredWatermark": { "$ref": "#/$defs/concreteString" },
               "rtoThresholdSeconds": { "type": "number", "minimum": 0 },
               "rpoThresholdSeconds": { "type": "number", "minimum": 0 },
               "rtoSeconds": { "type": "number", "minimum": 0 },
@@ -793,15 +1366,61 @@
               "tenantIsolation": { "$ref": "#/$defs/passedGateResult" },
               "authBoundary": { "$ref": "#/$defs/passedGateResult" },
               "dataApiBoundary": { "$ref": "#/$defs/passedGateResult" },
-              "graphQlBoundary": { "$ref": "#/$defs/passedGateResult" }
+              "graphQlBoundary": { "$ref": "#/$defs/passedGateResult" },
+              "structuredResults": {
+                "properties": {
+                  "securityMatrix": {
+                    "properties": {
+                      "path": { "$ref": "#/$defs/concreteString" },
+                      "sha256": { "$ref": "#/$defs/sha256" }
+                    }
+                  },
+                  "dataApi": {
+                    "properties": {
+                      "path": { "$ref": "#/$defs/concreteString" },
+                      "sha256": { "$ref": "#/$defs/sha256" }
+                    }
+                  },
+                  "graphQl": {
+                    "properties": {
+                      "path": { "$ref": "#/$defs/concreteString" },
+                      "sha256": { "$ref": "#/$defs/sha256" }
+                    }
+                  }
+                }
+              }
             }
           },
           "ownership": {
             "properties": {
-              "owner": { "$ref": "#/$defs/concreteString" },
               "approver": { "$ref": "#/$defs/concreteString" },
-              "stagingOperator": { "$ref": "#/$defs/concreteString" },
-              "incidentOwner": { "$ref": "#/$defs/concreteString" }
+              "commercialReleaseOwner": {
+                "$ref": "#/$defs/concreteString"
+              },
+              "supabasePlatformOwner": {
+                "$ref": "#/$defs/concreteString"
+              },
+              "databaseMigrationOperator": {
+                "$ref": "#/$defs/concreteString"
+              },
+              "disasterRecoveryOperator": {
+                "$ref": "#/$defs/concreteString"
+              },
+              "securityTenantReviewer": {
+                "$ref": "#/$defs/concreteString"
+              },
+              "clinicalDataPrivacyReviewer": {
+                "$ref": "#/$defs/concreteString"
+              },
+              "billingMessagingSandboxOwner": {
+                "$ref": "#/$defs/concreteString"
+              },
+              "siteReliabilityOwner": {
+                "$ref": "#/$defs/concreteString"
+              },
+              "incidentCommander": { "$ref": "#/$defs/concreteString" },
+              "cleanupOwner": { "$ref": "#/$defs/concreteString" },
+              "evidenceCustodian": { "$ref": "#/$defs/concreteString" }
             }
           },
           "privacyScan": {
@@ -809,6 +1428,7 @@
               "status": { "const": "PASS" },
               "scannedAt": { "$ref": "#/$defs/concreteString" },
               "findingCount": { "const": 0 },
+              "scannedArtifactCount": { "type": "integer", "minimum": 1 },
               "machineScanCommandId": { "$ref": "#/$defs/concreteString" },
               "machineScanEvidence": { "minItems": 1 },
               "manualReviewStatus": { "const": "PASS" },
@@ -843,12 +1463,40 @@
         "enum": ["NOT_CAPTURED", "NOT_RUN", "UNASSIGNED", "NOT_APPLICABLE"]
       }
     },
+    "artifactBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256OrPlaceholder" }
+      }
+    },
+    "toolBinary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "hashCommandId"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+        "hashCommandId": { "type": "string", "minLength": 1 },
+        "archivePath": { "type": "string", "minLength": 1 },
+        "archiveSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+        "archiveHashCommandId": { "type": "string", "minLength": 1 }
+      }
+    },
     "gateResult": {
       "type": "object",
       "additionalProperties": false,
       "required": ["status", "evidence"],
       "properties": {
         "status": { "$ref": "#/$defs/status" },
+        "coveredCaseIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        "rawObservationId": { "type": "string" },
         "evidence": { "type": "array", "items": { "type": "string" } }
       }
     },
@@ -862,6 +1510,69 @@
           }
         }
       ]
+    },
+    "serviceRoleBoundaryResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "evidence"],
+          "properties": {
+            "status": { "const": "NOT_RUN" },
+            "evidence": { "type": "array", "maxItems": 0 }
+          }
+        },
+        { "$ref": "#/$defs/passedServiceRoleBoundaryResult" }
+      ]
+    },
+    "passedServiceRoleBoundaryResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "coveredCaseBindings",
+        "reportPath",
+        "reportSha256",
+        "evidence"
+      ],
+      "properties": {
+        "status": { "const": "PASS" },
+        "coveredCaseBindings": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/serviceRoleCoveredCaseBinding" }
+        },
+        "reportPath": { "$ref": "#/$defs/concreteString" },
+        "reportSha256": { "$ref": "#/$defs/sha256" },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/concreteString" }
+        }
+      }
+    },
+    "serviceRoleCoveredCaseBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId",
+        "rawObservationId",
+        "rawArtifactPath",
+        "rawArtifactSha256",
+        "producingCommandId",
+        "observedAt",
+        "credentialFingerprintSha256"
+      ],
+      "properties": {
+        "caseId": { "$ref": "#/$defs/concreteString" },
+        "rawObservationId": { "$ref": "#/$defs/concreteString" },
+        "rawArtifactPath": { "$ref": "#/$defs/concreteString" },
+        "rawArtifactSha256": { "$ref": "#/$defs/sha256" },
+        "producingCommandId": { "$ref": "#/$defs/concreteString" },
+        "observedAt": { "$ref": "#/$defs/concreteString" },
+        "credentialFingerprintSha256": { "$ref": "#/$defs/sha256" }
+      }
     },
     "supportedGateResult": {
       "allOf": [
@@ -879,6 +1590,7 @@
       "additionalProperties": false,
       "required": [
         "id",
+        "sampleIds",
         "samples",
         "median",
         "limit",
@@ -888,6 +1600,7 @@
       ],
       "properties": {
         "id": { "type": "string" },
+        "sampleIds": { "type": "array", "items": { "type": "string" } },
         "samples": { "type": "array", "items": { "type": "number" } },
         "median": { "type": ["number", "null"] },
         "limit": { "type": ["number", "null"] },
@@ -913,6 +1626,7 @@
         "p95Ms",
         "p99Ms",
         "minimumThroughputPerSecond",
+        "maximumUnexpectedFailedRequests",
         "maximum5xxRate",
         "maximumTimeoutRate",
         "maximumCpuPercent",
@@ -925,6 +1639,10 @@
         "p95Ms": { "type": ["number", "null"] },
         "p99Ms": { "type": ["number", "null"] },
         "minimumThroughputPerSecond": { "type": ["number", "null"] },
+        "maximumUnexpectedFailedRequests": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
         "maximum5xxRate": { "type": ["number", "null"] },
         "maximumTimeoutRate": { "type": ["number", "null"] },
         "maximumCpuPercent": { "type": ["number", "null"] },
@@ -944,10 +1662,11 @@
         "rate5xx",
         "timeoutRate",
         "cpuPercent",
+        "cpuAboveThresholdSeconds",
         "poolHeadroomPercent",
+        "poolBelowThresholdSeconds",
         "lockWaitMs",
-        "walBytes",
-        "migrationDurationSeconds"
+        "walBytes"
       ],
       "properties": {
         "p95Ms": { "type": ["number", "null"] },
@@ -956,10 +1675,428 @@
         "rate5xx": { "type": ["number", "null"] },
         "timeoutRate": { "type": ["number", "null"] },
         "cpuPercent": { "type": ["number", "null"] },
+        "cpuAboveThresholdSeconds": { "type": ["number", "null"] },
         "poolHeadroomPercent": { "type": ["number", "null"] },
+        "poolBelowThresholdSeconds": { "type": ["number", "null"] },
         "lockWaitMs": { "type": ["number", "null"] },
-        "walBytes": { "type": ["number", "null"] },
-        "migrationDurationSeconds": { "type": ["number", "null"] }
+        "walBytes": { "type": ["number", "null"] }
+      }
+    },
+    "hostedSloResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "durationSeconds",
+        "concurrency",
+        "attemptedRequests",
+        "completedRequests",
+        "failedRequests",
+        "response5xxCount",
+        "timeoutCount",
+        "observed",
+        "status",
+        "evidence"
+      ],
+      "properties": {
+        "id": { "type": "string" },
+        "durationSeconds": { "type": ["number", "null"], "minimum": 0 },
+        "concurrency": { "type": ["integer", "null"], "minimum": 0 },
+        "attemptedRequests": { "type": ["integer", "null"], "minimum": 0 },
+        "completedRequests": { "type": ["integer", "null"], "minimum": 0 },
+        "failedRequests": { "type": ["integer", "null"], "minimum": 0 },
+        "response5xxCount": { "type": ["integer", "null"], "minimum": 0 },
+        "timeoutCount": { "type": ["integer", "null"], "minimum": 0 },
+        "observed": { "$ref": "#/$defs/hostedSloObserved" },
+        "status": { "$ref": "#/$defs/status" },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "tenantProbeControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selector",
+        "precondition",
+        "sameTenantPositiveControl",
+        "postDeny"
+      ],
+      "properties": {
+        "selector": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "relation",
+            "primaryKeyColumn",
+            "primaryKeyValue",
+            "tenantColumn",
+            "expectedTenant"
+          ],
+          "properties": {
+            "relation": { "$ref": "#/$defs/concreteString" },
+            "primaryKeyColumn": { "$ref": "#/$defs/concreteString" },
+            "primaryKeyValue": { "$ref": "#/$defs/concreteString" },
+            "tenantColumn": { "$ref": "#/$defs/concreteString" },
+            "expectedTenant": { "$ref": "#/$defs/concreteString" }
+          }
+        },
+        "precondition": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rowCount", "observedTenant", "rowSha256"],
+          "properties": {
+            "rowCount": { "const": 1 },
+            "observedTenant": { "$ref": "#/$defs/concreteString" },
+            "rowSha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "sameTenantPositiveControl": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "rawObservationId",
+            "actorId",
+            "role",
+            "jwtCase",
+            "deniedActorId",
+            "authTokenUse",
+            "sourceTenant",
+            "targetTenant",
+            "target",
+            "operation",
+            "selector",
+            "expected",
+            "observed",
+            "transaction",
+            "stateResults"
+          ],
+          "properties": {
+            "rawObservationId": { "$ref": "#/$defs/concreteString" },
+            "actorId": { "$ref": "#/$defs/concreteString" },
+            "role": { "$ref": "#/$defs/concreteString" },
+            "jwtCase": { "const": "valid_jwt" },
+            "deniedActorId": { "$ref": "#/$defs/concreteString" },
+            "authTokenUse": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "source",
+                "actorId",
+                "tokenHandleId",
+                "provenanceObservationId"
+              ],
+              "properties": {
+                "source": { "const": "HOSTED_REFRESHED_SESSION" },
+                "actorId": { "$ref": "#/$defs/concreteString" },
+                "tokenHandleId": { "$ref": "#/$defs/concreteString" },
+                "provenanceObservationId": {
+                  "$ref": "#/$defs/concreteString"
+                }
+              }
+            },
+            "sourceTenant": { "$ref": "#/$defs/concreteString" },
+            "targetTenant": { "$ref": "#/$defs/concreteString" },
+            "target": { "$ref": "#/$defs/concreteString" },
+            "operation": { "enum": ["read", "insert", "update", "delete"] },
+            "selector": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "relation",
+                "primaryKeyColumn",
+                "primaryKeyValue",
+                "tenantColumn",
+                "expectedTenant"
+              ],
+              "properties": {
+                "relation": { "$ref": "#/$defs/concreteString" },
+                "primaryKeyColumn": { "$ref": "#/$defs/concreteString" },
+                "primaryKeyValue": { "$ref": "#/$defs/concreteString" },
+                "tenantColumn": { "$ref": "#/$defs/concreteString" },
+                "expectedTenant": { "$ref": "#/$defs/concreteString" }
+              }
+            },
+            "expected": { "$ref": "#/$defs/tenantPositiveOutcome" },
+            "observed": { "$ref": "#/$defs/tenantPositiveOutcome" },
+            "transaction": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "transactionId",
+                "endCommand",
+                "endStatus",
+                "rollbackCompletedAt",
+                "postRollbackCheckedAt"
+              ],
+              "properties": {
+                "transactionId": { "$ref": "#/$defs/concreteString" },
+                "endCommand": { "const": "ROLLBACK" },
+                "endStatus": { "const": "COMMAND_OK" },
+                "rollbackCompletedAt": { "$ref": "#/$defs/concreteString" },
+                "postRollbackCheckedAt": {
+                  "$ref": "#/$defs/concreteString"
+                }
+              }
+            },
+            "stateResults": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "items": { "$ref": "#/$defs/tenantPositiveStateResult" }
+            }
+          }
+        },
+        "postDeny": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rowCount", "observedTenant", "rowSha256"],
+          "properties": {
+            "rowCount": { "const": 1 },
+            "observedTenant": { "$ref": "#/$defs/concreteString" },
+            "rowSha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      }
+    },
+    "tenantPositiveOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "httpStatus",
+        "sqlstate",
+        "rowCount",
+        "mutationCount",
+        "directAffectedRows",
+        "decision"
+      ],
+      "properties": {
+        "httpStatus": { "const": 200 },
+        "sqlstate": { "const": "NONE" },
+        "rowCount": { "const": 1 },
+        "mutationCount": { "type": "integer", "minimum": 0, "maximum": 1 },
+        "directAffectedRows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "decision": { "const": "ALLOW" }
+      }
+    },
+    "tenantPositiveStateResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assertionId",
+        "relation",
+        "operation",
+        "beforeExists",
+        "afterExists",
+        "postRollbackExists",
+        "beforeSha256",
+        "afterSha256",
+        "postRollbackSha256"
+      ],
+      "properties": {
+        "assertionId": { "$ref": "#/$defs/concreteString" },
+        "relation": { "$ref": "#/$defs/concreteString" },
+        "operation": { "enum": ["read", "insert", "update", "delete"] },
+        "beforeExists": { "type": "boolean" },
+        "afterExists": { "type": "boolean" },
+        "postRollbackExists": { "type": "boolean" },
+        "beforeSha256": {
+          "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+        },
+        "afterSha256": {
+          "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+        },
+        "postRollbackSha256": {
+          "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+        }
+      }
+    },
+    "tenantAllowControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selector", "precondition", "allowObservation", "postRead"],
+      "properties": {
+        "selector": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "relation",
+            "primaryKeyColumn",
+            "primaryKeyValue",
+            "tenantColumn",
+            "expectedTenant"
+          ],
+          "properties": {
+            "relation": { "$ref": "#/$defs/concreteString" },
+            "primaryKeyColumn": { "$ref": "#/$defs/concreteString" },
+            "primaryKeyValue": { "$ref": "#/$defs/concreteString" },
+            "tenantColumn": { "$ref": "#/$defs/concreteString" },
+            "expectedTenant": { "$ref": "#/$defs/concreteString" }
+          }
+        },
+        "precondition": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rowCount", "observedTenant", "rowSha256"],
+          "properties": {
+            "rowCount": { "const": 1 },
+            "observedTenant": { "$ref": "#/$defs/concreteString" },
+            "rowSha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "allowObservation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "actorTenant",
+            "returnedTenant",
+            "rowCount",
+            "returnedRowSha256"
+          ],
+          "properties": {
+            "actorTenant": { "$ref": "#/$defs/concreteString" },
+            "returnedTenant": { "$ref": "#/$defs/concreteString" },
+            "rowCount": { "const": 1 },
+            "returnedRowSha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "postRead": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rowCount", "observedTenant", "rowSha256"],
+          "properties": {
+            "rowCount": { "const": 1 },
+            "observedTenant": { "$ref": "#/$defs/concreteString" },
+            "rowSha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      }
+    },
+    "authorityStateControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selector",
+        "precondition",
+        "deniedActor",
+        "authorityCause",
+        "sameTenantActiveActorControl",
+        "deniedResult",
+        "postDeny"
+      ],
+      "properties": {
+        "selector": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "relation",
+            "primaryKeyColumn",
+            "primaryKeyValue",
+            "tenantColumn",
+            "expectedTenant"
+          ],
+          "properties": {
+            "relation": { "$ref": "#/$defs/concreteString" },
+            "primaryKeyColumn": { "$ref": "#/$defs/concreteString" },
+            "primaryKeyValue": { "$ref": "#/$defs/concreteString" },
+            "tenantColumn": { "$ref": "#/$defs/concreteString" },
+            "expectedTenant": { "$ref": "#/$defs/concreteString" }
+          }
+        },
+        "precondition": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rowCount", "observedTenant", "rowSha256"],
+          "properties": {
+            "rowCount": { "const": 1 },
+            "observedTenant": { "$ref": "#/$defs/concreteString" },
+            "rowSha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "deniedActor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["actorId", "actorTenant", "targetTenant", "jwtCase"],
+          "properties": {
+            "actorId": { "$ref": "#/$defs/concreteString" },
+            "actorTenant": { "$ref": "#/$defs/concreteString" },
+            "targetTenant": { "$ref": "#/$defs/concreteString" },
+            "jwtCase": { "$ref": "#/$defs/concreteString" }
+          }
+        },
+        "authorityCause": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "condition",
+            "profileStatus",
+            "profileLookupStatus",
+            "managerAssignmentStatus",
+            "managerAssignmentClinicId",
+            "permissionLookupStatus",
+            "jwtIssuedAt",
+            "authorityChangedAt"
+          ],
+          "properties": {
+            "condition": { "$ref": "#/$defs/concreteString" },
+            "profileStatus": { "type": "string" },
+            "profileLookupStatus": { "$ref": "#/$defs/concreteString" },
+            "managerAssignmentStatus": { "type": "string" },
+            "managerAssignmentClinicId": { "type": "string" },
+            "permissionLookupStatus": { "type": "string" },
+            "jwtIssuedAt": { "type": "string" },
+            "authorityChangedAt": { "type": "string" }
+          }
+        },
+        "sameTenantActiveActorControl": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "actorId",
+            "actorTenant",
+            "targetTenant",
+            "tokenSource",
+            "tokenHandleId",
+            "provenanceObservationId",
+            "rowCount",
+            "decision"
+          ],
+          "properties": {
+            "actorId": { "$ref": "#/$defs/concreteString" },
+            "actorTenant": { "$ref": "#/$defs/concreteString" },
+            "targetTenant": { "$ref": "#/$defs/concreteString" },
+            "tokenSource": { "const": "HOSTED_PASSWORD_SIGN_IN_SESSION" },
+            "tokenHandleId": { "$ref": "#/$defs/concreteString" },
+            "provenanceObservationId": {
+              "$ref": "#/$defs/concreteString"
+            },
+            "rowCount": { "const": 1 },
+            "decision": { "const": "ALLOW" }
+          }
+        },
+        "deniedResult": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rowCount", "mutationCount", "decision"],
+          "properties": {
+            "rowCount": { "const": 0 },
+            "mutationCount": { "const": 0 },
+            "decision": { "const": "DENY" }
+          }
+        },
+        "postDeny": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rowCount", "observedTenant", "rowSha256"],
+          "properties": {
+            "rowCount": { "const": 1 },
+            "observedTenant": { "$ref": "#/$defs/concreteString" },
+            "rowSha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
       }
     },
     "directRoleResult": {
@@ -967,10 +2104,45 @@
       "additionalProperties": false,
       "required": [
         "caseId",
+        "caseClass",
         "role",
+        "actorId",
+        "credentialHandle",
+        "tokenProvenance",
+        "sourceTenant",
+        "targetTenant",
+        "tenantDirection",
+        "target",
+        "targetObjectId",
+        "targetObjectKind",
+        "targetObjectIdentity",
+        "aclInventoryCaseId",
         "operation",
-        "expected",
-        "observed",
+        "httpMethod",
+        "requestPath",
+        "requestBodySha256",
+        "expectedResponseBodySha256",
+        "expectedHttpStatus",
+        "expectedSqlExecuted",
+        "expectedSqlstate",
+        "expectedRowCount",
+        "expectedMutationCount",
+        "expectedAclOutcome",
+        "expectedRlsOutcome",
+        "expectedAuthTokenSource",
+        "expectedAuthActorId",
+        "authTokenUse",
+        "expectedEndpointOutcome",
+        "observedHttpStatus",
+        "observedSqlExecuted",
+        "observedSqlstate",
+        "observedRowCount",
+        "observedMutationCount",
+        "observedAclOutcome",
+        "observedRlsOutcome",
+        "observedEndpointOutcome",
+        "observedResponseBodySha256",
+        "rawObservationId",
         "aclVerdict",
         "rlsVerdict",
         "status",
@@ -978,12 +2150,124 @@
       ],
       "properties": {
         "caseId": { "type": "string" },
+        "caseClass": {
+          "enum": [
+            "DATA_API_ACL_DENY",
+            "DATA_API_RLS_FILTERED",
+            "DATA_API_ALLOW",
+            "DATA_API_RPC_ALLOW",
+            "GRAPHQL_DISABLED_ENDPOINT_REJECTION"
+          ]
+        },
         "role": { "enum": ["anon", "authenticated", "service_role"] },
+        "actorId": { "type": "string", "minLength": 1 },
+        "credentialHandle": { "type": "string", "minLength": 1 },
+        "tokenProvenance": { "type": "string", "minLength": 1 },
+        "sourceTenant": { "type": "string", "minLength": 1 },
+        "targetTenant": { "type": "string", "minLength": 1 },
+        "tenantDirection": {
+          "enum": ["A_TO_A", "A_TO_B", "B_TO_A", "NOT_APPLICABLE"]
+        },
+        "target": { "type": "string" },
+        "targetObjectId": { "type": "string", "minLength": 1 },
+        "targetObjectKind": {
+          "enum": ["RELATION", "COLUMN", "FUNCTION", "GRAPHQL_ENDPOINT"]
+        },
+        "targetObjectIdentity": { "type": "string", "minLength": 1 },
+        "aclInventoryCaseId": { "type": "string", "minLength": 1 },
         "operation": { "type": "string" },
-        "expected": { "type": "string" },
-        "observed": { "type": "string" },
+        "httpMethod": { "enum": ["GET", "POST"] },
+        "requestPath": { "type": "string", "minLength": 1 },
+        "requestBodySha256": { "$ref": "#/$defs/sha256" },
+        "expectedResponseBodySha256": { "$ref": "#/$defs/sha256" },
+        "expectedHttpStatus": { "type": "integer", "minimum": 100 },
+        "expectedSqlExecuted": { "type": "boolean" },
+        "expectedSqlstate": { "type": "string" },
+        "expectedRowCount": { "type": "integer", "minimum": 0 },
+        "expectedMutationCount": { "type": "integer", "minimum": 0 },
+        "expectedAclOutcome": { "type": "string" },
+        "expectedRlsOutcome": { "type": "string" },
+        "expectedAuthTokenSource": { "type": "string", "minLength": 1 },
+        "expectedAuthActorId": { "type": "string", "minLength": 1 },
+        "authTokenUse": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "actorId",
+            "tokenHandleId",
+            "provenanceObservationId"
+          ],
+          "properties": {
+            "source": { "type": "string", "minLength": 1 },
+            "actorId": { "type": "string", "minLength": 1 },
+            "tokenHandleId": { "type": "string", "minLength": 1 },
+            "provenanceObservationId": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "tenantProbeControl": { "$ref": "#/$defs/tenantProbeControl" },
+        "tenantAllowControl": { "$ref": "#/$defs/tenantAllowControl" },
+        "expectedEndpointOutcome": { "type": "string" },
+        "observedHttpStatus": { "type": "integer", "minimum": 100 },
+        "observedSqlExecuted": { "type": "boolean" },
+        "observedSqlstate": { "type": "string" },
+        "observedRowCount": { "type": "integer", "minimum": 0 },
+        "observedMutationCount": { "type": "integer", "minimum": 0 },
+        "observedAclOutcome": { "type": "string" },
+        "observedRlsOutcome": { "type": "string" },
+        "observedEndpointOutcome": { "type": "string" },
+        "observedResponseBodySha256": { "$ref": "#/$defs/sha256" },
+        "rawObservationId": { "type": "string" },
         "aclVerdict": { "enum": ["PASS", "FAIL", "NOT_APPLICABLE"] },
         "rlsVerdict": { "enum": ["PASS", "FAIL", "NOT_APPLICABLE"] },
+        "status": { "$ref": "#/$defs/status" },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "dataApiAclResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId",
+        "objectKind",
+        "objectIdentity",
+        "role",
+        "privilege",
+        "expectedGranted",
+        "expectedSqlstate",
+        "expectedAclOutcome",
+        "observedGranted",
+        "observedSqlstate",
+        "observedAclOutcome",
+        "rawObservationId",
+        "status",
+        "evidence"
+      ],
+      "properties": {
+        "caseId": { "type": "string" },
+        "objectKind": {
+          "enum": [
+            "SCHEMA",
+            "RELATION",
+            "COLUMN",
+            "SEQUENCE",
+            "FUNCTION",
+            "DEFAULT_PRIVILEGE"
+          ]
+        },
+        "objectIdentity": { "type": "string" },
+        "role": { "enum": ["anon", "authenticated", "service_role"] },
+        "privilege": { "type": "string" },
+        "expectedGranted": { "type": "boolean" },
+        "expectedSqlstate": { "type": "string" },
+        "expectedAclOutcome": { "type": "string" },
+        "observedGranted": { "type": "boolean" },
+        "observedSqlstate": { "type": "string" },
+        "observedAclOutcome": { "type": "string" },
+        "rawObservationId": { "type": "string" },
         "status": { "$ref": "#/$defs/status" },
         "evidence": { "type": "array", "items": { "type": "string" } }
       }
@@ -996,21 +2280,47 @@
         "role",
         "actor",
         "jwtCase",
+        "caseClass",
         "sourceTenant",
         "targetTenant",
         "tenantBoundary",
+        "tenantDirection",
         "target",
         "operation",
         "expectedHttpStatus",
         "expectedSqlstate",
         "expectedRowCount",
+        "expectedDecision",
+        "expectedMutationCount",
+        "expectedDirectAffectedRows",
         "observedHttpStatus",
         "observedSqlstate",
         "observedRowCount",
+        "observedDecision",
+        "observedMutationCount",
+        "observedDirectAffectedRows",
         "expectedAclOutcome",
         "expectedRlsOutcome",
+        "expectedErrorIdentity",
+        "expectedPostcondition",
+        "expectedPreservedSentinel",
+        "expectedTransactionEndCommand",
+        "expectedTransactionEndStatus",
+        "expectedStateTransitions",
+        "expectedErrorDiagnostic",
         "observedAclOutcome",
         "observedRlsOutcome",
+        "observedErrorIdentity",
+        "observedPostcondition",
+        "observedPreservedSentinel",
+        "observedTransactionEndCommand",
+        "observedTransactionEndStatus",
+        "observedRollbackCompletedAt",
+        "observedPostRollbackCheckedAt",
+        "observedStateResults",
+        "observedErrorDiagnostic",
+        "authTokenUse",
+        "rawObservationId",
         "aclVerdict",
         "rlsVerdict",
         "status",
@@ -1021,24 +2331,164 @@
         "role": { "type": "string" },
         "actor": { "type": "string" },
         "jwtCase": { "type": "string" },
+        "caseClass": { "type": "string" },
         "sourceTenant": { "type": "string" },
         "targetTenant": { "type": "string" },
         "tenantBoundary": { "type": "string" },
+        "tenantDirection": { "type": "string" },
         "target": { "type": "string" },
         "operation": { "type": "string" },
         "expectedHttpStatus": { "type": ["integer", "string"] },
         "expectedSqlstate": { "type": "string" },
         "expectedRowCount": { "type": ["integer", "string"] },
+        "expectedDecision": { "type": "string" },
+        "expectedMutationCount": { "type": ["integer", "string"] },
+        "expectedDirectAffectedRows": { "type": ["integer", "string"] },
         "observedHttpStatus": { "type": ["integer", "string"] },
         "observedSqlstate": { "type": "string" },
         "observedRowCount": { "type": ["integer", "string"] },
+        "observedDecision": { "type": "string" },
+        "observedMutationCount": { "type": ["integer", "string"] },
+        "observedDirectAffectedRows": { "type": ["integer", "string"] },
         "expectedAclOutcome": { "type": "string" },
         "expectedRlsOutcome": { "type": "string" },
+        "tenantProbeControl": { "$ref": "#/$defs/tenantProbeControl" },
+        "authorityStateControl": {
+          "$ref": "#/$defs/authorityStateControl"
+        },
+        "expectedAuthTokenSource": { "type": "string" },
+        "expectedAuthActorId": { "type": "string" },
+        "expectedErrorIdentity": { "type": "string" },
+        "expectedPostcondition": { "type": "string" },
+        "expectedPreservedSentinel": { "type": "string" },
+        "expectedTransactionEndCommand": { "type": "string" },
+        "expectedTransactionEndStatus": { "type": "string" },
+        "expectedStateTransitions": { "type": "array" },
+        "expectedErrorDiagnostic": { "type": "object" },
         "observedAclOutcome": { "type": "string" },
         "observedRlsOutcome": { "type": "string" },
+        "observedErrorIdentity": { "type": "string" },
+        "observedPostcondition": { "type": "string" },
+        "observedPreservedSentinel": { "type": "string" },
+        "observedTransactionEndCommand": { "type": "string" },
+        "observedTransactionEndStatus": { "type": "string" },
+        "observedRollbackCompletedAt": { "type": "string" },
+        "observedPostRollbackCheckedAt": { "type": "string" },
+        "observedStateResults": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "assertionId",
+              "relation",
+              "transition",
+              "beforeExists",
+              "afterExists",
+              "postRollbackExists",
+              "beforeSha256",
+              "afterSha256",
+              "postRollbackSha256"
+            ],
+            "properties": {
+              "assertionId": { "type": "string" },
+              "relation": { "type": "string" },
+              "transition": { "type": "string" },
+              "beforeExists": { "type": "boolean" },
+              "afterExists": { "type": "boolean" },
+              "postRollbackExists": { "type": "boolean" },
+              "beforeSha256": { "type": ["string", "null"] },
+              "afterSha256": { "type": ["string", "null"] },
+              "postRollbackSha256": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "observedErrorDiagnostic": { "type": "object" },
+        "authTokenUse": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "actorId",
+            "tokenHandleId",
+            "provenanceObservationId"
+          ],
+          "properties": {
+            "source": { "type": "string" },
+            "actorId": { "type": "string" },
+            "tokenHandleId": { "type": "string" },
+            "provenanceObservationId": { "type": "string" }
+          }
+        },
+        "rawObservationId": { "type": "string" },
         "aclVerdict": { "enum": ["PASS", "FAIL", "NOT_APPLICABLE"] },
         "rlsVerdict": { "enum": ["PASS", "FAIL", "NOT_APPLICABLE"] },
         "status": { "$ref": "#/$defs/status" },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "credentialTargetResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "targetKind",
+        "providerConfigurationPath",
+        "providerConfigurationSha256",
+        "evidence"
+      ],
+      "properties": {
+        "status": { "$ref": "#/$defs/status" },
+        "targetKind": { "enum": ["SOURCE", "RESTORE"] },
+        "providerConfigurationPath": { "type": "string" },
+        "providerConfigurationSha256": {
+          "$ref": "#/$defs/sha256OrPlaceholder"
+        },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "sideEffectTargetResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "mode",
+        "attemptedRealDispatchCount",
+        "providerRealDispatchCount",
+        "duplicateCount",
+        "pendingExternalOperationCount",
+        "productionIdentityDetected",
+        "commandId",
+        "capturedAt",
+        "artifactPath",
+        "artifactSha256",
+        "serviceRoleNonExposure",
+        "evidence"
+      ],
+      "properties": {
+        "status": { "$ref": "#/$defs/status" },
+        "mode": { "enum": ["DISABLED", "SANDBOXED", "NOT_CAPTURED"] },
+        "attemptedRealDispatchCount": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "providerRealDispatchCount": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "duplicateCount": { "type": ["integer", "null"], "minimum": 0 },
+        "pendingExternalOperationCount": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "productionIdentityDetected": { "type": ["boolean", "string"] },
+        "commandId": { "type": "string" },
+        "capturedAt": { "type": "string" },
+        "artifactPath": { "type": "string" },
+        "artifactSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+        "serviceRoleNonExposure": {
+          "$ref": "#/$defs/serviceRoleBoundaryResult"
+        },
         "evidence": { "type": "array", "items": { "type": "string" } }
       }
     },

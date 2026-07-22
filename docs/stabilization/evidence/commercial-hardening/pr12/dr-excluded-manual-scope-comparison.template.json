@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "resultType": "DR_EXCLUDED_MANUAL_SCOPE_COMPARISON",
+  "status": "NOT_RUN",
+  "commandId": "PR12-CMD-019F",
+  "capturedAt": "NOT_CAPTURED",
+  "source": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+  "restore": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+  "assertions": {
+    "storageBucketsAndObjectsZero": "NOT_CAPTURED",
+    "edgeFunctionsAbsent": "NOT_CAPTURED",
+    "readReplicasAbsent": "NOT_CAPTURED",
+    "noCustomRolePasswordDependency": "NOT_CAPTURED",
+    "authSettingsParity": "NOT_CAPTURED",
+    "realtimeSettingsParity": "NOT_CAPTURED",
+    "storageSettingsParity": "NOT_CAPTURED",
+    "extensionCatalogParity": "NOT_CAPTURED",
+    "databaseSettingsParity": "NOT_CAPTURED",
+    "realtimePublicationParity": "NOT_CAPTURED",
+    "targetSpecificApiKeysPresentWithoutValueCapture": "NOT_CAPTURED"
+  },
+  "secretValuesCaptured": false
+}

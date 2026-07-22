@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "resultType": "EXTERNAL_SIDE_EFFECT_RAW_EVIDENCE",
+  "status": "NOT_RUN",
+  "targetKind": "NOT_CAPTURED",
+  "commandId": "NOT_CAPTURED",
+  "projectRef": "NOT_CAPTURED",
+  "capturedAt": "NOT_CAPTURED",
+  "observations": [
+    {
+      "observationId": "NOT_CAPTURED",
+      "family": "NOT_CAPTURED",
+      "transport": "NOT_CAPTURED",
+      "observedAt": "NOT_CAPTURED",
+      "provenance": {
+        "sourceKind": "NOT_CAPTURED",
+        "collectorId": "PR12-SIDE-EFFECT-COLLECTOR-V2",
+        "descriptorPath": "docs/stabilization/evidence/commercial-hardening/pr12/external-side-effect-collector-descriptors-v2.json",
+        "descriptorArtifactSha256": "NOT_CAPTURED",
+        "probeId": "NOT_CAPTURED",
+        "requestOrQueryText": "NOT_CAPTURED",
+        "requestOrQuerySha256": "NOT_CAPTURED",
+        "steps": [
+          {
+            "stepId": "NOT_CAPTURED",
+            "status": "NOT_CAPTURED",
+            "rowCount": null,
+            "responseBodySha256": "NOT_CAPTURED"
+          }
+        ]
+      },
+      "rawState": {
+        "observedSettings": {},
+        "catalogRows": [],
+        "pendingExternalOperations": [],
+        "attemptedRealDispatches": [],
+        "providerRealDispatches": [],
+        "duplicateReceipts": [],
+        "productionIdentityMatches": [],
+        "destinationFingerprintSha256": null
+      },
+      "secretValueCaptured": false
+    }
+  ]
+}
