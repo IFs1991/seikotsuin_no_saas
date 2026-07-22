@@ -1,0 +1,40 @@
+name: Demo Fixture Contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/demo/**'
+      - 'src/types/supabase.ts'
+      - 'package.json'
+      - '.github/workflows/demo-fixtures.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/demo/**'
+      - 'src/types/supabase.ts'
+      - 'package.json'
+      - '.github/workflows/demo-fixtures.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo-fixture-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  demo-fixtures:
+    name: KKD Demo Fixture Contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Validate deterministic fixture and generated type contract
+        run: npm run demo:fixtures:check -- --today 2026-07-22
