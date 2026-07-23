@@ -20,8 +20,9 @@
     "requiredMajor": 17
   },
   "targetGuard": {
-    "status": "NOT_IMPLEMENTED",
-    "implementationPath": "NOT_IMPLEMENTED",
+    "status": "PHASE1_IMPLEMENTED_LATER_PHASES_NOT_IMPLEMENTED",
+    "phase1ImplementationPath": "scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs",
+    "laterPhaseImplementationPath": "NOT_IMPLEMENTED",
     "requiredForEveryRemoteCommand": true,
     "approvedBindingEnvironmentName": "PR12_APPROVED_STAGING_BINDING",
     "approvedSourceProjectRef": "NOT_CAPTURED",
@@ -544,11 +545,65 @@
       "httpMethod": "POST",
       "endpoint": "https://api.supabase.com/v1/projects",
       "name": "seikotsuin-pr12-isolated-qualification-20260719",
-      "plan": "pro",
-      "region": "ap-northeast-1",
-      "compute": "large",
+      "organizationId": "NOT_CAPTURED",
+      "organizationSlug": "NOT_CAPTURED",
+      "existingOrganizationPlanRequired": "PRO",
+      "organizationPlanChangeIncluded": false,
+      "regionSelection": {
+        "type": "specific",
+        "code": "ap-northeast-1"
+      },
+      "desiredInstanceSize": "large",
+      "secretFreeRequestProjection": {
+        "db_pass": "RUNTIME_SECRET_NOT_IN_EVIDENCE",
+        "desired_instance_size": "large",
+        "name": "seikotsuin-pr12-isolated-qualification-20260719",
+        "organization_slug": "NOT_CAPTURED",
+        "region_selection": {
+          "code": "ap-northeast-1",
+          "type": "specific"
+        }
+      },
+      "secretFreeRequestProjectionSha256": "NOT_CAPTURED",
+      "deprecatedOrIgnoredCreateFieldsForbidden": [
+        "organization_id",
+        "plan",
+        "region",
+        "kps_enabled"
+      ],
+      "maximumPostAttempts": 1,
+      "automaticPostRetryAllowed": false,
+      "providerIdempotencyKeyDocumented": false,
+      "durablePrePostState": "POST_INTENT_DURABLE",
+      "postIntentPermanentlyConsumesActionIdentity": true,
+      "readOnlySupportingRequests": [
+        "GET /v1/organizations/{approved-slug}",
+        "GET /v1/projects/available-regions?organization_slug={approved-slug}&desired_instance_size=large",
+        "GET all pages /v1/organizations/{approved-slug}/projects before and after POST",
+        "GET /v1/projects/{created-ref}/billing/addons"
+      ],
+      "wrapper": "fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs --execute-authorized-action PR12-ACTION-003 --binding <approved-binding.json> --credential-config <approved-credential-config.json> --approval-evidence <owner-approval.json> --quote-evidence <dashboard-quote.json> --journal-directory <owner-controlled-absolute-directory> --evidence-parent <owner-controlled-absolute-directory>",
+      "reconciliationOnlyWrapper": "fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs --reconcile-dispatched-action PR12-ACTION-003 --binding <approved-binding.json> --credential-config <approved-credential-config.json> --approval-evidence <owner-approval.json> --quote-evidence <dashboard-quote.json> --journal-directory <owner-controlled-absolute-directory> --evidence-parent <owner-controlled-absolute-directory>",
+      "recoveryModeHasPostPath": false,
+      "wrapperImplemented": true,
+      "wrapperExecuted": false,
+      "unknownRemoteOutcome": "NO_RETRY_READ_ONLY_RECONCILIATION_AND_OWNER_DECISION",
+      "evidenceSealOrder": "PARTIAL_FLUSH_VERIFY_ATOMIC_RENAME_THEN_TERMINAL",
+      "automaticResealAllowed": false,
+      "commercialManifestPromotion": "NOT_IMPLEMENTED",
+      "configurationMutationIncluded": false,
+      "databaseConnectionAuthorized": false,
       "authorizedNow": false,
-      "requiresSeparateProvisioningBinding": true
+      "requiresSeparateProvisioningBinding": true,
+      "approvalBlockers": [
+        "final head and artifact hashes",
+        "target and production organization identities",
+        "actual Dashboard quote and funding",
+        "cleanup/recovery owners and deadlines",
+        "credential provider and opaque handles",
+        "stable journal/evidence path fingerprints",
+        "timeouts, named owners, and unexpired owner approval"
+      ]
     },
     "restoreProject": {
       "method": "RESTORE_TO_NEW_PROJECT_ACTION_PR12-ACTION-017",
@@ -566,11 +621,11 @@
   "knownBlockers": [
     "source project ref and source provisioning approval are not captured",
     "restore project ref cannot be captured until restore creation and then requires supplemental approval",
-    "fail-closed target guard and hosted credential/seed adapter are not implemented",
+    "Phase 1 guard/wrapper is implemented but owner approval inputs are unresolved; Phase 2+ target guard and hosted credential/seed adapter are not implemented",
     "psql path and exact version are not captured",
     "post-load row/hash, schema/type, hosted PR11, hosted SLO, security, API, GraphQL, billing, Advisor diff, backup, and post-restore collectors are not implemented",
     "exact security, Data API, GraphQL, billing, and request matrices are not hash-pinned",
     "credential store, Upstash decision, and named owners are unassigned"
   ],
-  "notes": "This JSON is owner-reviewable proposal input, not an executable command ledger. Candidate commands are explanatory only. Every remote or mutating entry is NOT_IMPLEMENTED and authorizedNow=false until a fail-closed adapter and final approved execution ledger replace this proposal."
+  "notes": "This JSON is owner-reviewable proposal input, not an approved execution ledger. The Phase 1 wrapper is locally implemented but authorizedNow remains false and it was not executed; its owner inputs and final hashes are unresolved. Phase 2+ candidate commands remain explanatory and NOT_IMPLEMENTED until their own fail-closed adapters and approved bindings exist."
 }

@@ -10,6 +10,7 @@ const repoRoot = path.resolve(__dirname, '../../..');
 
 const requiredArtifacts = [
   'docs/stabilization/spec-commercial-pr12-isolated-release-qualification-v1.0.md',
+  'docs/stabilization/spec-commercial-pr12-phase1-source-project-provisioning-approval-preparation-v1.0.md',
   'docs/stabilization/pr12-staging-execution-owner-approval-packet-v0.2-20260719.md',
   'docs/operations/commercial-pr12-isolated-staging-dr-runbook-v1.0.md',
   'docs/stabilization/evidence/commercial-hardening/pr12/README.md',
@@ -21,9 +22,15 @@ const requiredArtifacts = [
   'docs/stabilization/evidence/commercial-hardening/pr12/qualification-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-binding.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-export.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-dashboard-quote.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-action-journal.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-evidence-manifest.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-privacy-scan.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-identity-bootstrap-binding.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-identity-bootstrap-result.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-platform-configuration-raw-evidence.template.json',
@@ -55,9 +62,13 @@ const requiredArtifacts = [
   'docs/stabilization/evidence/commercial-hardening/pr12/data-api-acl-inventory.proposed.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/comm-gate-evidence-map-v1.json',
   'scripts/commercial-hardening/verify-pr12-preparation.mjs',
+  'scripts/commercial-hardening/pr12-source-project-provisioning-contract.mjs',
+  'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs',
+  'scripts/commercial-hardening/verify-pr12-source-project-provisioning-evidence.mjs',
   'scripts/commercial-hardening/verify-pr12-evidence-manifest.mjs',
   'scripts/commercial-hardening/scan-pr12-evidence.mjs',
   'src/__tests__/security/commercial-pr12-evidence-verifier.test.ts',
+  'src/__tests__/security/commercial-pr12-source-project-provisioning-contract.test.ts',
 ] as const;
 
 const expectedPrimaryExecutionGates = [
@@ -893,7 +904,9 @@ describe('commercial PR-12 qualification preparation contract', () => {
     expect(ledger.status).toBe('PROPOSED_NOT_EXECUTABLE');
     expect(ledger.executionAuthorized).toBe(false);
     expect(targetGuard).toMatchObject({
-      status: 'NOT_IMPLEMENTED',
+      status: 'PHASE1_IMPLEMENTED_LATER_PHASES_NOT_IMPLEMENTED',
+      phase1ImplementationPath:
+        'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs',
       requiredForEveryRemoteCommand: true,
       prohibitedProjectRefs: ['qnanuoqveidwvacvbhqp'],
     });
@@ -1015,7 +1028,7 @@ describe('commercial PR-12 qualification preparation contract', () => {
     });
 
     const provisioning = readJsonRecord(
-      `${evidencePrefix}source-project-provisioning-binding.template.json`
+      `${evidencePrefix}source-project-provisioning-binding-v2.template.json`
     );
     const sourceReplay = readJsonRecord(
       `${evidencePrefix}source-replay-catalog-capture-binding.template.json`
@@ -1049,9 +1062,18 @@ describe('commercial PR-12 qualification preparation contract', () => {
       httpMethod: 'POST',
       endpoint: 'https://api.supabase.com/v1/projects',
       name: provisionEnvironment.projectName,
-      plan: 'pro',
-      region: provisionEnvironment.region,
-      compute: 'large',
+      existingOrganizationPlanRequired: 'PRO',
+      organizationPlanChangeIncluded: false,
+      regionSelection: {
+        type: 'specific',
+        code: provisionEnvironment.region,
+      },
+      desiredInstanceSize: 'large',
+      maximumPostAttempts: 1,
+      automaticPostRetryAllowed: false,
+      providerIdempotencyKeyDocumented: false,
+      wrapperImplemented: true,
+      wrapperExecuted: false,
       authorizedNow: false,
       requiresSeparateProvisioningBinding: true,
     });
@@ -1060,7 +1082,9 @@ describe('commercial PR-12 qualification preparation contract', () => {
       method: ledgerSourceProjectAction.method,
       httpMethod: ledgerSourceProjectAction.httpMethod,
       endpoint: ledgerSourceProjectAction.endpoint,
-      maximumExecutionCount: 1,
+      maximumPostAttempts: 1,
+      automaticPostRetryAllowed: false,
+      providerIdempotencyKeyDocumented: false,
       remoteContact: true,
       mutating: true,
       mutationScope: 'SOURCE_PROJECT_CREATION',
@@ -1082,7 +1106,6 @@ describe('commercial PR-12 qualification preparation contract', () => {
     );
     for (const [context, value] of [
       ['source execution', binding.governanceProposal],
-      ['source provisioning', provisioning.governanceProposal],
       ['source identity bootstrap', sourceBootstrap.governanceProposal],
       ['source replay/catalog capture', sourceReplay.governanceProposal],
     ] as const) {
@@ -1095,6 +1118,10 @@ describe('commercial PR-12 qualification preparation contract', () => {
         sha256: governanceDigest,
       });
     }
+    expect(provisioning.governanceProposal).toEqual({
+      path: 'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml',
+      sha256: 'NOT_CAPTURED',
+    });
     const requiredOwnerFields = [
       'commercialReleaseOwner',
       'supabasePlatformOwner',
@@ -1109,7 +1136,6 @@ describe('commercial PR-12 qualification preparation contract', () => {
       'evidenceCustodian',
     ];
     for (const [context, owners] of [
-      ['source provisioning', provisioning.owners],
       ['source identity bootstrap', sourceBootstrap.owners],
       ['source replay/catalog capture', sourceReplay.owners],
       ['source execution', binding.owners],
@@ -1120,6 +1146,11 @@ describe('commercial PR-12 qualification preparation contract', () => {
         requiredOwnerFields
       );
     }
+    expect(
+      Object.keys(
+        requireRecord(provisioning.owners, 'provisioning.owners')
+      ).sort()
+    ).toEqual([...requiredOwnerFields, 'provisioningOperator'].sort());
     const reviewedProposals = requireRecord(
       binding.reviewedProposals,
       'binding.reviewedProposals'
@@ -1155,10 +1186,32 @@ describe('commercial PR-12 qualification preparation contract', () => {
       sha256: 'NOT_CAPTURED',
     });
     expect(provisioning.status).toBe('NOT_RUN');
+    expect(provisioning.schemaVersion).toBe(2);
     expect(
       requireRecord(provisioning.authorization, 'provisioning.authorization')
         .sourceProjectProvisioningAuthorized
     ).toBe(false);
+    expect(provisioning.approvedRequest).toMatchObject({
+      sha256: 'NOT_CAPTURED',
+      projection: {
+        db_pass: 'RUNTIME_SECRET_NOT_IN_EVIDENCE',
+        desired_instance_size: 'large',
+        organization_slug: 'NOT_CAPTURED',
+        region_selection: { code: 'ap-northeast-1', type: 'specific' },
+      },
+    });
+    expect(provisionEnvironment).toMatchObject({
+      organizationId: 'NOT_CAPTURED',
+      organizationSlug: 'NOT_CAPTURED',
+      prohibitedOrganizationIds: ['NOT_CAPTURED'],
+      prohibitedOrganizationSlugs: ['NOT_CAPTURED'],
+    });
+    expect(provisioning.initialPlatformPosture).toMatchObject({
+      mutationsIncludedInPhase1: false,
+      phase2ReadOnlyObservationRequired: true,
+      mismatchAction:
+        'STOP_NO_CONFIGURATION_MUTATION_REQUIRE_SEPARATE_APPROVAL',
+    });
     expect(sourceReplay.status).toBe('NOT_RUN');
     expect(sourceBootstrap.status).toBe('NOT_RUN');
     expect(
@@ -1542,6 +1595,7 @@ describe('commercial PR-12 qualification preparation contract', () => {
           password: 'NOT_CAPTURED',
           databasePassword: 'UNASSIGNED',
           pgpassword: 'REDACTED',
+          db_pass: 'RUNTIME_SECRET_NOT_IN_EVIDENCE',
           db_password: '<owner-secret-store>',
           PGPASSWORD: 'PR12_SOURCE_PGPASSWORD',
         }),

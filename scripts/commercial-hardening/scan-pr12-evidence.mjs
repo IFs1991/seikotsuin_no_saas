@@ -10,6 +10,7 @@ const REPO_ROOT = path.resolve(path.dirname(SCRIPT_PATH), '../..');
 const DEFAULT_PATHS = [
   'docs/stabilization/evidence/commercial-hardening/pr12',
   'docs/stabilization/spec-commercial-pr12-isolated-release-qualification-v1.0.md',
+  'docs/stabilization/spec-commercial-pr12-phase1-source-project-provisioning-approval-preparation-v1.0.md',
   'docs/stabilization/pr12-staging-execution-owner-approval-packet-v0.2-20260719.md',
   'docs/operations/commercial-pr12-isolated-staging-dr-runbook-v1.0.md',
   'docs/releases/current-gate-status.yaml',
@@ -59,12 +60,12 @@ const RULES = [
   {
     id: 'password-assignment',
     pattern:
-      /\b(?:password|passwd|pgpassword|db[_-]?pass|smtp[_-]?pass)\s*[:=]\s*["']?(?!NOT_CAPTURED\b|UNASSIGNED\b|REDACTED\b|PR12_[A-Z0-9_]+\b|<)[^\s"']{8,}/giu,
+      /\b(?:password|passwd|pgpassword|db[_-]?pass|smtp[_-]?pass)\s*[:=]\s*["']?(?!NOT_CAPTURED\b|UNASSIGNED\b|REDACTED\b|RUNTIME_SECRET_NOT_IN_EVIDENCE\b|PR12_[A-Z0-9_]+\b|<)[^\s"']{8,}/giu,
   },
   {
     id: 'json-password-assignment',
     pattern:
-      /"(?:password|passwd|pgpassword|db[_-]?(?:pass|password)|database[_-]?password|databasePassword|smtp[_-]?(?:pass|password))"\s*:\s*"(?!NOT_CAPTURED\b|UNASSIGNED\b|REDACTED\b|PR12_[A-Z0-9_]+\b|<)[^"\r\n]{8,}"/giu,
+      /"(?:password|passwd|pgpassword|db[_-]?(?:pass|password)|database[_-]?password|databasePassword|smtp[_-]?(?:pass|password))"\s*:\s*"(?!NOT_CAPTURED\b|UNASSIGNED\b|REDACTED\b|RUNTIME_SECRET_NOT_IN_EVIDENCE\b|PR12_[A-Z0-9_]+\b|<)[^"\r\n]{8,}"/giu,
   },
   {
     id: 'windows-user-home',

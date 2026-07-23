@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "manifestType": "PR12_PHASE1_SOURCE_PROJECT_PROVISIONING_EVIDENCE",
+  "status": "NOT_RUN",
+  "actionId": "PR12-ACTION-003",
+  "gitCommit": "NOT_CAPTURED",
+  "bindingMaterialSha256": "NOT_CAPTURED",
+  "payloadSha256": "NOT_CAPTURED",
+  "artifacts": [],
+  "artifactCount": 0,
+  "rawProviderBodiesPersisted": false,
+  "rawHttpHeadersPersisted": false,
+  "sealedAt": "NOT_CAPTURED"
+}

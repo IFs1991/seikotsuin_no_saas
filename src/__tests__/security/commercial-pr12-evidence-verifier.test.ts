@@ -920,6 +920,74 @@ function rewriteSourceApproval(
   );
 }
 
+function mutateLegacySourceProvisioningProviderRaw(
+  directory: string,
+  manifest: Record<string, unknown>,
+  rawArtifactIndex: number,
+  mutate: (rawArtifact: Record<string, unknown>) => void
+): void {
+  const source = requireRecord(manifest.source, 'source');
+  const approvalArtifact = readBoundJson(
+    directory,
+    {
+      path: source.approvalPacketPath,
+      sha256: source.approvalPacketSha256,
+    },
+    'source approval'
+  );
+  const resultBinding = requireRecord(
+    approvalArtifact.parsed.sourceProjectProvisioningResult,
+    'source provisioning result binding'
+  );
+  const resultArtifact = readBoundJson(
+    directory,
+    resultBinding,
+    'source provisioning result'
+  );
+  const providerBinding = requireRecord(
+    resultArtifact.parsed.providerEvidence,
+    'source provisioning provider binding'
+  );
+  const providerArtifact = readBoundJson(
+    directory,
+    providerBinding,
+    'source provisioning provider'
+  );
+  const rawBindings = requireArray(
+    providerArtifact.parsed.rawProviderArtifacts,
+    'source provisioning raw provider bindings'
+  );
+  const rawBinding = requireRecord(
+    rawBindings[rawArtifactIndex],
+    'source provisioning raw provider binding'
+  );
+  const rawArtifact = readBoundJson(
+    directory,
+    rawBinding,
+    'source provisioning raw provider artifact'
+  );
+  mutate(rawArtifact.parsed);
+  rawBinding.sha256 = rewriteJsonArtifact(
+    directory,
+    manifest,
+    rawArtifact.relativePath,
+    rawArtifact.parsed
+  );
+  providerBinding.sha256 = rewriteJsonArtifact(
+    directory,
+    manifest,
+    providerArtifact.relativePath,
+    providerArtifact.parsed
+  );
+  resultBinding.sha256 = rewriteJsonArtifact(
+    directory,
+    manifest,
+    resultArtifact.relativePath,
+    resultArtifact.parsed
+  );
+  rewriteSourceApproval(directory, manifest, approvalArtifact.parsed);
+}
+
 function rebindSourceBootstrapRawObservation(
   directory: string,
   manifest: Record<string, unknown>,
@@ -3723,7 +3791,22 @@ function buildPassingFixture(
       response: {
         status: 200,
         body: {
-          selected_addons: [{ variant: 'ci_large', status: 'ACTIVE' }],
+          selected_addons: [
+            {
+              type: 'compute_instance',
+              variant: {
+                id: 'ci_large',
+                name: 'Large',
+                price: {
+                  description: 'Large compute',
+                  type: 'fixed',
+                  interval: 'hourly',
+                  amount: 0.1517,
+                },
+              },
+            },
+          ],
+          available_addons: [],
         },
       },
       observedAt: '2000-01-01T00:02:04Z',
@@ -3785,8 +3868,7 @@ function buildPassingFixture(
         endpoint: `https://api.supabase.com/v1/projects/${restoreProjectRef}/billing/addons`,
         httpStatus: 200,
         projectRef: restoreProjectRef,
-        addonVariant: 'ci_large',
-        status: 'ACTIVE',
+        variantId: 'ci_large',
         observedAt: '2000-01-01T00:02:04Z',
         rawArtifact: binding(restoreComputeProviderRaw),
       },
@@ -8767,7 +8849,7 @@ function buildPassingFixture(
         organizationSlug: sourceProviderRedactedRequest.organizationSlug,
         organizationPlan: 'PRO',
         actualDashboardQuoteUsd: 40,
-        observedAt: '1999-12-31T23:59:20.200Z',
+        observedAt: '1999-12-31T23:58:30Z',
         secretValuesCaptured: false,
       }
     )
@@ -8781,7 +8863,16 @@ function buildPassingFixture(
       response: {
         status: 200,
         body: {
+          recommendations: {
+            smartGroup: {
+              name: 'APAC',
+              code: 'apac',
+              type: 'smartGroup',
+            },
+            specific: [],
+          },
           all: {
+            smartGroup: [{ name: 'APAC', code: 'apac', type: 'smartGroup' }],
             specific: [
               {
                 name: 'Tokyo',
@@ -8810,7 +8901,7 @@ function buildPassingFixture(
       response: {
         status: 201,
         body: {
-          id: 'synthetic-deprecated-project-id',
+          id: 'deprecated-provider-project-id',
           ref: environment.projectRef,
           organization_id: environment.organizationId,
           organization_slug: sourceProviderRedactedRequest.organizationSlug,
@@ -8832,7 +8923,7 @@ function buildPassingFixture(
       response: {
         status: 200,
         body: {
-          id: 'synthetic-deprecated-project-id',
+          id: environment.projectRef,
           ref: environment.projectRef,
           organization_id: environment.organizationId,
           organization_slug: sourceProviderRedactedRequest.organizationSlug,
@@ -8863,8 +8954,17 @@ function buildPassingFixture(
           selected_addons: [
             {
               type: 'compute_instance',
-              variant: 'ci_large',
-              status: 'active',
+              variant: {
+                id: 'ci_large',
+                name: 'Large',
+                price: {
+                  description: 'Large compute',
+                  type: 'fixed',
+                  interval: 'hourly',
+                  amount: 0.1517,
+                },
+                meta: null,
+              },
             },
           ],
           available_addons: [],
@@ -8897,7 +8997,7 @@ function buildPassingFixture(
         organizationSlug: sourceProviderRedactedRequest.organizationSlug,
         organizationPlan: 'PRO',
         actualDashboardQuoteUsd: 40,
-        observedAt: '1999-12-31T23:59:20.200Z',
+        observedAt: '1999-12-31T23:58:30Z',
         rawArtifact: binding(sourceOrganizationEntitlementRaw),
       },
       regionAvailabilityObservation: {
@@ -8939,8 +9039,7 @@ function buildPassingFixture(
         endpoint: `https://api.supabase.com/v1/projects/${environment.projectRef}/billing/addons`,
         httpStatus: 200,
         projectRef: environment.projectRef,
-        addonVariant: 'ci_large',
-        status: 'ACTIVE',
+        variantId: 'ci_large',
         observedAt: sourceProvisionedAt,
       },
       rawProviderArtifacts: [
@@ -9102,7 +9201,7 @@ function buildPassingFixture(
         databaseClockCaptured: false,
       },
       actionStartedAt: '1999-12-31T23:59:20Z',
-      organizationEntitlementObservedAt: '1999-12-31T23:59:20.200Z',
+      organizationEntitlementObservedAt: '1999-12-31T23:58:30Z',
       regionAvailabilityObservedAt: '1999-12-31T23:59:20.400Z',
       requestSentAt: '1999-12-31T23:59:21Z',
       createResponseReceivedAt: '1999-12-31T23:59:26Z',
@@ -13870,6 +13969,99 @@ describe('commercial PR-12 execution evidence verifier', () => {
         expect(result.status).toBe(1);
         expect(result.output).toMatch(
           /missing or unsupported fields|target does not match|PostgreSQL major must be 17/u
+        );
+      } finally {
+        fs.rmSync(directory, { recursive: true, force: true });
+      }
+    }
+  });
+
+  it('fail-closes schema v2 source provisioning until promotion is implemented', () => {
+    const directory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'pr12-provisioning-v2-promotion-verifier-')
+    );
+    try {
+      const { manifest } = buildPassingFixture(directory);
+      const source = requireRecord(manifest.source, 'source');
+      const { parsed: approval } = readBoundJson(
+        directory,
+        {
+          path: source.approvalPacketPath,
+          sha256: source.approvalPacketSha256,
+        },
+        'source approval'
+      );
+      const provisioningBinding = requireRecord(
+        approval.sourceProjectProvisioningApproval,
+        'source provisioning binding'
+      );
+      const { relativePath, parsed: provisioning } = readBoundJson(
+        directory,
+        provisioningBinding,
+        'source provisioning approval'
+      );
+      provisioning.schemaVersion = 2;
+      provisioningBinding.sha256 = rewriteJsonArtifact(
+        directory,
+        manifest,
+        relativePath,
+        provisioning
+      );
+      rewriteSourceApproval(directory, manifest, approval);
+      const result = runVerifier(
+        writeManifest(directory, 'manifest-v2-promotion.json', manifest)
+      );
+      expect(result.status).toBe(1);
+      expect(result.output).toContain(
+        'SOURCE_PROVISIONING_V2_PROMOTION_NOT_IMPLEMENTED'
+      );
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects legacy source-provider raw region and addon nested schema drift', () => {
+    for (const mutation of ['region-smart-group', 'addon-price'] as const) {
+      const directory = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'pr12-provider-nested-schema-verifier-')
+      );
+      try {
+        const { manifest } = buildPassingFixture(directory);
+        mutateLegacySourceProvisioningProviderRaw(
+          directory,
+          manifest,
+          mutation === 'region-smart-group' ? 1 : 4,
+          rawArtifact => {
+            const response = requireRecord(
+              rawArtifact.response,
+              'raw provider response'
+            );
+            const body = requireRecord(response.body, 'raw provider body');
+            if (mutation === 'region-smart-group') {
+              const recommendations = requireRecord(
+                body.recommendations,
+                'raw region recommendations'
+              );
+              recommendations.smartGroup = {};
+            } else {
+              const selectedAddons = requireArray(
+                body.selected_addons,
+                'raw selected addons'
+              );
+              const addon = requireRecord(selectedAddons[0], 'raw addon');
+              const variant = requireRecord(addon.variant, 'raw addon variant');
+              variant.price = null;
+            }
+          }
+        );
+        const result = runVerifier(
+          writeManifest(directory, `manifest-${mutation}.json`, manifest)
+        );
+        expect(result.status).toBe(1);
+        expect(result.output).toMatch(
+          mutation === 'region-smart-group'
+            ? /smartGroup.*missing|smartGroup.*unsupported|smartGroup.*documented/u
+            : /variant\.price/u
         );
       } finally {
         fs.rmSync(directory, { recursive: true, force: true });

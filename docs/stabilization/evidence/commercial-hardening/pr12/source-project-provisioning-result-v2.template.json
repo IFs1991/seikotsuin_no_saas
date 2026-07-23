@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 2,
+  "phase": "SOURCE_PROJECT_PROVISIONING_RESULT",
+  "resultType": "SOURCE_PROJECT_PROVISIONING_OPERATION",
+  "status": "NOT_RUN",
+  "actionId": "PR12-ACTION-003",
+  "gitCommit": "NOT_CAPTURED",
+  "bindingMaterialSha256": "NOT_CAPTURED",
+  "payloadSha256": "NOT_CAPTURED",
+  "operator": "UNASSIGNED",
+  "approver": "UNASSIGNED",
+  "actionStartedAt": "NOT_CAPTURED",
+  "actionCompletedAt": null,
+  "remoteContactCount": 0,
+  "createPostAttemptCount": 0,
+  "automaticRetryCount": 0,
+  "duplicateState": "NOT_CHECKED",
+  "partialFailureState": null,
+  "readOnlyReconciliation": null,
+  "recoveryOwner": "UNASSIGNED",
+  "cleanupDeletionAuthorized": false,
+  "databaseConnectionPerformed": false,
+  "phase2AndLaterAuthorized": false,
+  "createdEnvironment": null,
+  "providerEvidence": null,
+  "quoteAndFunding": {
+    "currency": "USD",
+    "actualDashboardQuoteUsd": "NOT_CAPTURED",
+    "quoteObservedAt": "NOT_CAPTURED",
+    "quoteValidThrough": "NOT_CAPTURED",
+    "sourceMaximumBillableHours": 72,
+    "sourceMaximumComputeUsd": 10.9224,
+    "fundingApprovedAmountUsd": "NOT_CAPTURED",
+    "fundingCeilingUsd": 50,
+    "fundedThrough": "NOT_CAPTURED"
+  },
+  "approvalWindow": {
+    "approvedAt": "NOT_CAPTURED",
+    "expiresAt": "NOT_CAPTURED",
+    "approvalEvidenceSha256": "NOT_CAPTURED"
+  },
+  "cleanupBoundary": {
+    "disposition": "DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION",
+    "cleanupOwner": "UNASSIGNED",
+    "deletionApprovalRequester": "UNASSIGNED",
+    "deletionApprovalRequestDeadline": "NOT_CAPTURED",
+    "billingEscalationOwner": "UNASSIGNED",
+    "fundedExtensionOwner": "UNASSIGNED",
+    "automaticDeletionAuthorized": false
+  },
+  "journalEvidence": {
+    "actionJournalDirectoryPathSha256": "NOT_CAPTURED",
+    "claimSha256": "NOT_CAPTURED",
+    "postIntentSha256": null
+  }
+}

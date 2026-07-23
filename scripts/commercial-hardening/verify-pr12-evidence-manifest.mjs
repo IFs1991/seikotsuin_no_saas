@@ -1594,6 +1594,146 @@ function canonicalizeJson(value) {
   );
 }
 
+function validateSupabaseSmartGroup(value, context) {
+  const smartGroup = requireRecord(value, context);
+  assertExactRecordKeys(smartGroup, ['name', 'code', 'type'], context);
+  assert(
+    typeof smartGroup.name === 'string' &&
+      ['americas', 'emea', 'apac'].includes(smartGroup.code) &&
+      smartGroup.type === 'smartGroup',
+    `${context} is not a documented Supabase smart group`
+  );
+}
+
+function validateSupabaseSpecificRegion(value, context) {
+  const region = requireRecord(value, context);
+  const keys = Object.keys(region).sort();
+  assert(
+    JSON.stringify(keys) ===
+      JSON.stringify(['code', 'name', 'provider', 'status', 'type']) ||
+      JSON.stringify(keys) ===
+        JSON.stringify(['code', 'name', 'provider', 'type']),
+    `${context} has unexpected region fields`
+  );
+  assert(
+    typeof region.name === 'string' &&
+      typeof region.code === 'string' &&
+      region.type === 'specific' &&
+      ['AWS', 'FLY', 'AWS_K8S', 'AWS_NIMBUS'].includes(region.provider) &&
+      (region.status === undefined ||
+        ['capacity', 'other'].includes(region.status)),
+    `${context} is not a documented Supabase specific region`
+  );
+  return region;
+}
+
+function validateSupabaseRegionAvailabilityBody(value, context) {
+  const body = requireRecord(value, context);
+  assertExactRecordKeys(body, ['recommendations', 'all'], context);
+  const recommendations = requireRecord(
+    body.recommendations,
+    `${context}.recommendations`
+  );
+  const all = requireRecord(body.all, `${context}.all`);
+  assertExactRecordKeys(
+    recommendations,
+    ['smartGroup', 'specific'],
+    `${context}.recommendations`
+  );
+  assertExactRecordKeys(all, ['smartGroup', 'specific'], `${context}.all`);
+  validateSupabaseSmartGroup(
+    recommendations.smartGroup,
+    `${context}.recommendations.smartGroup`
+  );
+  requireArray(all.smartGroup, `${context}.all.smartGroup`).forEach(
+    (entry, index) =>
+      validateSupabaseSmartGroup(
+        entry,
+        `${context}.all.smartGroup[${String(index)}]`
+      )
+  );
+  requireArray(
+    recommendations.specific,
+    `${context}.recommendations.specific`
+  ).forEach((entry, index) =>
+    validateSupabaseSpecificRegion(
+      entry,
+      `${context}.recommendations.specific[${String(index)}]`
+    )
+  );
+  return requireArray(all.specific, `${context}.all.specific`).map(
+    (entry, index) =>
+      validateSupabaseSpecificRegion(
+        entry,
+        `${context}.all.specific[${String(index)}]`
+      )
+  );
+}
+
+function validateSupabaseAddonVariant(value, context) {
+  const variant = requireRecord(value, context);
+  const keys = Object.keys(variant);
+  assert(
+    ['id', 'name', 'price'].every(key => keys.includes(key)) &&
+      keys.every(key => ['id', 'name', 'price', 'meta'].includes(key)),
+    `${context} has unexpected or missing addon variant fields`
+  );
+  const price = requireRecord(variant.price, `${context}.price`);
+  assertExactRecordKeys(
+    price,
+    ['description', 'type', 'interval', 'amount'],
+    `${context}.price`
+  );
+  assert(
+    typeof variant.id === 'string' &&
+      typeof variant.name === 'string' &&
+      typeof price.description === 'string' &&
+      ['fixed', 'usage'].includes(price.type) &&
+      ['monthly', 'hourly'].includes(price.interval) &&
+      typeof price.amount === 'number' &&
+      Number.isFinite(price.amount) &&
+      price.amount >= 0,
+    `${context} is not a documented Supabase addon variant`
+  );
+  if (Object.hasOwn(variant, 'meta')) canonicalizeJson(variant.meta);
+  return variant;
+}
+
+function validateSupabaseAddonResponseBody(value, context) {
+  const body = requireRecord(value, context);
+  assertExactRecordKeys(body, ['selected_addons', 'available_addons'], context);
+  const selected = requireArray(
+    body.selected_addons,
+    `${context}.selected_addons`
+  ).map((value, index) => {
+    const addonContext = `${context}.selected_addons[${String(index)}]`;
+    const addon = requireRecord(value, addonContext);
+    assertExactRecordKeys(addon, ['type', 'variant'], addonContext);
+    assert(typeof addon.type === 'string', `${addonContext}.type is invalid`);
+    validateSupabaseAddonVariant(addon.variant, `${addonContext}.variant`);
+    return addon;
+  });
+  requireArray(body.available_addons, `${context}.available_addons`).forEach(
+    (value, index) => {
+      const addonContext = `${context}.available_addons[${String(index)}]`;
+      const addon = requireRecord(value, addonContext);
+      assertExactRecordKeys(addon, ['type', 'name', 'variants'], addonContext);
+      assert(
+        typeof addon.type === 'string' && typeof addon.name === 'string',
+        `${addonContext} identity is invalid`
+      );
+      requireArray(addon.variants, `${addonContext}.variants`).forEach(
+        (variant, variantIndex) =>
+          validateSupabaseAddonVariant(
+            variant,
+            `${addonContext}.variants[${String(variantIndex)}]`
+          )
+      );
+    }
+  );
+  return selected;
+}
+
 function assertJsonEquivalent(actual, expected, context) {
   assert(
     JSON.stringify(canonicalizeJson(actual)) ===
@@ -8416,6 +8556,10 @@ function verifySourceProvisioningApproval(
     'sourceProjectProvisioningApproval'
   );
   assert(
+    provisioning.schemaVersion !== 2,
+    'SOURCE_PROVISIONING_V2_PROMOTION_NOT_IMPLEMENTED'
+  );
+  assert(
     provisioning.schemaVersion === 1 &&
       provisioning.phase === 'SOURCE_PROJECT_PROVISIONING' &&
       provisioning.status === 'APPROVED',
@@ -8675,8 +8819,7 @@ function verifySourceProvisioningApproval(
   );
   const provisionExpiresAt = requireIsoTimestamp(
     approval.expiresAt,
-    'sourceProjectProvisioningApproval.approval.expiresAt',
-    { future: true }
+    'sourceProjectProvisioningApproval.approval.expiresAt'
   );
   verifyBoundArtifact(
     {
@@ -8732,8 +8875,7 @@ function verifySourceProvisioningApproval(
   );
   const fundedThrough = requireIsoTimestamp(
     retentionDecision.fundedThrough,
-    'sourceProjectProvisioningApproval.retentionAndCleanupDecision.fundedThrough',
-    { future: true }
+    'sourceProjectProvisioningApproval.retentionAndCleanupDecision.fundedThrough'
   );
   assert(
     Date.parse(fundedThrough) >=
@@ -9029,8 +9171,7 @@ function verifySourceProvisioningApproval(
       'endpoint',
       'httpStatus',
       'projectRef',
-      'addonVariant',
-      'status',
+      'variantId',
       'observedAt',
     ],
     'sourceProjectProvisioningResult.providerEvidence.computeObservation'
@@ -9041,7 +9182,9 @@ function verifySourceProvisioningApproval(
       createResponse.organizationSlug === organizationSlug &&
       createResponse.projectName === proposal.projectName &&
       createResponse.region === proposal.region &&
-      ['COMING_UP', 'ACTIVE_HEALTHY'].includes(createResponse.status) &&
+      ['INACTIVE', 'COMING_UP', 'ACTIVE_HEALTHY'].includes(
+        createResponse.status
+      ) &&
       projectObservation.httpMethod === 'GET' &&
       projectObservation.endpoint ===
         `https://api.supabase.com/v1/projects/${String(createResponse.projectRef)}` &&
@@ -9055,8 +9198,7 @@ function verifySourceProvisioningApproval(
         `https://api.supabase.com/v1/projects/${String(createResponse.projectRef)}/billing/addons` &&
       computeObservation.httpStatus === 200 &&
       computeObservation.projectRef === createResponse.projectRef &&
-      computeObservation.addonVariant === 'ci_large' &&
-      computeObservation.status === 'ACTIVE',
+      computeObservation.variantId === 'ci_large',
     'source project provider response, active project, or Large compute observation mismatch'
   );
   const rawProviderArtifacts = requireArray(
@@ -9112,25 +9254,46 @@ function verifySourceProvisioningApproval(
     rawCreateResponse,
     'sourceProjectProvisioningResult.providerEvidence.rawCreateResponse'
   );
+  assertExactRecordKeys(
+    rawCreate.body,
+    [
+      'id',
+      'ref',
+      'organization_id',
+      'organization_slug',
+      'name',
+      'region',
+      'created_at',
+      'status',
+    ],
+    'sourceProjectProvisioningResult.providerEvidence.rawCreateResponse.response.body'
+  );
   const rawProject = requireProviderHttpEnvelope(
     rawProjectObservation,
     'sourceProjectProvisioningResult.providerEvidence.rawProjectObservation'
+  );
+  assertExactRecordKeys(
+    rawProject.body,
+    [
+      'id',
+      'ref',
+      'organization_id',
+      'organization_slug',
+      'name',
+      'region',
+      'created_at',
+      'status',
+      'database',
+    ],
+    'sourceProjectProvisioningResult.providerEvidence.rawProjectObservation.response.body'
   );
   const rawCompute = requireProviderHttpEnvelope(
     rawComputeObservation,
     'sourceProjectProvisioningResult.providerEvidence.rawComputeObservation'
   );
-  const rawRegionRows = requireArray(
-    requireRecord(
-      rawRegion.body.all,
-      'sourceProjectProvisioningResult.providerEvidence.rawRegionAvailability.response.body.all'
-    ).specific,
-    'sourceProjectProvisioningResult.providerEvidence.rawRegionAvailability.response.body.all.specific'
-  ).map((value, index) =>
-    requireRecord(
-      value,
-      `sourceProjectProvisioningResult.providerEvidence.rawRegionAvailability.response.body.all.specific[${String(index)}]`
-    )
+  const rawRegionRows = validateSupabaseRegionAvailabilityBody(
+    rawRegion.body,
+    'sourceProjectProvisioningResult.providerEvidence.rawRegionAvailability.response.body'
   );
   assert(
     rawRegion.request.method === regionAvailability.httpMethod &&
@@ -9154,6 +9317,8 @@ function verifySourceProvisioningApproval(
       rawCreate.request.redactedBodySha256 ===
         providerRequest.redactedRequestSha256 &&
       rawCreate.response.status === createResponse.httpStatus &&
+      typeof rawCreate.body.id === 'string' &&
+      rawCreate.body.id.length > 0 &&
       rawCreate.body.ref === createResponse.projectRef &&
       rawCreate.body.organization_id === createResponse.organizationId &&
       rawCreate.body.organization_slug === createResponse.organizationSlug &&
@@ -9166,6 +9331,11 @@ function verifySourceProvisioningApproval(
   );
   const rawProjectDatabase = requireRecord(
     rawProject.body.database,
+    'sourceProjectProvisioningResult.providerEvidence.rawProjectObservation.response.body.database'
+  );
+  assertExactRecordKeys(
+    rawProjectDatabase,
+    ['host', 'version', 'postgres_engine', 'release_channel'],
     'sourceProjectProvisioningResult.providerEvidence.rawProjectObservation.response.body.database'
   );
   assert(
@@ -9181,14 +9351,9 @@ function verifySourceProvisioningApproval(
       rawProject.envelope.observedAt === projectObservation.observedAt,
     'sourceProjectProvisioningResult provider project normalization does not derive from the exact raw response envelope'
   );
-  const selectedAddons = requireArray(
-    rawCompute.body.selected_addons,
-    'sourceProjectProvisioningResult.providerEvidence.rawComputeObservation.response.body.selected_addons'
-  ).map((value, index) =>
-    requireRecord(
-      value,
-      `sourceProjectProvisioningResult.providerEvidence.rawComputeObservation.response.body.selected_addons[${String(index)}]`
-    )
+  const selectedAddons = validateSupabaseAddonResponseBody(
+    rawCompute.body,
+    'sourceProjectProvisioningResult.providerEvidence.rawComputeObservation.response.body'
   );
   assert(
     rawCompute.request.method === computeObservation.httpMethod &&
@@ -9197,8 +9362,11 @@ function verifySourceProvisioningApproval(
       rawCompute.envelope.observedAt === computeObservation.observedAt &&
       selectedAddons.some(
         addon =>
-          addon.variant === computeObservation.addonVariant &&
-          String(addon.status).toUpperCase() === computeObservation.status
+          addon.type === 'compute_instance' &&
+          requireRecord(
+            addon.variant,
+            'sourceProjectProvisioningResult.providerEvidence.rawComputeObservation.response.body.selectedAddon.variant'
+          ).id === computeObservation.variantId
       ),
     'sourceProjectProvisioningResult provider compute normalization does not derive the selected ci_large addon from the exact raw response envelope'
   );
@@ -9233,7 +9401,7 @@ function verifySourceProvisioningApproval(
       createdEnvironment.projectUrl ===
         `https://${String(createdEnvironment.projectRef)}.supabase.co` &&
       createdEnvironment.databaseTier === 'LARGE' &&
-      computeObservation.addonVariant === 'ci_large',
+      computeObservation.variantId === 'ci_large',
     'source project provider export does not corroborate the created environment and Large compute tier'
   );
   assert(
@@ -9320,12 +9488,11 @@ function verifySourceProvisioningApproval(
   const providerClockSkewMs =
     provisioningAction.providerCreatedAtMaximumClockSkewSeconds * 1000;
   assert(
-    Date.parse(provisionApprovedAt) <= Date.parse(actionStartedAt) &&
-      Date.parse(actionStartedAt) <=
-        Date.parse(organizationEntitlementObservedAt) &&
+    Date.parse(organizationEntitlementObservedAt) <=
+      Date.parse(provisionApprovedAt) &&
       organizationEntitlementObservedAt === providerEntitlementObservedAt &&
-      Date.parse(organizationEntitlementObservedAt) <=
-        Date.parse(regionAvailabilityObservedAt) &&
+      Date.parse(provisionApprovedAt) <= Date.parse(actionStartedAt) &&
+      Date.parse(actionStartedAt) <= Date.parse(regionAvailabilityObservedAt) &&
       regionAvailabilityObservedAt === providerRegionObservedAt &&
       Date.parse(regionAvailabilityObservedAt) <= Date.parse(requestSentAt) &&
       Date.parse(requestSentAt) <= Date.parse(createResponseReceivedAt) &&
@@ -17528,17 +17695,13 @@ function verifyBackupRestoreBound(
     providerComputeRaw.response,
     'restore.providerEvidence.computeObservation.rawArtifact.response'
   );
-  const selectedAddons = requireArray(
-    requireRecord(
-      providerComputeRawResponse.body,
-      'restore.providerEvidence.computeObservation.rawArtifact.response.body'
-    ).selected_addons,
-    'restore.providerEvidence.computeObservation.rawArtifact.response.body.selected_addons'
-  ).map((value, index) =>
-    requireRecord(
-      value,
-      `restore.providerEvidence.computeObservation.selectedAddons[${String(index)}]`
-    )
+  const providerComputeRawBody = requireRecord(
+    providerComputeRawResponse.body,
+    'restore.providerEvidence.computeObservation.rawArtifact.response.body'
+  );
+  const selectedAddons = validateSupabaseAddonResponseBody(
+    providerComputeRawBody,
+    'restore.providerEvidence.computeObservation.rawArtifact.response.body'
   );
   const providerComputeObservedAt = requireIsoTimestamp(
     providerCompute.observedAt,
@@ -17550,16 +17713,18 @@ function verifyBackupRestoreBound(
         `https://api.supabase.com/v1/projects/${String(providerProject.projectRef)}/billing/addons` &&
       providerCompute.httpStatus === 200 &&
       providerCompute.projectRef === providerProject.projectRef &&
-      providerCompute.addonVariant === 'ci_large' &&
-      providerCompute.status === 'ACTIVE' &&
+      providerCompute.variantId === 'ci_large' &&
       providerComputeRaw.request.method === providerCompute.httpMethod &&
       providerComputeRaw.request.url === providerCompute.endpoint &&
       providerComputeRawResponse.status === providerCompute.httpStatus &&
       providerComputeRaw.observedAt === providerComputeObservedAt &&
       selectedAddons.some(
         addon =>
-          addon.variant === providerCompute.addonVariant &&
-          addon.status === providerCompute.status
+          addon.type === 'compute_instance' &&
+          requireRecord(
+            addon.variant,
+            'restore.providerEvidence.computeObservation.selectedAddon.variant'
+          ).id === providerCompute.variantId
       ),
     'restore provider Large compute observation lacks raw provenance'
   );
@@ -17607,7 +17772,7 @@ function verifyBackupRestoreBound(
       restoreMirroredConfigurationVerification.configuration.region ===
         providerProject.region &&
       restoreMirroredConfigurationVerification.configuration
-        .computeAddonVariant === providerCompute.addonVariant &&
+        .computeAddonVariant === providerCompute.variantId &&
       [
         'region',
         'compute',

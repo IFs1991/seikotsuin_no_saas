@@ -52,8 +52,7 @@
     "endpoint": "NOT_CAPTURED",
     "httpStatus": "NOT_CAPTURED",
     "projectRef": "NOT_CAPTURED",
-    "addonVariant": "ci_large",
-    "status": "NOT_CAPTURED",
+    "variantId": "ci_large",
     "observedAt": "NOT_CAPTURED",
     "rawArtifact": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
   },

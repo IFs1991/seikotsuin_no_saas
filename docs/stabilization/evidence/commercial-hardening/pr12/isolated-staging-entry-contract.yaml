@@ -88,7 +88,7 @@ integration_and_credential_contract:
   owner_approved: false
 command_ledger:
   path: staging-command-ledger.proposed.json
-  sha256: b89f0cc0dfe629c0bfb538594159e2b4f0b0269553d484207ecc5677efef75f6
+  sha256: f044fdf55d16bcbdc24b83094bbccb5d21c91ec0214641f52f6c0651e795ea7c
   status: PROPOSED_NOT_EXECUTABLE
 stage_3_ordered_command_ids:
   - PR12-CMD-003
@@ -275,7 +275,7 @@ approval:
   approval_packet_sha256: NOT_CAPTURED
   machine_readable_binding_path: NOT_CAPTURED
   machine_readable_binding_sha256: NOT_CAPTURED
-  source_project_provisioning_binding_template: source-project-provisioning-binding.template.json
+  source_project_provisioning_binding_template: source-project-provisioning-binding-v2.template.json
   source_project_provisioning_binding_path: NOT_CAPTURED
   source_project_provisioning_binding_sha256: NOT_CAPTURED
   source_identity_bootstrap_binding_template: source-identity-bootstrap-binding.template.json

@@ -19,12 +19,36 @@ machine_readable_execution_binding:
   must_be_parsed_and_matched_by_execution_verifier: true
 authorization_phases:
   source_project_provisioning:
-    template: source-project-provisioning-binding.template.json
+    template: source-project-provisioning-binding-v2.template.json
+    phase_local_contract_version: 2
+    result_template: source-project-provisioning-result-v2.template.json
+    provider_safe_projection_template: source-project-provider-safe-projection-v2.template.json
+    credential_configuration_template: source-project-provisioning-credential-configuration.template.json
+    owner_approval_template: source-project-provisioning-owner-approval.template.json
+    dashboard_quote_template: source-project-dashboard-quote.template.json
+    action_journal_template: source-project-provisioning-action-journal.template.json
+    evidence_manifest_template: source-project-provisioning-evidence-manifest.template.json
     action_id: PR12-ACTION-003
     method: OWNER_MANAGEMENT_API_CREATE_PROJECT
     http_method: POST
     endpoint: https://api.supabase.com/v1/projects
-    maximum_execution_count: 1
+    maximum_post_attempt_count: 1
+    provider_idempotency_key_documented: false
+    local_guarantee: AT_MOST_ONE_POST_ATTEMPT_NO_AUTOMATIC_RETRY
+    durable_pre_post_state: POST_INTENT_DURABLE
+    post_intent_permanently_consumes_action_identity: true
+    reconciliation_only_mode: --reconcile-dispatched-action
+    recovery_mode_has_post_path: false
+    duplicate_preflight: ALL_ORGANIZATION_PROJECT_PAGES_EXACT_FIXED_NAME
+    unknown_remote_outcome: STOP_READ_ONLY_RECONCILIATION_OWNER_DECISION
+    evidence_seal_order: PARTIAL_FLUSH_VERIFY_ATOMIC_RENAME_THEN_TERMINAL
+    automatic_reseal_allowed: false
+    commercial_manifest_promotion:
+      status: NOT_IMPLEMENTED
+      legacy_contract_version: 1
+      raw_provider_body_persistence_allowed: false
+      phase1_local_pass_implies_comm_pass: false
+      blocker: SOURCE_PROVISIONING_V2_PROMOTION_NOT_IMPLEMENTED
     approved_binding_path: NOT_CAPTURED
     approved_binding_sha256: NOT_CAPTURED
     authorized: false
@@ -86,8 +110,12 @@ decision:
   commercial_release_authorized: false
   index_retirement_authorized: false
 official_platform_source_review:
-  verified_at: '2026-07-20'
+  verified_at: '2026-07-23'
   authority: SUPABASE_PRIMARY_DOCUMENTATION_AND_CHANGELOG_ONLY
+  management_api_openapi: https://api.supabase.com/api/v1-json
+  management_api_reference: https://supabase.com/docs/reference/api/getting-started
+  management_api_project_addons: https://supabase.com/docs/reference/api/v1-list-project-addons
+  available_regions: https://supabase.com/docs/guides/platform/regions
   data_api_custom_schemas: https://supabase.com/docs/guides/api/using-custom-schemas
   automatic_exposure_change: https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically
   pg_graphql_enablement_change: https://supabase.com/changelog/42180-breaking-change-pg-graphql-no-longer-enabled-automatically-within-approx-3-weeks
@@ -104,6 +132,10 @@ official_platform_source_review:
     - pg_graphql and introspection are disabled proposals whose actual installed/enabled states must be captured
     - restore-to-new-project is paid-plan database-centered and requires post-restore reconfiguration/side-effect review
     - Large is 2-core ARM dedicated, 8 GB, USD 0.1517 per project-hour before organization-specific credit
+    - create-project requires db_pass/name/organization_slug; organization_id, plan, and region are deprecated or ignored and are forbidden by the Phase 1 wrapper
+    - Pro is an existing organization entitlement and is not changed by the Phase 1 POST
+    - Data API, GraphQL, Auth, and integration posture cannot be configured or proven by the Phase 1 create-project POST
+    - the documented create-project endpoint exposes no idempotency key; Phase 1 permits at most one POST attempt and no blind retry
   actual_dashboard_state_and_quote_still_required: true
 environment:
   project_ref: NOT_CAPTURED
@@ -111,6 +143,11 @@ environment:
   project_name_state: PROPOSED_OWNER_APPROVAL_REQUIRED
   organization_plan: PRO
   organization_id: NOT_CAPTURED
+  organization_slug: NOT_CAPTURED
+  prohibited_organization_ids:
+    - NOT_CAPTURED
+  prohibited_organization_slugs:
+    - NOT_CAPTURED
   region: ap-northeast-1
   region_name: Northeast Asia (Tokyo)
   database_tier: LARGE
@@ -136,6 +173,7 @@ environment:
     database_tier: LARGE
     creation_method: Supabase Restore to a New Project
   provisioning_configuration_proposal:
+    phase_1_contract: OWNER_EXPECTATION_ONLY_NOT_OBSERVED_NO_CONFIGURATION_MUTATION
     data_api_enabled: true
     exposed_schemas:
       - public
@@ -746,9 +784,9 @@ cli:
     - gen_types
     - status
   command_ledger_path: staging-command-ledger.proposed.json
-  command_ledger_sha256: b89f0cc0dfe629c0bfb538594159e2b4f0b0269553d484207ecc5677efef75f6
+  command_ledger_sha256: f044fdf55d16bcbdc24b83094bbccb5d21c91ec0214641f52f6c0651e795ea7c
   exact_commands: PROPOSED_NOT_EXECUTABLE
-  exact_commands_blocker: Fail-closed binding/target guard, hosted credential and seed adapter, post-load row/hash and schema/type collectors, canonical PR11 and hosted SLO runners, security/Auth/tenant/Data API/GraphQL/COMM claim/COMM-BILL matrices, Advisor diff, backup metadata/watermark, post-restore, side-effect, and privacy collectors remain NOT_IMPLEMENTED.
+  exact_commands_blocker: Phase 1 now has a local fail-closed binding guard, at-most-one-POST wrapper/collector, action journal, and phase-local privacy/evidence sealing, but its owner inputs remain unresolved and it was not executed. Phase 2+ target guards, hosted credential/seed adapter, post-load row/hash and schema/type collectors, canonical PR11 and hosted SLO runners, security/Auth/tenant/Data API/GraphQL/COMM claim/COMM-BILL matrices, Advisor diff, backup metadata/watermark, post-restore, side-effect, and full-qualification privacy collectors remain NOT_IMPLEMENTED.
   executable_command_metadata_required:
     - id
     - redactedCommand
@@ -813,7 +851,7 @@ cli:
 expected_side_effects:
   status: PROPOSED_OWNER_APPROVAL_REQUIRED
   potential:
-    - one new isolated billable Supabase source project with Pro plan, Large compute, and initial provider-managed database/project state via PR12-ACTION-003
+    - one new isolated billable Supabase source project in an exact existing Pro organization, with Large compute and initial provider-managed database/project state via PR12-ACTION-003; no plan purchase or change is included
     - isolated project link metadata
     - migration history and schema writes
     - synthetic or anonymized fixture writes
@@ -844,6 +882,7 @@ time_and_cost:
   billing_extension_after_source_72h_or_restore_24h_requires_separate_funded_approval: true
 owners:
   commercial_release_owner: UNASSIGNED
+  provisioning_operator: UNASSIGNED
   supabase_platform_owner: UNASSIGNED
   database_migration_operator: UNASSIGNED
   disaster_recovery_operator: UNASSIGNED
@@ -903,6 +942,11 @@ approval_checklist:
   data_api_acl_catalog_and_exact_cross_product: NOT_CAPTURED_COLLECTORS_NOT_IMPLEMENTED
   machine_readable_execution_binding: NOT_CAPTURED
   source_project_provisioning_binding: NOT_CAPTURED
+  source_project_provisioning_credential_configuration: NOT_CAPTURED
+  source_project_provisioning_owner_approval: NOT_CAPTURED
+  source_project_dashboard_quote: NOT_CAPTURED
+  source_project_provisioning_action_journal_directory: NOT_CAPTURED
+  source_project_provisioning_evidence_parent: NOT_CAPTURED
   source_identity_bootstrap_binding: NOT_CAPTURED
   source_identity_bootstrap_result: NOT_CAPTURED
   source_replay_catalog_capture_binding: NOT_CAPTURED

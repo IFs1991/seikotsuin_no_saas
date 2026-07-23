@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 2,
+  "exportType": "SUPABASE_SOURCE_PROJECT_PROVIDER_SAFE_PROJECTION",
+  "status": "NOT_RUN",
+  "actionId": "PR12-ACTION-003",
+  "request": {
+    "endpoint": "https://api.supabase.com/v1/projects",
+    "httpMethod": "POST",
+    "secretFreeProjection": {
+      "db_pass": "RUNTIME_SECRET_NOT_IN_EVIDENCE",
+      "desired_instance_size": "large",
+      "name": "seikotsuin-pr12-isolated-qualification-20260719",
+      "organization_slug": "NOT_CAPTURED",
+      "region_selection": {
+        "code": "ap-northeast-1",
+        "type": "specific"
+      }
+    },
+    "secretFreeProjectionSha256": "NOT_CAPTURED",
+    "rawWireBodyPersisted": false,
+    "rawHttpHeadersPersisted": false
+  },
+  "preflight": {
+    "organization": {
+      "organizationId": "NOT_CAPTURED",
+      "organizationSlug": "NOT_CAPTURED",
+      "plan": "NOT_CAPTURED"
+    },
+    "organizationResponseBodySha256": "NOT_CAPTURED",
+    "region": {
+      "regionCode": "ap-northeast-1",
+      "selectionType": "specific",
+      "provider": "NOT_CAPTURED",
+      "capacityStatus": "NOT_CAPTURED"
+    },
+    "regionResponseBodySha256": "NOT_CAPTURED",
+    "projectListPages": [],
+    "projectCount": "NOT_CAPTURED",
+    "duplicateMatchCount": "NOT_CAPTURED",
+    "observedAt": "NOT_CAPTURED"
+  },
+  "createResponse": {
+    "httpStatus": "NOT_CAPTURED",
+    "safeProjection": {
+      "projectRef": "NOT_CAPTURED",
+      "organizationId": "NOT_CAPTURED",
+      "organizationSlug": "NOT_CAPTURED",
+      "projectName": "seikotsuin-pr12-isolated-qualification-20260719",
+      "region": "ap-northeast-1",
+      "createdAt": "NOT_CAPTURED",
+      "status": "NOT_CAPTURED"
+    },
+    "responseBodySha256": "NOT_CAPTURED"
+  },
+  "readinessObservation": {
+    "project": {
+      "projectRef": "NOT_CAPTURED",
+      "projectName": "seikotsuin-pr12-isolated-qualification-20260719",
+      "region": "ap-northeast-1",
+      "isBranch": false,
+      "status": "NOT_CAPTURED",
+      "insertedAt": "NOT_CAPTURED"
+    },
+    "pollCount": 0,
+    "polls": [],
+    "finalStatus": "NOT_CAPTURED"
+  },
+  "computeObservation": {
+    "projectRef": "NOT_CAPTURED",
+    "addonType": "compute_instance",
+    "variantId": "ci_large",
+    "responseBodySha256": "NOT_CAPTURED",
+    "httpStatus": "NOT_CAPTURED",
+    "observedAt": "NOT_CAPTURED"
+  },
+  "reconciliation": null,
+  "rawProviderBodiesPersisted": false,
+  "capturedAt": "NOT_CAPTURED",
+  "capturedBy": "UNASSIGNED"
+}

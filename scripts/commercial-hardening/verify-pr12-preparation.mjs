@@ -88,6 +88,7 @@ const RESTORE_PARENT_ENVIRONMENT_NAMES = [
 
 const REQUIRED_ARTIFACTS = [
   'docs/stabilization/spec-commercial-pr12-isolated-release-qualification-v1.0.md',
+  'docs/stabilization/spec-commercial-pr12-phase1-source-project-provisioning-approval-preparation-v1.0.md',
   'docs/stabilization/pr12-staging-execution-owner-approval-packet-v0.2-20260719.md',
   'docs/operations/commercial-pr12-isolated-staging-dr-runbook-v1.0.md',
   'docs/releases/current-gate-status.yaml',
@@ -100,9 +101,15 @@ const REQUIRED_ARTIFACTS = [
   'docs/stabilization/evidence/commercial-hardening/pr12/qualification-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-binding.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-export.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-dashboard-quote.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-action-journal.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-evidence-manifest.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-privacy-scan.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-identity-bootstrap-binding.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-identity-bootstrap-result.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-platform-configuration-raw-evidence.template.json',
@@ -134,8 +141,12 @@ const REQUIRED_ARTIFACTS = [
   'docs/stabilization/evidence/commercial-hardening/pr12/data-api-acl-inventory.proposed.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/comm-gate-evidence-map-v1.json',
   'scripts/commercial-hardening/scan-pr12-evidence.mjs',
+  'scripts/commercial-hardening/pr12-source-project-provisioning-contract.mjs',
+  'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs',
+  'scripts/commercial-hardening/verify-pr12-source-project-provisioning-evidence.mjs',
   'scripts/commercial-hardening/verify-pr12-evidence-manifest.mjs',
   'src/__tests__/security/commercial-pr12-qualification-preparation-contract.test.ts',
+  'src/__tests__/security/commercial-pr12-source-project-provisioning-contract.test.ts',
   'src/__tests__/security/commercial-pr12-evidence-verifier.test.ts',
 ];
 
@@ -1584,7 +1595,10 @@ function verifyProposalContracts() {
   assert(
     ledger.status === 'PROPOSED_NOT_EXECUTABLE' &&
       ledger.executionAuthorized === false &&
-      targetGuard.status === 'NOT_IMPLEMENTED' &&
+      targetGuard.status ===
+        'PHASE1_IMPLEMENTED_LATER_PHASES_NOT_IMPLEMENTED' &&
+      targetGuard.phase1ImplementationPath ===
+        'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs' &&
       targetGuard.requiredForEveryRemoteCommand === true &&
       JSON.stringify(targetGuard.prohibitedProjectRefs) ===
         JSON.stringify(['qnanuoqveidwvacvbhqp']),
@@ -1668,7 +1682,31 @@ function verifyProposalContracts() {
   }
 
   const provisioning = readJson(
-    `${prefix}source-project-provisioning-binding.template.json`
+    `${prefix}source-project-provisioning-binding-v2.template.json`
+  );
+  const provisioningCredential = readJson(
+    `${prefix}source-project-provisioning-credential-configuration.template.json`
+  );
+  const provisioningOwnerApproval = readJson(
+    `${prefix}source-project-provisioning-owner-approval.template.json`
+  );
+  const provisioningQuote = readJson(
+    `${prefix}source-project-dashboard-quote.template.json`
+  );
+  const provisioningJournal = readJson(
+    `${prefix}source-project-provisioning-action-journal.template.json`
+  );
+  const provisioningResult = readJson(
+    `${prefix}source-project-provisioning-result-v2.template.json`
+  );
+  const provisioningProviderExport = readJson(
+    `${prefix}source-project-provider-safe-projection-v2.template.json`
+  );
+  const provisioningEvidenceManifest = readJson(
+    `${prefix}source-project-provisioning-evidence-manifest.template.json`
+  );
+  const provisioningPrivacyScan = readJson(
+    `${prefix}source-project-provisioning-privacy-scan.template.json`
   );
   const sourceReplay = readJson(
     `${prefix}source-replay-catalog-capture-binding.template.json`
@@ -1693,7 +1731,6 @@ function verifyProposalContracts() {
   );
   for (const [context, governanceProposal] of [
     ['source execution', binding.governanceProposal],
-    ['source provisioning', provisioning.governanceProposal],
     ['source identity bootstrap', sourceBootstrap.governanceProposal],
     ['source replay/catalog capture', sourceReplay.governanceProposal],
   ]) {
@@ -1703,6 +1740,12 @@ function verifyProposalContracts() {
       `${context} governance proposal hash drift`
     );
   }
+  assert(
+    provisioning.governanceProposal.path ===
+      'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml' &&
+      provisioning.governanceProposal.sha256 === 'NOT_CAPTURED',
+    'source provisioning final governance hash must remain an approval blocker'
+  );
   const requiredOwnerFields = [
     'commercialReleaseOwner',
     'supabasePlatformOwner',
@@ -1717,7 +1760,6 @@ function verifyProposalContracts() {
     'evidenceCustodian',
   ];
   for (const [context, owners] of [
-    ['source provisioning', provisioning.owners],
     ['source identity bootstrap', sourceBootstrap.owners],
     ['source replay/catalog capture', sourceReplay.owners],
     ['source execution', binding.owners],
@@ -1731,6 +1773,11 @@ function verifyProposalContracts() {
       `${context} owner inventory drift`
     );
   }
+  assert(
+    JSON.stringify(Object.keys(provisioning.owners).sort()) ===
+      JSON.stringify([...requiredOwnerFields, 'provisioningOperator'].sort()),
+    'source provisioning phase-local owner inventory drift'
+  );
   const sourceAuthorization = requireRecord(
     provisioning.authorization,
     'provisioning.authorization'
@@ -1739,13 +1786,9 @@ function verifyProposalContracts() {
     provisioning.environmentProposal,
     'provisioning.environmentProposal'
   );
-  const provisionDataApi = requireRecord(
-    provisionEnvironment.dataApi,
-    'provisioning.environmentProposal.dataApi'
-  );
-  const provisionAuth = requireRecord(
-    provisionEnvironment.auth,
-    'provisioning.environmentProposal.auth'
+  const initialPlatformPosture = requireRecord(
+    provisioning.initialPlatformPosture,
+    'provisioning.initialPlatformPosture'
   );
   const provisioningAction = requireRecord(
     provisioning.provisioningAction,
@@ -1757,9 +1800,25 @@ function verifyProposalContracts() {
       ledgerSourceProjectAction.httpMethod === provisioningAction.httpMethod &&
       ledgerSourceProjectAction.endpoint === provisioningAction.endpoint &&
       ledgerSourceProjectAction.name === provisionEnvironment.projectName &&
-      ledgerSourceProjectAction.plan === 'pro' &&
-      ledgerSourceProjectAction.region === provisionEnvironment.region &&
-      ledgerSourceProjectAction.compute === 'large' &&
+      ledgerSourceProjectAction.existingOrganizationPlanRequired === 'PRO' &&
+      ledgerSourceProjectAction.organizationPlanChangeIncluded === false &&
+      ledgerSourceProjectAction.regionSelection.code ===
+        provisionEnvironment.region &&
+      ledgerSourceProjectAction.desiredInstanceSize === 'large' &&
+      ledgerSourceProjectAction.maximumPostAttempts === 1 &&
+      ledgerSourceProjectAction.automaticPostRetryAllowed === false &&
+      ledgerSourceProjectAction.providerIdempotencyKeyDocumented === false &&
+      ledgerSourceProjectAction.durablePrePostState === 'POST_INTENT_DURABLE' &&
+      ledgerSourceProjectAction.postIntentPermanentlyConsumesActionIdentity ===
+        true &&
+      ledgerSourceProjectAction.recoveryModeHasPostPath === false &&
+      ledgerSourceProjectAction.evidenceSealOrder ===
+        'PARTIAL_FLUSH_VERIFY_ATOMIC_RENAME_THEN_TERMINAL' &&
+      ledgerSourceProjectAction.automaticResealAllowed === false &&
+      ledgerSourceProjectAction.commercialManifestPromotion ===
+        'NOT_IMPLEMENTED' &&
+      ledgerSourceProjectAction.wrapperImplemented === true &&
+      ledgerSourceProjectAction.wrapperExecuted === false &&
       ledgerSourceProjectAction.authorizedNow === false &&
       ledgerSourceProjectAction.requiresSeparateProvisioningBinding === true &&
       normalizedApproval.includes(
@@ -1774,21 +1833,216 @@ function verifyProposalContracts() {
       normalizedApproval.includes(
         `    endpoint: ${String(provisioningAction.endpoint)}`
       ) &&
-      normalizedApproval.includes('    maximum_execution_count: 1'),
+      normalizedApproval.includes('    maximum_post_attempt_count: 1') &&
+      normalizedApproval.includes(
+        '    local_guarantee: AT_MOST_ONE_POST_ATTEMPT_NO_AUTOMATIC_RETRY'
+      ) &&
+      normalizedApproval.includes(
+        '    durable_pre_post_state: POST_INTENT_DURABLE'
+      ) &&
+      normalizedApproval.includes(
+        '    post_intent_permanently_consumes_action_identity: true'
+      ) &&
+      normalizedApproval.includes('    recovery_mode_has_post_path: false') &&
+      normalizedApproval.includes(
+        '    evidence_seal_order: PARTIAL_FLUSH_VERIFY_ATOMIC_RENAME_THEN_TERMINAL'
+      ) &&
+      normalizedApproval.includes('    automatic_reseal_allowed: false'),
     'source project provisioning action is not cross-bound across packet, ledger, and binding'
   );
   assert(
     sourceAuthorization.sourceProjectProvisioningAuthorized === false &&
       sourceAuthorization.isolatedStagingConnectionAuthorized === false &&
       sourceAuthorization.isolatedStagingExecutionAuthorized === false &&
-      provisionDataApi.enabled === true &&
-      provisionDataApi.automaticallyExposeNewTablesAndFunctions === false &&
-      provisionEnvironment.postgresMajor === 17 &&
-      provisionAuth.anonymousSignInEnabled === false &&
-      provisionAuth.realEmailSmsOrOAuthDeliveryConfigured === false &&
-      provisionAuth.hostedFixturePasswords ===
-        'owner_secret_store_generated_ephemeral_minimum_32_characters',
+      provisioning.status === 'NOT_RUN' &&
+      provisioning.schemaVersion === 2 &&
+      provisionEnvironment.organizationId === 'NOT_CAPTURED' &&
+      provisionEnvironment.organizationSlug === 'NOT_CAPTURED' &&
+      JSON.stringify(provisionEnvironment.prohibitedOrganizationIds) ===
+        JSON.stringify(['NOT_CAPTURED']) &&
+      JSON.stringify(provisionEnvironment.prohibitedOrganizationSlugs) ===
+        JSON.stringify(['NOT_CAPTURED']) &&
+      initialPlatformPosture.mutationsIncludedInPhase1 === false &&
+      initialPlatformPosture.phase2ReadOnlyObservationRequired === true &&
+      provisioning.approvedRequest.projection.db_pass ===
+        'RUNTIME_SECRET_NOT_IN_EVIDENCE' &&
+      provisioning.approvedRequest.projection.desired_instance_size ===
+        'large' &&
+      provisioning.approvedRequest.sha256 === 'NOT_CAPTURED' &&
+      provisioning.duplicateAndFailurePolicy
+        .atomicLocalClaimRequiredBeforeCredentialRetrieval === true &&
+      provisioning.duplicateAndFailurePolicy
+        .durableFileFlushAndReadbackRequired === true &&
+      provisioning.duplicateAndFailurePolicy.postIntentDurableBeforeFetch ===
+        true &&
+      provisioning.duplicateAndFailurePolicy
+        .postIntentPermanentlyConsumesActionIdentity === true &&
+      provisioning.duplicateAndFailurePolicy.unknownRemoteOutcomeAction ===
+        'NO_RETRY_READ_ONLY_RECONCILIATION_AND_OWNER_DECISION' &&
+      provisioning.duplicateAndFailurePolicy.reconciliationOnlyMode ===
+        '--reconcile-dispatched-action' &&
+      provisioning.evidenceContract.rawProviderBodiesPersisted === false &&
+      provisioning.evidenceContract.rawHttpHeadersPersisted === false &&
+      provisioning.evidenceContract.atomicPartialThenRenameRequired === true &&
+      provisioning.evidenceContract
+        .evidenceSealBeforeTerminalOutcomeRequired === true &&
+      provisioning.evidenceContract.partialEvidenceAutomaticDeletionAllowed ===
+        false,
     'source provisioning phase boundary drift'
+  );
+  assert(
+    provisioningCredential.resultType ===
+      'SOURCE_PROJECT_PROVISIONING_CREDENTIAL_CONFIGURATION' &&
+      provisioningCredential.status === 'NOT_CAPTURED' &&
+      provisioningCredential.provider.ownerApproved === false &&
+      provisioningCredential.secrets.managementAccessToken
+        .environmentVariable === 'PR12_SUPABASE_ACCESS_TOKEN' &&
+      provisioningCredential.secrets.databasePassword.environmentVariable ===
+        'PR12_SOURCE_DB_PASSWORD' &&
+      provisioningCredential.secrets.databasePassword.minimumLength === 32 &&
+      provisioningCredential.processBoundary.genericOrAmbientFallbackAllowed ===
+        false &&
+      provisioningCredential.processBoundary.dotenvLoadingAllowed === false &&
+      provisioningCredential.processBoundary.cliLoginSessionFallbackAllowed ===
+        false &&
+      provisioningCredential.processBoundary.rawValueInArgvAllowed === false &&
+      provisioningCredential.processBoundary.rawValueInUrlAllowed === false &&
+      provisioningCredential.processBoundary.rawValueInStdoutOrStderrAllowed ===
+        false &&
+      provisioningCredential.processBoundary.rawValueInLogOrEvidenceAllowed ===
+        false,
+    'Phase 1 provisioning credential contract drift'
+  );
+  assert(
+    provisioningOwnerApproval.recordType ===
+      'PR12_SOURCE_PROJECT_PROVISIONING_OWNER_APPROVAL' &&
+      provisioningOwnerApproval.decision === 'NOT_CAPTURED' &&
+      provisioningOwnerApproval.actionId === 'PR12-ACTION-003' &&
+      provisioningOwnerApproval.phase2AndLaterAuthorized === false &&
+      provisioningOwnerApproval.cleanupDeletionAuthorized === false &&
+      provisioningQuote.recordType === 'PR12_SOURCE_PROJECT_DASHBOARD_QUOTE' &&
+      provisioningQuote.status === 'NOT_CAPTURED' &&
+      provisioningQuote.rawDashboardArtifactPersistedInRepository === false,
+    'Phase 1 owner approval or quote contract drift'
+  );
+  assert(
+    provisioningJournal.actionId === 'PR12-ACTION-003' &&
+      provisioningJournal.post.attemptCount === 0 &&
+      provisioningJournal.post.automaticRetryCount === 0 &&
+      provisioningJournal.readOnlyReconciliation.state === 'NOT_RUN' &&
+      provisioningJournal.readOnlyReconciliation.automaticPostRetryPerformed ===
+        false &&
+      provisioningJournal.reconciliationOnlyMode ===
+        '--reconcile-dispatched-action' &&
+      provisioningJournal.postIntentPermanentlyConsumesActionIdentity ===
+        true &&
+      provisioningJournal.sealedEvidenceRequiredBeforePassTerminal === true &&
+      provisioningJournal.automaticResealAllowed === false &&
+      provisioningJournal.automaticCleanupAuthorized === false &&
+      provisioningJournal.destructiveRecoveryAuthorized === false &&
+      provisioningResult.schemaVersion === 2 &&
+      provisioningResult.status === 'NOT_RUN' &&
+      provisioningResult.createPostAttemptCount === 0 &&
+      provisioningResult.automaticRetryCount === 0 &&
+      provisioningResult.readOnlyReconciliation === null &&
+      provisioningResult.databaseConnectionPerformed === false &&
+      provisioningResult.phase2AndLaterAuthorized === false,
+    'Phase 1 journal or result contract drift'
+  );
+  assert(
+    provisioningProviderExport.schemaVersion === 2 &&
+      provisioningProviderExport.exportType ===
+        'SUPABASE_SOURCE_PROJECT_PROVIDER_SAFE_PROJECTION' &&
+      provisioningProviderExport.request.rawWireBodyPersisted === false &&
+      provisioningProviderExport.request.rawHttpHeadersPersisted === false &&
+      provisioningProviderExport.computeObservation.variantId === 'ci_large' &&
+      provisioningProviderExport.reconciliation === null &&
+      provisioningProviderExport.rawProviderBodiesPersisted === false &&
+      provisioningEvidenceManifest.manifestType ===
+        'PR12_PHASE1_SOURCE_PROJECT_PROVISIONING_EVIDENCE' &&
+      provisioningEvidenceManifest.rawProviderBodiesPersisted === false &&
+      provisioningPrivacyScan.scanType ===
+        'PR12_PHASE1_EVIDENCE_PRIVACY_AND_SECRET_SCAN' &&
+      provisioningPrivacyScan.rawProviderBodiesPersisted === false,
+    'Phase 1 provider projection, manifest, or privacy contract drift'
+  );
+  const provisioningEvidenceVerifier = readRepositoryFile(
+    'scripts/commercial-hardening/verify-pr12-source-project-provisioning-evidence.mjs'
+  );
+  const provisioningContract = readRepositoryFile(
+    'scripts/commercial-hardening/pr12-source-project-provisioning-contract.mjs'
+  );
+  const provisioningWrapper = readRepositoryFile(
+    'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs'
+  );
+  for (const requiredVerifierBoundary of [
+    'ARTIFACT_HASH_OR_SIZE_MISMATCH',
+    'MANIFEST_SIDECAR_MISMATCH',
+    'EVIDENCE_CROSS_ARTIFACT_MISMATCH',
+    'EVIDENCE_JSON_NON_CANONICAL',
+    'PROVIDER_EXPORT_OUTCOME_INVALID',
+    'PRIVACY_SCAN_INVALID',
+    'assertSecretFreeEvidence',
+  ]) {
+    assert(
+      provisioningEvidenceVerifier.includes(requiredVerifierBoundary),
+      `Phase 1 evidence verifier boundary missing: ${requiredVerifierBoundary}`
+    );
+  }
+  for (const forbiddenTransportName of [
+    'NODE_DEBUG_NATIVE',
+    'NODE_USE_SYSTEM_CA',
+    'OPENSSL_CONF',
+    'OPENSSL_MODULES',
+    'SSLKEYLOGFILE',
+  ]) {
+    assert(
+      provisioningContract.includes(`'${forbiddenTransportName}'`),
+      `Phase 1 ambient transport/debug denial missing: ${forbiddenTransportName}`
+    );
+  }
+  const postCallCount = (
+    provisioningWrapper.match(/\{\s*method:\s*'POST',\s*body:/g) ?? []
+  ).length;
+  const recoveryStart = provisioningWrapper.indexOf(
+    'async function executeReadOnlyRecovery('
+  );
+  const recoveryEnd = provisioningWrapper.indexOf(
+    '\nasync function main()',
+    recoveryStart
+  );
+  assert(
+    postCallCount === 1 && recoveryStart >= 0 && recoveryEnd > recoveryStart,
+    'Phase 1 wrapper must contain exactly one create POST call path'
+  );
+  const recoverySource = provisioningWrapper.slice(recoveryStart, recoveryEnd);
+  assert(
+    !recoverySource.includes('providerFetch(') &&
+      !recoverySource.includes("{ method: 'POST'") &&
+      recoverySource.includes('reconcileAfterPostAttempt') &&
+      provisioningWrapper.includes("state: 'POST_INTENT_DURABLE'") &&
+      provisioningWrapper.includes('flush: true') &&
+      provisioningWrapper.includes('renameSync(directory, finalDirectory)') &&
+      provisioningWrapper.includes('function readFileSnapshot(') &&
+      provisioningWrapper.includes('assertRemoteContactWithinApproval(') &&
+      provisioningWrapper.includes('assertMutationQuoteCurrent(') &&
+      provisioningWrapper.includes('completeTerminalFromExistingEvidence') &&
+      provisioningWrapper.includes('retainEvidenceAfterSealFailure(') &&
+      provisioningWrapper.includes(
+        'retainedPartialEvidenceDirectoryName(error)'
+      ) &&
+      !provisioningWrapper.includes(
+        'partialEvidenceDirectoryName: evidence.partialDirectoryName'
+      ) &&
+      provisioningWrapper.includes('verified.trustedResult') &&
+      provisioningWrapper.includes('verified.trustedProvider') &&
+      provisioningEvidenceVerifier.includes('function readFileSnapshot(') &&
+      provisioningEvidenceVerifier.includes('trustedResult:') &&
+      provisioningEvidenceVerifier.includes('trustedProvider:') &&
+      provisioningWrapper.includes(
+        "'EVIDENCE_SEAL_FAILED_OWNER_DECISION_REQUIRED'"
+      ),
+    'Phase 1 create-once, no-POST recovery, or evidence-seal boundary drift'
   );
   assert(
     sourceBootstrap.status === 'NOT_RUN' &&
@@ -2050,8 +2304,11 @@ function verifySchemaAndTemplate() {
   assert(
     scanner.includes(
       'docs/stabilization/pr12-staging-execution-owner-approval-packet-v0.2-20260719.md'
-    ),
-    'human owner packet is missing from the default privacy scan'
+    ) &&
+      scanner.includes(
+        'docs/stabilization/spec-commercial-pr12-phase1-source-project-provisioning-approval-preparation-v1.0.md'
+      ),
+    'Phase 1 spec or human owner packet is missing from the default privacy scan'
   );
 
   const approval = readRepositoryFile(
@@ -2187,6 +2444,7 @@ function main() {
   verifySchemaAndTemplate();
   for (const document of [
     'docs/stabilization/spec-commercial-pr12-isolated-release-qualification-v1.0.md',
+    'docs/stabilization/spec-commercial-pr12-phase1-source-project-provisioning-approval-preparation-v1.0.md',
     'docs/operations/commercial-pr12-isolated-staging-dr-runbook-v1.0.md',
     'docs/stabilization/evidence/commercial-hardening/pr12/README.md',
     'docs/stabilization/pr12-staging-execution-owner-approval-packet-v0.2-20260719.md',
@@ -2194,7 +2452,7 @@ function main() {
     verifyRelativeLinks(document);
   }
   console.log(
-    'PR12 preparation static contract: PASS (54 COMM gates remain NOT_RUN; staging is not authorized).'
+    'PR12 preparation static contract: PASS (Phase 1 wrapper remains unapproved/unrun; 54 COMM gates remain NOT_RUN; staging is not authorized).'
   );
 }
 
