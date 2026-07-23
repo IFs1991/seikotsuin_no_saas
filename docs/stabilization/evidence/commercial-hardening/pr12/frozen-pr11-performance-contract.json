@@ -1,0 +1,219 @@
+{
+  "schemaVersion": 1,
+  "contractId": "PR12-FROZEN-PR11-PERFORMANCE-001",
+  "status": "FROZEN",
+  "authority": {
+    "sourceCommit": "aaf3837f6f8053b0379a2d4caea65880952ce027",
+    "migrationHead": "20260718011731",
+    "officialResultPath": "docs/stabilization/evidence/commercial-hardening/pr11/forward-fix-postapply-official-20260718-02/experiment-summary.json",
+    "officialResultSha256": "c9eec6ef5acbecac591206fc9536e85a6ce900214d26e404b64d654680379f41",
+    "officialManifestPath": "docs/stabilization/evidence/commercial-hardening/pr11/forward-fix-postapply-official-20260718-02/manifest.json",
+    "officialManifestSha256": "11f9c8dbea406823c3f0a06542802c8bb6319ad00d534f30a4f2570dc4b5a285",
+    "runnerPath": "scripts/commercial-hardening/run-pr11-forward-fix-postapply-paired.mjs",
+    "runnerSha256": "b1befb0f7d80967b0ebf101162a376a986b7d9484e73e96ef1097ed0e61955c3"
+  },
+  "sourceInputs": [
+    {
+      "path": "scripts/commercial-hardening/sql/pr11-performance-probe.sql",
+      "sha256": "5e6ae3af19f428d63b8eaa8a56d7b659d4841fe693071e7ca11449c756c3cb65"
+    },
+    {
+      "path": "scripts/commercial-hardening/sql/pr11-rls-plan-probe.sql",
+      "sha256": "b8377b491379afd9fbb09c156e29d8b4b12fb85c93e588ca8b1c3c47ca544279"
+    },
+    {
+      "path": "scripts/commercial-hardening/sql/pr11-forward-rls-write-probe.sql",
+      "sha256": "09767c89cfcf03fae91d60069d1b40f0f8e806a97b7987617d12b74574efb0ac"
+    },
+    {
+      "path": "scripts/commercial-hardening/sql/pr11-forward-rls-scope-semantic-probe.sql",
+      "sha256": "d1b5b1c9373e36a9cf31fecbc9bdc0a1cbde6d8abfcc14eba09d4a80f4349aae"
+    },
+    {
+      "path": "scripts/commercial-hardening/sql/pr11-postapply-pgtap.sql",
+      "sha256": "dbc02dac9e2434df0c952b6342ff4d8a1f48dea3826b1d00c040625961abf127"
+    },
+    {
+      "path": "supabase/tests/commercial_pr11_performance_rls_test.sql",
+      "sha256": "88063a85fc14c69fb582a723dcd11f06a5fe784b320cc696c8b396079bea91f1"
+    }
+  ],
+  "historicalFacts": {
+    "primaryExecutionResult": "8_PASS_1_FAIL",
+    "denseObservedMedianMs": 549.305,
+    "denseLimitMs": 521.55125,
+    "denseStatus": "FAIL",
+    "pilotWaiverInheritedByPr12": false,
+    "phaseA2EnvironmentValidity": "ENVIRONMENT_INVALID",
+    "candidateSqlExecutionCount": 0,
+    "permanentDdlApplied": false,
+    "steadyStateIndexEffect": "NOT_PROVEN",
+    "singletonIndexRetirementAuthorized": false,
+    "idxBlocksResourceIdExpectedPresent": true,
+    "logicalBaseline": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+    "normalizedPhysicalBaseline": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+  },
+  "measurementContract": {
+    "aggregation": "median_of_exactly_3",
+    "comparator": "less_than_or_equal",
+    "pairedCaptureOrder": "before_after_after_before_before_after",
+    "postApplyGateSamples": ["pair1_after", "pair2_after", "pair3_after"],
+    "discarded_samples_allowed": false,
+    "failed_sample_removal_allowed": false,
+    "sample_reordering_allowed": false,
+    "rebaseline_allowed": false,
+    "threshold_recalculation_allowed": false,
+    "actor_fixture_jwt_changes_allowed": false,
+    "canonical_probe_analyze_addition_allowed": false,
+    "planner_forcing_addition_allowed": false,
+    "guc_changes_allowed": false,
+    "hosted_slo_is_additive_not_replacement": true,
+    "existingDiagnosticException": "The hash-pinned performance probe contains a post-gate enable_seqscan=off diagnostic for three non-created-by paths. It is not a natural-plan acceptance substitute and may not be expanded."
+  },
+  "gucContract": {
+    "performance": [
+      "role=postgres",
+      "lock_timeout=5s",
+      "statement_timeout=120s",
+      "idle_in_transaction_session_timeout=120s",
+      "search_path=pg_catalog,public,auth,extensions",
+      "jit=off"
+    ],
+    "rlsRead": [
+      "search_path=pg_catalog,extensions,public,auth",
+      "statement_timeout=120s",
+      "lock_timeout=5s",
+      "measurement_role=authenticated"
+    ],
+    "mutationAllowed": false
+  },
+  "actorFixtureJwtContract": {
+    "definition": "BYTE_FROZEN_BY_SOURCE_INPUT_HASHES",
+    "authorizationSource": "DATABASE_AUTHORITATIVE",
+    "userMetadataAuthorizationAllowed": false,
+    "fixtureNamespace": "fb110000-0000-4000-8000",
+    "syntheticEmailDomain": "example.invalid",
+    "hostedJwtSigningSecretAcquisitionAllowed": false
+  },
+  "primaryExecutionGates": [
+    {
+      "id": "created_by_read_100_of_20000",
+      "limit": 2.851,
+      "unit": "ms",
+      "plan": "natural_index_scan:blocks_created_by_idx"
+    },
+    {
+      "id": "sparse_insert_10000",
+      "limit": 435.7373,
+      "unit": "ms"
+    },
+    {
+      "id": "dense_insert_10000",
+      "limit": 521.55125,
+      "unit": "ms"
+    },
+    {
+      "id": "shift_full_only_insert_2000",
+      "limit": 198.387,
+      "unit": "ms"
+    },
+    {
+      "id": "shift_full_plus_partial_insert_2000",
+      "limit": 219.224,
+      "unit": "ms"
+    },
+    {
+      "id": "recipient_sparse_composite_insert_1000",
+      "limit": 46.665,
+      "unit": "ms"
+    },
+    {
+      "id": "recipient_dense_composite_insert_1000",
+      "limit": 81.761,
+      "unit": "ms"
+    },
+    {
+      "id": "customer_insurance_coverages_read_250",
+      "limit": 66.757,
+      "unit": "ms"
+    },
+    {
+      "id": "menu_billing_profiles_read_250",
+      "limit": 63.3855,
+      "unit": "ms"
+    }
+  ],
+  "primaryWalGates": [
+    {
+      "id": "sparse_insert_10000",
+      "limit": 9292168.2,
+      "unit": "bytes"
+    },
+    {
+      "id": "dense_insert_10000",
+      "limit": 11133665,
+      "unit": "bytes"
+    },
+    {
+      "id": "shift_full_only_insert_2000",
+      "limit": 1868505.6,
+      "unit": "bytes"
+    },
+    {
+      "id": "shift_full_plus_partial_insert_2000",
+      "limit": 2028773.6,
+      "unit": "bytes"
+    },
+    {
+      "id": "recipient_sparse_composite_insert_1000",
+      "limit": 600946.5,
+      "unit": "bytes"
+    },
+    {
+      "id": "recipient_dense_composite_insert_1000",
+      "limit": 755065,
+      "unit": "bytes"
+    }
+  ],
+  "auxiliaryExecutionGates": [
+    {
+      "id": "coverage_insert_2000",
+      "limit": 124.709,
+      "unit": "ms"
+    },
+    {
+      "id": "menu_profile_insert_2000",
+      "limit": 135.944,
+      "unit": "ms"
+    }
+  ],
+  "auxiliaryWalGates": [
+    {
+      "id": "coverage_insert_2000",
+      "limit": 1220025,
+      "unit": "bytes"
+    },
+    {
+      "id": "menu_profile_insert_2000",
+      "limit": 1718510,
+      "unit": "bytes"
+    }
+  ],
+  "planGates": [
+    "created_by_read:natural_index_scan:blocks_created_by_idx",
+    "rls_read:natural_index_scan",
+    "rls_read:no_sort",
+    "rls_read:no_bitmap_heap_scan",
+    "rls_read:no_target_seq_scan",
+    "rls_read:row_limit_250",
+    "blocks:trigger_and_fk_each_10000_calls",
+    "target_indexes:exact_catalog_identity"
+  ],
+  "semanticGates": [
+    "blocks_integrity:30_cases",
+    "blocks_integrity:sqlstate_message_equivalence",
+    "rls_scope:27_before_27_after",
+    "rls_scope:tenant_a_b_exact_semantics",
+    "pgtap:52_ok_0_not_ok"
+  ]
+}

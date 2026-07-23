@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "recordType": "PR12_SOURCE_PROJECT_PROVISIONING_OWNER_APPROVAL",
+  "decision": "NOT_CAPTURED",
+  "attestationStatus": "NOT_CAPTURED",
+  "attestationMethod": "OWNER_EXPLICIT_APPROVAL_RECORD",
+  "approver": "UNASSIGNED",
+  "actionId": "PR12-ACTION-003",
+  "gitCommit": "NOT_CAPTURED",
+  "bindingMaterialSha256": "NOT_CAPTURED",
+  "payloadSha256": "NOT_CAPTURED",
+  "credentialConfigurationSha256": "NOT_CAPTURED",
+  "quoteEvidenceSha256": "NOT_CAPTURED",
+  "organizationId": "NOT_CAPTURED",
+  "organizationSlug": "NOT_CAPTURED",
+  "projectName": "seikotsuin-pr12-isolated-qualification-20260719",
+  "region": "ap-northeast-1",
+  "tier": "LARGE",
+  "approvedAt": "NOT_CAPTURED",
+  "expiresAt": "NOT_CAPTURED",
+  "phase2AndLaterAuthorized": false,
+  "cleanupDeletionAuthorized": false
+}

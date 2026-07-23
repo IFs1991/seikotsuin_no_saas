@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "journalType": "PR12_SOURCE_PROJECT_PROVISIONING_ACTION_JOURNAL",
+  "actionId": "PR12-ACTION-003",
+  "bindingMaterialSha256": "NOT_CAPTURED",
+  "payloadSha256": "NOT_CAPTURED",
+  "claim": {
+    "claimedAt": "NOT_CAPTURED",
+    "state": "NOT_RUN",
+    "singleWriterOwner": "UNASSIGNED"
+  },
+  "post": {
+    "attemptCount": 0,
+    "automaticRetryCount": 0,
+    "remoteContactCountBeforePost": "NOT_CAPTURED",
+    "postIntentAt": null,
+    "state": "POST_INTENT_NOT_DURABLE",
+    "durableFlushAndReadbackRequired": true
+  },
+  "terminalOutcome": {
+    "state": "NOT_RUN",
+    "reasonCode": null,
+    "recordedAt": null,
+    "projectRef": null,
+    "evidenceDirectoryName": null,
+    "manifestSha256": null,
+    "partialEvidenceDirectoryName": null
+  },
+  "readOnlyReconciliation": {
+    "state": "NOT_RUN",
+    "observedAt": "NOT_CAPTURED",
+    "projectCount": "NOT_CAPTURED",
+    "matchingProjects": [],
+    "automaticPostRetryPerformed": false,
+    "automaticCleanupPerformed": false
+  },
+  "allowedDurableEventStates": [
+    "PRECHECK_ABORTED",
+    "DUPLICATE_FOUND",
+    "CLAIMED_POST_NOT_SENT",
+    "POST_INTENT_DURABLE",
+    "RESPONSE_ACCEPTED",
+    "READ_ONLY_RECONCILIATION_COMPLETED",
+    "UNKNOWN_REMOTE_OUTCOME",
+    "PROVIDER_RECONCILED",
+    "PARTIAL_FAILURE",
+    "PASS_EVIDENCE_SEALED",
+    "EVIDENCE_SEAL_FAILED_OWNER_DECISION_REQUIRED"
+  ],
+  "reconciliationOnlyMode": "--reconcile-dispatched-action",
+  "postIntentPermanentlyConsumesActionIdentity": true,
+  "automaticCleanupAuthorized": false,
+  "destructiveRecoveryAuthorized": false,
+  "sealedEvidenceRequiredBeforePassTerminal": true,
+  "automaticResealAllowed": false,
+  "notes": "The executable wrapper stores claim, durable POST-intent, and terminal records as separate create-once files in the owner-approved journal directory. POST_INTENT_DURABLE permanently consumes the action identity even if the final synchronous guard prevents transmission. This combined template documents their union; it is not overwritten at runtime."
+}

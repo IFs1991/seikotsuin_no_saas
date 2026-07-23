@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 2,
+  "inventoryId": "PR12-SECURITY-TARGET-INVENTORY-PROPOSAL-002",
+  "status": "PROPOSED_OWNER_APPROVAL_REQUIRED",
+  "executionStatus": "NOT_RUN",
+  "derivation": {
+    "sourceCatalog": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED",
+      "status": "NOT_RUN",
+      "requiredSource": "fresh post-replay pg_catalog",
+      "publicSchemas": ["public"],
+      "publicRelkinds": ["r", "p"],
+      "requiredAuthTargets": ["auth.identities", "auth.users"]
+    },
+    "trackedDraftBaseline": {
+      "path": "docs/stabilization/evidence/commercial-hardening/table-classification-draft.csv",
+      "sha256": "f94299a332aba9f746d87bd3f848e1467bf78faa1c7f64cee697f542867704b2",
+      "publicRelationCount": 86,
+      "role": "proposal completeness baseline only; runtime catalog remains authoritative"
+    },
+    "representativeDataContract": {
+      "path": "representative-data-contract.proposed.json",
+      "sha256": "67907af4a24bfe24a0f3c95dafe13031e77e55d79a44d6e9f1ede67f50746c79",
+      "role": "fixture coverage subset only; never a mother-set source"
+    },
+    "classificationContract": {
+      "path": "security-target-classification.proposed.json",
+      "sha256": "21d2f08c78b98a036a2538d7a0ec36cc96f72dd6ad2bb7bbb9874d477c754342"
+    },
+    "canonicalProbeRelations": ["public.blocks"],
+    "formula": "exact fresh sourceCatalog public r/p set union requiredAuthTargets",
+    "matrixFormula": "exact owner-approved A_TENANT_CANONICAL coverageTargets from the full catalog classification",
+    "selfAttestedMatrixTargetsAllowed": false
+  },
+  "provisionalCatalogSummary": {
+    "trackedPublicRelations": 86,
+    "requiredAuthRelations": 2,
+    "provisionalTotalRelations": 88,
+    "currentUnknownPublicRelations": 48,
+    "allRelationsOwnerApproved": false,
+    "postReplayCatalogCaptured": false
+  },
+  "blockingInputs": [
+    {
+      "id": "POST_REPLAY_CATALOG_NOT_CAPTURED",
+      "status": "NOT_CAPTURED",
+      "owner": "databaseMigrationOperator"
+    },
+    {
+      "id": "CATALOG_TO_TRACKED_BASELINE_PARITY_NOT_CAPTURED",
+      "status": "NOT_CAPTURED",
+      "owner": "evidenceCustodian"
+    },
+    {
+      "id": "PUBLIC_CLASSIFICATIONS_UNRESOLVED",
+      "status": "UNASSIGNED",
+      "owner": "securityTenantReviewer",
+      "currentUnknownCount": 48
+    },
+    {
+      "id": "ALL_RELATION_OWNER_REVIEW_NOT_CAPTURED",
+      "status": "NOT_CAPTURED",
+      "owner": "securityTenantReviewer"
+    },
+    {
+      "id": "AUTH_RELATION_CLASSIFICATION_NOT_APPROVED",
+      "status": "UNASSIGNED",
+      "owner": "securityTenantReviewer",
+      "relations": ["auth.identities", "auth.users"]
+    },
+    {
+      "id": "TARGET_INVENTORY_COLLECTOR_NOT_IMPLEMENTED",
+      "status": "NOT_IMPLEMENTED",
+      "owner": "databaseMigrationOperator"
+    }
+  ],
+  "executionRequirements": {
+    "inventoryStatus": "APPROVED_FOR_EXECUTION",
+    "classificationStatus": "APPROVED_FOR_EXECUTION",
+    "relationReviewStatus": "OWNER_APPROVED",
+    "missingRelationsAllowed": false,
+    "extraRelationsAllowed": false,
+    "duplicateRelationsAllowed": false,
+    "unknownOrDraftClassificationAllowed": false,
+    "fixtureRelationsMustBeCatalogSubset": true,
+    "sourceAndRestoreInventoryMustMatch": true,
+    "targetMatrixMustEqualDerivedClassATargets": true,
+    "allSixCoverageFamiliesExact": true
+  },
+  "ownerDecision": {
+    "owner": "UNASSIGNED",
+    "approvedAt": "NOT_CAPTURED",
+    "expiresAt": "NOT_CAPTURED",
+    "approvalEvidence": "NOT_CAPTURED"
+  },
+  "implementationReadiness": {
+    "collector": "NOT_IMPLEMENTED",
+    "executionAuthorized": false
+  }
+}

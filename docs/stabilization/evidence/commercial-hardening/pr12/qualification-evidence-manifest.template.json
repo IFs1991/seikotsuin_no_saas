@@ -1,0 +1,466 @@
+{
+  "schemaVersion": 1,
+  "qualificationId": "PR12-NOT-CAPTURED",
+  "status": "NOT_RUN",
+  "source": {
+    "gitCommit": "NOT_CAPTURED",
+    "baseCommit": "4475e1c641c2ff18f66021ee65cfecfceaa6b7ab",
+    "migrationHead": "20260718011731",
+    "approvalPacketPath": "NOT_CAPTURED",
+    "approvalPacketSha256": "NOT_CAPTURED"
+  },
+  "commGateEvidenceMap": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "environment": {
+    "organizationId": "NOT_CAPTURED",
+    "organizationPlan": "UNASSIGNED",
+    "projectRef": "NOT_CAPTURED",
+    "projectName": "UNASSIGNED",
+    "projectUrl": "NOT_CAPTURED",
+    "databaseHost": "NOT_CAPTURED",
+    "databaseConnectionMode": "DIRECT",
+    "databaseUser": "postgres",
+    "region": "UNASSIGNED",
+    "databaseTier": "UNASSIGNED",
+    "databaseVersion": "NOT_CAPTURED",
+    "systemIdentifier": "NOT_CAPTURED",
+    "authProvisioning": {
+      "anonymousSignInEnabled": false,
+      "realEmailSmsOrOAuthDeliveryConfigured": false,
+      "hostedFixturePasswords": "owner_secret_store_generated_ephemeral_minimum_32_characters",
+      "hostedUserJwtAcquisitionMethod": "HOSTED_AUTH_PASSWORD_SIGN_IN_AND_REFRESH",
+      "jwtSigningSecretAcquisitionAllowed": false,
+      "fabricatedUserJwtAllowed": false,
+      "tokenValueCaptureAllowed": false
+    },
+    "dataApi": {
+      "enabled": "NOT_CAPTURED",
+      "matrixId": "NOT_CAPTURED",
+      "matrixPath": "NOT_CAPTURED",
+      "matrixSha256": "NOT_CAPTURED",
+      "aclCatalogPath": "NOT_CAPTURED",
+      "aclCatalogSha256": "NOT_CAPTURED",
+      "exposedSchemas": [],
+      "automaticGrants": "NOT_CAPTURED",
+      "defaultPrivileges": {
+        "postgres": "NOT_CAPTURED",
+        "supabaseAdmin": "NOT_CAPTURED"
+      },
+      "schemaUsage": { "status": "NOT_RUN", "evidence": [] },
+      "objectAcl": { "status": "NOT_RUN", "evidence": [] },
+      "aclInventoryResults": [],
+      "directRoleResults": [],
+      "aclVerdict": { "status": "NOT_RUN", "evidence": [] },
+      "rlsVerdict": { "status": "NOT_RUN", "evidence": [] }
+    },
+    "graphQl": {
+      "installedVersion": "NOT_CAPTURED",
+      "enabled": "NOT_CAPTURED",
+      "matrixId": "NOT_CAPTURED",
+      "matrixPath": "NOT_CAPTURED",
+      "matrixSha256": "NOT_CAPTURED",
+      "exposedSchemas": [],
+      "introspection": "NOT_CAPTURED",
+      "directRoleResults": [],
+      "tenantBoundary": { "status": "NOT_RUN", "evidence": [] },
+      "fieldVisibility": { "status": "NOT_RUN", "evidence": [] },
+      "disabledEndpointRejection": { "status": "NOT_RUN", "evidence": [] }
+    }
+  },
+  "credentialHandling": {
+    "contractPath": "NOT_CAPTURED",
+    "contractSha256": "NOT_CAPTURED",
+    "channel": "UNASSIGNED",
+    "storage": "UNASSIGNED",
+    "retrieval": "UNASSIGNED",
+    "logging": "UNASSIGNED",
+    "serverOnly": "NOT_CAPTURED",
+    "browserExposureAllowed": "NOT_CAPTURED",
+    "commandLineExposureAllowed": "NOT_CAPTURED",
+    "evidenceExposureAllowed": "NOT_CAPTURED",
+    "clientResponseExposureAllowed": "NOT_CAPTURED",
+    "logExposureAllowed": "NOT_CAPTURED",
+    "sourceControlExposureAllowed": "NOT_CAPTURED",
+    "urlExposureAllowed": "NOT_CAPTURED",
+    "targetResults": {
+      "source": {
+        "status": "NOT_RUN",
+        "targetKind": "SOURCE",
+        "providerConfigurationPath": "NOT_CAPTURED",
+        "providerConfigurationSha256": "NOT_CAPTURED",
+        "evidence": []
+      },
+      "restore": {
+        "status": "NOT_RUN",
+        "targetKind": "RESTORE",
+        "providerConfigurationPath": "NOT_CAPTURED",
+        "providerConfigurationSha256": "NOT_CAPTURED",
+        "evidence": []
+      }
+    },
+    "crossTargetIsolation": {
+      "status": "NOT_RUN",
+      "projectRefsDiffer": "NOT_CAPTURED",
+      "databaseHostsDiffer": "NOT_CAPTURED",
+      "anonKeyFingerprintsDiffer": "NOT_CAPTURED",
+      "serviceRoleKeyFingerprintsDiffer": "NOT_CAPTURED",
+      "databasePasswordFingerprintsDiffer": "NOT_CAPTURED"
+    },
+    "status": "NOT_RUN",
+    "evidence": []
+  },
+  "toolVersions": {
+    "node": "NOT_CAPTURED",
+    "supabaseCli": "2.109.0",
+    "psql": "NOT_CAPTURED"
+  },
+  "toolBinaries": {
+    "supabaseCli": {
+      "path": "NOT_CAPTURED",
+      "sha256": "903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118",
+      "hashCommandId": "NOT_CAPTURED",
+      "archivePath": "NOT_CAPTURED",
+      "archiveSha256": "d2b687ec3427fe7847cf7a8f603413fa8d4331f6fdbbc825eea6aa34a64d686b",
+      "archiveHashCommandId": "NOT_CAPTURED"
+    },
+    "psql": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED",
+      "hashCommandId": "NOT_CAPTURED"
+    }
+  },
+  "timing": {
+    "startedAt": "NOT_CAPTURED",
+    "endedAt": "NOT_CAPTURED",
+    "durationSeconds": null
+  },
+  "commands": [
+    {
+      "id": "NOT_CAPTURED",
+      "redactedCommand": "NOT_CAPTURED",
+      "phase": "NOT_CAPTURED",
+      "remoteContact": false,
+      "mutating": false,
+      "mutationScope": "NONE",
+      "startedAt": "NOT_CAPTURED",
+      "endedAt": "NOT_CAPTURED",
+      "exitCode": null,
+      "stdoutPath": "NOT_CAPTURED",
+      "stdoutSha256": "NOT_CAPTURED",
+      "stderrPath": "NOT_CAPTURED",
+      "stderrSha256": "NOT_CAPTURED"
+    }
+  ],
+  "artifacts": [],
+  "rowCounts": {},
+  "hashes": {
+    "logicalHash": "NOT_CAPTURED",
+    "historicalNormalizedPhysicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86",
+    "environmentPhysicalStructureHash": "NOT_CAPTURED",
+    "schemaHash": "NOT_CAPTURED",
+    "preWatermarkDataHash": "NOT_CAPTURED",
+    "backupDataHash": "NOT_CAPTURED"
+  },
+  "cleanReplay": {
+    "status": "NOT_RUN",
+    "precondition": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "dryRun": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "apply": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "postApplyMigrationHistory": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    }
+  },
+  "integrityResults": {
+    "migrationHistory": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "generatedTypes": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "source": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "postWatermarkSource": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "restore": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+  },
+  "drScopeInventory": {
+    "source": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "restore": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "comparison": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+  },
+  "sourceStructuredResults": {
+    "securityMatrix": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "dataApiGraphQl": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    }
+  },
+  "representativeData": {
+    "contractPath": "NOT_CAPTURED",
+    "contractSha256": "NOT_CAPTURED",
+    "classification": "NOT_CAPTURED",
+    "volume": "NOT_CAPTURED",
+    "sourceSha256": "NOT_CAPTURED",
+    "expiresAt": "NOT_CAPTURED",
+    "evidence": []
+  },
+  "performance": {
+    "contractPath": "NOT_CAPTURED",
+    "contractSha256": "NOT_CAPTURED",
+    "sampleCount": null,
+    "aggregation": "NOT_CAPTURED",
+    "pairedSampleOrder": "NOT_CAPTURED",
+    "primaryExecutionResults": [],
+    "primaryWalResults": [],
+    "auxiliaryExecutionResults": [],
+    "auxiliaryWalResults": [],
+    "planResults": [],
+    "semanticResults": [],
+    "canonicalObservation": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "hostedSlo": {
+      "contractPath": "NOT_CAPTURED",
+      "contractSha256": "NOT_CAPTURED",
+      "workloadId": "NOT_CAPTURED",
+      "concurrency": null,
+      "sampleOrder": [],
+      "durationSeconds": null,
+      "thresholds": {
+        "p95Ms": null,
+        "p99Ms": null,
+        "minimumThroughputPerSecond": null,
+        "maximum5xxRate": null,
+        "maximumTimeoutRate": null,
+        "maximumCpuPercent": null,
+        "minimumPoolHeadroomPercent": null,
+        "maximumLockWaitMs": null,
+        "maximumWalBytes": null,
+        "maximumMigrationDurationSeconds": null
+      },
+      "sampleResults": [],
+      "pooledResult": {
+        "id": "NOT_CAPTURED",
+        "durationSeconds": null,
+        "concurrency": null,
+        "attemptedRequests": null,
+        "completedRequests": null,
+        "failedRequests": null,
+        "response5xxCount": null,
+        "timeoutCount": null,
+        "observed": {
+          "p95Ms": null,
+          "p99Ms": null,
+          "throughputPerSecond": null,
+          "rate5xx": null,
+          "timeoutRate": null,
+          "cpuPercent": null,
+          "cpuAboveThresholdSeconds": null,
+          "poolHeadroomPercent": null,
+          "poolBelowThresholdSeconds": null,
+          "lockWaitMs": null,
+          "walBytes": null
+        },
+        "status": "NOT_RUN",
+        "evidence": []
+      },
+      "migrationDurationSeconds": null,
+      "migrationReplay": {
+        "path": "NOT_CAPTURED",
+        "sha256": "NOT_CAPTURED"
+      },
+      "observation": {
+        "path": "NOT_CAPTURED",
+        "sha256": "NOT_CAPTURED"
+      },
+      "status": "NOT_RUN",
+      "evidence": []
+    }
+  },
+  "gates": [],
+  "securityMatrix": {
+    "environmentProjectRef": "NOT_CAPTURED",
+    "matrixId": "NOT_CAPTURED",
+    "contractPath": "NOT_CAPTURED",
+    "contractSha256": "NOT_CAPTURED",
+    "roles": [],
+    "jwtCases": [],
+    "tenantCrudCases": [],
+    "targets": [],
+    "tenantDirections": [],
+    "targetCatalogPath": "NOT_CAPTURED",
+    "targetCatalogSha256": "NOT_CAPTURED",
+    "authTokenProvenance": {
+      "acquisitionMethod": "HOSTED_AUTH_PASSWORD_SIGN_IN_AND_REFRESH",
+      "actorSetSha256": "NOT_CAPTURED",
+      "issuer": "NOT_CAPTURED",
+      "actorSessions": [],
+      "rawTokenMaterialCaptured": null,
+      "jwtSigningSecretAcquired": null,
+      "fabricatedUserJwtUsed": null,
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    "rows": [],
+    "serviceRoleBoundary": { "status": "NOT_RUN", "evidence": [] },
+    "aclRlsIndependence": { "status": "NOT_RUN", "evidence": [] }
+  },
+  "externalSideEffects": {
+    "source": {
+      "status": "NOT_RUN",
+      "mode": "NOT_CAPTURED",
+      "attemptedRealDispatchCount": null,
+      "providerRealDispatchCount": null,
+      "duplicateCount": null,
+      "pendingExternalOperationCount": null,
+      "productionIdentityDetected": "NOT_CAPTURED",
+      "commandId": "PR12-CMD-016A",
+      "capturedAt": "NOT_CAPTURED",
+      "artifactPath": "NOT_CAPTURED",
+      "artifactSha256": "NOT_CAPTURED",
+      "serviceRoleNonExposure": { "status": "NOT_RUN", "evidence": [] },
+      "evidence": []
+    },
+    "restore": {
+      "status": "NOT_RUN",
+      "mode": "NOT_CAPTURED",
+      "attemptedRealDispatchCount": null,
+      "providerRealDispatchCount": null,
+      "duplicateCount": null,
+      "pendingExternalOperationCount": null,
+      "productionIdentityDetected": "NOT_CAPTURED",
+      "commandId": "PR12-CMD-019A",
+      "capturedAt": "NOT_CAPTURED",
+      "artifactPath": "NOT_CAPTURED",
+      "artifactSha256": "NOT_CAPTURED",
+      "serviceRoleNonExposure": { "status": "NOT_RUN", "evidence": [] },
+      "evidence": []
+    },
+    "comparison": {
+      "status": "NOT_RUN",
+      "sourceAndRestoreArtifactsDiffer": "NOT_CAPTURED",
+      "requiredFamiliesMatch": "NOT_CAPTURED"
+    }
+  },
+  "backup": {
+    "status": "NOT_RUN",
+    "backupId": "NOT_CAPTURED",
+    "method": "NOT_CAPTURED",
+    "scope": "NOT_CAPTURED",
+    "capturedAt": "NOT_CAPTURED",
+    "sourceWatermark": "NOT_CAPTURED",
+    "watermarkCommandId": "NOT_CAPTURED",
+    "captureCommandId": "NOT_CAPTURED",
+    "watermarkOperation": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "postWatermarkSourceIntegrity": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "artifactPath": "NOT_CAPTURED",
+    "artifactSha256": "NOT_CAPTURED",
+    "evidence": []
+  },
+  "restore": {
+    "status": "NOT_RUN",
+    "creationApprovalPath": "NOT_CAPTURED",
+    "creationApprovalSha256": "NOT_CAPTURED",
+    "creationCommandId": "NOT_CAPTURED",
+    "supplementalApprovalPath": "NOT_CAPTURED",
+    "supplementalApprovalSha256": "NOT_CAPTURED",
+    "targetEnvironment": {
+      "organizationId": "NOT_CAPTURED",
+      "projectRef": "NOT_CAPTURED",
+      "projectName": "UNASSIGNED",
+      "region": "UNASSIGNED",
+      "databaseTier": "UNASSIGNED",
+      "databaseVersion": "NOT_CAPTURED",
+      "systemIdentifier": "NOT_CAPTURED",
+      "projectUrl": "NOT_CAPTURED",
+      "databaseHost": "NOT_CAPTURED",
+      "databaseConnectionMode": "DIRECT",
+      "databaseUser": "postgres"
+    },
+    "providerEvidencePath": "NOT_CAPTURED",
+    "providerEvidenceSha256": "NOT_CAPTURED",
+    "providerCreatedAt": "NOT_CAPTURED",
+    "restoreReadyObservedAt": "NOT_CAPTURED",
+    "retentionDeadline": "NOT_CAPTURED",
+    "cleanupDeadline": "NOT_CAPTURED",
+    "fundedThrough": "NOT_CAPTURED",
+    "validationCommandIds": [],
+    "mutationCommandIds": [],
+    "restoreSource": "NOT_CAPTURED",
+    "restorePoint": "NOT_CAPTURED",
+    "rtoStartEvent": "NOT_CAPTURED",
+    "rtoEndEvent": "NOT_CAPTURED",
+    "rtoMeasurementClockAndSource": "NOT_CAPTURED",
+    "rpoWatermarkDefinition": "NOT_CAPTURED",
+    "rpoObservationEvent": "NOT_CAPTURED",
+    "rpoMeasurementClockAndSource": "NOT_CAPTURED",
+    "rtoStartedAt": "NOT_CAPTURED",
+    "restoreConfirmationAt": "NOT_CAPTURED",
+    "postRestoreQualificationCompletedAt": "NOT_CAPTURED",
+    "rpoObservedAt": "NOT_CAPTURED",
+    "restoredWatermark": "NOT_CAPTURED",
+    "rtoThresholdSeconds": null,
+    "rpoThresholdSeconds": null,
+    "rtoSeconds": null,
+    "rpoSeconds": null,
+    "evidence": []
+  },
+  "postRestore": {
+    "schemaParity": { "status": "NOT_RUN", "evidence": [] },
+    "dataParity": { "status": "NOT_RUN", "evidence": [] },
+    "tenantIsolation": { "status": "NOT_RUN", "evidence": [] },
+    "authBoundary": { "status": "NOT_RUN", "evidence": [] },
+    "dataApiBoundary": { "status": "NOT_RUN", "evidence": [] },
+    "graphQlBoundary": { "status": "NOT_RUN", "evidence": [] },
+    "structuredResults": {
+      "securityMatrix": {
+        "path": "NOT_CAPTURED",
+        "sha256": "NOT_CAPTURED"
+      },
+      "dataApi": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+      "graphQl": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+    }
+  },
+  "ownership": {
+    "approver": "UNASSIGNED",
+    "commercialReleaseOwner": "UNASSIGNED",
+    "supabasePlatformOwner": "UNASSIGNED",
+    "databaseMigrationOperator": "UNASSIGNED",
+    "disasterRecoveryOperator": "UNASSIGNED",
+    "securityTenantReviewer": "UNASSIGNED",
+    "clinicalDataPrivacyReviewer": "UNASSIGNED",
+    "billingMessagingSandboxOwner": "UNASSIGNED",
+    "siteReliabilityOwner": "UNASSIGNED",
+    "incidentCommander": "UNASSIGNED",
+    "cleanupOwner": "UNASSIGNED",
+    "evidenceCustodian": "UNASSIGNED"
+  },
+  "privacyScan": {
+    "status": "NOT_RUN",
+    "scannedAt": "NOT_CAPTURED",
+    "scannerVersion": "pr12-evidence-scan-v2",
+    "findingCount": null,
+    "coverageMode": "EXACT_MANIFEST_ARTIFACTS_EXCEPT_SCANNER_STREAMS",
+    "scannedArtifactCount": null,
+    "machineScanCommandId": "NOT_CAPTURED",
+    "machineScanEvidence": [],
+    "manualReviewStatus": "NOT_RUN",
+    "manualReviewer": "UNASSIGNED",
+    "manualReviewedAt": "NOT_CAPTURED",
+    "manualReviewEvidence": []
+  },
+  "residualRisk": [
+    "Template only; no staging, backup, restore, or release evidence has been captured."
+  ],
+  "expiresAt": "NOT_CAPTURED"
+}

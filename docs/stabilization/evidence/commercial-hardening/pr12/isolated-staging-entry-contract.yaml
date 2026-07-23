@@ -1,0 +1,353 @@
+schema_version: 1
+id: PR12-ISOLATED-STAGING-ENTRY-001
+title: Isolated staging qualification entry contract
+status: NOT_RUN
+proposal_status: OWNER_REVIEW_REQUIRED
+blocking: true
+environment: isolated_staging
+base_commit: 4475e1c641c2ff18f66021ee65cfecfceaa6b7ab
+target_commit: NOT_CAPTURED
+commit_binding:
+  selector: GIT_HEAD_AT_EVALUATION
+  state: NOT_CAPTURED
+  invalidate_on_head_change: true
+project:
+  project_ref: NOT_CAPTURED
+  project_name: seikotsuin-pr12-isolated-qualification-20260719
+  organization_plan: PRO
+  organization_id: NOT_CAPTURED
+  region: ap-northeast-1
+  database_tier: LARGE
+  proposed_compute: 2-core ARM dedicated / 8 GB memory
+  production_tier_parity: NOT_CAPTURED
+  database_version: NOT_CAPTURED
+  isolated_from_production: NOT_CAPTURED
+  prohibited_project_refs:
+    - qnanuoqveidwvacvbhqp
+  restore_project_ref: NOT_CAPTURED
+  restore_project_name: seikotsuin-pr12-isolated-restore-20260719
+  provisioning_configuration_proposal:
+    data_api_enabled: true
+    exposed_schemas:
+      - public
+    automatically_expose_new_tables_and_functions: false
+    pg_graphql_enabled: false
+    graphql_introspection_enabled: false
+    anonymous_auth_enabled: false
+data:
+  contract: representative-data-contract.proposed.json
+  contract_sha256: 67907af4a24bfe24a0f3c95dafe13031e77e55d79a44d6e9f1ede67f50746c79
+  source: hash-pinned tracked Supabase and E2E synthetic fixtures
+  classification: SYNTHETIC
+  volume: 74 explicit persistent rows plus captured derived rows; canonical PR11 transaction-scoped volume probes
+  source_hash: contract source hash set
+  row_count_targets: contract explicitPersistentRowTargets
+  patient_pii_allowed: false
+  persistent_capacity_representative: false
+  capacity_acceptance_owner_approved: false
+workload:
+  canonical_pr11_contract: frozen-pr11-performance-contract.json
+  canonical_sample_count: 3
+  canonical_aggregation: median
+  canonical_paired_capture_order: before_after_after_before_before_after
+  canonical_probe_or_actor_fixture_jwt_mutation_allowed: false
+  hosted_contract: hosted-slo-contract.proposed.json
+  hosted_contract_sha256: f34afb02c6f1191f806314f112c4b13b80f0a407e77a4a26d66c26cceefcd499
+  hosted_slo: p95<=2000ms; p99<=3000ms; throughput>=20rps; unexpected failed requests=0; 5xx=0%; timeout=0%
+  hosted_sample_order: read_heavy_c50 -> mixed_crud_c50 -> read_heavy_repeat_c50
+  hosted_concurrency: 50
+  hosted_workload_duration: 300-second warmup plus three 600-second scored samples
+  hosted_collector: NOT_IMPLEMENTED
+  threshold_freeze_required_before_first_sample: true
+database_abort_thresholds:
+  maximum_cpu_percent: 75
+  cpu_window_seconds: 300
+  minimum_pool_headroom_percent: 25
+  pool_window_seconds: 120
+  maximum_lock_wait_ms: 1000
+  maximum_scored_workload_wal_bytes: 268435456
+  maximum_migration_duration_seconds: 900
+dr_contract:
+  path: dr-contract.proposed.json
+  sha256: 9bd4b1002dc2456d0bd063aa5be06cbb24f7acf4b2b7ff9411331d780fe279ed
+  method: Pro daily physical backup -> Restore to a New Project
+  rto_threshold_seconds: 28800
+  rpo_threshold_seconds: 86400
+  maximum_allowed_clock_skew_seconds: UNASSIGNED
+  pass_allowed_before_clock_skew_owner_approval: false
+  owner_approved: false
+integration_and_credential_contract:
+  path: integration-credential-contract.proposed.json
+  sha256: 9c70a291017c201da56aefe06485b4cb9122f33badb5336f948f1f084a05c103
+  source_mode: SANDBOXED_STRIPE_TEST_ONLY
+  restore_mode: DISABLED_NO_STRIPE_CREDENTIALS
+  upstash_disposition: UNASSIGNED
+  side_effect_collector: PR12-SIDE-EFFECT-COLLECTOR-V2_NOT_IMPLEMENTED
+  side_effect_descriptor_path: external-side-effect-collector-descriptors-v2.json
+  side_effect_descriptor_sha256: c5b11dbb2cd4f676e2cef46bda3c1fd65e1311cbc14eed49f3addc4392cb98b9
+  owner_approved: false
+command_ledger:
+  path: staging-command-ledger.proposed.json
+  sha256: f044fdf55d16bcbdc24b83094bbccb5d21c91ec0214641f52f6c0651e795ea7c
+  status: PROPOSED_NOT_EXECUTABLE
+stage_3_ordered_command_ids:
+  - PR12-CMD-003
+  - PR12-CMD-004
+  - PR12-CMD-005
+  - PR12-CMD-006
+  - PR12-CMD-007
+  - PR12-CMD-007A
+  - PR12-CMD-008A
+stage_4_ordered_command_ids:
+  - PR12-CMD-008B
+  - PR12-CMD-008
+  - PR12-CMD-009
+  - PR12-CMD-010
+  - PR12-CMD-011
+  - PR12-CMD-012
+  - PR12-CMD-013
+  - PR12-CMD-014
+  - PR12-CMD-015
+  - PR12-CMD-016
+  - PR12-CMD-017
+  - PR12-CMD-016A
+  - PR12-CMD-017A
+comm_gate_evidence_map:
+  path: comm-gate-evidence-map-v1.json
+  sha256: fd9b62cec9005404061e2a9876a29f7b4caf811d4faa305f054279acbd68e419
+  status: DESIGN_FROZEN_EXECUTION_BLOCKED
+  gate_count: 54
+  generic_self_attestation_allowed: false
+  typed_claim_registry_status: NOT_IMPLEMENTED
+  execution_pass_allowed: false
+qualification_order:
+  - approval_packet_hash_and_exact_head
+  - stage_1_source_project_provisioning_binding_and_result_then_stop
+  - stage_2_source_identity_and_read_only_configuration_bootstrap_PR12_CMD_004A
+  - stage_2_capture_source_identity_tool_versions_and_DATA_API_AUTH_GRAPHQL_raw_configuration
+  - stage_2_mandatory_stop_before_replay
+  - integration_sandbox_and_secret_boundary
+  - stage_3_clean_full_migration_replay
+  - migration_history_parity
+  - fresh_post_replay_catalog_and_api_settings_capture
+  - mandatory_stop_and_source_replay_result
+  - stage_3_mandatory_stop_and_owner_review
+  - stage_4_owner_approved_full_source_binding
+  - stage_4_source_execution_binding_validation_PR12_CMD_008B
+  - seed_and_representative_data_parity
+  - generated_supabase_types_parity
+  - logical_schema_and_catalog_drift
+  - canonical_pr11_fixed_gates
+  - additive_hosted_slo
+  - rls_grant_acl_helper_trigger_fk_contracts
+  - tenant_a_b_and_auth_jwt_role_matrix
+  - data_api_direct_role_matrix
+  - graphql_conditional_matrix
+  - advisor_security_and_performance_diff
+  - stage_4_final_source_side_effect_inventory_after_watermark_then_backup_capture
+  - stage_4_mandatory_stop
+  - stage_5_isolated_restore_project_creation_and_provider_observation_only
+  - stage_5_mandatory_stop_before_restore_database_connection
+  - stage_6_post_restore_schema_data_tenant_and_api_checks
+  - external_side_effect_duplicate_check
+  - measured_rto_rpo
+  - stage_6_close_at_PR12_CMD_019F
+  - post_stage_6_conditional_owner_sign_off
+  - post_stage_6_evidence_hash_and_privacy_scan_PR12_CMD_020
+  - out_of_manifest_offline_final_verifier_derived_comm_ops_011
+data_api_contract:
+  acl_inventory_proposal: data-api-acl-inventory.proposed.json
+  acl_inventory_proposal_sha256: bf6b315e4644b360593f0d0fa2e11c80e2db2d5a5b6ca5ba0a44a95239ac9a32
+  acl_inventory_owner: UNASSIGNED
+  executable_acl_inventory_authority: nested_in_hash_bound_data_api_matrix
+  post_replay_catalog_collector: NOT_IMPLEMENTED
+  post_replay_catalog_query_contract_sha256: NOT_CAPTURED
+  independent_settings_and_pg_catalog_raw_command: NOT_IMPLEMENTED
+  matrix_collector: NOT_IMPLEMENTED
+  enabled_state: NOT_CAPTURED
+  exposed_schemas: NOT_CAPTURED
+  automatic_grants_setting: NOT_CAPTURED
+  postgres_default_privileges: NOT_CAPTURED
+  supabase_admin_default_privileges: NOT_CAPTURED
+  schema_usage: NOT_CAPTURED
+  relation_column_sequence_function_acl: NOT_CAPTURED
+  acl_inventory_required_object_kinds:
+    - SCHEMA
+    - RELATION
+    - COLUMN
+    - SEQUENCE
+    - FUNCTION
+    - DEFAULT_PRIVILEGE
+  exact_matrix_path: NOT_CAPTURED
+  exact_matrix_sha256: NOT_CAPTURED
+  exact_case_formula: exact catalog object x applicable privilege x anon/authenticated/service_role
+  missing_extra_or_duplicate_tuple_allowed: false
+  source_restore_catalog_parity_required: true
+  direct_roles:
+    - anon
+    - authenticated
+    - service_role
+  acl_and_rls_verified_independently: false
+graphql_contract:
+  installed_version: NOT_CAPTURED
+  enabled_state: NOT_CAPTURED
+  exposed_schemas: NOT_CAPTURED
+  introspection_state: NOT_CAPTURED
+  direct_role_smoke: NOT_RUN
+  tenant_boundary: NOT_RUN
+  column_field_visibility: NOT_RUN
+  disabled_endpoint_rejection_if_not_enabled: NOT_RUN
+  exact_matrix_path: NOT_CAPTURED
+  exact_matrix_sha256: NOT_CAPTURED
+  not_applicable_without_evidence_allowed: false
+security_contract:
+  user_metadata_authorization_allowed: false
+  hosted_jwt_signing_secret_acquisition_allowed: false
+  service_role_server_only: true
+  service_role_in_browser_bundle_response_log_evidence_allowed: false
+  service_role_non_exposure_source_command: PR12-CMD-016A
+  service_role_non_exposure_restore_command: PR12-CMD-019A
+  service_role_non_exposure_must_follow_covered_api_graphql_commands: true
+  service_role_non_exposure_case_binding: raw observation, raw artifact hash, producing command/time, and target credential fingerprint
+  service_role_non_exposure_command_stream_inventory_must_cover_raw_artifacts: true
+  service_role_non_exposure_raw_credential_handling: target-prefixed in-memory scan then scrub; never persisted
+  rls_grant_acl_clinic_scope_weakening_allowed: false
+  exact_matrix_path: NOT_CAPTURED
+  exact_matrix_sha256: NOT_CAPTURED
+  actor_and_jwt_acquisition_method: HOSTED_AUTH_PASSWORD_SIGN_IN_AND_REFRESH
+  sign_in_operation: signInWithPassword
+  refresh_operation: refreshSession
+  raw_token_material_evidence_allowed: false
+  jwt_signing_secret_acquisition_allowed: false
+  fabricated_user_jwt_allowed: false
+  target_inventory_proposal: security-target-inventory.proposed.json
+  target_inventory_proposal_sha256: a87899df1b40799c063315f6293727ef88dddfd2f1d00258cb4b235f49fabe5e
+  target_classification_proposal: security-target-classification.proposed.json
+  target_classification_proposal_sha256: 21d2f08c78b98a036a2538d7a0ec36cc96f72dd6ad2bb7bbb9874d477c754342
+  finalized_target_inventory: NOT_CAPTURED
+  finalized_target_inventory_sha256: NOT_CAPTURED
+  target_inventory_derivation: fresh post-replay pg_catalog public r/p mother set plus auth.identities and auth.users; tracked draft is proposal baseline and representative fixture is subset only
+  matrix_self_selected_targets_allowed: false
+  missing_extra_duplicate_draft_or_unclassified_target_allowed: false
+  target_relations_functions_and_operations: PROVISIONAL_OWNER_APPROVAL_REQUIRED
+  expected_http_sqlstate_row_count_acl_rls_outcomes: NOT_CAPTURED
+  negative_cases:
+    - tenant_a_b_read_insert_update_delete
+    - all_major_roles
+    - permissions_query_error
+    - permissions_row_missing
+    - profile_status_query_error
+    - profile_row_missing
+    - inactive_profile
+    - revoked_or_owner_defined_expired_manager_assignment
+    - missing_authority
+    - stale_jwt
+    - empty_jwt
+    - malformed_jwt
+    - expired_jwt
+    - anon_authenticated_service_role
+    - cross_clinic
+    - direct_data_api_acl_vs_rls
+  relational_integrity_cases:
+    - missing_resource
+    - null_resource
+    - parent_rehome
+    - resource_delete_cascade
+    - clinic_delete_cascade
+  relational_integrity_transport: DIRECT_POSTGRES_TRANSACTION_ROLLBACK
+  relational_integrity_acl_rls_proof: NOT_APPLICABLE
+  relational_integrity_exact_diagnostic_and_state_hashes_required: true
+  relational_integrity_expected_transaction_end_command: ROLLBACK
+  relational_integrity_expected_transaction_end_status: COMMAND_OK
+  relational_integrity_post_rollback_state_must_equal_before_state: true
+  relational_integrity_post_rollback_exists_and_sha256_required: true
+  authority_lookup_query_error_induction_method: NOT_CAPTURED
+  authority_lookup_failure_collector: NOT_IMPLEMENTED
+  authority_lookup_pass_currently_possible: false
+  relational_snapshot_selector_query_and_chronology_collector: NOT_IMPLEMENTED
+  relational_fixture_selector_set: NOT_CAPTURED
+  relational_integrity_pass_currently_possible: false
+  cascade_denial_or_zero_direct_affected_rows_allowed: false
+approval:
+  owner: UNASSIGNED
+  approved_by: UNASSIGNED
+  approved_at: NOT_CAPTURED
+  approval_packet_sha256: NOT_CAPTURED
+  machine_readable_binding_path: NOT_CAPTURED
+  machine_readable_binding_sha256: NOT_CAPTURED
+  source_project_provisioning_binding_template: source-project-provisioning-binding-v2.template.json
+  source_project_provisioning_binding_path: NOT_CAPTURED
+  source_project_provisioning_binding_sha256: NOT_CAPTURED
+  source_identity_bootstrap_binding_template: source-identity-bootstrap-binding.template.json
+  source_identity_bootstrap_binding_path: NOT_CAPTURED
+  source_identity_bootstrap_binding_sha256: NOT_CAPTURED
+  source_identity_bootstrap_result_template: source-identity-bootstrap-result.template.json
+  source_identity_bootstrap_result_path: NOT_CAPTURED
+  source_identity_bootstrap_result_sha256: NOT_CAPTURED
+  source_replay_catalog_binding_template: source-replay-catalog-capture-binding.template.json
+  source_replay_catalog_binding_path: NOT_CAPTURED
+  source_replay_catalog_binding_sha256: NOT_CAPTURED
+  source_replay_catalog_result_template: source-replay-catalog-capture-result.template.json
+  source_replay_catalog_result_path: NOT_CAPTURED
+  source_replay_catalog_result_sha256: NOT_CAPTURED
+  full_source_execution_binding_template: staging-execution-binding.template.json
+  full_source_execution_binding_path: NOT_CAPTURED
+  full_source_execution_binding_sha256: NOT_CAPTURED
+  restore_project_creation_binding_template: restore-project-creation-binding.template.json
+  restore_project_creation_binding_path: NOT_CAPTURED
+  restore_project_creation_binding_sha256: NOT_CAPTURED
+  restore_supplemental_binding_template: restore-execution-supplemental-binding.template.json
+  restore_supplemental_binding_path: NOT_CAPTURED
+  restore_supplemental_binding_sha256: NOT_CAPTURED
+  source_project_provisioning_authorized: false
+  source_identity_and_configuration_bootstrap_authorized: false
+  source_replay_catalog_capture_authorized: false
+  source_full_qualification_and_backup_capture_authorized: false
+  isolated_staging_connection_authorized: false
+  isolated_staging_execution_authorized: false
+  restore_project_creation_authorized: false
+  restore_project_connection_authorized: false
+  post_restore_validation_authorized: false
+  ready_transition_authorized: false
+  merge_authorized: false
+  production_connection_authorized: false
+  commercial_release_authorized: false
+  index_retirement_authorized: false
+revalidation:
+  - target_commit_change
+  - project_region_tier_or_database_version_change
+  - data_or_fixture_change
+  - workload_concurrency_order_or_threshold_change
+  - data_api_or_graphql_setting_change
+  - security_data_api_or_graphql_matrix_hash_change
+  - auth_secret_or_integration_change
+  - related_incident
+  - evidence_expiry
+abort_on:
+  - cross_tenant_access
+  - authorization_regression
+  - rls_acl_helper_trigger_fk_drift
+  - migration_replay_or_history_failure
+  - schema_generated_types_or_seed_drift
+  - canonical_pr11_gate_failure
+  - hosted_frozen_slo_failure
+  - data_api_or_graphql_setting_drift
+  - service_role_exposure
+  - lock_timeout_or_service_error_spike
+  - critical_advisor_finding
+  - restore_integrity_or_post_restore_tenant_failure
+  - rto_or_rpo_failure
+  - external_side_effect_duplication
+  - evidence_hash_or_privacy_scan_failure
+  - unapproved_operation_required
+evidence: []
+residual_risk:
+  - Project refs, exact platform settings, named owners, secret store, API matrices, and actual cost are not captured.
+  - The hosted PR11 adapter, hosted SLO collector, exact request matrix, and post-load row validator are not implemented.
+  - Safe permissions/profile query-error induction, dedicated Auth actor provisioning, stale-authority proof, token-expiry/skew capture, and the authority lookup collector are not implemented.
+  - Relational row selectors, canonical snapshot query hashes, exact fixture lifecycle, row counts, and per-snapshot chronology are not captured or implemented.
+  - The 54-gate COMM map is frozen but its typed claim collector registry is not implemented, so execution PASS remains blocked.
+  - Maximum acceptable provider/database/operator clock skew is UNASSIGNED, so RTO/RPO PASS remains blocked.
+  - The tracked persistent fixture is not capacity representative; owner acceptance or a new generator is required.
+  - Large qualification does not prove another production tier.
+notes: This is an owner-reviewable proposal, not execution evidence and not staging authorization.

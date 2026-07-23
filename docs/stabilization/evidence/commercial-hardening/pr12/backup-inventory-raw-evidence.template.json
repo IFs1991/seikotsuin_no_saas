@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "resultType": "SOURCE_BACKUP_INVENTORY_RAW_EVIDENCE",
+  "status": "NOT_RUN",
+  "commandId": "PR12-CMD-017A",
+  "projectRef": "NOT_CAPTURED",
+  "observedAt": "NOT_CAPTURED",
+  "runtimeIdentity": {
+    "projectRef": "NOT_CAPTURED",
+    "projectUrl": "NOT_CAPTURED",
+    "databaseHost": "NOT_CAPTURED",
+    "databaseConnectionMode": "DIRECT",
+    "databaseUser": "postgres",
+    "databaseVersion": "NOT_CAPTURED",
+    "systemIdentifier": "NOT_CAPTURED"
+  },
+  "request": {
+    "method": "GET",
+    "url": "NOT_CAPTURED",
+    "oauthScope": "database:read",
+    "requiredPermission": "backups_read",
+    "body": null,
+    "authorizationHeaderCaptured": false
+  },
+  "response": {
+    "status": null,
+    "body": {
+      "region": "NOT_CAPTURED",
+      "walg_enabled": false,
+      "pitr_enabled": false,
+      "backups": [],
+      "physical_backup_data": {}
+    }
+  },
+  "secretValuesCaptured": false
+}

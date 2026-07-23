@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "resultType": "DR_EXCLUDED_MANUAL_SCOPE_RAW_EVIDENCE",
+  "status": "NOT_RUN",
+  "targetKind": "UNASSIGNED",
+  "projectRef": "NOT_CAPTURED",
+  "commandId": "NOT_CAPTURED",
+  "observedAt": "NOT_CAPTURED",
+  "runtimeIdentity": {
+    "projectRef": "NOT_CAPTURED",
+    "projectUrl": "NOT_CAPTURED",
+    "databaseHost": "NOT_CAPTURED",
+    "databaseConnectionMode": "DIRECT",
+    "databaseUser": "postgres",
+    "databaseVersion": "NOT_CAPTURED",
+    "systemIdentifier": "NOT_CAPTURED"
+  },
+  "managementApi": {
+    "storageBuckets": {
+      "request": {
+        "method": "GET",
+        "url": "NOT_CAPTURED",
+        "authorizationHeaderCaptured": false
+      },
+      "responseStatus": "NOT_CAPTURED",
+      "collector": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+      "canonicalResponseSha256": "NOT_CAPTURED",
+      "items": [],
+      "rawResponsePersisted": true,
+      "secretValuesCaptured": false
+    },
+    "edgeFunctions": {
+      "request": {
+        "method": "GET",
+        "url": "NOT_CAPTURED",
+        "authorizationHeaderCaptured": false
+      },
+      "responseStatus": "NOT_CAPTURED",
+      "collector": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+      "canonicalResponseSha256": "NOT_CAPTURED",
+      "items": [],
+      "rawResponsePersisted": true,
+      "secretValuesCaptured": false
+    },
+    "authConfig": {
+      "request": {
+        "method": "GET",
+        "url": "NOT_CAPTURED",
+        "authorizationHeaderCaptured": false
+      },
+      "responseStatus": "NOT_CAPTURED",
+      "projectionContract": {
+        "path": "dr-platform-config-projection-contract-v1.json",
+        "sha256": "NOT_CAPTURED"
+      },
+      "collector": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+      "schemaName": "AuthConfigResponse",
+      "propertyCount": 237,
+      "schemaPropertyNamesSha256": "0b0e65320da7a2289eac69c65b5cda3de793dc9f1c53927c04d12a357c13b9f8",
+      "sanitizedCanonicalSha256": "NOT_CAPTURED",
+      "sensitiveConfiguredPresenceSha256": "NOT_CAPTURED",
+      "unknownFields": [],
+      "rawResponsePersisted": false
+    },
+    "realtimeConfig": {
+      "request": {
+        "method": "GET",
+        "url": "NOT_CAPTURED",
+        "authorizationHeaderCaptured": false
+      },
+      "responseStatus": "NOT_CAPTURED",
+      "projectionContract": {
+        "path": "dr-platform-config-projection-contract-v1.json",
+        "sha256": "NOT_CAPTURED"
+      },
+      "collector": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+      "schemaName": "RealtimeConfigResponse",
+      "propertyCount": 11,
+      "schemaPropertyNamesSha256": "09a565f576fa42a04652d68d307fa5cd1edb69a42f24fe51d34c96176741532e",
+      "sanitizedCanonicalSha256": "NOT_CAPTURED",
+      "sensitiveConfiguredPresenceSha256": "NOT_CAPTURED",
+      "unknownFields": [],
+      "rawResponsePersisted": false
+    },
+    "storageConfig": {
+      "request": {
+        "method": "GET",
+        "url": "NOT_CAPTURED",
+        "authorizationHeaderCaptured": false
+      },
+      "responseStatus": "NOT_CAPTURED",
+      "projectionContract": {
+        "path": "dr-platform-config-projection-contract-v1.json",
+        "sha256": "NOT_CAPTURED"
+      },
+      "collector": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+      "schemaName": "StorageConfigResponse",
+      "propertyCount": 6,
+      "schemaPropertyNamesSha256": "9239cf272f3a3e92e55a9e9d5ef0ed7e1a4e56e7dc76ee5a00a8c0942f97bf80",
+      "sanitizedCanonicalSha256": "NOT_CAPTURED",
+      "sensitiveConfiguredPresenceSha256": "NOT_CAPTURED",
+      "unknownFields": [],
+      "rawResponsePersisted": false
+    }
+  },
+  "dashboardExport": {
+    "captureMethod": "SUPABASE_DASHBOARD_SETTINGS_EXPORT",
+    "pageId": "DATABASE_READ_REPLICAS",
+    "collector": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "readReplicaRefs": [],
+    "observedAt": "NOT_CAPTURED",
+    "snapshotCanonicalSha256": "NOT_CAPTURED",
+    "rawSnapshotPersisted": false,
+    "secretValuesCaptured": false
+  },
+  "databaseCatalog": {
+    "collector": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "querySetId": "PR12-DR-DATABASE-CATALOG-V1",
+    "querySetSha256": "NOT_CAPTURED",
+    "queryEvidence": [
+      {
+        "queryId": "NOT_CAPTURED",
+        "querySha256": "NOT_CAPTURED",
+        "observedAt": "NOT_CAPTURED"
+      }
+    ],
+    "observedAt": "NOT_CAPTURED",
+    "storageBucketRowCount": "NOT_CAPTURED",
+    "storageObjectMetadataRowCount": "NOT_CAPTURED",
+    "customRolesRequiringPasswords": [],
+    "extensionCatalog": [],
+    "normalizedDatabaseSettings": [],
+    "realtimePublicationTables": [
+      "public.chat_messages",
+      "public.notifications"
+    ],
+    "normalizedCatalogSha256": "NOT_CAPTURED",
+    "rawQueryOutputPersisted": false,
+    "secretValuesCaptured": false
+  },
+  "credentialProviderConfiguration": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "credentialValuesCaptured": false,
+  "secretValuesCaptured": false
+}

@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 1,
+  "phase": "ISOLATED_STAGING_SOURCE_IDENTITY_BOOTSTRAP",
+  "status": "NOT_RUN",
+  "authorization": {
+    "sourceIdentityConnectionAuthorized": false,
+    "sourceIdentityCaptureAuthorized": false,
+    "sourceLinkAuthorized": false,
+    "cleanMigrationReplayAuthorized": false,
+    "representativeSeedAuthorized": false,
+    "fullQualificationAuthorized": false,
+    "restoreProjectCreationAuthorized": false,
+    "productionConnectionAuthorized": false,
+    "readyTransitionAuthorized": false,
+    "mergeAuthorized": false,
+    "commercialReleaseAuthorized": false,
+    "indexRetirementAuthorized": false
+  },
+  "governanceProposal": {
+    "path": "staging-execution-approval-packet.yaml",
+    "sha256": "36a3e1f5e7b5ed300e971f1d86635ed5afb5cb83ae354bf2c8131545d167f4e2"
+  },
+  "sourceProjectProvisioningApproval": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "sourceProjectProvisioningResult": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "phaseCommandLedger": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "preExecutionFreeze": {
+    "migrationInputContract": {
+      "path": "migration-input-contract.json",
+      "sha256": "NOT_CAPTURED"
+    },
+    "targetGuardImplementation": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "sourceIdentityCollector": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "sourcePlatformConfigurationCollector": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "credentialContract": {
+      "path": "integration-credential-contract.proposed.json",
+      "sha256": "NOT_CAPTURED"
+    },
+    "credentialProviderConfiguration": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "toolVersionOutputs": {
+      "node": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+      "supabaseCli": {
+        "path": "NOT_CAPTURED",
+        "sha256": "NOT_CAPTURED"
+      },
+      "psql": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+    },
+    "toolBinaries": {
+      "supabaseCli": {
+        "path": "NOT_CAPTURED",
+        "sha256": "903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118"
+      },
+      "psql": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+    }
+  },
+  "target": {
+    "gitCommit": "NOT_CAPTURED",
+    "baseCommit": "4475e1c641c2ff18f66021ee65cfecfceaa6b7ab",
+    "migrationHead": "20260718011731",
+    "environmentProjectRef": "NOT_CAPTURED",
+    "projectUrl": "NOT_CAPTURED",
+    "databaseHost": "NOT_CAPTURED",
+    "databaseConnectionMode": "DIRECT",
+    "databaseUser": "postgres",
+    "databaseVersion": "NOT_CAPTURED"
+  },
+  "firstSourceIdentityAndClockCommand": {
+    "commandId": "PR12-CMD-004A",
+    "resultType": "SOURCE_IDENTITY_CLOCK_OPERATION",
+    "remoteContact": true,
+    "mutating": false,
+    "mutationScope": "NONE",
+    "preKnownSystemIdentifierRequired": false,
+    "mustCompleteBeforeLinkHistoryAdvisorOrReplay": true,
+    "bootstrapGuardUsesProvisioningResult": true,
+    "subsequentCommandsMustMatchCapturedSystemIdentifier": true,
+    "readOnlyPlatformConfigurationCaptureRequired": true,
+    "requiredConfigurationFamilies": ["DATA_API", "AUTH", "GRAPHQL"],
+    "familySpecificRawArtifactsRequired": true,
+    "configurationMustMatchProvisioningProposal": true
+  },
+  "approvedCommandIds": [
+    "capture-node-version",
+    "capture-supabase-version",
+    "capture-psql-version",
+    "hash-supabase-binary",
+    "hash-supabase-archive",
+    "hash-psql-binary",
+    "PR12-CMD-000",
+    "PR12-CMD-000A",
+    "PR12-CMD-001",
+    "PR12-CMD-002",
+    "PR12-CMD-004A"
+  ],
+  "mandatoryStop": {
+    "stopAfterCommandId": "PR12-CMD-004A",
+    "sourceReplayRequiresSeparatePostCaptureApproval": true,
+    "automaticContinuationAuthorized": false
+  },
+  "approval": {
+    "approvedBy": "UNASSIGNED",
+    "approvedAt": "NOT_CAPTURED",
+    "expiresAt": "NOT_CAPTURED",
+    "evidencePath": "NOT_CAPTURED",
+    "evidenceSha256": "NOT_CAPTURED"
+  },
+  "owners": {
+    "commercialReleaseOwner": "UNASSIGNED",
+    "supabasePlatformOwner": "UNASSIGNED",
+    "databaseMigrationOperator": "UNASSIGNED",
+    "disasterRecoveryOperator": "UNASSIGNED",
+    "securityTenantReviewer": "UNASSIGNED",
+    "clinicalDataPrivacyReviewer": "UNASSIGNED",
+    "billingMessagingSandboxOwner": "UNASSIGNED",
+    "siteReliabilityOwner": "UNASSIGNED",
+    "incidentCommander": "UNASSIGNED",
+    "cleanupOwner": "UNASSIGNED",
+    "evidenceCustodian": "UNASSIGNED"
+  },
+  "notes": "This approval permits only the first read-only source identity/clock and Data API/Auth/GraphQL configuration capture. It stops before link, history, Advisor, migration replay, seed, qualification, backup, or restore."
+}

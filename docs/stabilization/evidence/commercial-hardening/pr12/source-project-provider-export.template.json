@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "exportType": "SUPABASE_SOURCE_PROJECT_PROVIDER_EXPORT",
+  "status": "NOT_RUN",
+  "provider": "SUPABASE_MANAGEMENT_API",
+  "captureMethod": "HASH_BOUND_REDACTED_REQUEST_PROVIDER_HTTP_ENVELOPES_AND_BILLING_DASHBOARD_ENTITLEMENT",
+  "actionId": "PR12-ACTION-003",
+  "providerOperationIdentifierAvailability": "NOT_EXPOSED_BY_DOCUMENTED_CREATE_RESPONSE",
+  "request": {
+    "httpMethod": "POST",
+    "endpoint": "https://api.supabase.com/v1/projects",
+    "organizationSlug": "NOT_CAPTURED",
+    "name": "seikotsuin-pr12-isolated-qualification-20260719",
+    "regionSelection": {
+      "type": "specific",
+      "code": "ap-northeast-1"
+    },
+    "desiredInstanceSize": "large",
+    "databasePasswordSource": "OWNER_SECRET_STORE_RUNTIME_INJECTION",
+    "managementAccessTokenSource": "OWNER_SECRET_STORE_RUNTIME_INJECTION",
+    "rawSecretValuesCaptured": false,
+    "redactedWireBody": {
+      "db_pass": "REDACTED",
+      "name": "seikotsuin-pr12-isolated-qualification-20260719",
+      "organization_slug": "NOT_CAPTURED",
+      "region_selection": {
+        "type": "specific",
+        "code": "ap-northeast-1"
+      },
+      "desired_instance_size": "large"
+    },
+    "redactedRequestSha256": "NOT_CAPTURED"
+  },
+  "organizationEntitlementObservation": {
+    "source": "SUPABASE_BILLING_DASHBOARD",
+    "captureMethod": "OWNER_READ_ONLY_SCREENSHOT_WITH_NORMALIZED_METADATA",
+    "organizationId": "NOT_CAPTURED",
+    "organizationSlug": "NOT_CAPTURED",
+    "organizationPlan": "PRO",
+    "actualDashboardQuoteUsd": "NOT_CAPTURED",
+    "observedAt": "NOT_CAPTURED",
+    "rawArtifact": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    }
+  },
+  "regionAvailabilityObservation": {
+    "httpMethod": "GET",
+    "endpoint": "NOT_CAPTURED",
+    "httpStatus": "NOT_CAPTURED",
+    "organizationSlug": "NOT_CAPTURED",
+    "desiredInstanceSize": "large",
+    "selectionType": "specific",
+    "regionCode": "ap-northeast-1",
+    "provider": "NOT_CAPTURED",
+    "capacityStatus": "NOT_CAPTURED",
+    "observedAt": "NOT_CAPTURED"
+  },
+  "createResponse": {
+    "httpStatus": "NOT_CAPTURED",
+    "projectRef": "NOT_CAPTURED",
+    "organizationId": "NOT_CAPTURED",
+    "organizationSlug": "NOT_CAPTURED",
+    "projectName": "seikotsuin-pr12-isolated-qualification-20260719",
+    "region": "ap-northeast-1",
+    "createdAt": "NOT_CAPTURED",
+    "status": "NOT_CAPTURED"
+  },
+  "projectObservation": {
+    "httpMethod": "GET",
+    "endpoint": "NOT_CAPTURED",
+    "httpStatus": "NOT_CAPTURED",
+    "projectRef": "NOT_CAPTURED",
+    "projectName": "seikotsuin-pr12-isolated-qualification-20260719",
+    "region": "ap-northeast-1",
+    "status": "NOT_CAPTURED",
+    "databaseHost": "NOT_CAPTURED",
+    "databaseVersion": "NOT_CAPTURED",
+    "observedAt": "NOT_CAPTURED"
+  },
+  "computeObservation": {
+    "httpMethod": "GET",
+    "endpoint": "NOT_CAPTURED",
+    "httpStatus": "NOT_CAPTURED",
+    "projectRef": "NOT_CAPTURED",
+    "variantId": "ci_large",
+    "observedAt": "NOT_CAPTURED"
+  },
+  "rawProviderArtifacts": [],
+  "capturedAt": "NOT_CAPTURED",
+  "capturedBy": "UNASSIGNED"
+}

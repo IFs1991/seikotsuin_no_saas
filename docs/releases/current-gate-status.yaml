@@ -1,128 +1,741 @@
-schema_version: 1
+schema_version: 2
 repository: IFs1991/seikotsuin_no_saas
-assessed_branch: codex/commercial-hardening-pr02
-assessed_commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
-assessed_at: '2026-07-13T02:09:57.1001582+09:00'
+assessed_branch: codex/commercial-hardening-pr12-isolated-qualification
+assessed_commit: NOT_CAPTURED
+commit_binding:
+  selector: GIT_HEAD_AT_EVALUATION
+  state: NOT_CAPTURED
+  required_before_any_pass: true
+  invalidate_on_head_change: true
+base_commit: 4475e1c641c2ff18f66021ee65cfecfceaa6b7ab
+migration_head: '20260718011731'
+assessed_at: NOT_CAPTURED
 assessor: codex
+authority:
+  change_dod: docs/quality/change-dod-v1.0.md
+  commercial_release: docs/releases/commercial-release-qualification-v1.0.md
+  implementation_ssot: docs/stabilization/spec-commercial-hardening-migration-v1.0.md
+  pr12_spec: docs/stabilization/spec-commercial-pr12-isolated-release-qualification-v1.0.md
 summary:
-  change_dod: PASS
+  change_dod: NOT_RUN
   pilot_release: NO_GO
   commercial_release: NO_GO
   pilot_success: NOT_VALIDATED
+  commercial_gate_count: 54
+  commercial_pass_count: 0
+  commercial_not_run_count: 54
+  isolated_staging_execution_authorized: false
+  production_connection_authorized: false
+notes:
+  - This committed snapshot intentionally defers exact self-head binding; Draft PR and CI evidence record the evaluated SHA.
+  - Plans and prior local evidence do not qualify isolated staging or commercial release.
+  - All 54 COMM gates are blocking and remain NOT_RUN until exact commit/environment evidence exists.
 items:
-  - id: CHANGE-DOCS-001
-    title: Layered release governance docs are internally validated
-    status: PASS
+  - id: CHANGE-PR12-PREP-001
+    title: PR12 local preparation bound to exact Draft head
+    status: NOT_RUN
     blocking: true
-    environment: local
-    commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
-    owner: codex
-    verified_at: '2026-07-13T02:09:57.1001582+09:00'
+    environment: repository
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
     expires_at: null
-    evidence:
-      - type: command
-        reference: 'git diff --check; YAML parse; relative-link validation (working-tree docs-only change assessed against HEAD)'
-    residual_risk:
-      - 'The governance files are uncommitted, so the recorded HEAD does not yet contain them.'
-    notes: 'Docs-only scope; runtime Jest and Playwright are not required.'
+    evidence: []
+    residual_risk: []
+    notes: 'Preparation files exist, but the self-referential head is captured externally by Draft PR and CI evidence.'
   - id: PILOT-CORE-001
     title: Core clinical workflows verified end-to-end
     status: NOT_RUN
     blocking: true
     environment: staging
-    commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
+    commit: NOT_CAPTURED
     owner: UNASSIGNED
-    verified_at: '2026-07-13T02:09:57.1001582+09:00'
+    verified_at: NOT_CAPTURED
     expires_at: null
     evidence: []
     residual_risk: []
-    notes: 'No current staging evidence for all login, reservation, patient, daily-report, and revenue-reflection workflows.'
+    notes: 'No current staging workflow evidence is captured.'
   - id: PILOT-SEC-001
     title: Pilot tenant and authorization boundaries verified
     status: NOT_RUN
     blocking: true
     environment: staging
-    commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
+    commit: NOT_CAPTURED
     owner: UNASSIGNED
-    verified_at: '2026-07-13T02:09:57.1001582+09:00'
+    verified_at: NOT_CAPTURED
     expires_at: null
     evidence: []
     residual_risk: []
-    notes: 'PR-02 evidence includes privilege pgTAP but not the complete pilot A/B and role matrix in staging.'
+    notes: 'No current staging tenant and role matrix evidence is captured.'
   - id: PILOT-OPS-001
     title: Pilot launch and operational evidence complete
     status: NOT_RUN
     blocking: true
     environment: production
-    commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
+    commit: NOT_CAPTURED
     owner: UNASSIGNED
-    verified_at: '2026-07-13T02:09:57.1001582+09:00'
+    verified_at: NOT_CAPTURED
     expires_at: null
     evidence: []
     residual_risk: []
-    notes: 'Launch owners, target clinics, backup confirmation, alerts, and 24/72-hour review are not evidenced.'
-  - id: COMM-DB-001
-    title: Database contract qualification
-    status: PASS_WITH_RISK
-    blocking: true
-    environment: local
-    commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
-    owner: UNASSIGNED
-    verified_at: '2026-07-13T02:09:57.1001582+09:00'
-    expires_at: null
-    evidence:
-      - type: file
-        reference: '../stabilization/evidence/commercial-hardening/pr01/README.md'
-      - type: file
-        reference: '../stabilization/evidence/commercial-hardening/pr02/README.md'
-    residual_risk:
-      - 'PR-02 phased DB runner, full replay, and staging migration apply remain NOT_RUN.'
-    notes: 'Local append-only and focused contracts exist; this cannot qualify commercial release. Mitigation owner and due date are unassigned.'
-  - id: COMM-TENANT-001
-    title: Complete tenant integrity invariant set
-    status: NOT_RUN
-    blocking: true
-    environment: staging
-    commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
-    owner: UNASSIGNED
-    verified_at: '2026-07-13T02:09:57.1001582+09:00'
-    expires_at: null
-    evidence: []
-    residual_risk: []
-    notes: 'PR-03 and later hardening invariants are not evidenced complete on current HEAD.'
-  - id: COMM-BILL-001
-    title: Commercial billing path verified
-    status: NOT_RUN
-    blocking: true
-    environment: staging
-    commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
-    owner: UNASSIGNED
-    verified_at: '2026-07-13T02:09:57.1001582+09:00'
-    expires_at: null
-    evidence: []
-    residual_risk: []
-    notes: 'No current Checkout, webhook, Portal, cancellation, failure, concurrency, or cross-org evidence.'
-  - id: COMM-OPS-004
-    title: Restore drill and restored tenant isolation
-    status: NOT_RUN
-    blocking: true
-    environment: staging
-    commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
-    owner: UNASSIGNED
-    verified_at: '2026-07-13T02:09:57.1001582+09:00'
-    expires_at: null
-    evidence: []
-    residual_risk: []
-    notes: 'The restore-drill README is a placeholder and is not execution evidence.'
+    notes: 'Launch owners, backup, alerts, and monitoring evidence are not captured.'
   - id: SUCCESS-VALIDATION-001
     title: Pilot value and business hypotheses measured
     status: NOT_RUN
     blocking: true
     environment: production
-    commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
+    commit: NOT_CAPTURED
     owner: UNASSIGNED
-    verified_at: '2026-07-13T02:09:57.1001582+09:00'
+    verified_at: NOT_CAPTURED
     expires_at: null
     evidence: []
     residual_risk: []
-    notes: 'No 30-day usage, time-saving, support-cost, payment, or retention evidence was found.'
+    notes: 'No current 30-day usage, payment, support-cost, or retention evidence is captured.'
+  - id: COMM-DB-001
+    title: Append-only migration history
+    status: NOT_RUN
+    blocking: true
+    environment: repository_and_isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head repository_and_isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-DB-002
+    title: Clean full migration replay
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-DB-003
+    title: Local and remote migration history parity
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-DB-004
+    title: Generated Supabase types parity
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-DB-005
+    title: Schema drift detection
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-DB-006
+    title: Representative seed and data reproducibility
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-DB-007
+    title: Database pgTAP contract
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-DB-008
+    title: Linked isolated-staging verification
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-TENANT-001
+    title: RLS policy and behavior contract
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-TENANT-002
+    title: Table GRANT and default privilege contract
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-TENANT-003
+    title: Function EXECUTE and fixed search_path contract
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-TENANT-004
+    title: Composite foreign-key contract
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-TENANT-005
+    title: Parent re-home protection
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-TENANT-006
+    title: Tenant A/B CRUD negative tests
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-TENANT-007
+    title: Internal table client denial
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-TENANT-008
+    title: Shared master read-only boundary
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-TENANT-009
+    title: Legacy table isolation
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-AUTH-001
+    title: Database-authoritative permission source
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-AUTH-002
+    title: Permission error and missing authority fail-closed
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-AUTH-003
+    title: Stale JWT cannot revive authority
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-AUTH-004
+    title: Inactive profile denial
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-AUTH-005
+    title: Expired or revoked manager assignment denial
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-AUTH-006
+    title: Atomic invite acceptance
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-AUTH-007
+    title: Concurrent invite claim
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-AUTH-008
+    title: Partial-write prevention
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-API-001
+    title: All mutating routes classified
+    status: NOT_RUN
+    blocking: true
+    environment: ci_and_isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head ci_and_isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-API-002
+    title: Side-effect GET routes classified
+    status: NOT_RUN
+    blocking: true
+    environment: ci_and_isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head ci_and_isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-API-003
+    title: Clinic scope enforced
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-API-004
+    title: Billing gate enforced
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-API-005
+    title: Public validation enforced
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-API-006
+    title: Internal secret boundary enforced
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-API-007
+    title: Webhook signature and idempotency
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-API-008
+    title: Rate limiting enforced
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-API-009
+    title: Unclassified route fails CI
+    status: NOT_RUN
+    blocking: true
+    environment: ci_and_isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head ci_and_isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-BILL-001
+    title: Stripe test-mode Checkout
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-BILL-002
+    title: Webhook signature idempotency and out-of-order handling
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-BILL-003
+    title: Customer Portal
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-BILL-004
+    title: Checkout expiry recovery
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-BILL-005
+    title: Cancellation and payment-failure handling
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-BILL-006
+    title: Subscription state synchronization
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-BILL-007
+    title: Tenant quantity and concurrent activation
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-BILL-008
+    title: Emergency disable
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-BILL-009
+    title: Cross-organization and non-admin billing denial
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-OPS-001
+    title: Isolated staging environment
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-OPS-002
+    title: Migration rehearsal and Advisor diff
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-OPS-003
+    title: Backup captured
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_staging
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_staging execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-OPS-004
+    title: Restore drill and restored tenant isolation
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_restore
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_restore execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-OPS-005
+    title: Measured RTO and RPO
+    status: NOT_RUN
+    blocking: true
+    environment: isolated_restore
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head isolated_restore execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-OPS-006
+    title: Branch protection and required checks
+    status: NOT_RUN
+    blocking: true
+    environment: github
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head github execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-OPS-007
+    title: Canary and production apply plan
+    status: NOT_RUN
+    blocking: true
+    environment: production_plan
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head production_plan execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-OPS-008
+    title: Post-deploy smoke
+    status: NOT_RUN
+    blocking: true
+    environment: production_plan
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head production_plan execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-OPS-009
+    title: 24h and 72h monitoring
+    status: NOT_RUN
+    blocking: true
+    environment: production_plan
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head production_plan execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-OPS-010
+    title: Incident and forward-fix runbook
+    status: NOT_RUN
+    blocking: true
+    environment: production_plan
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head production_plan execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'
+  - id: COMM-OPS-011
+    title: Commercial release sign-off
+    status: NOT_RUN
+    blocking: true
+    environment: production_plan
+    commit: NOT_CAPTURED
+    owner: UNASSIGNED
+    verified_at: NOT_CAPTURED
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No exact-head production_plan execution evidence is captured; earlier local or historical evidence is not promoted to PASS.'

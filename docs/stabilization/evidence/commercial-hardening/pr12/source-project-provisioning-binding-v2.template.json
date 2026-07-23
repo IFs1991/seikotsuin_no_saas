@@ -1,0 +1,203 @@
+{
+  "schemaVersion": 2,
+  "phase": "SOURCE_PROJECT_PROVISIONING",
+  "status": "NOT_RUN",
+  "authorization": {
+    "sourceProjectProvisioningAuthorized": false,
+    "isolatedStagingConnectionAuthorized": false,
+    "isolatedStagingExecutionAuthorized": false,
+    "restoreProjectCreationAuthorized": false,
+    "productionConnectionAuthorized": false,
+    "readyTransitionAuthorized": false,
+    "mergeAuthorized": false,
+    "commercialReleaseAuthorized": false,
+    "indexRetirementAuthorized": false
+  },
+  "provisioningAction": {
+    "actionId": "PR12-ACTION-003",
+    "resultType": "SOURCE_PROJECT_PROVISIONING_OPERATION",
+    "method": "OWNER_MANAGEMENT_API_CREATE_PROJECT",
+    "httpMethod": "POST",
+    "endpoint": "https://api.supabase.com/v1/projects",
+    "maximumPostAttempts": 1,
+    "automaticPostRetryAllowed": false,
+    "providerIdempotencyKeyDocumented": false,
+    "remoteContact": true,
+    "mutating": true,
+    "mutationScope": "SOURCE_PROJECT_CREATION",
+    "databaseConnectionAuthorized": false,
+    "requestTimeoutMilliseconds": "NOT_CAPTURED",
+    "readinessObservationMaximumSeconds": "NOT_CAPTURED",
+    "readinessPollIntervalSeconds": "NOT_CAPTURED",
+    "providerCreatedAtMaximumClockSkewSeconds": 300
+  },
+  "target": {
+    "gitCommit": "NOT_CAPTURED",
+    "baseCommit": "4475e1c641c2ff18f66021ee65cfecfceaa6b7ab",
+    "cleanWorktreeRequired": true
+  },
+  "governanceProposal": {
+    "path": "docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml",
+    "sha256": "NOT_CAPTURED"
+  },
+  "implementationContracts": {
+    "contractPath": "scripts/commercial-hardening/pr12-source-project-provisioning-contract.mjs",
+    "contractSha256": "NOT_CAPTURED",
+    "wrapperPath": "scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs",
+    "wrapperSha256": "NOT_CAPTURED"
+  },
+  "credentialControls": {
+    "provisioningCredentialConfiguration": {
+      "path": "source-project-provisioning-credential-configuration.json",
+      "sha256": "NOT_CAPTURED"
+    },
+    "managementAccessTokenSecretName": "PR12_SUPABASE_ACCESS_TOKEN",
+    "databasePasswordSecretName": "PR12_SOURCE_DB_PASSWORD",
+    "providerConfigurationMustExistBeforeApproval": true,
+    "secretValuesCaptured": false
+  },
+  "approvedRequest": {
+    "canonicalization": "RFC8785_STYLE_SORTED_KEYS_UTF8_V1",
+    "projection": {
+      "db_pass": "RUNTIME_SECRET_NOT_IN_EVIDENCE",
+      "desired_instance_size": "large",
+      "name": "seikotsuin-pr12-isolated-qualification-20260719",
+      "organization_slug": "NOT_CAPTURED",
+      "region_selection": {
+        "code": "ap-northeast-1",
+        "type": "specific"
+      }
+    },
+    "sha256": "NOT_CAPTURED",
+    "deprecatedOrIgnoredFieldsForbidden": [
+      "organization_id",
+      "plan",
+      "region",
+      "kps_enabled"
+    ]
+  },
+  "environmentProposal": {
+    "organizationId": "NOT_CAPTURED",
+    "organizationSlug": "NOT_CAPTURED",
+    "exactOrganizationAllowBinding": true,
+    "organizationPlan": "PRO",
+    "projectName": "seikotsuin-pr12-isolated-qualification-20260719",
+    "region": "ap-northeast-1",
+    "databaseTier": "LARGE",
+    "prohibitedProjectRefs": ["qnanuoqveidwvacvbhqp"],
+    "prohibitedOrganizationIds": ["NOT_CAPTURED"],
+    "prohibitedOrganizationSlugs": ["NOT_CAPTURED"]
+  },
+  "initialPlatformPosture": {
+    "mutationsIncludedInPhase1": false,
+    "dataApiExpected": "OWNER_EXPECTATION_ONLY_NOT_OBSERVED",
+    "graphQlExpected": "OWNER_EXPECTATION_ONLY_NOT_OBSERVED",
+    "authExpected": "OWNER_EXPECTATION_ONLY_NOT_OBSERVED",
+    "integrationExpected": "OWNER_EXPECTATION_ONLY_NOT_OBSERVED",
+    "phase2ReadOnlyObservationRequired": true,
+    "mismatchAction": "STOP_NO_CONFIGURATION_MUTATION_REQUIRE_SEPARATE_APPROVAL"
+  },
+  "duplicateAndFailurePolicy": {
+    "atomicLocalClaimRequiredBeforeCredentialRetrieval": true,
+    "durableFileFlushAndReadbackRequired": true,
+    "postIntentDurableBeforeFetch": true,
+    "postIntentPermanentlyConsumesActionIdentity": true,
+    "actionJournalDirectoryPathSha256": "NOT_CAPTURED",
+    "organizationProjectListAllPagesRequiredBeforePost": true,
+    "fixedNameDuplicateAction": "ABORT_POST_NOT_SENT",
+    "unknownRemoteOutcomeAction": "NO_RETRY_READ_ONLY_RECONCILIATION_AND_OWNER_DECISION",
+    "reconciliationOnlyMode": "--reconcile-dispatched-action",
+    "automaticCleanupAuthorized": false,
+    "destructiveRecoveryAuthorized": false,
+    "recoveryOwner": "UNASSIGNED"
+  },
+  "lifecycle": {
+    "sourceMaximumHoursFromCreation": 72,
+    "automaticDeletionAuthorized": false,
+    "deletionRequiresSeparateApproval": true,
+    "paidProjectCannotBePaused": true
+  },
+  "retentionAndCleanupDecision": {
+    "disposition": "DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION",
+    "sourceFundedHours": 72,
+    "fundedThrough": "NOT_CAPTURED",
+    "fundingCeilingUsd": 50,
+    "fundingApprovedAmountUsd": "NOT_CAPTURED",
+    "fundingSource": "NOT_CAPTURED",
+    "cleanupOwner": "UNASSIGNED",
+    "deletionApprovalRequester": "UNASSIGNED",
+    "deletionApprovalRequestDeadline": "NOT_CAPTURED",
+    "billingEscalationOwner": "UNASSIGNED",
+    "fundedExtensionOwner": "UNASSIGNED"
+  },
+  "cost": {
+    "currency": "USD",
+    "computeRateUsdPerProjectHour": 0.1517,
+    "sourceMaximumBillableHours": 72,
+    "sourceMaximumComputeUsd": 10.9224,
+    "partialHourRounding": "ROUNDED_UP_TO_FULL_HOUR",
+    "organizationCurrentPlan": "NOT_CAPTURED",
+    "organizationPlanChangeRequired": "NOT_CAPTURED",
+    "planIncrementalUsd": "NOT_CAPTURED",
+    "computeCreditAppliedUsd": "NOT_CAPTURED",
+    "taxAndOtherChargesUsd": "NOT_CAPTURED",
+    "actualDashboardQuoteUsd": "NOT_CAPTURED",
+    "quote": {
+      "artifactPath": "NOT_CAPTURED",
+      "artifactSha256": "NOT_CAPTURED",
+      "observedAt": "NOT_CAPTURED",
+      "validThrough": "NOT_CAPTURED"
+    },
+    "proposedBudgetCeilingUsd": 50
+  },
+  "approval": {
+    "decision": "NOT_CAPTURED",
+    "attestationStatus": "NOT_CAPTURED",
+    "approvedBy": "UNASSIGNED",
+    "approvedAt": "NOT_CAPTURED",
+    "expiresAt": "NOT_CAPTURED",
+    "evidencePath": "NOT_CAPTURED",
+    "evidenceSha256": "NOT_CAPTURED",
+    "approvedActionId": "PR12-ACTION-003",
+    "approvedPayloadSha256": "NOT_CAPTURED",
+    "approvedBindingMaterialSha256": "NOT_CAPTURED"
+  },
+  "owners": {
+    "commercialReleaseOwner": "UNASSIGNED",
+    "provisioningOperator": "UNASSIGNED",
+    "supabasePlatformOwner": "UNASSIGNED",
+    "cleanupOwner": "UNASSIGNED",
+    "evidenceCustodian": "UNASSIGNED",
+    "databaseMigrationOperator": "UNASSIGNED",
+    "disasterRecoveryOperator": "UNASSIGNED",
+    "securityTenantReviewer": "UNASSIGNED",
+    "clinicalDataPrivacyReviewer": "UNASSIGNED",
+    "billingMessagingSandboxOwner": "UNASSIGNED",
+    "siteReliabilityOwner": "UNASSIGNED",
+    "incidentCommander": "UNASSIGNED"
+  },
+  "separationOfDuties": {
+    "approvedByMustDifferFrom": [
+      "provisioningOperator",
+      "supabasePlatformOwner",
+      "cleanupOwner",
+      "evidenceCustodian"
+    ],
+    "provisioningOperatorMustEqual": "supabasePlatformOwner",
+    "provisioningOperatorMustDifferFrom": ["cleanupOwner", "evidenceCustodian"]
+  },
+  "evidenceContract": {
+    "evidenceParentDirectoryPathSha256": "NOT_CAPTURED",
+    "secretFreeProjectionOnly": true,
+    "rawHttpHeadersPersisted": false,
+    "rawProviderBodiesPersisted": false,
+    "unexpectedProviderFieldsAction": "FAIL_STOP_NO_BODY_PERSISTENCE",
+    "privacyAndSecretScanRequired": true,
+    "sha256ManifestRequired": true,
+    "atomicPartialThenRenameRequired": true,
+    "evidenceSealBeforeTerminalOutcomeRequired": true,
+    "partialEvidenceAutomaticDeletionAllowed": false,
+    "abortDuplicateAndPartialFailureEvidenceRequired": true
+  },
+  "notes": "Preparation template only. Every NOT_CAPTURED or UNASSIGNED Phase 1 field is a hard stop. A future approved instance may authorize only one PR12-ACTION-003 create-project POST plus its enumerated read-only preflight/readiness observations. It never authorizes linking, database access, configuration mutation, replay, seed, backup, restore, cleanup/deletion, Ready, merge, production, or commercial release."
+}

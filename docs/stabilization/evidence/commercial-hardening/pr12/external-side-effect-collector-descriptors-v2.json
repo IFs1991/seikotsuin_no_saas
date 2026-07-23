@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 2,
+  "collectorId": "PR12-SIDE-EFFECT-COLLECTOR-V2",
+  "families": {
+    "DATABASE_EXTENSION_STATE": {
+      "probeId": "PR12-SE-V2-EXTENSIONS",
+      "requestOrQueryText": "SELECT name, default_version, installed_version FROM pg_available_extensions WHERE name IN ('pg_cron','pg_net','wrappers') ORDER BY name;"
+    },
+    "PG_CRON_JOB_INVENTORY": {
+      "probeId": "PR12-SE-V2-PG-CRON",
+      "requestOrQueryText": "SELECT to_regclass('cron.job') AS relation; IF PRESENT SELECT jobid::text, active FROM cron.job ORDER BY jobid;"
+    },
+    "PG_NET_QUEUE_INVENTORY": {
+      "probeId": "PR12-SE-V2-PG-NET",
+      "requestOrQueryText": "SELECT to_regclass('net.http_request_queue'), to_regclass('net._http_response'); IF PRESENT SELECT count(*) ONLY; NEVER SELECT URL, HEADERS, OR BODY;"
+    },
+    "DATABASE_WEBHOOK_TRIGGER_INVENTORY": {
+      "probeId": "PR12-SE-V2-DATABASE-WEBHOOKS",
+      "requestOrQueryText": "SELECT schema_name, table_name, trigger_name, function_name, enabled FROM pg_trigger JOIN pg_proc WHERE function identifies net.http_*, supabase_functions.http_request, or HTTP destination; omit arguments and secrets; ORDER BY schema_name, table_name, trigger_name;"
+    },
+    "WRAPPER_FDW_INVENTORY": {
+      "probeId": "PR12-SE-V2-WRAPPERS",
+      "requestOrQueryText": "SELECT server_name, wrapper_name FROM pg_foreign_server JOIN pg_foreign_data_wrapper; NEVER SELECT OPTIONS; ORDER BY server_name;"
+    },
+    "STRIPE_CONFIGURATION_AND_DISPATCH": {
+      "probeId": "PR12-SE-V2-STRIPE",
+      "requestOrQueryText": "SAFE_ENV_PRESENCE_PROJECTION; NO PROVIDER REQUEST WHEN DISABLED; IF OWNER-APPROVED TEST MODE: GET /v1/balance AND COMPLETE GET /v1/events?created[gte]=<frozen-window>&limit=100 PAGINATION;"
+    },
+    "EMAIL_CONFIGURATION_AND_DISPATCH": {
+      "probeId": "PR12-SE-V2-EMAIL",
+      "requestOrQueryText": "SAFE_EMAIL_CONFIG_PRESENCE_PROJECTION; SELECT pending, processing, post-window provider-dispatch counts FROM email_outbox; NEVER RETURN RECIPIENT OR BODY;"
+    },
+    "LINE_CONFIGURATION_AND_DISPATCH": {
+      "probeId": "PR12-SE-V2-LINE",
+      "requestOrQueryText": "SAFE_LINE_CONFIG_PRESENCE_PROJECTION; SELECT enabled-gate and post-window dispatch counts FROM LINE credential/cache/outbox catalogs; NEVER RETURN TOKEN OR MESSAGE;"
+    },
+    "SMS_CONFIGURATION_AND_DISPATCH": {
+      "probeId": "PR12-SE-V2-SMS",
+      "requestOrQueryText": "AUTH_SAFE_PROJECTION_V2_BINDING; TRACKED_SERVER_SOURCE SMS sink inventory; NEVER RETURN CREDENTIAL OR MESSAGE;"
+    },
+    "INBOUND_WEBHOOK_CONFIGURATION": {
+      "probeId": "PR12-SE-V2-INBOUND-WEBHOOKS",
+      "requestOrQueryText": "TRACKED_ROUTE_MANIFEST_BINDING; STRIPE unsigned POST expected 400; RESEND missing-secret negative control expected 500 outside hosted SLO; LINE absent route expected 404; verify zero DB mutations;"
+    },
+    "WORKER_CRON_QUEUE_CONFIGURATION": {
+      "probeId": "PR12-SE-V2-WORKERS",
+      "requestOrQueryText": "HASH-BOUND vercel.json and route manifest; unauthenticated GET /api/internal/process-email-outbox, /api/internal/process-line-outbox, /api/internal/reservation-reminders expected 401;"
+    },
+    "BULK_IMPORT_SYNC_CONFIGURATION": {
+      "probeId": "PR12-SE-V2-BULK",
+      "requestOrQueryText": "FROZEN TRACKED SOURCE GRAPH: enumerate external bulk import/sync destinations and enabled gates; database-only internal import is excluded;"
+    },
+    "EXTERNAL_RATE_LIMIT_NAMESPACE": {
+      "probeId": "PR12-SE-V2-RATE-LIMIT",
+      "requestOrQueryText": "SAFE UPSTASH URL/TOKEN PRESENCE PROJECTION AND NAMESPACE PREFIX CLASSIFICATION; NEVER RETURN URL OR TOKEN;"
+    },
+    "DUPLICATE_SIDE_EFFECT_SCAN": {
+      "probeId": "PR12-SE-V2-DUPLICATES",
+      "requestOrQueryText": "ALL-TIME AND POST-WINDOW COUNTS FOR email/LINE outboxes and Stripe webhook event idempotency keys; NEVER RETURN PAYLOADS;"
+    }
+  }
+}

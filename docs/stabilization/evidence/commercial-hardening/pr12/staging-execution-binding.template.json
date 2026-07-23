@@ -1,0 +1,246 @@
+{
+  "schemaVersion": 1,
+  "phase": "ISOLATED_STAGING_SOURCE_EXECUTION",
+  "status": "NOT_RUN",
+  "authorization": {
+    "sourceProjectProvisioningAuthorized": false,
+    "isolatedStagingConnectionAuthorized": false,
+    "isolatedStagingExecutionAuthorized": false,
+    "restoreProjectCreationAuthorized": false,
+    "restoreProjectConnectionAuthorized": false,
+    "postRestoreValidationAuthorized": false,
+    "readyTransitionAuthorized": false,
+    "mergeAuthorized": false,
+    "productionConnectionAuthorized": false,
+    "commercialReleaseAuthorized": false,
+    "indexRetirementAuthorized": false
+  },
+  "governanceProposal": {
+    "path": "staging-execution-approval-packet.yaml",
+    "sha256": "36a3e1f5e7b5ed300e971f1d86635ed5afb5cb83ae354bf2c8131545d167f4e2"
+  },
+  "sourceProjectProvisioningApproval": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "sourceProjectProvisioningResult": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "sourceIdentityBootstrapApproval": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "sourceIdentityBootstrapResult": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "sourceReplayCatalogCaptureApproval": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "sourceReplayCatalogCaptureResult": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "target": {
+    "gitCommit": "NOT_CAPTURED",
+    "baseCommit": "4475e1c641c2ff18f66021ee65cfecfceaa6b7ab",
+    "migrationHead": "20260718011731",
+    "migrationInputContract": {
+      "path": "migration-input-contract.json",
+      "sha256": "2d31d3a19eb20b6f65e56620d4046e418f6cd358807ea4718d49293ac34fe91f"
+    }
+  },
+  "environment": {
+    "organizationId": "NOT_CAPTURED",
+    "organizationPlan": "PRO",
+    "projectRef": "NOT_CAPTURED",
+    "projectName": "seikotsuin-pr12-isolated-qualification-20260719",
+    "projectUrl": "NOT_CAPTURED",
+    "databaseHost": "NOT_CAPTURED",
+    "databaseConnectionMode": "DIRECT",
+    "databaseUser": "postgres",
+    "region": "ap-northeast-1",
+    "databaseTier": "LARGE",
+    "databaseVersion": "NOT_CAPTURED",
+    "systemIdentifier": "NOT_CAPTURED",
+    "prohibitedProjectRefs": ["qnanuoqveidwvacvbhqp"],
+    "dataApiProvisioning": {
+      "enabled": true,
+      "exposedSchemas": ["public"],
+      "automaticallyExposeNewTablesAndFunctions": false
+    },
+    "graphQlProvisioning": {
+      "pgGraphqlEnabled": false,
+      "introspectionEnabled": false,
+      "exposedSchemas": []
+    },
+    "authProvisioning": {
+      "anonymousSignInEnabled": false,
+      "realEmailSmsOrOAuthDeliveryConfigured": false,
+      "hostedFixturePasswords": "owner_secret_store_generated_ephemeral_minimum_32_characters",
+      "hostedUserJwtAcquisitionMethod": "HOSTED_AUTH_PASSWORD_SIGN_IN_AND_REFRESH",
+      "jwtSigningSecretAcquisitionAllowed": false,
+      "fabricatedUserJwtAllowed": false,
+      "tokenValueCaptureAllowed": false
+    }
+  },
+  "ownerDecisions": {
+    "smallFlowSecurityDatasetAcceptedAsCapacityRepresentative": false,
+    "smallFlowSecurityDatasetAcceptedForFlowAndSecurityOnly": "NOT_CAPTURED",
+    "productionTierParityAccepted": "NOT_CAPTURED",
+    "rto8hRpo24hAcceptedDespiteProduct30m15mTarget": "NOT_CAPTURED",
+    "upstashDisposition": "UNASSIGNED",
+    "actualDashboardQuoteAccepted": "NOT_CAPTURED",
+    "fundedRetentionAndCleanupDecisionAccepted": "NOT_CAPTURED"
+  },
+  "lifecycle": {
+    "sourceCreatedAt": "NOT_CAPTURED",
+    "sourceProvisionedAt": "NOT_CAPTURED",
+    "sourceRetentionDeadline": "NOT_CAPTURED",
+    "fundedThrough": "NOT_CAPTURED",
+    "sourceMaximumHoursFromCreation": 72,
+    "restoreMaximumHoursFromCreation": 24,
+    "cleanupDisposition": "DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION",
+    "fundingCeilingUsd": 50,
+    "cleanupOwner": "UNASSIGNED",
+    "automaticDeletionAuthorized": false,
+    "deletionRequiresSeparateApproval": true,
+    "billingExtensionAfterDeadlineRequiresSeparateFundedApproval": true
+  },
+  "cost": {
+    "computeRateUsdPerProjectHour": 0.1517,
+    "computeSubtotalUsd": 14.5632,
+    "newProPlanIfRequiredUsd": 25,
+    "proposedBudgetCeilingUsd": 50,
+    "actualDashboardQuoteUsd": "NOT_CAPTURED",
+    "ceilingEnforceableWithoutCleanupApproval": false
+  },
+  "toolVersions": {
+    "node": "NOT_CAPTURED",
+    "supabaseCli": "2.109.0",
+    "psql": "NOT_CAPTURED"
+  },
+  "toolVersionCommands": {
+    "node": "NOT_CAPTURED",
+    "supabaseCli": "NOT_CAPTURED",
+    "psql": "NOT_CAPTURED"
+  },
+  "toolBinaries": {
+    "supabaseCli": {
+      "path": "NOT_CAPTURED",
+      "sha256": "903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118",
+      "hashCommandId": "NOT_CAPTURED",
+      "archivePath": "NOT_CAPTURED",
+      "archiveSha256": "d2b687ec3427fe7847cf7a8f603413fa8d4331f6fdbbc825eea6aa34a64d686b",
+      "archiveHashCommandId": "NOT_CAPTURED"
+    },
+    "psql": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED",
+      "hashCommandId": "NOT_CAPTURED"
+    }
+  },
+  "reviewedProposals": {
+    "hostedSlo": {
+      "path": "hosted-slo-contract.proposed.json",
+      "sha256": "f34afb02c6f1191f806314f112c4b13b80f0a407e77a4a26d66c26cceefcd499"
+    },
+    "representativeData": {
+      "path": "representative-data-contract.proposed.json",
+      "sha256": "67907af4a24bfe24a0f3c95dafe13031e77e55d79a44d6e9f1ede67f50746c79"
+    },
+    "securityTargetInventory": {
+      "path": "security-target-inventory.proposed.json",
+      "sha256": "a87899df1b40799c063315f6293727ef88dddfd2f1d00258cb4b235f49fabe5e"
+    },
+    "securityTargetClassification": {
+      "path": "security-target-classification.proposed.json",
+      "sha256": "21d2f08c78b98a036a2538d7a0ec36cc96f72dd6ad2bb7bbb9874d477c754342"
+    },
+    "dataApiAclInventory": {
+      "path": "data-api-acl-inventory.proposed.json",
+      "sha256": "bf6b315e4644b360593f0d0fa2e11c80e2db2d5a5b6ca5ba0a44a95239ac9a32"
+    },
+    "commandLedger": {
+      "path": "staging-command-ledger.proposed.json",
+      "sha256": "f044fdf55d16bcbdc24b83094bbccb5d21c91ec0214641f52f6c0651e795ea7c"
+    },
+    "dr": {
+      "path": "dr-contract.proposed.json",
+      "sha256": "9bd4b1002dc2456d0bd063aa5be06cbb24f7acf4b2b7ff9411331d780fe279ed"
+    },
+    "integrationCredential": {
+      "path": "integration-credential-contract.proposed.json",
+      "sha256": "9c70a291017c201da56aefe06485b4cb9122f33badb5336f948f1f084a05c103"
+    },
+    "commGateEvidenceMap": {
+      "path": "comm-gate-evidence-map-v1.json",
+      "sha256": "fd9b62cec9005404061e2a9876a29f7b4caf811d4faa305f054279acbd68e419"
+    }
+  },
+  "bindings": {
+    "securityMatrix": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "securityTargetInventory": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "securityTargetClassification": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "dataApiMatrix": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "graphQlMatrix": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "performanceContract": {
+      "path": "frozen-pr11-performance-contract.json",
+      "sha256": "3dcbedf6983b767c9d0fe1e24a52ce0c8b36025b811f4ed981cb878a2fd98849"
+    },
+    "hostedSloContract": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "representativeDataContract": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "commandLedger": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "drContract": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "integrationContract": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "credentialContract": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "commGateEvidenceMap": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+  },
+  "approval": {
+    "approvedBy": "UNASSIGNED",
+    "approvedAt": "NOT_CAPTURED",
+    "expiresAt": "NOT_CAPTURED",
+    "evidencePath": "NOT_CAPTURED",
+    "evidenceSha256": "NOT_CAPTURED"
+  },
+  "owners": {
+    "commercialReleaseOwner": "UNASSIGNED",
+    "supabasePlatformOwner": "UNASSIGNED",
+    "databaseMigrationOperator": "UNASSIGNED",
+    "disasterRecoveryOperator": "UNASSIGNED",
+    "securityTenantReviewer": "UNASSIGNED",
+    "clinicalDataPrivacyReviewer": "UNASSIGNED",
+    "billingMessagingSandboxOwner": "UNASSIGNED",
+    "siteReliabilityOwner": "UNASSIGNED",
+    "incidentCommander": "UNASSIGNED",
+    "cleanupOwner": "UNASSIGNED",
+    "evidenceCustodian": "UNASSIGNED"
+  },
+  "separationOfDuties": {
+    "approvedByMustEqual": "commercialReleaseOwner",
+    "approvedByMustDifferFrom": [
+      "supabasePlatformOwner",
+      "databaseMigrationOperator",
+      "disasterRecoveryOperator",
+      "securityTenantReviewer",
+      "clinicalDataPrivacyReviewer",
+      "billingMessagingSandboxOwner",
+      "siteReliabilityOwner",
+      "incidentCommander",
+      "cleanupOwner",
+      "evidenceCustodian"
+    ]
+  },
+  "notes": "The reviewed proposal hashes are decision inputs only. Execution bindings remain NOT_CAPTURED until verifier-compatible approved JSON contracts, the guarded command ledger, exact matrices, source identity, owners, quote, and expiry exist. This template cannot itself authorize execution."
+}
