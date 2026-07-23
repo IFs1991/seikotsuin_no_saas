@@ -896,6 +896,22 @@ function validateAuthorization(binding) {
   }
 }
 
+function validateApprovalStatus(binding) {
+  requireCondition(binding.schemaVersion === 2, 'BINDING_SCHEMA_INVALID');
+  requireCondition(
+    binding.phase === 'SOURCE_PROJECT_PROVISIONING' &&
+      binding.status === 'APPROVED',
+    'SOURCE_PROVISIONING_NOT_AUTHORIZED'
+  );
+}
+
+export function assertSourceProjectProvisioningAuthorized(bindingInput) {
+  const binding = requireRecord(bindingInput, 'BINDING_INVALID');
+  validateApprovalStatus(binding);
+  validateAuthorization(binding);
+  return binding;
+}
+
 function validateAction(binding) {
   const action = requireRecord(
     binding.provisioningAction,
@@ -1418,12 +1434,7 @@ export function validateOfflineApproval(
   const context = requireRecord(contextInput, 'VALIDATION_CONTEXT_INVALID');
   validateBindingShape(binding);
   assertSecretFreeEvidence(binding, []);
-  requireCondition(binding.schemaVersion === 2, 'BINDING_SCHEMA_INVALID');
-  requireCondition(
-    binding.phase === 'SOURCE_PROJECT_PROVISIONING' &&
-      binding.status === 'APPROVED',
-    'SOURCE_PROVISIONING_NOT_AUTHORIZED'
-  );
+  validateApprovalStatus(binding);
 
   const approval = requireRecord(binding.approval, 'APPROVAL_INVALID');
   requireCondition(

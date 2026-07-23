@@ -25,6 +25,7 @@ import {
   addonResponseToSafeProjection,
   assertProviderBodyEnvelope,
   assertSecretFreeEvidence,
+  assertSourceProjectProvisioningAuthorized,
   availableRegionsToSafeProjection,
   buildBindingMaterial,
   buildSecretFreeRequestProjection,
@@ -748,6 +749,7 @@ function buildOfflineInputs(args) {
     'QUOTE_EVIDENCE_FILE_INVALID'
   );
   const binding = parseJsonSnapshot(bindingSnapshot, 'BINDING_FILE_INVALID');
+  assertSourceProjectProvisioningAuthorized(binding);
   if (binding.governanceProposal?.path !== GOVERNANCE_RELATIVE_PATH) {
     fail('GOVERNANCE_PATH_INVALID');
   }
