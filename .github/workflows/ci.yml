@@ -195,7 +195,12 @@ jobs:
       - name: Verify atomic staff invite concurrency
         run: npm run commercial:verify:invite:local
 
+      # CLI 2.109.0's TypeScript gen-types path ignores the setup action's
+      # ghcr.io override. Scope its supported Docker Hub fallback to this
+      # helper-image step only.
       - name: Verify generated Supabase types are current
+        env:
+          SUPABASE_INTERNAL_IMAGE_REGISTRY: 'docker.io'
         run: |
           npm run supabase:types
           git diff --exit-code -- src/types/supabase.ts
