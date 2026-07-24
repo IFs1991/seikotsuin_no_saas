@@ -41,12 +41,55 @@ import {
   sha256Text,
   validateOfflineApproval,
 } from './pr12-source-project-provisioning-contract.mjs';
+import {
+  DpapiCredentialChannelError,
+  assertDpapiDirectoryIsolation,
+  revalidateDpapiCredentialResources,
+  retrieveClaimBoundCredentials,
+  validateDpapiCredentialResources,
+  windowsPathFingerprint,
+} from './pr12-windows-dpapi-credential-channel.mjs';
 import { verifyProvisioningEvidenceDirectory } from './verify-pr12-source-project-provisioning-evidence.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
 const contractPath = fileURLToPath(
   new URL('./pr12-source-project-provisioning-contract.mjs', import.meta.url)
 );
+const credentialChannelPath = fileURLToPath(
+  new URL('./pr12-windows-dpapi-credential-channel.mjs', import.meta.url)
+);
+const evidenceVerifierPath = fileURLToPath(
+  new URL(
+    './verify-pr12-source-project-provisioning-evidence.mjs',
+    import.meta.url
+  )
+);
+const EXECUTING_IMPLEMENTATION_FILES = [
+  {
+    key: 'wrapper',
+    relativePath:
+      'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs',
+    actualPath: scriptPath,
+  },
+  {
+    key: 'contract',
+    relativePath:
+      'scripts/commercial-hardening/pr12-source-project-provisioning-contract.mjs',
+    actualPath: contractPath,
+  },
+  {
+    key: 'credentialChannel',
+    relativePath:
+      'scripts/commercial-hardening/pr12-windows-dpapi-credential-channel.mjs',
+    actualPath: credentialChannelPath,
+  },
+  {
+    key: 'evidenceVerifier',
+    relativePath:
+      'scripts/commercial-hardening/verify-pr12-source-project-provisioning-evidence.mjs',
+    actualPath: evidenceVerifierPath,
+  },
+];
 const CLAIM_FILE = 'source-project-provisioning-action.claim.json';
 const DISPATCH_FILE = 'source-project-provisioning-post-intent.json';
 const OUTCOME_FILE = 'source-project-provisioning-terminal-outcome.json';
@@ -91,7 +134,8 @@ function isCanonicalTimestamp(value) {
 function safeErrorCode(error) {
   if (
     error instanceof SafeExecutionError ||
-    error instanceof ProvisioningContractError
+    error instanceof ProvisioningContractError ||
+    error instanceof DpapiCredentialChannelError
   ) {
     return error.code;
   }
@@ -130,7 +174,7 @@ Offline validation only (no credential value read, no network, no journal claim)
     --binding <approved-binding.json> \`
     --credential-config <approved-credential-config.json> \`
     --approval-evidence <owner-approval.json> \`
-    --quote-evidence <dashboard-quote.json> \`
+    --pricing-evidence <official-pricing-evidence.json> \`
     --journal-directory <owner-controlled-absolute-directory> \`
     --evidence-parent <owner-controlled-absolute-directory>
 
@@ -140,7 +184,7 @@ Future execution after separate explicit approval only:
     --binding <approved-binding.json> \`
     --credential-config <approved-credential-config.json> \`
     --approval-evidence <owner-approval.json> \`
-    --quote-evidence <dashboard-quote.json> \`
+    --pricing-evidence <official-pricing-evidence.json> \`
     --journal-directory <owner-controlled-absolute-directory> \`
     --evidence-parent <owner-controlled-absolute-directory>
 
@@ -150,7 +194,7 @@ Read-only recovery after a durable POST intent and process interruption only:
     --binding <approved-binding.json> \`
     --credential-config <approved-credential-config.json> \`
     --approval-evidence <owner-approval.json> \`
-    --quote-evidence <dashboard-quote.json> \`
+    --pricing-evidence <official-pricing-evidence.json> \`
     --journal-directory <owner-controlled-absolute-directory> \`
     --evidence-parent <owner-controlled-absolute-directory>
 
@@ -166,7 +210,7 @@ function parseArguments(argv) {
     '--binding',
     '--credential-config',
     '--approval-evidence',
-    '--quote-evidence',
+    '--pricing-evidence',
     '--journal-directory',
     '--evidence-parent',
   ]);
@@ -204,7 +248,7 @@ function parseArguments(argv) {
     '--binding',
     '--credential-config',
     '--approval-evidence',
-    '--quote-evidence',
+    '--pricing-evidence',
     '--journal-directory',
     '--evidence-parent',
   ]) {
@@ -306,8 +350,127 @@ function readJson(pathname, code) {
   return parseJsonSnapshot(readFileSnapshot(pathname, code), code);
 }
 
+function normalizedFilesystemPath(pathname) {
+  const resolved = path.resolve(pathname);
+  return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+}
+
+function captureExecutingImplementationSnapshots(repositoryRoot, code) {
+  const snapshots = {};
+  for (const implementation of EXECUTING_IMPLEMENTATION_FILES) {
+    const expectedPath = path.resolve(
+      repositoryRoot,
+      implementation.relativePath
+    );
+    if (
+      normalizedFilesystemPath(implementation.actualPath) !==
+      normalizedFilesystemPath(expectedPath)
+    ) {
+      fail(code);
+    }
+    let actualRealPath;
+    let expectedRealPath;
+    try {
+      actualRealPath = realpathSync.native(implementation.actualPath);
+      expectedRealPath = realpathSync.native(expectedPath);
+    } catch {
+      fail(code);
+    }
+    if (
+      normalizedFilesystemPath(actualRealPath) !==
+      normalizedFilesystemPath(expectedRealPath)
+    ) {
+      fail(code);
+    }
+    const snapshot = readFileSnapshot(implementation.actualPath, code);
+    snapshots[implementation.key] = {
+      repositoryRelativePath: implementation.relativePath,
+      realPath: normalizedFilesystemPath(actualRealPath),
+      sha256: snapshot.sha256,
+      identity: snapshot.identity,
+    };
+  }
+  return snapshots;
+}
+
+function requireSameExecutingImplementationSnapshots(inputs, code) {
+  const current = captureExecutingImplementationSnapshots(
+    inputs.repositoryRoot,
+    code
+  );
+  if (
+    canonicalJson(current) !==
+    canonicalJson(inputs.executingImplementationSnapshots)
+  ) {
+    fail(code);
+  }
+  return current;
+}
+
 function sha256File(pathname) {
   return createHash('sha256').update(readFileSync(pathname)).digest('hex');
+}
+
+function snapshotOfficialPricingSources(inputs) {
+  const sources = inputs.context.pricingEvidence?.officialSources;
+  if (!Array.isArray(sources) || sources.length !== 3) {
+    fail('PRICING_SOURCE_ARTIFACT_INVALID');
+  }
+  const evidenceDirectory = path.dirname(inputs.pricingPath);
+  const snapshots = {};
+  for (const source of sources) {
+    if (
+      !isRecord(source) ||
+      typeof source.sourceId !== 'string' ||
+      typeof source.artifactPath !== 'string' ||
+      typeof source.artifactSha256 !== 'string' ||
+      path.isAbsolute(source.artifactPath) ||
+      source.artifactPath.includes('\\') ||
+      source.artifactPath.split('/').includes('..')
+    ) {
+      fail('PRICING_SOURCE_ARTIFACT_INVALID');
+    }
+    const artifactPath = path.resolve(evidenceDirectory, source.artifactPath);
+    const relativeToEvidence = path.relative(evidenceDirectory, artifactPath);
+    const relativeToRepository = path.relative(
+      inputs.repositoryRoot,
+      artifactPath
+    );
+    if (
+      relativeToEvidence === '' ||
+      relativeToEvidence.startsWith('..') ||
+      path.isAbsolute(relativeToEvidence) ||
+      relativeToRepository === '' ||
+      (!relativeToRepository.startsWith('..') &&
+        !path.isAbsolute(relativeToRepository))
+    ) {
+      fail('PRICING_SOURCE_ARTIFACT_INVALID');
+    }
+    const snapshot = readFileSnapshot(
+      artifactPath,
+      'PRICING_SOURCE_ARTIFACT_INVALID'
+    );
+    if (snapshot.sha256 !== source.artifactSha256) {
+      fail('PRICING_SOURCE_ARTIFACT_HASH_MISMATCH');
+    }
+    snapshots[source.sourceId] = {
+      path: artifactPath,
+      sha256: snapshot.sha256,
+      identity: snapshot.identity,
+    };
+  }
+  if (Object.keys(snapshots).length !== 3) {
+    fail('PRICING_SOURCE_ARTIFACT_INVALID');
+  }
+  return snapshots;
+}
+
+function revalidateOfficialPricingSources(inputs) {
+  const current = snapshotOfficialPricingSources(inputs);
+  if (canonicalJson(current) !== canonicalJson(inputs.pricingSourceArtifacts)) {
+    fail('PRICING_SOURCE_ARTIFACT_CHANGED');
+  }
+  return current;
 }
 
 function cleanGitEnvironment() {
@@ -329,12 +492,17 @@ function cleanGitEnvironment() {
 }
 
 function runGit(args, code) {
-  const result = spawnSync('git', args, {
-    cwd: process.cwd(),
-    env: cleanGitEnvironment(),
-    encoding: 'utf8',
-    windowsHide: true,
-  });
+  const safeDirectory = path.resolve(process.cwd()).replaceAll('\\', '/');
+  const result = spawnSync(
+    'git',
+    ['-c', `safe.directory=${safeDirectory}`, ...args],
+    {
+      cwd: process.cwd(),
+      env: cleanGitEnvironment(),
+      encoding: 'utf8',
+      windowsHide: true,
+    }
+  );
   if (result.status !== 0 || typeof result.stdout !== 'string') fail(code);
   return result.stdout.trim();
 }
@@ -361,13 +529,30 @@ function inspectPriorActionState(journalDirectory) {
   return 'CLAIMED_POST_NOT_SENT';
 }
 
+function requireNoReparseDirectoryComponents(directory, code) {
+  const resolved = path.resolve(directory);
+  const root = path.parse(resolved).root;
+  let current = root;
+  for (const component of resolved.slice(root.length).split(path.sep)) {
+    if (component.length === 0) continue;
+    current = path.join(current, component);
+    let status;
+    try {
+      status = lstatSync(current);
+    } catch {
+      fail(code);
+    }
+    if (!status.isDirectory() || status.isSymbolicLink()) fail(code);
+  }
+}
+
 function directoryIdentity(directory, code) {
   let resolved;
   let status;
   try {
-    if (lstatSync(directory).isSymbolicLink()) fail(code);
+    requireNoReparseDirectoryComponents(directory, code);
     resolved = realpathSync.native(directory);
-    status = statSync(resolved);
+    status = statSync(resolved, { bigint: true });
   } catch (error) {
     if (error instanceof SafeExecutionError) throw error;
     fail(code);
@@ -676,9 +861,9 @@ function buildOfflineInputs(args) {
     args['--approval-evidence'],
     'APPROVAL_EVIDENCE_FILE_INVALID'
   );
-  const quotePath = resolveJsonInput(
-    args['--quote-evidence'],
-    'QUOTE_EVIDENCE_FILE_INVALID'
+  const pricingPath = resolveJsonInput(
+    args['--pricing-evidence'],
+    'PRICING_EVIDENCE_FILE_INVALID'
   );
   const journalDirectory = resolveExistingDirectory(
     args['--journal-directory'],
@@ -693,6 +878,11 @@ function buildOfflineInputs(args) {
     'GIT_ROOT_INVALID'
   );
   const normalizedRepositoryRoot = path.resolve(repositoryRoot);
+  const executingImplementationSnapshots =
+    captureExecutingImplementationSnapshots(
+      normalizedRepositoryRoot,
+      'EXECUTING_IMPLEMENTATION_ROOT_MISMATCH'
+    );
   for (const directory of [journalDirectory, evidenceParent]) {
     const relative = path.relative(normalizedRepositoryRoot, directory);
     if (
@@ -744,9 +934,9 @@ function buildOfflineInputs(args) {
     approvalPath,
     'APPROVAL_EVIDENCE_FILE_INVALID'
   );
-  const quoteSnapshot = readFileSnapshot(
-    quotePath,
-    'QUOTE_EVIDENCE_FILE_INVALID'
+  const pricingSnapshot = readFileSnapshot(
+    pricingPath,
+    'PRICING_EVIDENCE_FILE_INVALID'
   );
   const binding = parseJsonSnapshot(bindingSnapshot, 'BINDING_FILE_INVALID');
   assertSourceProjectProvisioningAuthorized(binding);
@@ -761,9 +951,9 @@ function buildOfflineInputs(args) {
     approvalSnapshot,
     'APPROVAL_EVIDENCE_FILE_INVALID'
   );
-  const quoteEvidence = parseJsonSnapshot(
-    quoteSnapshot,
-    'QUOTE_EVIDENCE_FILE_INVALID'
+  const pricingEvidence = parseJsonSnapshot(
+    pricingSnapshot,
+    'PRICING_EVIDENCE_FILE_INVALID'
   );
   const currentHead = runGit(['rev-parse', 'HEAD'], 'GIT_HEAD_UNAVAILABLE');
   const currentBaseCommit = runGit(
@@ -784,13 +974,13 @@ function buildOfflineInputs(args) {
     governanceSha256: sha256File(
       path.resolve(normalizedRepositoryRoot, GOVERNANCE_RELATIVE_PATH)
     ),
-    contractSha256: sha256File(contractPath),
-    wrapperSha256: sha256File(scriptPath),
+    contractSha256: executingImplementationSnapshots.contract.sha256,
+    wrapperSha256: executingImplementationSnapshots.wrapper.sha256,
     credentialConfigurationSha256: credentialSnapshot.sha256,
     approvalEvidenceSha256: approvalSnapshot.sha256,
-    quoteEvidenceSha256: quoteSnapshot.sha256,
+    pricingEvidenceSha256: pricingSnapshot.sha256,
     approvalEvidence,
-    quoteEvidence,
+    pricingEvidence,
     ambientCredentialNames: ambientCredentialNames(),
     priorActionState: inspectPriorActionState(journalDirectory),
     approvalStage: 'PRE_CLAIM',
@@ -808,23 +998,60 @@ function buildOfflineInputs(args) {
     credentialPath,
     evidenceParent,
     journalDirectory,
-    quotePath,
+    pricingPath,
     repositoryRoot: normalizedRepositoryRoot,
     immutableInputHashes: {
       binding: bindingSnapshot.sha256,
       credentialConfiguration: context.credentialConfigurationSha256,
       approvalEvidence: context.approvalEvidenceSha256,
-      quoteEvidence: context.quoteEvidenceSha256,
+      pricingEvidence: context.pricingEvidenceSha256,
     },
     immutableInputIdentities: {
       binding: bindingSnapshot.identity,
       credentialConfiguration: credentialSnapshot.identity,
       approvalEvidence: approvalSnapshot.identity,
-      quoteEvidence: quoteSnapshot.identity,
+      pricingEvidence: pricingSnapshot.identity,
     },
     journalDirectoryIdentity,
     evidenceParentDirectoryIdentity,
+    executingImplementationSnapshots,
   };
+}
+
+function prepareValidatedLocalResources(inputs) {
+  requireSameExecutingImplementationSnapshots(
+    inputs,
+    'EXECUTING_IMPLEMENTATION_CHANGED'
+  );
+  inputs.pricingSourceArtifacts = snapshotOfficialPricingSources(inputs);
+  inputs.dpapiResources = validateDpapiCredentialResources(
+    inputs.credentialConfiguration,
+    inputs.repositoryRoot
+  );
+  assertDpapiDirectoryIsolation(
+    inputs.dpapiResources.providerRootIdentity,
+    inputs.journalDirectoryIdentity,
+    inputs.evidenceParentDirectoryIdentity
+  );
+  return inputs;
+}
+
+function revalidatePreparedLocalResources(inputs) {
+  requireSameExecutingImplementationSnapshots(
+    inputs,
+    'EXECUTING_IMPLEMENTATION_CHANGED'
+  );
+  revalidateOfficialPricingSources(inputs);
+  inputs.dpapiResources = revalidateDpapiCredentialResources(
+    inputs.credentialConfiguration,
+    inputs.repositoryRoot,
+    inputs.dpapiResources
+  );
+  assertDpapiDirectoryIsolation(
+    inputs.dpapiResources.providerRootIdentity,
+    inputs.journalDirectoryIdentity,
+    inputs.evidenceParentDirectoryIdentity
+  );
 }
 
 function revalidateImmediatelyBeforePost(
@@ -832,6 +1059,11 @@ function revalidateImmediatelyBeforePost(
   expectedClaim,
   expectedClaimSha256
 ) {
+  const currentImplementationSnapshots =
+    requireSameExecutingImplementationSnapshots(
+      inputs,
+      'EXECUTING_IMPLEMENTATION_CHANGED'
+    );
   requireSameDirectoryIdentity(
     inputs.journalDirectory,
     inputs.journalDirectoryIdentity,
@@ -860,22 +1092,22 @@ function revalidateImmediatelyBeforePost(
       inputs.approvalPath,
       'APPROVAL_EVIDENCE_FILE_INVALID'
     ),
-    quoteEvidence: readFileSnapshot(
-      inputs.quotePath,
-      'QUOTE_EVIDENCE_FILE_INVALID'
+    pricingEvidence: readFileSnapshot(
+      inputs.pricingPath,
+      'PRICING_EVIDENCE_FILE_INVALID'
     ),
   };
   const currentHashes = {
     binding: currentSnapshots.binding.sha256,
     credentialConfiguration: currentSnapshots.credentialConfiguration.sha256,
     approvalEvidence: currentSnapshots.approvalEvidence.sha256,
-    quoteEvidence: currentSnapshots.quoteEvidence.sha256,
+    pricingEvidence: currentSnapshots.pricingEvidence.sha256,
   };
   const currentIdentities = {
     binding: currentSnapshots.binding.identity,
     credentialConfiguration: currentSnapshots.credentialConfiguration.identity,
     approvalEvidence: currentSnapshots.approvalEvidence.identity,
-    quoteEvidence: currentSnapshots.quoteEvidence.identity,
+    pricingEvidence: currentSnapshots.pricingEvidence.identity,
   };
   if (
     canonicalJson(currentHashes) !==
@@ -885,6 +1117,7 @@ function revalidateImmediatelyBeforePost(
   ) {
     fail('APPROVAL_INPUT_CHANGED_BEFORE_POST');
   }
+  revalidatePreparedLocalResources(inputs);
   const currentHead = runGit(['rev-parse', 'HEAD'], 'GIT_HEAD_UNAVAILABLE');
   const currentBaseCommit = runGit(
     ['merge-base', 'HEAD', 'origin/main'],
@@ -906,8 +1139,8 @@ function revalidateImmediatelyBeforePost(
       governanceSha256: sha256File(
         path.resolve(inputs.repositoryRoot, GOVERNANCE_RELATIVE_PATH)
       ),
-      contractSha256: sha256File(contractPath),
-      wrapperSha256: sha256File(scriptPath),
+      contractSha256: currentImplementationSnapshots.contract.sha256,
+      wrapperSha256: currentImplementationSnapshots.wrapper.sha256,
       ambientCredentialNames: ambientCredentialNames(),
       priorActionState: inspectPriorActionState(inputs.journalDirectory),
       approvalStage: 'POST_CLAIM',
@@ -1093,20 +1326,20 @@ export function assertRemoteContactWithinApproval(
   return true;
 }
 
-export function assertMutationQuoteCurrent(
-  quoteValidThrough,
+export function assertMutationPricingCurrent(
+  pricingFreshThrough,
   now,
   requestTimeoutMilliseconds
 ) {
   if (
-    !isCanonicalTimestamp(quoteValidThrough) ||
+    !isCanonicalTimestamp(pricingFreshThrough) ||
     !isCanonicalTimestamp(now) ||
     !Number.isInteger(requestTimeoutMilliseconds) ||
     requestTimeoutMilliseconds < 1 ||
-    Date.parse(quoteValidThrough) - Date.parse(now) <=
+    Date.parse(pricingFreshThrough) - Date.parse(now) <=
       requestTimeoutMilliseconds
   ) {
-    fail('QUOTE_EXPIRED_BEFORE_POST');
+    fail('PRICING_EVIDENCE_EXPIRED_BEFORE_POST');
   }
   return true;
 }
@@ -1118,7 +1351,7 @@ async function providerFetch(
   timeoutMilliseconds,
   approvalExpiresAt,
   onRemoteContact = () => undefined,
-  quoteValidThrough = null
+  pricingFreshThrough = null
 ) {
   assertRemoteContactWithinApproval(
     approvalExpiresAt,
@@ -1126,8 +1359,8 @@ async function providerFetch(
     options.method === 'POST' ? timeoutMilliseconds : 0
   );
   if (options.method === 'POST') {
-    assertMutationQuoteCurrent(
-      quoteValidThrough,
+    assertMutationPricingCurrent(
+      pricingFreshThrough,
       new Date().toISOString(),
       timeoutMilliseconds
     );
@@ -1484,6 +1717,7 @@ function sealEvidence({
       gitCommit: binding.target.gitCommit,
       bindingMaterialSha256: binding.approval.approvedBindingMaterialSha256,
       payloadSha256: binding.approvedRequest.sha256,
+      fundingSource: binding.retentionAndCleanupDecision.fundingSource,
       artifacts: artifactMetadata,
       artifactCount: artifactMetadata.length,
       rawProviderBodiesPersisted: false,
@@ -1531,7 +1765,7 @@ function sealEvidence({
 
 function makeBaseResult(binding, validation, startedAt, claimSha256) {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     phase: 'SOURCE_PROJECT_PROVISIONING_RESULT',
     resultType: 'SOURCE_PROJECT_PROVISIONING_OPERATION',
     status: 'NOT_RUN',
@@ -1541,11 +1775,17 @@ function makeBaseResult(binding, validation, startedAt, claimSha256) {
     payloadSha256: validation.payloadSha256,
     operator: binding.owners.provisioningOperator,
     approver: binding.approval.approvedBy,
+    operatorDisplayName: binding.operatorControl.principalDisplayName,
+    operatorControlMode: binding.operatorControl.mode,
+    identitySeparationAvailable: false,
+    independentHumanReviewClaimed: false,
     actionStartedAt: startedAt,
     actionCompletedAt: null,
     remoteContactCount: 0,
     createPostAttemptCount: 0,
     automaticRetryCount: 0,
+    credentialBrokerInvocationCount: 0,
+    credentialBrokerMode: null,
     duplicateState: 'NOT_CHECKED',
     partialFailureState: null,
     readOnlyReconciliation: null,
@@ -1555,20 +1795,25 @@ function makeBaseResult(binding, validation, startedAt, claimSha256) {
     phase2AndLaterAuthorized: false,
     createdEnvironment: null,
     providerEvidence: null,
-    quoteAndFunding: {
+    pricingAndFunding: {
       currency: binding.cost.currency,
-      actualDashboardQuoteUsd: binding.cost.actualDashboardQuoteUsd,
-      quoteObservedAt: binding.cost.quote.observedAt,
-      quoteValidThrough: binding.cost.quote.validThrough,
+      moneyScale: binding.cost.moneyScale,
+      pricingEvidenceFreshThrough: binding.cost.pricingEvidence.freshThrough,
       sourceMaximumBillableHours: binding.cost.sourceMaximumBillableHours,
-      sourceMaximumComputeUsd: binding.cost.sourceMaximumComputeUsd,
-      fundingApprovedAmountUsd:
-        binding.retentionAndCleanupDecision.fundingApprovedAmountUsd,
-      fundingCeilingUsd: binding.retentionAndCleanupDecision.fundingCeilingUsd,
+      sourceMaximumComputeUsdScaled: binding.cost.sourceMaximumComputeUsdScaled,
+      unallocatedAuthorizationHeadroomUsdScaled:
+        binding.cost.unallocatedAuthorizationHeadroomUsdScaled,
+      ownerAuthorizationCeilingUsdScaled:
+        binding.cost.ownerAuthorizationCeilingUsdScaled,
+      providerSpendCapEnforced: false,
+      fundingSource: binding.retentionAndCleanupDecision.fundingSource,
+      fundingApprovedAmountUsdScaled:
+        binding.retentionAndCleanupDecision.fundingApprovedAmountUsdScaled,
       fundedThrough: binding.retentionAndCleanupDecision.fundedThrough,
     },
     approvalWindow: {
       approvedAt: binding.approval.approvedAt,
+      operatorReconfirmedAt: binding.approval.operatorReconfirmedAt,
       expiresAt: binding.approval.expiresAt,
       approvalEvidenceSha256: binding.approval.evidenceSha256,
     },
@@ -1627,6 +1872,10 @@ function makeTerminalRecord({
 async function executeProvisioning(inputs, validation) {
   const { binding, credentialConfiguration, evidenceParent, journalDirectory } =
     inputs;
+  requireSameExecutingImplementationSnapshots(
+    inputs,
+    'EXECUTING_IMPLEMENTATION_CHANGED'
+  );
   const startedAt = new Date().toISOString();
   const claim = {
     actionId: ACTION_ID,
@@ -1689,18 +1938,30 @@ async function executeProvisioning(inputs, validation) {
       startedAt,
       validation.payloadSha256
     );
-    const tokenName =
-      credentialConfiguration.secrets.managementAccessToken.environmentVariable;
-    const passwordName =
-      credentialConfiguration.secrets.databasePassword.environmentVariable;
-    accessToken = process.env[tokenName];
-    databasePassword = process.env[passwordName];
-    delete process.env[tokenName];
-    delete process.env[passwordName];
+    revalidateImmediatelyBeforePost(inputs, claim, claimResult.claimSha256);
+    result.credentialBrokerInvocationCount = 1;
+    result.credentialBrokerMode = 'EXECUTE';
+    const credentials = retrieveClaimBoundCredentials({
+      mode: 'EXECUTE',
+      bindingMaterialSha256: validation.bindingMaterialSha256,
+      payloadSha256: validation.payloadSha256,
+      claimSha256: claimResult.claimSha256,
+      credentialConfigurationSha256:
+        inputs.context.credentialConfigurationSha256,
+      credentialConfiguration,
+      journalDirectory,
+      journalDirectoryPathSha256: windowsPathFingerprint(journalDirectory),
+      evidenceParentDirectory: evidenceParent,
+      evidenceParentDirectoryPathSha256: windowsPathFingerprint(evidenceParent),
+      approvalExpiresAt: binding.approval.expiresAt,
+      resources: inputs.dpapiResources,
+    });
+    accessToken = credentials.managementAccessToken;
+    databasePassword = credentials.databasePassword;
     validateRuntimeCredentialValues(
       accessToken,
       databasePassword,
-      credentialConfiguration.secrets.databasePassword.minimumLength
+      credentialConfiguration.secrets.databasePassword.minimumBytes
     );
     const timeout = binding.provisioningAction.requestTimeoutMilliseconds;
     const organizationSlug = binding.environmentProposal.organizationSlug;
@@ -1821,7 +2082,7 @@ async function executeProvisioning(inputs, validation) {
           remoteContactCount += 1;
           result.remoteContactCount = remoteContactCount;
         },
-        binding.cost.quote.validThrough
+        binding.cost.pricingEvidence.freshThrough
       );
     } catch (error) {
       if (error instanceof SafeExecutionError) throw error;
@@ -2215,20 +2476,25 @@ export function validateLocalCompletionJournalBinding(
     result.createPostAttemptCount === 1 || zeroPostConsumedIntent
       ? 'POST_INTENT_DURABLE_OUTCOME_UNRESOLVED'
       : 'CLAIMED_POST_NOT_SENT';
-  const expectedQuoteAndFunding = {
+  const expectedPricingAndFunding = {
     currency: binding.cost?.currency,
-    actualDashboardQuoteUsd: binding.cost?.actualDashboardQuoteUsd,
-    quoteObservedAt: binding.cost?.quote?.observedAt,
-    quoteValidThrough: binding.cost?.quote?.validThrough,
+    moneyScale: binding.cost?.moneyScale,
+    pricingEvidenceFreshThrough: binding.cost?.pricingEvidence?.freshThrough,
     sourceMaximumBillableHours: binding.cost?.sourceMaximumBillableHours,
-    sourceMaximumComputeUsd: binding.cost?.sourceMaximumComputeUsd,
-    fundingApprovedAmountUsd:
-      binding.retentionAndCleanupDecision?.fundingApprovedAmountUsd,
-    fundingCeilingUsd: binding.retentionAndCleanupDecision?.fundingCeilingUsd,
+    sourceMaximumComputeUsdScaled: binding.cost?.sourceMaximumComputeUsdScaled,
+    unallocatedAuthorizationHeadroomUsdScaled:
+      binding.cost?.unallocatedAuthorizationHeadroomUsdScaled,
+    ownerAuthorizationCeilingUsdScaled:
+      binding.cost?.ownerAuthorizationCeilingUsdScaled,
+    providerSpendCapEnforced: false,
+    fundingSource: binding.retentionAndCleanupDecision?.fundingSource,
+    fundingApprovedAmountUsdScaled:
+      binding.retentionAndCleanupDecision?.fundingApprovedAmountUsdScaled,
     fundedThrough: binding.retentionAndCleanupDecision?.fundedThrough,
   };
   const expectedApprovalWindow = {
     approvedAt: binding.approval?.approvedAt,
+    operatorReconfirmedAt: binding.approval?.operatorReconfirmedAt,
     expiresAt: binding.approval?.expiresAt,
     approvalEvidenceSha256: binding.approval?.evidenceSha256,
   };
@@ -2250,9 +2516,14 @@ export function validateLocalCompletionJournalBinding(
     journalState.state !== expectedJournalState ||
     result.operator !== binding.owners?.provisioningOperator ||
     result.approver !== binding.approval?.approvedBy ||
+    result.operatorDisplayName !==
+      binding.operatorControl?.principalDisplayName ||
+    result.operatorControlMode !== binding.operatorControl?.mode ||
+    result.identitySeparationAvailable !== false ||
+    result.independentHumanReviewClaimed !== false ||
     result.recoveryOwner !== binding.duplicateAndFailurePolicy?.recoveryOwner ||
-    canonicalJson(result.quoteAndFunding) !==
-      canonicalJson(expectedQuoteAndFunding) ||
+    canonicalJson(result.pricingAndFunding) !==
+      canonicalJson(expectedPricingAndFunding) ||
     canonicalJson(result.approvalWindow) !==
       canonicalJson(expectedApprovalWindow) ||
     canonicalJson(result.cleanupBoundary) !==
@@ -2406,17 +2677,7 @@ async function executeReadOnlyRecovery(inputs, validation, journalState) {
     inputs.journalDirectoryIdentity,
     'ACTION_JOURNAL_DIRECTORY_CHANGED'
   );
-  const tokenName =
-    inputs.credentialConfiguration.secrets.managementAccessToken
-      .environmentVariable;
-  const passwordName =
-    inputs.credentialConfiguration.secrets.databasePassword.environmentVariable;
-  let accessToken = process.env[tokenName];
-  delete process.env[tokenName];
-  delete process.env[passwordName];
-  if (typeof accessToken !== 'string' || accessToken.length < 20) {
-    fail('MANAGEMENT_TOKEN_UNAVAILABLE');
-  }
+  let accessToken;
   const evidence = makeEvidenceDirectory(
     inputs.evidenceParent,
     journalState.claim.claimedAt,
@@ -2475,6 +2736,32 @@ async function executeReadOnlyRecovery(inputs, validation, journalState) {
   let reconciliation;
   let sealedEvidence = null;
   try {
+    revalidatePreparedLocalResources(inputs);
+    result.credentialBrokerInvocationCount = 1;
+    result.credentialBrokerMode = 'RECOVERY';
+    const credentials = retrieveClaimBoundCredentials({
+      mode: 'RECOVERY',
+      bindingMaterialSha256: validation.bindingMaterialSha256,
+      payloadSha256: validation.payloadSha256,
+      claimSha256: journalState.claimSha256,
+      credentialConfigurationSha256:
+        inputs.context.credentialConfigurationSha256,
+      credentialConfiguration: inputs.credentialConfiguration,
+      journalDirectory: inputs.journalDirectory,
+      journalDirectoryPathSha256: windowsPathFingerprint(
+        inputs.journalDirectory
+      ),
+      evidenceParentDirectory: inputs.evidenceParent,
+      evidenceParentDirectoryPathSha256: windowsPathFingerprint(
+        inputs.evidenceParent
+      ),
+      approvalExpiresAt: inputs.binding.approval.expiresAt,
+      resources: inputs.dpapiResources,
+    });
+    accessToken = credentials.managementAccessToken;
+    if (typeof accessToken !== 'string' || accessToken.length < 20) {
+      fail('MANAGEMENT_TOKEN_UNAVAILABLE');
+    }
     reconciliation = await reconcileAfterPostAttempt({
       accessToken,
       binding: inputs.binding,
@@ -2603,6 +2890,10 @@ async function main() {
       return;
     }
     const inputs = buildOfflineInputs(parsed);
+    requireSameExecutingImplementationSnapshots(
+      inputs,
+      'EXECUTING_IMPLEMENTATION_CHANGED'
+    );
     if (parsed['--reconcile-dispatched-action'] === ACTION_ID) {
       const journalState = readAndValidateJournalState(
         inputs.journalDirectory,
@@ -2633,6 +2924,7 @@ async function main() {
           now: new Date().toISOString(),
         }
       );
+      prepareValidatedLocalResources(inputs);
       const recoveryOutcome = await executeReadOnlyRecovery(
         inputs,
         recoveryValidation,
@@ -2646,6 +2938,7 @@ async function main() {
       inputs.credentialConfiguration,
       inputs.context
     );
+    prepareValidatedLocalResources(inputs);
     if (parsed.offlineVerify) {
       process.stdout.write(
         `${canonicalJson({

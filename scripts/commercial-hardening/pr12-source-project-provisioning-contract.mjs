@@ -18,10 +18,16 @@ export const APPROVED_BASE_COMMIT = '4475e1c641c2ff18f66021ee65cfecfceaa6b7ab';
 export const FIXED_PROJECT_NAME =
   'seikotsuin-pr12-isolated-qualification-20260719';
 export const PRODUCTION_PROJECT_REF = 'qnanuoqveidwvacvbhqp';
-export const SOURCE_COMPUTE_RATE_USD_PER_PROJECT_HOUR = 0.1517;
-export const SOURCE_MAXIMUM_COMPUTE_USD = 10.9224;
-export const FUNDING_CEILING_USD = 50;
+export const MONEY_SCALE = 10_000;
+export const SOURCE_COMPUTE_RATE_USD_SCALED_PER_PROJECT_HOUR = 1_517;
+export const SOURCE_MAXIMUM_COMPUTE_USD_SCALED = 109_224;
+export const UNALLOCATED_AUTHORIZATION_HEADROOM_USD_SCALED = 390_776;
+export const OWNER_AUTHORIZATION_CEILING_USD_SCALED = 500_000;
 export const PROVIDER_CREATED_AT_MAXIMUM_CLOCK_SKEW_SECONDS = 300;
+export const SOLE_OPERATOR_CONTROL_MODE =
+  'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1';
+export const DPAPI_PROVIDER_ID = 'WINDOWS_DPAPI_CURRENT_USER_V1';
+export const DPAPI_RETRIEVAL_CHANNEL = 'CLAIM_BOUND_CAPTURED_STDOUT_BINARY_V1';
 const GOVERNANCE_RELATIVE_PATH =
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml';
 const CONTRACT_RELATIVE_PATH =
@@ -30,6 +36,8 @@ const WRAPPER_RELATIVE_PATH =
   'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs';
 
 export const GENERIC_CREDENTIAL_NAMES = Object.freeze([
+  'PR12_SUPABASE_ACCESS_TOKEN',
+  'PR12_SOURCE_DB_PASSWORD',
   'SUPABASE_ACCESS_TOKEN',
   'SUPABASE_DB_PASSWORD',
   'SUPABASE_URL',
@@ -138,12 +146,6 @@ const OPAQUE_SECRET_HANDLE_PATTERN = /^[a-z][a-z0-9+.-]*:\/\/[^\s]+$/i;
 export function isForbiddenAmbientCredentialName(nameInput) {
   if (typeof nameInput !== 'string') return true;
   const name = nameInput.toUpperCase();
-  if (
-    name === 'PR12_SUPABASE_ACCESS_TOKEN' ||
-    name === 'PR12_SOURCE_DB_PASSWORD'
-  ) {
-    return false;
-  }
   return (
     GENERIC_CREDENTIAL_NAMES.includes(name) ||
     FORBIDDEN_TRANSPORT_ENVIRONMENT_NAMES.has(name) ||
@@ -235,6 +237,14 @@ function requireBoolean(value, expected, code) {
 
 function requireFiniteNumber(value, code) {
   requireCondition(typeof value === 'number' && Number.isFinite(value), code);
+  return value;
+}
+
+function requireNonNegativeInteger(value, code) {
+  requireCondition(
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0,
+    code
+  );
   return value;
 }
 
@@ -443,7 +453,7 @@ function validateBindingShape(binding) {
       'cost',
       'approval',
       'owners',
-      'separationOfDuties',
+      'operatorControl',
       'evidenceContract',
       'notes',
     ],
@@ -490,9 +500,12 @@ function validateBindingShape(binding) {
   ]);
   exact(binding.credentialControls, [
     'provisioningCredentialConfiguration',
-    'managementAccessTokenSecretName',
-    'databasePasswordSecretName',
+    'requiredProviderId',
+    'requiredRetrievalChannel',
     'providerConfigurationMustExistBeforeApproval',
+    'credentialBootstrapCompleted',
+    'credentialBootstrapExecutionAuthorizedByThisBinding',
+    'credentialRetrievalAfterDurableClaimOnly',
     'secretValuesCaptured',
   ]);
   exact(binding.credentialControls.provisioningCredentialConfiguration, [
@@ -539,6 +552,8 @@ function validateBindingShape(binding) {
     'durableFileFlushAndReadbackRequired',
     'postIntentDurableBeforeFetch',
     'postIntentPermanentlyConsumesActionIdentity',
+    'credentialBrokerFailureConsumesActionIdentity',
+    'credentialBrokerAutomaticRetryAllowed',
     'actionJournalDirectoryPathSha256',
     'organizationProjectListAllPagesRequiredBeforePost',
     'fixedNameDuplicateAction',
@@ -558,8 +573,8 @@ function validateBindingShape(binding) {
     'disposition',
     'sourceFundedHours',
     'fundedThrough',
-    'fundingCeilingUsd',
-    'fundingApprovedAmountUsd',
+    'fundingCeilingUsdScaled',
+    'fundingApprovedAmountUsdScaled',
     'fundingSource',
     'cleanupOwner',
     'deletionApprovalRequester',
@@ -569,31 +584,39 @@ function validateBindingShape(binding) {
   ]);
   exact(binding.cost, [
     'currency',
-    'computeRateUsdPerProjectHour',
+    'moneyScale',
+    'computeRateUsdScaledPerProjectHour',
     'sourceMaximumBillableHours',
-    'sourceMaximumComputeUsd',
+    'sourceMaximumComputeUsdScaled',
     'partialHourRounding',
     'organizationCurrentPlan',
-    'organizationPlanChangeRequired',
-    'planIncrementalUsd',
-    'computeCreditAppliedUsd',
-    'taxAndOtherChargesUsd',
-    'actualDashboardQuoteUsd',
-    'quote',
-    'proposedBudgetCeilingUsd',
+    'planPurchaseOrChangeAuthorized',
+    'planIncrementalUsdScaled',
+    'creditReliance',
+    'computeCreditAppliedUsdScaled',
+    'taxAndOtherChargesQuoted',
+    'unallocatedAuthorizationHeadroomUsdScaled',
+    'knownAdditionalChargesUsdScaled',
+    'unknownChargesAcknowledged',
+    'ownerAuthorizationCeilingUsdScaled',
+    'providerSpendCapEnforced',
+    'ceilingMeaning',
+    'pricingEvidence',
   ]);
-  exact(binding.cost.quote, [
+  exact(binding.cost.pricingEvidence, [
     'artifactPath',
     'artifactSha256',
-    'observedAt',
-    'validThrough',
+    'freshThrough',
   ]);
   exact(binding.approval, [
     'decision',
     'attestationStatus',
     'approvedBy',
     'approvedAt',
+    'operatorReconfirmedAt',
     'expiresAt',
+    'soleOperatorRiskAccepted',
+    'providerSpendCapLimitationAcknowledged',
     'evidencePath',
     'evidenceSha256',
     'approvedActionId',
@@ -614,10 +637,20 @@ function validateBindingShape(binding) {
     'siteReliabilityOwner',
     'incidentCommander',
   ]);
-  exact(binding.separationOfDuties, [
-    'approvedByMustDifferFrom',
-    'provisioningOperatorMustEqual',
-    'provisioningOperatorMustDifferFrom',
+  exact(binding.operatorControl, [
+    'mode',
+    'principalDisplayName',
+    'principalId',
+    'principalIdType',
+    'samePersonRoleKeys',
+    'identitySeparationAvailable',
+    'independentHumanReviewClaimed',
+    'localPreparationExceptionAuthorized',
+    'localPreparationExceptionAuthorizedOn',
+    'finalActionSelfApprovalRequired',
+    'minimumCoolingOffSeconds',
+    'maximumApprovalWindowSeconds',
+    'compensatingControls',
   ]);
   exact(binding.evidenceContract, [
     'evidenceParentDirectoryPathSha256',
@@ -682,8 +715,12 @@ function validateCredentialConfiguration(binding, credentialConfiguration) {
       'resultType',
       'status',
       'provider',
+      'runtime',
+      'protocol',
       'secrets',
+      'storageBoundary',
       'processBoundary',
+      'bootstrap',
       'approvedBy',
       'approvedAt',
       'notes',
@@ -692,7 +729,7 @@ function validateCredentialConfiguration(binding, credentialConfiguration) {
   );
   assertSecretFreeEvidence(configuration, []);
   requireCondition(
-    configuration.schemaVersion === 1,
+    configuration.schemaVersion === 2,
     'CREDENTIAL_CONFIGURATION_INVALID'
   );
   requireCondition(
@@ -707,21 +744,142 @@ function validateCredentialConfiguration(binding, credentialConfiguration) {
 
   const provider = assertExactKeys(
     configuration.provider,
-    ['providerId', 'configurationId', 'retrievalChannel', 'ownerApproved'],
+    [
+      'providerId',
+      'configurationId',
+      'retrievalChannel',
+      'ownerApproved',
+      'protectionScope',
+      'ownerSidSha256',
+      'machineNameSha256',
+      'providerRoot',
+      'providerRootPathSha256',
+      'providerRootResolvedPathSha256',
+      'providerRootDevice',
+      'providerRootInode',
+    ],
     'CREDENTIAL_PROVIDER_NOT_APPROVED'
   );
-  requireConcreteString(
-    provider.providerId,
-    'CREDENTIAL_PROVIDER_NOT_APPROVED'
-  );
-  requireConcreteString(
+  const configurationId = requireConcreteString(
     provider.configurationId,
     'CREDENTIAL_PROVIDER_NOT_APPROVED'
   );
   requireCondition(
-    provider.retrievalChannel === 'OWNER_APPROVED_ONE_PROCESS_ENVIRONMENT' &&
-      provider.ownerApproved === true,
+    /^[a-z0-9][a-z0-9._-]{7,127}$/.test(configurationId),
     'CREDENTIAL_PROVIDER_NOT_APPROVED'
+  );
+  const providerRoot = requireConcreteString(
+    provider.providerRoot,
+    'CREDENTIAL_PROVIDER_NOT_APPROVED'
+  );
+  requireCondition(
+    /^[A-Za-z]:[\\/]/.test(providerRoot) &&
+      !providerRoot.startsWith('\\\\') &&
+      requireSha256(
+        provider.providerRootPathSha256,
+        'CREDENTIAL_PROVIDER_NOT_APPROVED'
+      ) ===
+        sha256Text(
+          path.win32.resolve(providerRoot).replaceAll('\\', '/').toLowerCase()
+        ) &&
+      requireSha256(
+        provider.providerRootResolvedPathSha256,
+        'CREDENTIAL_PROVIDER_NOT_APPROVED'
+      ) === provider.providerRootPathSha256 &&
+      /^\d+$/.test(
+        requireConcreteString(
+          provider.providerRootDevice,
+          'CREDENTIAL_PROVIDER_NOT_APPROVED'
+        )
+      ) &&
+      /^\d+$/.test(
+        requireConcreteString(
+          provider.providerRootInode,
+          'CREDENTIAL_PROVIDER_NOT_APPROVED'
+        )
+      ),
+    'CREDENTIAL_PROVIDER_NOT_APPROVED'
+  );
+  requireCondition(
+    provider.providerId === DPAPI_PROVIDER_ID &&
+      provider.retrievalChannel === DPAPI_RETRIEVAL_CHANNEL &&
+      provider.ownerApproved === true &&
+      provider.protectionScope === 'CURRENT_USER' &&
+      SHA256_PATTERN.test(provider.ownerSidSha256) &&
+      SHA256_PATTERN.test(provider.machineNameSha256),
+    'CREDENTIAL_PROVIDER_NOT_APPROVED'
+  );
+
+  const runtime = assertExactKeys(
+    configuration.runtime,
+    [
+      'platform',
+      'powershellExecutablePath',
+      'powershellExecutableSha256',
+      'powershellVersion',
+      'requiredLanguageMode',
+      'brokerScriptPath',
+      'brokerScriptSha256',
+      'bootstrapScriptPath',
+      'bootstrapScriptSha256',
+    ],
+    'CREDENTIAL_RUNTIME_INVALID'
+  );
+  requireCondition(
+    runtime.platform === 'WIN32' &&
+      /^[A-Za-z]:[\\/]/.test(
+        requireConcreteString(
+          runtime.powershellExecutablePath,
+          'CREDENTIAL_RUNTIME_INVALID'
+        )
+      ) &&
+      SHA256_PATTERN.test(runtime.powershellExecutableSha256) &&
+      /^\d+\.\d+\.\d+(?:\.\d+)?$/.test(
+        requireConcreteString(
+          runtime.powershellVersion,
+          'CREDENTIAL_RUNTIME_INVALID'
+        )
+      ) &&
+      runtime.requiredLanguageMode === 'FullLanguage' &&
+      runtime.brokerScriptPath ===
+        'scripts/commercial-hardening/pr12-windows-dpapi-credential-broker.ps1' &&
+      SHA256_PATTERN.test(runtime.brokerScriptSha256) &&
+      runtime.bootstrapScriptPath ===
+        'scripts/commercial-hardening/initialize-pr12-windows-dpapi-credentials.ps1' &&
+      SHA256_PATTERN.test(runtime.bootstrapScriptSha256),
+    'CREDENTIAL_RUNTIME_INVALID'
+  );
+
+  const protocol = assertExactKeys(
+    configuration.protocol,
+    [
+      'requestProtocol',
+      'responseMagic',
+      'responseVersion',
+      'requestMaximumBytes',
+      'responseMaximumBytes',
+      'brokerTimeoutMilliseconds',
+      'automaticRetryAllowed',
+      'requestViaCapturedStdinOnly',
+      'responseViaCapturedStdoutBinaryOnly',
+      'zeroStderrRequired',
+    ],
+    'CREDENTIAL_PROTOCOL_INVALID'
+  );
+  requireCondition(
+    protocol.requestProtocol === 'PR12_DPAPI_BROKER_REQUEST_V1' &&
+      protocol.responseMagic === 'PR12DPB1' &&
+      protocol.responseVersion === 1 &&
+      protocol.requestMaximumBytes === 16_384 &&
+      protocol.responseMaximumBytes === 8_192 &&
+      Number.isInteger(protocol.brokerTimeoutMilliseconds) &&
+      protocol.brokerTimeoutMilliseconds >= 1_000 &&
+      protocol.brokerTimeoutMilliseconds <= 30_000 &&
+      protocol.automaticRetryAllowed === false &&
+      protocol.requestViaCapturedStdinOnly === true &&
+      protocol.responseViaCapturedStdoutBinaryOnly === true &&
+      protocol.zeroStderrRequired === true,
+    'CREDENTIAL_PROTOCOL_INVALID'
   );
 
   const secrets = assertExactKeys(
@@ -732,22 +890,29 @@ function validateCredentialConfiguration(binding, credentialConfiguration) {
   const managementToken = assertExactKeys(
     secrets.managementAccessToken,
     [
-      'environmentVariable',
+      'role',
       'opaqueHandle',
       'opaqueHandleSha256',
+      'envelopeFilename',
+      'envelopeSha256',
       'credentialType',
       'requiredEndpointOAuthScopes',
       'requiredFineGrainedPermissions',
+      'minimumBytes',
+      'maximumBytes',
     ],
     'CREDENTIAL_HANDLE_MISSING'
   );
   const databasePassword = assertExactKeys(
     secrets.databasePassword,
     [
-      'environmentVariable',
+      'role',
       'opaqueHandle',
       'opaqueHandleSha256',
-      'minimumLength',
+      'envelopeFilename',
+      'envelopeSha256',
+      'minimumBytes',
+      'maximumBytes',
     ],
     'CREDENTIAL_HANDLE_MISSING'
   );
@@ -781,9 +946,22 @@ function validateCredentialConfiguration(binding, credentialConfiguration) {
     'CREDENTIAL_HANDLE_FINGERPRINT_MISMATCH'
   );
   requireCondition(
-    managementToken.environmentVariable === 'PR12_SUPABASE_ACCESS_TOKEN' &&
-      databasePassword.environmentVariable === 'PR12_SOURCE_DB_PASSWORD' &&
-      databasePassword.minimumLength === 32,
+    tokenHandle ===
+      'windows-dpapi-cu://pr12-source-project/management-access-token/v1' &&
+      passwordHandle ===
+        'windows-dpapi-cu://pr12-source-project/database-password/v1' &&
+      managementToken.role === 'MANAGEMENT_ACCESS_TOKEN' &&
+      databasePassword.role === 'DATABASE_PASSWORD' &&
+      managementToken.envelopeFilename ===
+        `${managementToken.opaqueHandleSha256}.dpapi.json` &&
+      databasePassword.envelopeFilename ===
+        `${databasePassword.opaqueHandleSha256}.dpapi.json` &&
+      SHA256_PATTERN.test(managementToken.envelopeSha256) &&
+      SHA256_PATTERN.test(databasePassword.envelopeSha256) &&
+      managementToken.minimumBytes === 20 &&
+      managementToken.maximumBytes === 4096 &&
+      databasePassword.minimumBytes === 32 &&
+      databasePassword.maximumBytes === 256,
     'CREDENTIAL_CONFIGURATION_INVALID'
   );
   const scopes = requireArray(
@@ -818,10 +996,13 @@ function validateCredentialConfiguration(binding, credentialConfiguration) {
       'genericOrAmbientFallbackAllowed',
       'dotenvLoadingAllowed',
       'cliLoginSessionFallbackAllowed',
+      'inheritedEnvironmentAllowed',
       'rawValueInArgvAllowed',
       'rawValueInUrlAllowed',
-      'rawValueInStdoutOrStderrAllowed',
+      'rawValueInEnvironmentAllowed',
+      'rawValueRelayToParentStdoutOrStderrAllowed',
       'rawValueInLogOrEvidenceAllowed',
+      'capturedBrokerBinaryResponseException',
     ],
     'CREDENTIAL_CONFIGURATION_INVALID'
   );
@@ -829,15 +1010,68 @@ function validateCredentialConfiguration(binding, credentialConfiguration) {
     'genericOrAmbientFallbackAllowed',
     'dotenvLoadingAllowed',
     'cliLoginSessionFallbackAllowed',
+    'inheritedEnvironmentAllowed',
     'rawValueInArgvAllowed',
     'rawValueInUrlAllowed',
-    'rawValueInStdoutOrStderrAllowed',
+    'rawValueInEnvironmentAllowed',
+    'rawValueRelayToParentStdoutOrStderrAllowed',
     'rawValueInLogOrEvidenceAllowed',
   ]) {
     requireBoolean(boundary[field], false, 'CREDENTIAL_CONFIGURATION_INVALID');
   }
+  requireCondition(
+    boundary.capturedBrokerBinaryResponseException ===
+      'NODE_PARENT_CAPTURE_ONLY_NEVER_RELAY_OR_PERSIST',
+    'CREDENTIAL_CONFIGURATION_INVALID'
+  );
 
-  requireCanonicalOwnerId(
+  const storage = assertExactKeys(
+    configuration.storageBoundary,
+    [
+      'outsideRepositoryRequired',
+      'outsideTemporaryDirectoriesRequired',
+      'reparsePointsAllowed',
+      'envelopeOverwriteAllowed',
+      'allowedAclPrincipals',
+      'inheritedAclAllowed',
+      'providerRootIdentityMustRemainStable',
+      'allProviderRootPathComponentsMustBeNonReparse',
+      'resolvedProviderRootMustBeDisjointFromRepositoryTemporaryJournalAndEvidenceTrees',
+    ],
+    'CREDENTIAL_STORAGE_INVALID'
+  );
+  requireCondition(
+    storage.outsideRepositoryRequired === true &&
+      storage.outsideTemporaryDirectoriesRequired === true &&
+      storage.reparsePointsAllowed === false &&
+      storage.envelopeOverwriteAllowed === false &&
+      canonicalJson(storage.allowedAclPrincipals) ===
+        canonicalJson(['CURRENT_USER', 'LOCAL_SYSTEM']) &&
+      storage.inheritedAclAllowed === false &&
+      storage.providerRootIdentityMustRemainStable === true &&
+      storage.allProviderRootPathComponentsMustBeNonReparse === true &&
+      storage.resolvedProviderRootMustBeDisjointFromRepositoryTemporaryJournalAndEvidenceTrees ===
+        true,
+    'CREDENTIAL_STORAGE_INVALID'
+  );
+
+  const bootstrap = assertExactKeys(
+    configuration.bootstrap,
+    [
+      'realCredentialBootstrapCompleted',
+      'realCredentialBootstrapAuthorizedByThisPreparation',
+      'separateInteractiveAuthorizationRequired',
+    ],
+    'CREDENTIAL_BOOTSTRAP_INVALID'
+  );
+  requireCondition(
+    bootstrap.realCredentialBootstrapCompleted === true &&
+      bootstrap.realCredentialBootstrapAuthorizedByThisPreparation === false &&
+      bootstrap.separateInteractiveAuthorizationRequired === true,
+    'CREDENTIAL_BOOTSTRAP_INVALID'
+  );
+
+  const approvedBy = requireCanonicalOwnerId(
     configuration.approvedBy,
     'CREDENTIAL_CONFIGURATION_INVALID'
   );
@@ -862,12 +1096,21 @@ function validateCredentialConfiguration(binding, credentialConfiguration) {
     'CREDENTIAL_CONFIGURATION_INVALID'
   );
   requireCondition(
-    controls.managementAccessTokenSecretName ===
-      managementToken.environmentVariable &&
-      controls.databasePasswordSecretName ===
-        databasePassword.environmentVariable &&
+    controls.requiredProviderId === provider.providerId &&
+      controls.requiredRetrievalChannel === provider.retrievalChannel &&
       controls.providerConfigurationMustExistBeforeApproval === true &&
+      controls.credentialBootstrapCompleted === true &&
+      controls.credentialBootstrapExecutionAuthorizedByThisBinding === false &&
+      controls.credentialRetrievalAfterDurableClaimOnly === true &&
       controls.secretValuesCaptured === false,
+    'CREDENTIAL_CONFIGURATION_INVALID'
+  );
+  const operatorControl = requireRecord(
+    binding.operatorControl,
+    'CREDENTIAL_CONFIGURATION_INVALID'
+  );
+  requireCondition(
+    approvedBy === operatorControl.principalId,
     'CREDENTIAL_CONFIGURATION_INVALID'
   );
 }
@@ -897,7 +1140,7 @@ function validateAuthorization(binding) {
 }
 
 function validateApprovalStatus(binding) {
-  requireCondition(binding.schemaVersion === 2, 'BINDING_SCHEMA_INVALID');
+  requireCondition(binding.schemaVersion === 3, 'BINDING_SCHEMA_INVALID');
   requireCondition(
     binding.phase === 'SOURCE_PROJECT_PROVISIONING' &&
       binding.status === 'APPROVED',
@@ -1058,44 +1301,54 @@ function validateInitialPosture(binding) {
 
 function validateOwnersAndCleanup(binding) {
   const owners = requireRecord(binding.owners, 'OWNER_ASSIGNMENT_INVALID');
-  const requiredOwnerKeys = [
+  const consolidatedOwnerKeys = [
     'commercialReleaseOwner',
     'provisioningOperator',
     'supabasePlatformOwner',
     'cleanupOwner',
     'evidenceCustodian',
   ];
-  requiredOwnerKeys.forEach(key =>
+  consolidatedOwnerKeys.forEach(key =>
     requireCanonicalOwnerId(owners[key], 'OWNER_ASSIGNMENT_INVALID')
+  );
+  const operatorControl = requireRecord(
+    binding.operatorControl,
+    'SOLE_OPERATOR_EXCEPTION_INVALID'
+  );
+  const principalId = requireCanonicalOwnerId(
+    operatorControl.principalId,
+    'SOLE_OPERATOR_EXCEPTION_INVALID'
   );
   const approval = requireRecord(binding.approval, 'APPROVAL_INVALID');
   requireCanonicalOwnerId(approval.approvedBy, 'OWNER_ASSIGNMENT_INVALID');
   requireCondition(
-    approval.approvedBy === owners.commercialReleaseOwner &&
-      owners.provisioningOperator === owners.supabasePlatformOwner &&
-      approval.approvedBy !== owners.provisioningOperator &&
-      approval.approvedBy !== owners.cleanupOwner &&
-      approval.approvedBy !== owners.evidenceCustodian &&
-      owners.provisioningOperator !== owners.cleanupOwner &&
-      owners.provisioningOperator !== owners.evidenceCustodian,
-    'OWNER_SEPARATION_INVALID'
-  );
-  const separation = requireRecord(
-    binding.separationOfDuties,
-    'OWNER_SEPARATION_INVALID'
-  );
-  requireCondition(
-    separation.provisioningOperatorMustEqual === 'supabasePlatformOwner' &&
-      canonicalJson(separation.approvedByMustDifferFrom) ===
+    operatorControl.mode === SOLE_OPERATOR_CONTROL_MODE &&
+      operatorControl.principalDisplayName === 'FUTOSHI IWASAWA' &&
+      operatorControl.principalIdType ===
+        'OWNER_DECLARED_STABLE_PRINCIPAL_ID' &&
+      canonicalJson(operatorControl.samePersonRoleKeys) ===
+        canonicalJson(consolidatedOwnerKeys) &&
+      operatorControl.identitySeparationAvailable === false &&
+      operatorControl.independentHumanReviewClaimed === false &&
+      operatorControl.localPreparationExceptionAuthorized === true &&
+      operatorControl.localPreparationExceptionAuthorizedOn === '2026-07-24' &&
+      operatorControl.finalActionSelfApprovalRequired === true &&
+      operatorControl.minimumCoolingOffSeconds === 300 &&
+      operatorControl.maximumApprovalWindowSeconds === 1800 &&
+      canonicalJson(operatorControl.compensatingControls) ===
         canonicalJson([
-          'provisioningOperator',
-          'supabasePlatformOwner',
-          'cleanupOwner',
-          'evidenceCustodian',
+          'EXACT_HEAD_BASE_GOVERNANCE_CONTRACT_WRAPPER_AND_PAYLOAD_HASHES',
+          'EXACT_ORGANIZATION_ALLOW_BINDING_AND_PRODUCTION_DENYLIST',
+          'ONE_DURABLE_CREATE_ONCE_CLAIM_NO_POST_RETRY',
+          'DPAPI_CURRENT_USER_CLAIM_BOUND_POST_CLAIM_RETRIEVAL',
+          'USD_50_OWNER_AUTHORIZATION_CEILING_FOR_72_HOURS',
+          'PHASE2_AND_CLEANUP_DELETION_REMAIN_SEPARATELY_UNAUTHORIZED',
         ]) &&
-      canonicalJson(separation.provisioningOperatorMustDifferFrom) ===
-        canonicalJson(['cleanupOwner', 'evidenceCustodian']),
-    'OWNER_SEPARATION_INVALID'
+      consolidatedOwnerKeys.every(key => owners[key] === principalId) &&
+      approval.approvedBy === principalId &&
+      approval.soleOperatorRiskAccepted === true &&
+      approval.providerSpendCapLimitationAcknowledged === true,
+    'SOLE_OPERATOR_EXCEPTION_INVALID'
   );
 
   const cleanup = requireRecord(
@@ -1112,6 +1365,9 @@ function validateOwnersAndCleanup(binding) {
   }
   requireCondition(
     cleanup.cleanupOwner === owners.cleanupOwner &&
+      cleanup.deletionApprovalRequester === principalId &&
+      cleanup.billingEscalationOwner === principalId &&
+      cleanup.fundedExtensionOwner === principalId &&
       cleanup.disposition ===
         'DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION',
     'CLEANUP_DECISION_INCOMPLETE'
@@ -1132,75 +1388,97 @@ function validateOwnersAndCleanup(binding) {
 function validateCostFundingAndChronology(binding, context) {
   const approval = requireRecord(binding.approval, 'APPROVAL_INVALID');
   const approvedAt = parseTimestamp(approval.approvedAt, 'APPROVAL_INVALID');
+  const operatorReconfirmedAt = parseTimestamp(
+    approval.operatorReconfirmedAt,
+    'APPROVAL_INVALID'
+  );
   const expiresAt = parseTimestamp(approval.expiresAt, 'APPROVAL_INVALID');
   const now = parseTimestamp(context.now, 'CURRENT_TIME_INVALID');
-  requireCondition(approvedAt < expiresAt, 'APPROVAL_WINDOW_INVALID');
-  requireCondition(now >= approvedAt && now < expiresAt, 'APPROVAL_EXPIRED');
-
-  const cost = requireRecord(binding.cost, 'QUOTE_NOT_CAPTURED');
-  requireCondition(cost.currency === 'USD', 'QUOTE_NOT_CAPTURED');
-  const quoteUsd = requireFiniteNumber(
-    cost.actualDashboardQuoteUsd,
-    'QUOTE_NOT_CAPTURED'
-  );
-  const rate = requireFiniteNumber(
-    cost.computeRateUsdPerProjectHour,
-    'QUOTE_NOT_CAPTURED'
-  );
-  const hours = requireFiniteNumber(
-    cost.sourceMaximumBillableHours,
-    'QUOTE_NOT_CAPTURED'
-  );
-  const maximumCompute = requireFiniteNumber(
-    cost.sourceMaximumComputeUsd,
-    'QUOTE_NOT_CAPTURED'
-  );
-  const computeCredit = requireFiniteNumber(
-    cost.computeCreditAppliedUsd,
-    'QUOTE_NOT_CAPTURED'
-  );
-  const taxAndOtherCharges = requireFiniteNumber(
-    cost.taxAndOtherChargesUsd,
-    'QUOTE_NOT_CAPTURED'
+  const operatorControl = requireRecord(
+    binding.operatorControl,
+    'SOLE_OPERATOR_EXCEPTION_INVALID'
   );
   requireCondition(
-    rate === SOURCE_COMPUTE_RATE_USD_PER_PROJECT_HOUR &&
-      hours === 72 &&
-      maximumCompute === SOURCE_MAXIMUM_COMPUTE_USD &&
-      quoteUsd >= 0 &&
-      computeCredit >= 0 &&
-      taxAndOtherCharges >= 0 &&
-      Math.abs(rate * hours - maximumCompute) < 0.000001 &&
-      cost.partialHourRounding === 'ROUNDED_UP_TO_FULL_HOUR' &&
-      cost.organizationCurrentPlan === 'PRO' &&
-      cost.organizationPlanChangeRequired === false &&
-      cost.planIncrementalUsd === 0 &&
-      cost.sourceMaximumBillableHours === 72,
-    'QUOTE_ARITHMETIC_INVALID'
+    approvedAt < operatorReconfirmedAt &&
+      operatorReconfirmedAt < expiresAt &&
+      operatorReconfirmedAt - approvedAt >=
+        operatorControl.minimumCoolingOffSeconds * 1000 &&
+      expiresAt - approvedAt <=
+        operatorControl.maximumApprovalWindowSeconds * 1000 &&
+      now >= operatorReconfirmedAt &&
+      now < expiresAt,
+    now >= expiresAt ? 'APPROVAL_EXPIRED' : 'APPROVAL_WINDOW_INVALID'
   );
-  const ceiling = requireFiniteNumber(
-    cost.proposedBudgetCeilingUsd,
+
+  const cost = requireRecord(binding.cost, 'PRICING_EVIDENCE_NOT_CAPTURED');
+  const rate = requireNonNegativeInteger(
+    cost.computeRateUsdScaledPerProjectHour,
+    'PRICING_ARITHMETIC_INVALID'
+  );
+  const hours = requireNonNegativeInteger(
+    cost.sourceMaximumBillableHours,
+    'PRICING_ARITHMETIC_INVALID'
+  );
+  const maximumCompute = requireNonNegativeInteger(
+    cost.sourceMaximumComputeUsdScaled,
+    'PRICING_ARITHMETIC_INVALID'
+  );
+  const headroom = requireNonNegativeInteger(
+    cost.unallocatedAuthorizationHeadroomUsdScaled,
+    'PRICING_ARITHMETIC_INVALID'
+  );
+  const knownAdditionalCharges = requireNonNegativeInteger(
+    cost.knownAdditionalChargesUsdScaled,
+    'KNOWN_COST_NOT_CAPTURED'
+  );
+  const ceiling = requireNonNegativeInteger(
+    cost.ownerAuthorizationCeilingUsdScaled,
     'FUNDING_NOT_CAPTURED'
   );
   requireCondition(
-    ceiling === FUNDING_CEILING_USD && quoteUsd <= ceiling,
-    'QUOTE_EXCEEDS_CEILING'
+    cost.currency === 'USD' &&
+      cost.moneyScale === MONEY_SCALE &&
+      rate === SOURCE_COMPUTE_RATE_USD_SCALED_PER_PROJECT_HOUR &&
+      hours === 72 &&
+      maximumCompute === SOURCE_MAXIMUM_COMPUTE_USD_SCALED &&
+      rate * hours === maximumCompute &&
+      cost.partialHourRounding === 'ROUNDED_UP_TO_FULL_HOUR' &&
+      cost.organizationCurrentPlan === 'PRO' &&
+      cost.planPurchaseOrChangeAuthorized === false &&
+      cost.planIncrementalUsdScaled === 0 &&
+      cost.creditReliance === 'NONE' &&
+      cost.computeCreditAppliedUsdScaled === 0 &&
+      cost.taxAndOtherChargesQuoted === false &&
+      headroom === UNALLOCATED_AUTHORIZATION_HEADROOM_USD_SCALED &&
+      maximumCompute + headroom === ceiling &&
+      knownAdditionalCharges <= headroom &&
+      cost.unknownChargesAcknowledged === true &&
+      ceiling === OWNER_AUTHORIZATION_CEILING_USD_SCALED &&
+      cost.providerSpendCapEnforced === false &&
+      cost.ceilingMeaning ===
+        'OWNER_GOVERNANCE_AUTHORIZATION_NOT_PROVIDER_SPEND_CAP',
+    'PRICING_ARITHMETIC_INVALID'
   );
 
-  const quote = requireRecord(cost.quote, 'QUOTE_NOT_CAPTURED');
-  requireSafeEvidencePath(quote.artifactPath, 'QUOTE_NOT_CAPTURED');
-  requireSha256(quote.artifactSha256, 'QUOTE_NOT_CAPTURED');
-  const quoteObservedAt = parseTimestamp(
-    quote.observedAt,
-    'QUOTE_NOT_CAPTURED'
+  const pricingEvidence = requireRecord(
+    cost.pricingEvidence,
+    'PRICING_EVIDENCE_NOT_CAPTURED'
   );
-  const quoteValidThrough = parseTimestamp(
-    quote.validThrough,
-    'QUOTE_NOT_CAPTURED'
+  requireSafeEvidencePath(
+    pricingEvidence.artifactPath,
+    'PRICING_EVIDENCE_NOT_CAPTURED'
+  );
+  requireSha256(
+    pricingEvidence.artifactSha256,
+    'PRICING_EVIDENCE_NOT_CAPTURED'
+  );
+  const pricingFreshThrough = parseTimestamp(
+    pricingEvidence.freshThrough,
+    'PRICING_EVIDENCE_NOT_CAPTURED'
   );
   requireCondition(
-    quoteObservedAt <= approvedAt && quoteValidThrough >= now,
-    'QUOTE_NOT_CURRENT_AT_APPROVAL'
+    pricingFreshThrough >= expiresAt && pricingFreshThrough > now,
+    'PRICING_EVIDENCE_NOT_CURRENT_AT_APPROVAL'
   );
 
   const cleanup = requireRecord(
@@ -1211,21 +1489,25 @@ function validateCostFundingAndChronology(binding, context) {
     cleanup.fundedThrough,
     'FUNDING_NOT_CAPTURED'
   );
-  requireConcreteString(cleanup.fundingSource, 'FUNDING_NOT_CAPTURED');
+  const fundingSource = requireConcreteString(
+    cleanup.fundingSource,
+    'FUNDING_NOT_CAPTURED'
+  );
   const fundedAmount = requireFiniteNumber(
-    cleanup.fundingApprovedAmountUsd,
+    cleanup.fundingApprovedAmountUsdScaled,
     'FUNDING_NOT_CAPTURED'
   );
   const fundingCeiling = requireFiniteNumber(
-    cleanup.fundingCeilingUsd,
+    cleanup.fundingCeilingUsdScaled,
     'FUNDING_NOT_CAPTURED'
   );
   requireCondition(
     cleanup.sourceFundedHours === 72 &&
-      fundedAmount >= 0 &&
-      fundingCeiling === FUNDING_CEILING_USD &&
-      fundedAmount >= quoteUsd &&
-      fundedAmount <= fundingCeiling &&
+      Number.isSafeInteger(fundedAmount) &&
+      Number.isSafeInteger(fundingCeiling) &&
+      /^[A-Z][A-Z0-9_:-]{7,127}$/.test(fundingSource) &&
+      fundingCeiling === OWNER_AUTHORIZATION_CEILING_USD_SCALED &&
+      fundedAmount === OWNER_AUTHORIZATION_CEILING_USD_SCALED &&
       fundingCeiling === ceiling &&
       fundedThrough >= expiresAt + 72 * 60 * 60 * 1000,
     'FUNDING_NOT_CAPTURED'
@@ -1252,6 +1534,8 @@ function validateFailureAndEvidenceContracts(binding) {
       policy.durableFileFlushAndReadbackRequired === true &&
       policy.postIntentDurableBeforeFetch === true &&
       policy.postIntentPermanentlyConsumesActionIdentity === true &&
+      policy.credentialBrokerFailureConsumesActionIdentity === true &&
+      policy.credentialBrokerAutomaticRetryAllowed === false &&
       SHA256_PATTERN.test(policy.actionJournalDirectoryPathSha256) &&
       policy.organizationProjectListAllPagesRequiredBeforePost === true &&
       policy.fixedNameDuplicateAction === 'ABORT_POST_NOT_SENT' &&
@@ -1262,7 +1546,18 @@ function validateFailureAndEvidenceContracts(binding) {
       policy.destructiveRecoveryAuthorized === false,
     'DUPLICATE_GUARD_INVALID'
   );
-  requireCanonicalOwnerId(policy.recoveryOwner, 'DUPLICATE_GUARD_INVALID');
+  const recoveryOwner = requireCanonicalOwnerId(
+    policy.recoveryOwner,
+    'DUPLICATE_GUARD_INVALID'
+  );
+  const soleOperatorPrincipal = requireCanonicalOwnerId(
+    binding.operatorControl?.principalId,
+    'DUPLICATE_GUARD_INVALID'
+  );
+  requireCondition(
+    recoveryOwner === soleOperatorPrincipal,
+    'DUPLICATE_GUARD_INVALID'
+  );
 
   const evidence = requireRecord(
     binding.evidenceContract,
@@ -1285,80 +1580,205 @@ function validateFailureAndEvidenceContracts(binding) {
   );
 }
 
-function validateQuoteEvidence(binding, quoteEvidenceInput) {
-  const quoteEvidence = assertExactKeys(
-    quoteEvidenceInput,
+function validatePricingEvidence(binding, pricingEvidenceInput) {
+  const pricingEvidence = assertExactKeys(
+    pricingEvidenceInput,
     [
       'schemaVersion',
       'recordType',
       'status',
-      'organizationId',
-      'organizationSlug',
-      'organizationPlan',
+      'provider',
       'currency',
-      'lineItems',
-      'actualDashboardQuoteUsd',
-      'observedAt',
-      'validThrough',
+      'moneyScale',
+      'officialSources',
+      'pricing',
+      'conservativeTreatment',
+      'authorizationBoundary',
+      'freshness',
       'capturedBy',
-      'rawDashboardArtifactPersistedInRepository',
+      'rawOfficialSourceArtifactsPersistedInRepository',
+      'notes',
     ],
-    'QUOTE_EVIDENCE_INVALID'
+    'PRICING_EVIDENCE_INVALID'
   );
-  const environment = binding.environmentProposal;
   const cost = binding.cost;
   requireCondition(
-    quoteEvidence.schemaVersion === 1 &&
-      quoteEvidence.recordType === 'PR12_SOURCE_PROJECT_DASHBOARD_QUOTE' &&
-      quoteEvidence.status === 'CAPTURED' &&
-      quoteEvidence.organizationId === environment.organizationId &&
-      quoteEvidence.organizationSlug === environment.organizationSlug &&
-      quoteEvidence.organizationPlan === 'PRO' &&
-      quoteEvidence.currency === 'USD' &&
-      quoteEvidence.actualDashboardQuoteUsd === cost.actualDashboardQuoteUsd &&
-      quoteEvidence.observedAt === cost.quote.observedAt &&
-      quoteEvidence.validThrough === cost.quote.validThrough &&
-      quoteEvidence.rawDashboardArtifactPersistedInRepository === false,
-    'QUOTE_EVIDENCE_INVALID'
+    pricingEvidence.schemaVersion === 2 &&
+      pricingEvidence.recordType ===
+        'PR12_SOURCE_PROJECT_OFFICIAL_PRICING_EVIDENCE' &&
+      pricingEvidence.status === 'CAPTURED' &&
+      pricingEvidence.provider === 'SUPABASE' &&
+      pricingEvidence.currency === 'USD' &&
+      pricingEvidence.moneyScale === MONEY_SCALE &&
+      pricingEvidence.rawOfficialSourceArtifactsPersistedInRepository === false,
+    'PRICING_EVIDENCE_INVALID'
   );
-  requireCanonicalOwnerId(quoteEvidence.capturedBy, 'QUOTE_EVIDENCE_INVALID');
-  const lineItems = assertExactKeys(
-    quoteEvidence.lineItems,
-    [
-      'planIncrementalUsd',
-      'sourceComputeMaximumUsd',
-      'computeCreditAppliedUsd',
-      'taxAndOtherChargesUsd',
-    ],
-    'QUOTE_EVIDENCE_INVALID'
-  );
-  const calculatedTotal =
-    requireFiniteNumber(
-      lineItems.planIncrementalUsd,
-      'QUOTE_EVIDENCE_INVALID'
-    ) +
-    requireFiniteNumber(
-      lineItems.sourceComputeMaximumUsd,
-      'QUOTE_EVIDENCE_INVALID'
-    ) -
-    requireFiniteNumber(
-      lineItems.computeCreditAppliedUsd,
-      'QUOTE_EVIDENCE_INVALID'
-    ) +
-    requireFiniteNumber(
-      lineItems.taxAndOtherChargesUsd,
-      'QUOTE_EVIDENCE_INVALID'
-    );
+  requireConcreteString(pricingEvidence.notes, 'PRICING_EVIDENCE_INVALID');
   requireCondition(
-    Math.abs(calculatedTotal - quoteEvidence.actualDashboardQuoteUsd) <
-      0.000001 &&
-      lineItems.planIncrementalUsd === cost.planIncrementalUsd &&
-      lineItems.sourceComputeMaximumUsd === cost.sourceMaximumComputeUsd &&
-      lineItems.computeCreditAppliedUsd === cost.computeCreditAppliedUsd &&
-      lineItems.taxAndOtherChargesUsd === cost.taxAndOtherChargesUsd,
-    'QUOTE_ARITHMETIC_INVALID'
+    requireCanonicalOwnerId(
+      pricingEvidence.capturedBy,
+      'PRICING_EVIDENCE_INVALID'
+    ) === binding.operatorControl.principalId,
+    'PRICING_EVIDENCE_INVALID'
   );
-  assertSecretFreeEvidence(quoteEvidence, []);
+  const sourceDefinitions = [
+    [
+      'COMPUTE_AND_DISK',
+      'https://supabase.com/docs/guides/platform/compute-and-disk',
+    ],
+    [
+      'COMPUTE_USAGE',
+      'https://supabase.com/docs/guides/platform/manage-your-usage/compute',
+    ],
+    ['PRICING', 'https://supabase.com/pricing'],
+  ];
+  const sources = requireArray(
+    pricingEvidence.officialSources,
+    'PRICING_EVIDENCE_INVALID'
+  );
+  requireCondition(
+    sources.length === sourceDefinitions.length,
+    'PRICING_EVIDENCE_INVALID'
+  );
+  const approval = requireRecord(binding.approval, 'APPROVAL_INVALID');
+  const approvedAt = parseTimestamp(approval.approvedAt, 'APPROVAL_INVALID');
+  const retrievedTimes = sources.map((sourceInput, index) => {
+    const source = assertExactKeys(
+      sourceInput,
+      ['sourceId', 'url', 'retrievedAt', 'artifactPath', 'artifactSha256'],
+      'PRICING_EVIDENCE_INVALID'
+    );
+    requireCondition(
+      source.sourceId === sourceDefinitions[index][0] &&
+        source.url === sourceDefinitions[index][1],
+      'PRICING_EVIDENCE_INVALID'
+    );
+    requireSafeEvidencePath(source.artifactPath, 'PRICING_EVIDENCE_INVALID');
+    requireSha256(source.artifactSha256, 'PRICING_EVIDENCE_INVALID');
+    return parseTimestamp(source.retrievedAt, 'PRICING_EVIDENCE_INVALID');
+  });
+
+  const pricing = assertExactKeys(
+    pricingEvidence.pricing,
+    [
+      'requiredExistingOrganizationPlan',
+      'planPurchaseOrChangeAuthorized',
+      'planIncrementalUsdScaled',
+      'computeTier',
+      'desiredInstanceSize',
+      'computeAddonVariant',
+      'billingUnit',
+      'partialHourRounding',
+      'hourlyRateUsdScaled',
+      'maximumBillableHours',
+      'maximumComputeUsdScaled',
+    ],
+    'PRICING_EVIDENCE_INVALID'
+  );
+  requireCondition(
+    pricing.requiredExistingOrganizationPlan === 'PRO' &&
+      pricing.planPurchaseOrChangeAuthorized === false &&
+      pricing.planIncrementalUsdScaled === 0 &&
+      pricing.computeTier === 'LARGE' &&
+      pricing.desiredInstanceSize === 'large' &&
+      pricing.computeAddonVariant === LARGE_ADDON_VARIANT &&
+      pricing.billingUnit === 'PROJECT_HOUR' &&
+      pricing.partialHourRounding === 'ROUNDED_UP_TO_FULL_HOUR' &&
+      pricing.hourlyRateUsdScaled ===
+        SOURCE_COMPUTE_RATE_USD_SCALED_PER_PROJECT_HOUR &&
+      pricing.maximumBillableHours === 72 &&
+      pricing.maximumComputeUsdScaled === SOURCE_MAXIMUM_COMPUTE_USD_SCALED &&
+      pricing.hourlyRateUsdScaled * pricing.maximumBillableHours ===
+        pricing.maximumComputeUsdScaled &&
+      pricing.hourlyRateUsdScaled === cost.computeRateUsdScaledPerProjectHour &&
+      pricing.maximumBillableHours === cost.sourceMaximumBillableHours &&
+      pricing.maximumComputeUsdScaled === cost.sourceMaximumComputeUsdScaled,
+    'PRICING_ARITHMETIC_INVALID'
+  );
+
+  const conservative = assertExactKeys(
+    pricingEvidence.conservativeTreatment,
+    [
+      'creditReliance',
+      'computeCreditAppliedUsdScaled',
+      'taxAndOtherChargesQuoted',
+      'taxAndOtherChargesEstimateUsdScaled',
+      'unallocatedAuthorizationHeadroomUsdScaled',
+    ],
+    'PRICING_EVIDENCE_INVALID'
+  );
+  requireCondition(
+    conservative.creditReliance === 'NONE' &&
+      conservative.computeCreditAppliedUsdScaled === 0 &&
+      conservative.taxAndOtherChargesQuoted === false &&
+      conservative.taxAndOtherChargesEstimateUsdScaled === null &&
+      conservative.unallocatedAuthorizationHeadroomUsdScaled ===
+        UNALLOCATED_AUTHORIZATION_HEADROOM_USD_SCALED &&
+      conservative.creditReliance === cost.creditReliance &&
+      conservative.computeCreditAppliedUsdScaled ===
+        cost.computeCreditAppliedUsdScaled &&
+      conservative.taxAndOtherChargesQuoted === cost.taxAndOtherChargesQuoted &&
+      conservative.unallocatedAuthorizationHeadroomUsdScaled ===
+        cost.unallocatedAuthorizationHeadroomUsdScaled,
+    'PRICING_ARITHMETIC_INVALID'
+  );
+
+  const boundary = assertExactKeys(
+    pricingEvidence.authorizationBoundary,
+    [
+      'ownerAuthorizationCeilingUsdScaled',
+      'providerSpendCapEnforced',
+      'knownCostOverCeilingAction',
+      'ceilingMeaning',
+    ],
+    'PRICING_EVIDENCE_INVALID'
+  );
+  requireCondition(
+    boundary.ownerAuthorizationCeilingUsdScaled ===
+      OWNER_AUTHORIZATION_CEILING_USD_SCALED &&
+      boundary.providerSpendCapEnforced === false &&
+      boundary.knownCostOverCeilingAction === 'ABORT_BEFORE_POST' &&
+      boundary.ceilingMeaning ===
+        'OWNER_GOVERNANCE_AUTHORIZATION_NOT_PROVIDER_SPEND_CAP' &&
+      boundary.ownerAuthorizationCeilingUsdScaled ===
+        cost.ownerAuthorizationCeilingUsdScaled &&
+      boundary.providerSpendCapEnforced === cost.providerSpendCapEnforced &&
+      boundary.ceilingMeaning === cost.ceilingMeaning,
+    'PRICING_ARITHMETIC_INVALID'
+  );
+
+  const freshness = assertExactKeys(
+    pricingEvidence.freshness,
+    [
+      'policy',
+      'maximumAgeAtApprovalSeconds',
+      'lifetimeSeconds',
+      'freshThrough',
+    ],
+    'PRICING_EVIDENCE_INVALID'
+  );
+  const earliestRetrievedAt = Math.min(...retrievedTimes);
+  const freshThrough = parseTimestamp(
+    freshness.freshThrough,
+    'PRICING_EVIDENCE_INVALID'
+  );
+  requireCondition(
+    freshness.policy ===
+      'LOCAL_24_HOUR_REVALIDATION_NOT_PROVIDER_QUOTE_VALIDITY' &&
+      freshness.maximumAgeAtApprovalSeconds === 3600 &&
+      freshness.lifetimeSeconds === 86400 &&
+      retrievedTimes.every(
+        retrievedAt =>
+          retrievedAt <= approvedAt &&
+          approvedAt - retrievedAt <=
+            freshness.maximumAgeAtApprovalSeconds * 1000
+      ) &&
+      freshThrough === earliestRetrievedAt + freshness.lifetimeSeconds * 1000 &&
+      freshness.freshThrough === cost.pricingEvidence.freshThrough &&
+      parseTimestamp(approval.expiresAt, 'APPROVAL_INVALID') <= freshThrough,
+    'PRICING_EVIDENCE_FRESHNESS_INVALID'
+  );
+  assertSecretFreeEvidence(pricingEvidence, []);
 }
 
 function validateApprovalEvidence(
@@ -1375,53 +1795,81 @@ function validateApprovalEvidence(
       'decision',
       'attestationStatus',
       'attestationMethod',
-      'approver',
+      'approverPrincipalId',
+      'approverDisplayName',
+      'operatorPrincipalId',
+      'operatorDisplayName',
+      'operatorControlMode',
+      'identitySeparationAvailable',
+      'independentHumanReviewClaimed',
+      'soleOperatorRiskAccepted',
+      'providerSpendCapLimitationAcknowledged',
       'actionId',
       'gitCommit',
       'bindingMaterialSha256',
       'payloadSha256',
       'credentialConfigurationSha256',
-      'quoteEvidenceSha256',
+      'pricingEvidenceSha256',
       'organizationId',
       'organizationSlug',
       'projectName',
       'region',
       'tier',
+      'ownerAuthorizationCeilingUsdScaled',
+      'authorizedDurationHours',
       'approvedAt',
+      'operatorReconfirmedAt',
       'expiresAt',
       'phase2AndLaterAuthorized',
       'cleanupDeletionAuthorized',
+      'notes',
     ],
     'APPROVAL_EVIDENCE_INVALID'
   );
   const approval = binding.approval;
   const environment = binding.environmentProposal;
   requireCondition(
-    evidence.schemaVersion === 1 &&
+    evidence.schemaVersion === 2 &&
       evidence.recordType ===
         'PR12_SOURCE_PROJECT_PROVISIONING_OWNER_APPROVAL' &&
       evidence.decision === 'APPROVED' &&
       evidence.attestationStatus === 'VERIFIED' &&
-      evidence.attestationMethod === 'OWNER_EXPLICIT_APPROVAL_RECORD' &&
-      evidence.approver === approval.approvedBy &&
+      evidence.attestationMethod ===
+        'SOLE_OPERATOR_EXPLICIT_TWO_STEP_APPROVAL_RECORD' &&
+      evidence.approverPrincipalId === approval.approvedBy &&
+      evidence.operatorPrincipalId === binding.operatorControl.principalId &&
+      evidence.approverPrincipalId === evidence.operatorPrincipalId &&
+      evidence.approverDisplayName === 'FUTOSHI IWASAWA' &&
+      evidence.operatorDisplayName === 'FUTOSHI IWASAWA' &&
+      evidence.operatorControlMode === SOLE_OPERATOR_CONTROL_MODE &&
+      evidence.identitySeparationAvailable === false &&
+      evidence.independentHumanReviewClaimed === false &&
+      evidence.soleOperatorRiskAccepted === true &&
+      evidence.providerSpendCapLimitationAcknowledged === true &&
       evidence.actionId === ACTION_ID &&
       evidence.gitCommit === binding.target.gitCommit &&
       evidence.bindingMaterialSha256 === bindingMaterialSha256 &&
       evidence.payloadSha256 === payloadSha256 &&
       evidence.credentialConfigurationSha256 ===
         binding.credentialControls.provisioningCredentialConfiguration.sha256 &&
-      evidence.quoteEvidenceSha256 === binding.cost.quote.artifactSha256 &&
+      evidence.pricingEvidenceSha256 ===
+        binding.cost.pricingEvidence.artifactSha256 &&
       evidence.organizationId === environment.organizationId &&
       evidence.organizationSlug === environment.organizationSlug &&
       evidence.projectName === environment.projectName &&
       evidence.region === environment.region &&
       evidence.tier === environment.databaseTier &&
+      evidence.ownerAuthorizationCeilingUsdScaled ===
+        OWNER_AUTHORIZATION_CEILING_USD_SCALED &&
+      evidence.authorizedDurationHours === 72 &&
       evidence.approvedAt === approval.approvedAt &&
+      evidence.operatorReconfirmedAt === approval.operatorReconfirmedAt &&
       evidence.expiresAt === approval.expiresAt &&
       evidence.phase2AndLaterAuthorized === false &&
       evidence.cleanupDeletionAuthorized === false,
     'APPROVAL_EVIDENCE_INVALID'
   );
+  requireConcreteString(evidence.notes, 'APPROVAL_EVIDENCE_INVALID');
   assertSecretFreeEvidence(evidence, []);
 }
 
@@ -1618,14 +2066,17 @@ export function validateOfflineApproval(
       ),
     'APPROVAL_EVIDENCE_HASH_MISMATCH'
   );
-  const quote = requireRecord(binding.cost.quote, 'QUOTE_NOT_CAPTURED');
+  const pricingEvidenceBinding = requireRecord(
+    binding.cost.pricingEvidence,
+    'PRICING_EVIDENCE_NOT_CAPTURED'
+  );
   requireCondition(
-    quote.artifactSha256 ===
+    pricingEvidenceBinding.artifactSha256 ===
       requireSha256(
-        context.quoteEvidenceSha256,
-        'QUOTE_EVIDENCE_HASH_MISMATCH'
+        context.pricingEvidenceSha256,
+        'PRICING_EVIDENCE_HASH_MISMATCH'
       ),
-    'QUOTE_EVIDENCE_HASH_MISMATCH'
+    'PRICING_EVIDENCE_HASH_MISMATCH'
   );
 
   const bindingMaterialSha256 = sha256Canonical(buildBindingMaterial(binding));
@@ -1633,7 +2084,7 @@ export function validateOfflineApproval(
     approval.approvedBindingMaterialSha256 === bindingMaterialSha256,
     'BINDING_MATERIAL_HASH_MISMATCH'
   );
-  validateQuoteEvidence(binding, context.quoteEvidence);
+  validatePricingEvidence(binding, context.pricingEvidence);
   validateApprovalEvidence(
     binding,
     context.approvalEvidence,
@@ -1651,6 +2102,14 @@ export function validateOfflineApproval(
       governanceProposal: binding.governanceProposal,
       implementationContracts: binding.implementationContracts,
       lifecycle: binding.lifecycle,
+      operatorControl: binding.operatorControl,
+      phase1Owners: {
+        commercialReleaseOwner: binding.owners.commercialReleaseOwner,
+        provisioningOperator: binding.owners.provisioningOperator,
+        supabasePlatformOwner: binding.owners.supabasePlatformOwner,
+        cleanupOwner: binding.owners.cleanupOwner,
+        evidenceCustodian: binding.owners.evidenceCustodian,
+      },
       retentionAndCleanupDecision: binding.retentionAndCleanupDecision,
       target: binding.target,
     },

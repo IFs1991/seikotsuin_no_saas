@@ -54,14 +54,14 @@
     "restoreMaximumHoursFromCreation": 24,
     "cleanupDisposition": "DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION",
     "fundedThrough": "NOT_CAPTURED",
-    "fundingCeilingUsd": 50,
+    "fundingCeilingUsd": "NOT_CAPTURED",
     "cleanupOwner": "UNASSIGNED",
     "automaticDeletionAuthorized": false,
     "deletionRequiresSeparateApproval": true,
     "extensionRequiresSeparateApproval": true
   },
   "cost": {
-    "proposedBudgetCeilingUsd": 50,
+    "proposedBudgetCeilingUsd": "NOT_CAPTURED",
     "quote": {
       "sourceProjectRef": "NOT_CAPTURED",
       "backupId": "NOT_CAPTURED",

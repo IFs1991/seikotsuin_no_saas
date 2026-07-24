@@ -6,6 +6,7 @@
   "gitCommit": "NOT_CAPTURED",
   "bindingMaterialSha256": "NOT_CAPTURED",
   "payloadSha256": "NOT_CAPTURED",
+  "fundingSource": "NOT_CAPTURED",
   "artifacts": [],
   "artifactCount": 0,
   "rawProviderBodiesPersisted": false,

@@ -582,8 +582,8 @@
         "GET all pages /v1/organizations/{approved-slug}/projects before and after POST",
         "GET /v1/projects/{created-ref}/billing/addons"
       ],
-      "wrapper": "fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs --execute-authorized-action PR12-ACTION-003 --binding <approved-binding.json> --credential-config <approved-credential-config.json> --approval-evidence <owner-approval.json> --quote-evidence <dashboard-quote.json> --journal-directory <owner-controlled-absolute-directory> --evidence-parent <owner-controlled-absolute-directory>",
-      "reconciliationOnlyWrapper": "fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs --reconcile-dispatched-action PR12-ACTION-003 --binding <approved-binding.json> --credential-config <approved-credential-config.json> --approval-evidence <owner-approval.json> --quote-evidence <dashboard-quote.json> --journal-directory <owner-controlled-absolute-directory> --evidence-parent <owner-controlled-absolute-directory>",
+      "wrapper": "fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs --execute-authorized-action PR12-ACTION-003 --binding <approved-binding-v3.json> --credential-config <approved-dpapi-credential-config-v2.json> --approval-evidence <owner-approval-v2.json> --pricing-evidence <official-pricing-evidence-v2.json> --journal-directory <owner-controlled-absolute-directory> --evidence-parent <owner-controlled-absolute-directory>",
+      "reconciliationOnlyWrapper": "fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs --reconcile-dispatched-action PR12-ACTION-003 --binding <approved-binding-v3.json> --credential-config <approved-dpapi-credential-config-v2.json> --approval-evidence <owner-approval-v2.json> --pricing-evidence <official-pricing-evidence-v2.json> --journal-directory <owner-controlled-absolute-directory> --evidence-parent <owner-controlled-absolute-directory>",
       "recoveryModeHasPostPath": false,
       "wrapperImplemented": true,
       "wrapperExecuted": false,
@@ -595,14 +595,27 @@
       "databaseConnectionAuthorized": false,
       "authorizedNow": false,
       "requiresSeparateProvisioningBinding": true,
+      "operatorControlMode": "PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1",
+      "operatorDisplayName": "FUTOSHI IWASAWA",
+      "operatorCanonicalPrincipalId": "NOT_CAPTURED",
+      "ownerAuthorizationCeilingUsdScaled": 500000,
+      "moneyScale": 10000,
+      "authorizedDurationHours": 72,
+      "maximumComputeUsdScaled": 109224,
+      "unallocatedAuthorizationHeadroomUsdScaled": 390776,
+      "providerSpendCapEnforced": false,
+      "pricingBasis": "FRESH_HASH_BOUND_OFFICIAL_LIST_PRICE_EVIDENCE",
+      "credentialProvider": "WINDOWS_DPAPI_CURRENT_USER_V1",
+      "realCredentialBootstrapAuthorized": false,
       "approvalBlockers": [
         "final head and artifact hashes",
         "target and production organization identities",
-        "actual Dashboard quote and funding",
-        "cleanup/recovery owners and deadlines",
-        "credential provider and opaque handles",
+        "fresh official-pricing source captures and full USD 50 funding",
+        "canonical sole-operator principal ID, final risk acceptance, and expiry",
+        "cleanup/recovery deadlines and fundedThrough",
+        "exact DPAPI configuration, hashes, and real credential envelopes",
         "stable journal/evidence path fingerprints",
-        "timeouts, named owners, and unexpired owner approval"
+        "timeouts and unexpired hash-bound owner approval"
       ]
     },
     "restoreProject": {
@@ -625,7 +638,7 @@
     "psql path and exact version are not captured",
     "post-load row/hash, schema/type, hosted PR11, hosted SLO, security, API, GraphQL, billing, Advisor diff, backup, and post-restore collectors are not implemented",
     "exact security, Data API, GraphQL, billing, and request matrices are not hash-pinned",
-    "credential store, Upstash decision, and named owners are unassigned"
+    "Phase 1 Windows DPAPI channel is locally designed but its canonical principal ID, exact configuration/envelopes, real-secret bootstrap authorization, funding source, fundedThrough, final action approval, Upstash decision, and later-phase owners remain unresolved"
   ],
-  "notes": "This JSON is owner-reviewable proposal input, not an approved execution ledger. The Phase 1 wrapper is locally implemented but authorizedNow remains false and it was not executed; its owner inputs and final hashes are unresolved. Phase 2+ candidate commands remain explanatory and NOT_IMPLEMENTED until their own fail-closed adapters and approved bindings exist."
+  "notes": "This JSON is owner-reviewable proposal input, not an approved execution ledger. On 2026-07-24 the owner authorized only the Phase 1 sole-operator exception design, fresh official-list-price substitution design, Windows DPAPI channel local preparation, and a USD 50 owner-governance ceiling for 72 hours. PR12-ACTION-003, real credential bootstrap, authenticated Supabase contact, and project creation remain unauthorized; authorizedNow is false and the wrapper was not executed. Phase 2+ candidate commands remain explanatory and NOT_IMPLEMENTED until their own fail-closed adapters and approved bindings exist."
 }

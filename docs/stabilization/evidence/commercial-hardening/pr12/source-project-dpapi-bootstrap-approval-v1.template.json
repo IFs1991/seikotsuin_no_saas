@@ -1,0 +1,23 @@
+{
+  "approvedAt": "NOT_CAPTURED",
+  "approvedByDisplayName": "FUTOSHI IWASAWA",
+  "approvedByPrincipalId": "NOT_CAPTURED",
+  "attestationStatus": "NOT_CAPTURED",
+  "authorizedRoles": ["MANAGEMENT_ACCESS_TOKEN", "DATABASE_PASSWORD"],
+  "bootstrapActionId": "PR12-CREDENTIAL-BOOTSTRAP-001",
+  "bootstrapScriptSha256": "NOT_CAPTURED",
+  "configurationId": "NOT_CAPTURED",
+  "decision": "NOT_CAPTURED",
+  "envelopeCreationAuthorized": false,
+  "expiresAt": "NOT_CAPTURED",
+  "machineNameSha256": "NOT_CAPTURED",
+  "notes": "Template only. The 2026-07-24 authorization covers local code preparation, not interactive reading of real credentials and not DPAPI envelope creation. Populate and separately approve this record before running the bootstrap script.",
+  "ownerSidSha256": "NOT_CAPTURED",
+  "providerRoot": "NOT_CAPTURED",
+  "providerRootPathSha256": "NOT_CAPTURED",
+  "providerRootResolvedPathSha256": "NOT_CAPTURED",
+  "realSecretInteractiveReadAuthorized": false,
+  "recordType": "PR12_WINDOWS_DPAPI_CREDENTIAL_BOOTSTRAP_APPROVAL",
+  "schemaVersion": 1,
+  "sourceProjectProvisioningAuthorized": false
+}

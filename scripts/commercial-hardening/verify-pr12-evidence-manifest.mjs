@@ -8556,7 +8556,10 @@ function verifySourceProvisioningApproval(
     'sourceProjectProvisioningApproval'
   );
   assert(
-    provisioning.schemaVersion !== 2,
+    !(
+      Number.isInteger(provisioning.schemaVersion) &&
+      provisioning.schemaVersion >= 2
+    ),
     'SOURCE_PROVISIONING_V2_PROMOTION_NOT_IMPLEMENTED'
   );
   assert(
@@ -8846,8 +8849,12 @@ function verifySourceProvisioningApproval(
     provisioning.cost,
     'sourceProjectProvisioningApproval.cost'
   );
+  const sourceProvisioningBudgetCeilingUsd = requireNumber(
+    cost.proposedBudgetCeilingUsd,
+    'sourceProjectProvisioningApproval.cost.proposedBudgetCeilingUsd'
+  );
   assert(
-    cost.proposedBudgetCeilingUsd === 50 &&
+    sourceProvisioningBudgetCeilingUsd > 0 &&
       cost.ceilingEnforceableWithoutCleanupApproval === false,
     'source project provisioning cost boundary drift'
   );
@@ -8856,7 +8863,7 @@ function verifySourceProvisioningApproval(
     'sourceProjectProvisioningApproval.cost.actualDashboardQuoteUsd'
   );
   assert(
-    actualQuote <= cost.proposedBudgetCeilingUsd,
+    actualQuote <= sourceProvisioningBudgetCeilingUsd,
     'source project provisioning actual quote exceeds the approved budget'
   );
   const retentionDecision = requireRecord(
@@ -8869,7 +8876,8 @@ function verifySourceProvisioningApproval(
       retentionDecision.sourceFundedHours === 72 &&
       retentionDecision.restoreFundedHours === 24 &&
       retentionDecision.fundingMustCoverHoursAfterApprovalExpiry === 72 &&
-      retentionDecision.fundingCeilingUsd === 50 &&
+      retentionDecision.fundingCeilingUsd ===
+        sourceProvisioningBudgetCeilingUsd &&
       retentionDecision.extensionRequiresSeparateApproval === true,
     'source project provisioning retention/cleanup decision drift'
   );
@@ -11827,6 +11835,10 @@ function verifyApprovalBinding(manifest, artifactHashes, artifactFiles) {
   );
 
   const lifecycle = requireRecord(packet.lifecycle, 'approvalPacket.lifecycle');
+  const fullProgramFundingCeilingUsd = requireNumber(
+    lifecycle.fundingCeilingUsd,
+    'approvalPacket.lifecycle.fundingCeilingUsd'
+  );
   assert(
     lifecycle.sourceMaximumHoursFromCreation === 72 &&
       lifecycle.restoreMaximumHoursFromCreation === 24 &&
@@ -11836,7 +11848,7 @@ function verifyApprovalBinding(manifest, artifactHashes, artifactFiles) {
         true &&
       lifecycle.cleanupDisposition ===
         'DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION' &&
-      lifecycle.fundingCeilingUsd === 50,
+      fullProgramFundingCeilingUsd > 0,
     'approval lifecycle does not match the reviewed 72h/24h funded boundary'
   );
   const sourceProvisionedAt = requireIsoTimestamp(
@@ -11871,10 +11883,14 @@ function verifyApprovalBinding(manifest, artifactHashes, artifactFiles) {
     'approval funding does not cover the source retention deadline'
   );
   const cost = requireRecord(packet.cost, 'approvalPacket.cost');
+  const fullProgramBudgetCeilingUsd = requireNumber(
+    cost.proposedBudgetCeilingUsd,
+    'approvalPacket.cost.proposedBudgetCeilingUsd'
+  );
   assert(
     cost.computeRateUsdPerProjectHour === 0.1517 &&
       cost.computeSubtotalUsd === 14.5632 &&
-      cost.proposedBudgetCeilingUsd === 50 &&
+      fullProgramBudgetCeilingUsd === fullProgramFundingCeilingUsd &&
       cost.ceilingEnforceableWithoutCleanupApproval === false,
     'approval cost boundary drift'
   );
@@ -11883,7 +11899,7 @@ function verifyApprovalBinding(manifest, artifactHashes, artifactFiles) {
     'approvalPacket.cost.actualDashboardQuoteUsd'
   );
   assert(
-    actualDashboardQuoteUsd <= cost.proposedBudgetCeilingUsd,
+    actualDashboardQuoteUsd <= fullProgramBudgetCeilingUsd,
     'approval actual Dashboard quote exceeds the proposed budget ceiling'
   );
   const decisions = requireRecord(
@@ -17019,11 +17035,15 @@ function verifyBackupRestoreBound(
     creation.lifecycle,
     'restore.creationApproval.lifecycle'
   );
+  const restoreFundingCeilingUsd = requireNumber(
+    creationLifecycle.fundingCeilingUsd,
+    'restore.creationApproval.lifecycle.fundingCeilingUsd'
+  );
   assert(
     creationLifecycle.restoreMaximumHoursFromCreation === 24 &&
       creationLifecycle.cleanupDisposition ===
         'DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION' &&
-      creationLifecycle.fundingCeilingUsd === 50 &&
+      restoreFundingCeilingUsd > 0 &&
       creationLifecycle.automaticDeletionAuthorized === false &&
       creationLifecycle.deletionRequiresSeparateApproval === true &&
       creationLifecycle.extensionRequiresSeparateApproval === true,
@@ -17037,6 +17057,10 @@ function verifyBackupRestoreBound(
   const creationCost = requireRecord(
     creation.cost,
     'restore.creationApproval.cost'
+  );
+  const restoreBudgetCeilingUsd = requireNumber(
+    creationCost.proposedBudgetCeilingUsd,
+    'restore.creationApproval.cost.proposedBudgetCeilingUsd'
   );
   const approvedQuote = requireRecord(
     creationCost.quote,
@@ -17100,14 +17124,14 @@ function verifyBackupRestoreBound(
     'restore creation cost quote line items do not sum exactly to the normalized USD total'
   );
   assert(
-    creationCost.proposedBudgetCeilingUsd === 50 &&
+    restoreBudgetCeilingUsd === restoreFundingCeilingUsd &&
       creationCost.actualDashboardQuoteAccepted === true &&
       approvedQuote.sourceProjectRef === sourceEnvironment.projectRef &&
       approvedQuote.backupId === backup.backupId &&
       approvedQuote.currency === 'USD' &&
       approvedQuote.cadence === 'RESTORE_PROJECT_CREATION_ESTIMATE' &&
       approvedQuoteLineItems.length > 0 &&
-      approvedQuoteTotal <= creationCost.proposedBudgetCeilingUsd &&
+      approvedQuoteTotal <= restoreBudgetCeilingUsd &&
       approvedQuoteRaw.schemaVersion === 1 &&
       approvedQuoteRaw.resultType === 'RESTORE_DASHBOARD_COST_QUOTE' &&
       approvedQuoteRaw.status === 'CAPTURED' &&

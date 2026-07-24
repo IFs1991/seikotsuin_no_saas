@@ -19,13 +19,15 @@ machine_readable_execution_binding:
   must_be_parsed_and_matched_by_execution_verifier: true
 authorization_phases:
   source_project_provisioning:
-    template: source-project-provisioning-binding-v2.template.json
-    phase_local_contract_version: 2
-    result_template: source-project-provisioning-result-v2.template.json
+    template: source-project-provisioning-binding-v3.template.json
+    phase_local_contract_version: 3
+    result_template: source-project-provisioning-result-v3.template.json
     provider_safe_projection_template: source-project-provider-safe-projection-v2.template.json
-    credential_configuration_template: source-project-provisioning-credential-configuration.template.json
-    owner_approval_template: source-project-provisioning-owner-approval.template.json
-    dashboard_quote_template: source-project-dashboard-quote.template.json
+    credential_configuration_template: source-project-provisioning-credential-configuration-v2.template.json
+    owner_approval_template: source-project-provisioning-owner-approval-v2.template.json
+    official_pricing_evidence_template: source-project-official-pricing-evidence-v2.template.json
+    dpapi_envelope_template: source-project-windows-dpapi-envelope-v1.template.json
+    dpapi_bootstrap_approval_template: source-project-dpapi-bootstrap-approval-v1.template.json
     action_journal_template: source-project-provisioning-action-journal.template.json
     evidence_manifest_template: source-project-provisioning-evidence-manifest.template.json
     action_id: PR12-ACTION-003
@@ -43,6 +45,19 @@ authorization_phases:
     unknown_remote_outcome: STOP_READ_ONLY_RECONCILIATION_OWNER_DECISION
     evidence_seal_order: PARTIAL_FLUSH_VERIFY_ATOMIC_RENAME_THEN_TERMINAL
     automatic_reseal_allowed: false
+    executing_implementation_boundary:
+      wrapper_contract_credential_channel_and_evidence_verifier_must_resolve_inside_approved_git_worktree: true
+      copied_implementation_with_approved_cwd_allowed: false
+      stable_file_identity_revalidated_before_claim_broker_and_post: true
+    credential_storage_boundary:
+      provider_root_lexical_path_sha256: NOT_CAPTURED
+      provider_root_resolved_path_sha256: NOT_CAPTURED
+      provider_root_device: NOT_CAPTURED
+      provider_root_inode: NOT_CAPTURED
+      every_provider_journal_evidence_path_component_must_be_non_reparse: true
+      resolved_repository_temp_journal_evidence_provider_trees_must_be_disjoint: true
+      bootstrap_provenance_must_equal_claim_bound_current_bootstrap_sha256: true
+      checked_before_claim_decrypt_or_remote_contact: true
     commercial_manifest_promotion:
       status: NOT_IMPLEMENTED
       legacy_contract_version: 1
@@ -134,9 +149,14 @@ official_platform_source_review:
     - Large is 2-core ARM dedicated, 8 GB, USD 0.1517 per project-hour before organization-specific credit
     - create-project requires db_pass/name/organization_slug; organization_id, plan, and region are deprecated or ignored and are forbidden by the Phase 1 wrapper
     - Pro is an existing organization entitlement and is not changed by the Phase 1 POST
+    - the owner-authorized Phase 1 cost basis is fresh hash-bound official list pricing, not an organization-specific Dashboard quote or a provider-enforced spend cap
+    - Large at USD 0.1517 per project-hour for at most 72 rounded-up project-hours is USD 10.9224; the USD 50.0000 Phase 1 ceiling leaves USD 39.0776 unallocated authorization headroom
     - Data API, GraphQL, Auth, and integration posture cannot be configured or proven by the Phase 1 create-project POST
     - the documented create-project endpoint exposes no idempotency key; Phase 1 permits at most one POST attempt and no blind retry
-  actual_dashboard_state_and_quote_still_required: true
+  actual_dashboard_state_still_required: true
+  precreate_large_dashboard_quote_available_in_observed_flow: false
+  official_list_price_substitution_locally_authorized: true
+  pricing_evidence_must_be_recaptured_and_hash_bound_for_final_approval: true
 environment:
   project_ref: NOT_CAPTURED
   project_name: seikotsuin-pr12-isolated-qualification-20260719
@@ -784,7 +804,7 @@ cli:
     - gen_types
     - status
   command_ledger_path: staging-command-ledger.proposed.json
-  command_ledger_sha256: f044fdf55d16bcbdc24b83094bbccb5d21c91ec0214641f52f6c0651e795ea7c
+  command_ledger_sha256: e01ef1fe6b00d5e74dd38b639fc6e80d1b0be520ae1ae9826d06601b73672d31
   exact_commands: PROPOSED_NOT_EXECUTABLE
   exact_commands_blocker: Phase 1 now has a local fail-closed binding guard, at-most-one-POST wrapper/collector, action journal, and phase-local privacy/evidence sealing, but its owner inputs remain unresolved and it was not executed. Phase 2+ target guards, hosted credential/seed adapter, post-load row/hash and schema/type collectors, canonical PR11 and hosted SLO runners, security/Auth/tenant/Data API/GraphQL/COMM claim/COMM-BILL matrices, Advisor diff, backup metadata/watermark, post-restore, side-effect, and full-qualification privacy collectors remain NOT_IMPLEMENTED.
   executable_command_metadata_required:
@@ -867,19 +887,41 @@ time_and_cost:
   restore_compute_assumption: Large at USD 0.1517/hour for at most 24 hours
   compute_subtotal_before_credits_usd: 14.5632
   new_pro_plan_if_required_usd: 25
-  proposed_budget_ceiling_usd: 50
+  phase1_source_project_owner_authorization_ceiling_usd: 50
+  phase1_source_project_ceiling_duration_hours: 72
+  phase1_source_project_maximum_compute_usd: 10.9224
+  phase1_source_project_unallocated_authorization_headroom_usd: 39.0776
+  phase1_source_project_provider_spend_cap_enforced: false
+  phase1_source_project_ceiling_meaning: OWNER_GOVERNANCE_AUTHORIZATION_NOT_PROVIDER_SPEND_CAP
+  phase2_and_later_budget: NOT_CAPTURED
   excluded_from_estimate: taxes, egress, disk overage, logs, app hosting, existing usage, and currency conversion
   pitr_cost_usd: 0
   billing_warning: paid projects cannot be paused and continue billing until separately approved deletion
-  actual_dashboard_quote: NOT_CAPTURED
-  budget_ceiling_enforceable_without_cleanup_approval: false
+  source_project_pricing_basis: FRESH_HASH_BOUND_OFFICIAL_LIST_PRICE_EVIDENCE
+  organization_specific_dashboard_quote_required_for_phase1: false
+  budget_ceiling_enforceable_as_provider_cap: false
   funded_retention_and_cleanup_decision_required_before_provisioning: true
   cleanup_disposition: DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION
   funded_through: NOT_CAPTURED
   source_funding_requirement: funded_through must be at least 72 hours after source-provisioning approval expiry
   restore_funding_requirement: funded_through must be at least 24 hours after restore-creation approval expiry
-  funding_ceiling_usd: 50
+  phase1_funding_approved_amount_usd: NOT_CAPTURED
+  phase1_funding_source: NOT_CAPTURED
   billing_extension_after_source_72h_or_restore_24h_requires_separate_funded_approval: true
+phase1_local_preparation_decision:
+  status: AUTHORIZED
+  authorized_on: '2026-07-24'
+  authorized_by_display_name: FUTOSHI IWASAWA
+  canonical_principal_id: NOT_CAPTURED
+  sole_operator_self_approval_exception_design_authorized: true
+  official_list_price_substitution_design_authorized: true
+  windows_dpapi_credential_channel_local_preparation_authorized: true
+  phase1_72_hour_owner_authorization_ceiling_usd: 50
+  real_credential_bootstrap_authorized: false
+  pr12_action_003_authorized: false
+  source_project_creation_authorized: false
+  authenticated_supabase_contact_authorized: false
+  phase2_and_later_authorized: false
 owners:
   commercial_release_owner: UNASSIGNED
   provisioning_operator: UNASSIGNED
@@ -893,7 +935,13 @@ owners:
   incident_commander: UNASSIGNED
   evidence_custodian: UNASSIGNED
   cleanup_owner: UNASSIGNED
-  approver_must_differ_from_all_operators_and_reviewers: true
+  phase1_operator_control_mode: PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1
+  phase1_operator_display_name: FUTOSHI IWASAWA
+  phase1_operator_canonical_principal_id: NOT_CAPTURED
+  phase1_identity_separation_available: false
+  phase1_independent_human_review_claimed: false
+  phase1_final_action_risk_acceptance: NOT_CAPTURED
+  non_phase1_approver_must_differ_from_all_operators_and_reviewers: true
   required_role_labels:
     - Commercial Release Owner
     - Supabase Platform Owner
@@ -944,7 +992,10 @@ approval_checklist:
   source_project_provisioning_binding: NOT_CAPTURED
   source_project_provisioning_credential_configuration: NOT_CAPTURED
   source_project_provisioning_owner_approval: NOT_CAPTURED
-  source_project_dashboard_quote: NOT_CAPTURED
+  source_project_official_pricing_evidence: NOT_CAPTURED
+  source_project_official_pricing_source_artifacts: NOT_CAPTURED
+  source_project_dpapi_envelopes: NOT_CAPTURED
+  source_project_dpapi_real_credential_bootstrap_approval: NOT_CAPTURED
   source_project_provisioning_action_journal_directory: NOT_CAPTURED
   source_project_provisioning_evidence_parent: NOT_CAPTURED
   source_identity_bootstrap_binding: NOT_CAPTURED
@@ -957,8 +1008,8 @@ approval_checklist:
   privacy_machine_and_human_review: NOT_CAPTURED
   integrations_and_billing_sandbox: PROPOSED_UPSTASH_UNASSIGNED
   exact_commands_and_side_effects: PROPOSED_ADAPTERS_NOT_IMPLEMENTED
-  credential_channel: PROPOSED_PROVIDER_UNASSIGNED
-  time_cost_and_owners: PROPOSED_NAMES_AND_QUOTE_NOT_CAPTURED
+  credential_channel: WINDOWS_DPAPI_CURRENT_USER_V1_LOCAL_DESIGN_ONLY_REAL_BOOTSTRAP_NOT_AUTHORIZED
+  time_cost_and_owners: PHASE1_CEILING_AUTHORIZED_DISPLAY_NAME_CAPTURED_CANONICAL_ID_FUNDING_AND_EXPIRY_NOT_CAPTURED
   funded_retention_and_cleanup_decision: UNASSIGNED
   stricter_product_rto_rpo_authority_decision: UNASSIGNED
   maximum_allowed_clock_skew_seconds: UNASSIGNED
@@ -990,5 +1041,5 @@ residual_risk:
   - Safe authority lookup query-error induction, dedicated hosted Auth actor provisioning, stale-authority/token-expiry/skew evidence, and relational selector/query/timestamp collectors are not implemented; COMM-AUTH-002 and related COMM-TENANT gates cannot PASS.
   - The immutable 54-gate COMM claim map is defined, but its typed collector registry is incomplete; execution PASS is intentionally impossible.
   - Maximum acceptable clock skew across provider, database, and operator clocks is UNASSIGNED; RTO/RPO PASS is blocked.
-  - Named owners, secure secret-store provider, exact API/GraphQL matrices, psql version, application URL, actual Dashboard quote, cleanup funding, and stricter RTO/RPO authority decision remain blockers.
+  - FUTOSHI IWASAWA is the captured Phase 1 sole-operator display name, but the canonical principal ID, final sole-operator risk acceptance, exact DPAPI configuration/envelopes, fresh official-pricing source captures, full USD 50 funding source/amount/fundedThrough, cleanup deadlines, exact API/GraphQL matrices, psql version, application URL, and stricter RTO/RPO authority decision remain blockers.
 notes: No isolated staging project was contacted or created while concretizing this proposal. This file remains NOT_RUN. All provisioning, remote, restore, Ready, merge, production, and release authorizations remain false.

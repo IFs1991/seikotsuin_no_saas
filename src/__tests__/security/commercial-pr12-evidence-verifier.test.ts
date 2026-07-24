@@ -13976,49 +13976,59 @@ describe('commercial PR-12 execution evidence verifier', () => {
     }
   });
 
-  it('fail-closes schema v2 source provisioning until promotion is implemented', () => {
-    const directory = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'pr12-provisioning-v2-promotion-verifier-')
-    );
-    try {
-      const { manifest } = buildPassingFixture(directory);
-      const source = requireRecord(manifest.source, 'source');
-      const { parsed: approval } = readBoundJson(
-        directory,
-        {
-          path: source.approvalPacketPath,
-          sha256: source.approvalPacketSha256,
-        },
-        'source approval'
+  it.each([2, 3])(
+    'fail-closes schema v%s source provisioning until promotion is implemented',
+    schemaVersion => {
+      const directory = fs.mkdtempSync(
+        path.join(
+          os.tmpdir(),
+          `pr12-provisioning-v${String(schemaVersion)}-promotion-verifier-`
+        )
       );
-      const provisioningBinding = requireRecord(
-        approval.sourceProjectProvisioningApproval,
-        'source provisioning binding'
-      );
-      const { relativePath, parsed: provisioning } = readBoundJson(
-        directory,
-        provisioningBinding,
-        'source provisioning approval'
-      );
-      provisioning.schemaVersion = 2;
-      provisioningBinding.sha256 = rewriteJsonArtifact(
-        directory,
-        manifest,
-        relativePath,
-        provisioning
-      );
-      rewriteSourceApproval(directory, manifest, approval);
-      const result = runVerifier(
-        writeManifest(directory, 'manifest-v2-promotion.json', manifest)
-      );
-      expect(result.status).toBe(1);
-      expect(result.output).toContain(
-        'SOURCE_PROVISIONING_V2_PROMOTION_NOT_IMPLEMENTED'
-      );
-    } finally {
-      fs.rmSync(directory, { recursive: true, force: true });
+      try {
+        const { manifest } = buildPassingFixture(directory);
+        const source = requireRecord(manifest.source, 'source');
+        const { parsed: approval } = readBoundJson(
+          directory,
+          {
+            path: source.approvalPacketPath,
+            sha256: source.approvalPacketSha256,
+          },
+          'source approval'
+        );
+        const provisioningBinding = requireRecord(
+          approval.sourceProjectProvisioningApproval,
+          'source provisioning binding'
+        );
+        const { relativePath, parsed: provisioning } = readBoundJson(
+          directory,
+          provisioningBinding,
+          'source provisioning approval'
+        );
+        provisioning.schemaVersion = schemaVersion;
+        provisioningBinding.sha256 = rewriteJsonArtifact(
+          directory,
+          manifest,
+          relativePath,
+          provisioning
+        );
+        rewriteSourceApproval(directory, manifest, approval);
+        const result = runVerifier(
+          writeManifest(
+            directory,
+            `manifest-v${String(schemaVersion)}-promotion.json`,
+            manifest
+          )
+        );
+        expect(result.status).toBe(1);
+        expect(result.output).toContain(
+          'SOURCE_PROVISIONING_V2_PROMOTION_NOT_IMPLEMENTED'
+        );
+      } finally {
+        fs.rmSync(directory, { recursive: true, force: true });
+      }
     }
-  });
+  );
 
   it('rejects legacy source-provider raw region and addon nested schema drift', () => {
     for (const mutation of ['region-smart-group', 'addon-price'] as const) {

@@ -23,6 +23,19 @@ const provisioningWrapperPath = path.join(
   'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs'
 );
 const provisioningWrapperUrl = pathToFileURL(provisioningWrapperPath).href;
+const dpapiChannelPath = path.join(
+  repoRoot,
+  'scripts/commercial-hardening/pr12-windows-dpapi-credential-channel.mjs'
+);
+const dpapiChannelUrl = pathToFileURL(dpapiChannelPath).href;
+const dpapiBrokerPath = path.join(
+  repoRoot,
+  'scripts/commercial-hardening/pr12-windows-dpapi-credential-broker.ps1'
+);
+const dpapiBootstrapPath = path.join(
+  repoRoot,
+  'scripts/commercial-hardening/initialize-pr12-windows-dpapi-credentials.ps1'
+);
 const phase1EvidenceRoot = path.join(
   repoRoot,
   'docs/stabilization/evidence/commercial-hardening/pr12'
@@ -246,7 +259,7 @@ function makeSyntheticEvidenceBundle(
     directory,
     'provisioning-result.json',
     {
-      schemaVersion: 2,
+      schemaVersion: 3,
       phase: 'SOURCE_PROJECT_PROVISIONING_RESULT',
       resultType: 'SOURCE_PROJECT_PROVISIONING_OPERATION',
       status: 'PASS',
@@ -257,16 +270,24 @@ function makeSyntheticEvidenceBundle(
       operator: secretBearing
         ? 'sbp_synthetic_management_pat_1234567890'
         : 'operator@example.invalid',
-      approver: 'approver@example.invalid',
+      approver: secretBearing
+        ? 'sbp_synthetic_management_pat_1234567890'
+        : 'operator@example.invalid',
+      operatorDisplayName: 'FUTOSHI IWASAWA',
+      operatorControlMode: 'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1',
+      identitySeparationAvailable: false,
+      independentHumanReviewClaimed: false,
       actionStartedAt: '2026-07-23T12:00:00.000Z',
       actionCompletedAt: '2026-07-23T12:01:00.000Z',
       remoteContactCount: 6,
       createPostAttemptCount: 1,
       automaticRetryCount: 0,
+      credentialBrokerInvocationCount: 1,
+      credentialBrokerMode: 'EXECUTE',
       duplicateState: 'ABSENT_ALL_PAGES',
       partialFailureState: null,
       readOnlyReconciliation: null,
-      recoveryOwner: 'recovery-owner@example.invalid',
+      recoveryOwner: 'operator@example.invalid',
       cleanupDeletionAuthorized: false,
       databaseConnectionPerformed: false,
       phase2AndLaterAuthorized: false,
@@ -287,30 +308,33 @@ function makeSyntheticEvidenceBundle(
         path: 'provider-export.safe.json',
         sha256: providerMetadata.sha256,
       },
-      quoteAndFunding: {
+      pricingAndFunding: {
         currency: 'USD',
-        actualDashboardQuoteUsd: 10.9224,
-        quoteObservedAt: '2026-07-22T23:00:00.000Z',
-        quoteValidThrough: '2026-07-24T23:00:00.000Z',
+        moneyScale: 10000,
+        pricingEvidenceFreshThrough: '2026-07-23T13:00:00.000Z',
         sourceMaximumBillableHours: 72,
-        sourceMaximumComputeUsd: 10.9224,
-        fundingApprovedAmountUsd: 25,
-        fundingCeilingUsd: 50,
-        fundedThrough: '2026-07-27T12:00:00.000Z',
+        sourceMaximumComputeUsdScaled: 109224,
+        unallocatedAuthorizationHeadroomUsdScaled: 390776,
+        ownerAuthorizationCeilingUsdScaled: 500000,
+        providerSpendCapEnforced: false,
+        fundingSource: 'OWNER_APPROVED_PERSONAL_PAYMENT_METHOD',
+        fundingApprovedAmountUsdScaled: 500000,
+        fundedThrough: '2026-07-26T12:05:00.000Z',
       },
       approvalWindow: {
-        approvedAt: '2026-07-23T00:00:00.000Z',
-        expiresAt: '2026-07-24T00:00:00.000Z',
+        approvedAt: '2026-07-23T11:35:00.000Z',
+        operatorReconfirmedAt: '2026-07-23T11:40:00.000Z',
+        expiresAt: '2026-07-23T12:05:00.000Z',
         approvalEvidenceSha256: '8'.repeat(64),
       },
       cleanupBoundary: {
         disposition:
           'DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION',
-        cleanupOwner: 'cleanup-owner@example.invalid',
-        deletionApprovalRequester: 'cleanup-requester@example.invalid',
+        cleanupOwner: 'operator@example.invalid',
+        deletionApprovalRequester: 'operator@example.invalid',
         deletionApprovalRequestDeadline: '2026-07-26T00:00:00.000Z',
-        billingEscalationOwner: 'billing-owner@example.invalid',
-        fundedExtensionOwner: 'extension-owner@example.invalid',
+        billingEscalationOwner: 'operator@example.invalid',
+        fundedExtensionOwner: 'operator@example.invalid',
         automaticDeletionAuthorized: false,
       },
       journalEvidence: {
@@ -347,6 +371,7 @@ function makeSyntheticEvidenceBundle(
     gitCommit,
     bindingMaterialSha256,
     payloadSha256,
+    fundingSource: 'OWNER_APPROVED_PERSONAL_PAYMENT_METHOD',
     artifacts: allMetadata,
     artifactCount: allMetadata.length,
     rawProviderBodiesPersisted: false,
@@ -902,6 +927,126 @@ function invokeWrapperMethod(method: string, args: JsonValue[]): HarnessResult {
   return parsed;
 }
 
+function invokeDpapiMethod(method: string, args: JsonValue[]): HarnessResult {
+  const harness = `
+    import { readFileSync } from 'node:fs';
+    const input = JSON.parse(readFileSync(0, 'utf8'));
+    const channel = await import(${JSON.stringify(dpapiChannelUrl)});
+    try {
+      const value = await channel[input.method](...input.args);
+      process.stdout.write(JSON.stringify({ ok: true, value }));
+    } catch (error) {
+      const code = error && typeof error === 'object' && 'code' in error &&
+        typeof error.code === 'string' ? error.code : 'UNEXPECTED_ERROR';
+      process.stdout.write(JSON.stringify({ ok: false, code }));
+      process.exitCode = 2;
+    }
+  `;
+  const child = spawnSync(
+    process.execPath,
+    ['--input-type=module', '-e', harness],
+    {
+      cwd: repoRoot,
+      env: {
+        PATH: process.env.PATH,
+        PATHEXT: process.env.PATHEXT,
+        SYSTEMROOT: process.env.SYSTEMROOT,
+        TEMP: process.env.TEMP,
+        TMP: process.env.TMP,
+      },
+      input: JSON.stringify({ method, args }),
+      encoding: 'utf8',
+    }
+  );
+  expect(child.stderr).toBe('');
+  const parsed: unknown = JSON.parse(child.stdout);
+  expect(isHarnessResult(parsed)).toBe(true);
+  if (!isHarnessResult(parsed)) {
+    throw new Error('DPAPI channel harness returned an invalid result');
+  }
+  return parsed;
+}
+
+function invokeDpapiFrameParser(
+  frame: Buffer,
+  requestBytes: Buffer,
+  mode: 'EXECUTE' | 'RECOVERY',
+  credentialConfiguration: JsonValue
+): HarnessResult {
+  const harness = `
+    import { readFileSync } from 'node:fs';
+    const input = JSON.parse(readFileSync(0, 'utf8'));
+    const channel = await import(${JSON.stringify(dpapiChannelUrl)});
+    try {
+      const value = channel.parseCredentialBrokerFrame(
+        Buffer.from(input.frameBase64, 'base64'),
+        Buffer.from(input.requestBase64, 'base64'),
+        input.mode,
+        input.credentialConfiguration
+      );
+      process.stdout.write(JSON.stringify({ ok: true, value }));
+    } catch (error) {
+      const code = error && typeof error === 'object' && 'code' in error &&
+        typeof error.code === 'string' ? error.code : 'UNEXPECTED_ERROR';
+      process.stdout.write(JSON.stringify({ ok: false, code }));
+      process.exitCode = 2;
+    }
+  `;
+  const child = spawnSync(
+    process.execPath,
+    ['--input-type=module', '-e', harness],
+    {
+      cwd: repoRoot,
+      env: {
+        PATH: process.env.PATH,
+        PATHEXT: process.env.PATHEXT,
+        SYSTEMROOT: process.env.SYSTEMROOT,
+        TEMP: process.env.TEMP,
+        TMP: process.env.TMP,
+      },
+      input: JSON.stringify({
+        frameBase64: frame.toString('base64'),
+        requestBase64: requestBytes.toString('base64'),
+        mode,
+        credentialConfiguration,
+      }),
+      encoding: 'utf8',
+    }
+  );
+  expect(child.stderr).toBe('');
+  const parsed: unknown = JSON.parse(child.stdout);
+  expect(isHarnessResult(parsed)).toBe(true);
+  if (!isHarnessResult(parsed)) {
+    throw new Error('DPAPI frame harness returned an invalid result');
+  }
+  return parsed;
+}
+
+function makeDpapiFrame(
+  requestBytes: Buffer,
+  values: Array<{ role: number; bytes: Buffer }>,
+  mode: 'EXECUTE' | 'RECOVERY'
+): Buffer {
+  const length =
+    44 + values.reduce((total, value) => total + 5 + value.bytes.length, 0);
+  const frame = Buffer.alloc(length);
+  frame.write('PR12DPB1', 0, 'ascii');
+  frame[8] = 1;
+  frame[9] = mode === 'EXECUTE' ? 1 : 2;
+  frame[10] = values.length;
+  frame[11] = 0;
+  createHash('sha256').update(requestBytes).digest().copy(frame, 12);
+  let offset = 44;
+  for (const value of values) {
+    frame[offset] = value.role;
+    frame.writeUInt32BE(value.bytes.length, offset + 1);
+    offset += 5;
+    value.bytes.copy(frame, offset);
+    offset += value.bytes.length;
+  }
+  return frame;
+}
+
 function invokeEvidenceVerifierMethod(
   method: string,
   args: JsonValue[]
@@ -1015,23 +1160,76 @@ function runBoundedResponseHarness(
 }
 
 function makeValidFixture() {
+  const providerRoot =
+    'C:\\Users\\owner\\AppData\\Local\\PR12\\source-project-credentials';
+  const normalizedProviderRoot = path.win32
+    .resolve(providerRoot)
+    .replaceAll('\\', '/')
+    .toLowerCase();
+  const tokenHandle =
+    'windows-dpapi-cu://pr12-source-project/management-access-token/v1';
+  const passwordHandle =
+    'windows-dpapi-cu://pr12-source-project/database-password/v1';
+  const tokenHandleSha256 = createHash('sha256')
+    .update(tokenHandle, 'utf8')
+    .digest('hex');
+  const passwordHandleSha256 = createHash('sha256')
+    .update(passwordHandle, 'utf8')
+    .digest('hex');
   const credentialConfiguration = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     resultType: 'SOURCE_PROJECT_PROVISIONING_CREDENTIAL_CONFIGURATION',
     status: 'APPROVED',
     provider: {
-      providerId: 'OWNER_VAULT_PROVISIONING',
-      configurationId: 'pr12-source-provisioning-v1',
-      retrievalChannel: 'OWNER_APPROVED_ONE_PROCESS_ENVIRONMENT',
+      providerId: 'WINDOWS_DPAPI_CURRENT_USER_V1',
+      configurationId: 'pr12-source-provisioning-dpapi-v1',
+      retrievalChannel: 'CLAIM_BOUND_CAPTURED_STDOUT_BINARY_V1',
       ownerApproved: true,
+      protectionScope: 'CURRENT_USER',
+      ownerSidSha256: 'a'.repeat(64),
+      machineNameSha256: 'b'.repeat(64),
+      providerRoot,
+      providerRootPathSha256: createHash('sha256')
+        .update(normalizedProviderRoot, 'utf8')
+        .digest('hex'),
+      providerRootResolvedPathSha256: createHash('sha256')
+        .update(normalizedProviderRoot, 'utf8')
+        .digest('hex'),
+      providerRootDevice: '12345',
+      providerRootInode: '67890',
+    },
+    runtime: {
+      platform: 'WIN32',
+      powershellExecutablePath: 'C:\\Program Files\\PowerShell\\7\\pwsh.exe',
+      powershellExecutableSha256: 'c'.repeat(64),
+      powershellVersion: '7.5.2',
+      requiredLanguageMode: 'FullLanguage',
+      brokerScriptPath:
+        'scripts/commercial-hardening/pr12-windows-dpapi-credential-broker.ps1',
+      brokerScriptSha256: 'd'.repeat(64),
+      bootstrapScriptPath:
+        'scripts/commercial-hardening/initialize-pr12-windows-dpapi-credentials.ps1',
+      bootstrapScriptSha256: 'e'.repeat(64),
+    },
+    protocol: {
+      requestProtocol: 'PR12_DPAPI_BROKER_REQUEST_V1',
+      responseMagic: 'PR12DPB1',
+      responseVersion: 1,
+      requestMaximumBytes: 16384,
+      responseMaximumBytes: 8192,
+      brokerTimeoutMilliseconds: 15000,
+      automaticRetryAllowed: false,
+      requestViaCapturedStdinOnly: true,
+      responseViaCapturedStdoutBinaryOnly: true,
+      zeroStderrRequired: true,
     },
     secrets: {
       managementAccessToken: {
-        environmentVariable: 'PR12_SUPABASE_ACCESS_TOKEN',
-        opaqueHandle: 'owner-vault://pr12/source/management-token',
-        opaqueHandleSha256: createHash('sha256')
-          .update('owner-vault://pr12/source/management-token', 'utf8')
-          .digest('hex'),
+        role: 'MANAGEMENT_ACCESS_TOKEN',
+        opaqueHandle: tokenHandle,
+        opaqueHandleSha256: tokenHandleSha256,
+        envelopeFilename: `${tokenHandleSha256}.dpapi.json`,
+        envelopeSha256: 'f'.repeat(64),
         credentialType: 'SUPABASE_FINE_GRAINED_ACCESS_TOKEN',
         requiredEndpointOAuthScopes: [
           'projects:read',
@@ -1044,28 +1242,52 @@ function makeValidFixture() {
           'organization_projects_create',
           'infra_add_ons_read',
         ],
+        minimumBytes: 20,
+        maximumBytes: 4096,
       },
       databasePassword: {
-        environmentVariable: 'PR12_SOURCE_DB_PASSWORD',
-        opaqueHandle: 'owner-vault://pr12/source/database-password',
-        opaqueHandleSha256: createHash('sha256')
-          .update('owner-vault://pr12/source/database-password', 'utf8')
-          .digest('hex'),
-        minimumLength: 32,
+        role: 'DATABASE_PASSWORD',
+        opaqueHandle: passwordHandle,
+        opaqueHandleSha256: passwordHandleSha256,
+        envelopeFilename: `${passwordHandleSha256}.dpapi.json`,
+        envelopeSha256: '1'.repeat(64),
+        minimumBytes: 32,
+        maximumBytes: 256,
       },
+    },
+    storageBoundary: {
+      outsideRepositoryRequired: true,
+      outsideTemporaryDirectoriesRequired: true,
+      reparsePointsAllowed: false,
+      envelopeOverwriteAllowed: false,
+      allowedAclPrincipals: ['CURRENT_USER', 'LOCAL_SYSTEM'],
+      inheritedAclAllowed: false,
+      providerRootIdentityMustRemainStable: true,
+      allProviderRootPathComponentsMustBeNonReparse: true,
+      resolvedProviderRootMustBeDisjointFromRepositoryTemporaryJournalAndEvidenceTrees: true,
     },
     processBoundary: {
       genericOrAmbientFallbackAllowed: false,
       dotenvLoadingAllowed: false,
       cliLoginSessionFallbackAllowed: false,
+      inheritedEnvironmentAllowed: false,
       rawValueInArgvAllowed: false,
       rawValueInUrlAllowed: false,
-      rawValueInStdoutOrStderrAllowed: false,
+      rawValueInEnvironmentAllowed: false,
+      rawValueRelayToParentStdoutOrStderrAllowed: false,
       rawValueInLogOrEvidenceAllowed: false,
+      capturedBrokerBinaryResponseException:
+        'NODE_PARENT_CAPTURE_ONLY_NEVER_RELAY_OR_PERSIST',
     },
-    approvedBy: 'credential-owner@example.invalid',
-    approvedAt: '2026-07-23T00:00:00.000Z',
-    notes: 'Owner-approved handles only; no secret values are persisted.',
+    bootstrap: {
+      realCredentialBootstrapCompleted: true,
+      realCredentialBootstrapAuthorizedByThisPreparation: false,
+      separateInteractiveAuthorizationRequired: true,
+    },
+    approvedBy: 'owner@example.invalid',
+    approvedAt: '2026-07-22T23:00:00.000Z',
+    notes:
+      'Synthetic DPAPI configuration metadata only; no secret values are persisted.',
   };
 
   const approvedRequestProjection = {
@@ -1080,7 +1302,7 @@ function makeValidFixture() {
   };
 
   const binding = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     phase: 'SOURCE_PROJECT_PROVISIONING',
     status: 'APPROVED',
     authorization: {
@@ -1131,12 +1353,15 @@ function makeValidFixture() {
     },
     credentialControls: {
       provisioningCredentialConfiguration: {
-        path: 'source-project-provisioning-credential-configuration.json',
+        path: 'source-project-provisioning-credential-configuration-v2.json',
         sha256: '6'.repeat(64),
       },
-      managementAccessTokenSecretName: 'PR12_SUPABASE_ACCESS_TOKEN',
-      databasePasswordSecretName: 'PR12_SOURCE_DB_PASSWORD',
+      requiredProviderId: 'WINDOWS_DPAPI_CURRENT_USER_V1',
+      requiredRetrievalChannel: 'CLAIM_BOUND_CAPTURED_STDOUT_BINARY_V1',
       providerConfigurationMustExistBeforeApproval: true,
+      credentialBootstrapCompleted: true,
+      credentialBootstrapExecutionAuthorizedByThisBinding: false,
+      credentialRetrievalAfterDurableClaimOnly: true,
       secretValuesCaptured: false,
     },
     approvedRequest: {
@@ -1177,6 +1402,8 @@ function makeValidFixture() {
       durableFileFlushAndReadbackRequired: true,
       postIntentDurableBeforeFetch: true,
       postIntentPermanentlyConsumesActionIdentity: true,
+      credentialBrokerFailureConsumesActionIdentity: true,
+      credentialBrokerAutomaticRetryAllowed: false,
       actionJournalDirectoryPathSha256: '9'.repeat(64),
       organizationProjectListAllPagesRequiredBeforePost: true,
       fixedNameDuplicateAction: 'ABORT_POST_NOT_SENT',
@@ -1185,7 +1412,7 @@ function makeValidFixture() {
       reconciliationOnlyMode: '--reconcile-dispatched-action',
       automaticCleanupAuthorized: false,
       destructiveRecoveryAuthorized: false,
-      recoveryOwner: 'recovery-owner@example.invalid',
+      recoveryOwner: 'owner@example.invalid',
     },
     lifecycle: {
       sourceMaximumHoursFromCreation: 72,
@@ -1197,42 +1424,50 @@ function makeValidFixture() {
       disposition:
         'DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION',
       sourceFundedHours: 72,
-      fundedThrough: '2026-07-27T12:00:00.000Z',
-      fundingCeilingUsd: 50,
-      fundingApprovedAmountUsd: 25,
-      fundingSource: 'OWNER_APPROVED_COST_CENTER',
-      cleanupOwner: 'cleanup-owner@example.invalid',
-      deletionApprovalRequester: 'cleanup-requester@example.invalid',
-      deletionApprovalRequestDeadline: '2026-07-26T00:00:00.000Z',
-      billingEscalationOwner: 'billing-owner@example.invalid',
-      fundedExtensionOwner: 'extension-owner@example.invalid',
+      fundedThrough: '2026-07-27T00:30:00.000Z',
+      fundingCeilingUsdScaled: 500000,
+      fundingApprovedAmountUsdScaled: 500000,
+      fundingSource: 'OWNER_APPROVED_PERSONAL_PAYMENT_METHOD',
+      cleanupOwner: 'owner@example.invalid',
+      deletionApprovalRequester: 'owner@example.invalid',
+      deletionApprovalRequestDeadline: '2026-07-25T00:00:00.000Z',
+      billingEscalationOwner: 'owner@example.invalid',
+      fundedExtensionOwner: 'owner@example.invalid',
     },
     cost: {
       currency: 'USD',
-      computeRateUsdPerProjectHour: 0.1517,
+      moneyScale: 10000,
+      computeRateUsdScaledPerProjectHour: 1517,
       sourceMaximumBillableHours: 72,
-      sourceMaximumComputeUsd: 10.9224,
+      sourceMaximumComputeUsdScaled: 109224,
       partialHourRounding: 'ROUNDED_UP_TO_FULL_HOUR',
       organizationCurrentPlan: 'PRO',
-      organizationPlanChangeRequired: false,
-      planIncrementalUsd: 0,
-      computeCreditAppliedUsd: 0,
-      taxAndOtherChargesUsd: 0,
-      actualDashboardQuoteUsd: 10.9224,
-      quote: {
-        artifactPath: 'owner-private/source-project-quote.json',
+      planPurchaseOrChangeAuthorized: false,
+      planIncrementalUsdScaled: 0,
+      creditReliance: 'NONE',
+      computeCreditAppliedUsdScaled: 0,
+      taxAndOtherChargesQuoted: false,
+      unallocatedAuthorizationHeadroomUsdScaled: 390776,
+      knownAdditionalChargesUsdScaled: 0,
+      unknownChargesAcknowledged: true,
+      ownerAuthorizationCeilingUsdScaled: 500000,
+      providerSpendCapEnforced: false,
+      ceilingMeaning: 'OWNER_GOVERNANCE_AUTHORIZATION_NOT_PROVIDER_SPEND_CAP',
+      pricingEvidence: {
+        artifactPath: 'owner-private/source-project-pricing.json',
         artifactSha256: '7'.repeat(64),
-        observedAt: '2026-07-22T23:00:00.000Z',
-        validThrough: '2026-07-24T23:00:00.000Z',
+        freshThrough: '2026-07-23T23:30:00.000Z',
       },
-      proposedBudgetCeilingUsd: 50,
     },
     approval: {
       decision: 'APPROVED',
       attestationStatus: 'VERIFIED',
-      approvedBy: 'approver@example.invalid',
+      approvedBy: 'owner@example.invalid',
       approvedAt: '2026-07-23T00:00:00.000Z',
-      expiresAt: '2026-07-24T00:00:00.000Z',
+      operatorReconfirmedAt: '2026-07-23T00:05:00.000Z',
+      expiresAt: '2026-07-23T00:30:00.000Z',
+      soleOperatorRiskAccepted: true,
+      providerSpendCapLimitationAcknowledged: true,
       evidencePath: 'owner-private/source-project-approval.json',
       evidenceSha256: '8'.repeat(64),
       approvedActionId: 'PR12-ACTION-003',
@@ -1240,11 +1475,11 @@ function makeValidFixture() {
       approvedBindingMaterialSha256: 'NOT_CAPTURED',
     },
     owners: {
-      commercialReleaseOwner: 'approver@example.invalid',
-      provisioningOperator: 'operator@example.invalid',
-      supabasePlatformOwner: 'operator@example.invalid',
-      cleanupOwner: 'cleanup-owner@example.invalid',
-      evidenceCustodian: 'evidence@example.invalid',
+      commercialReleaseOwner: 'owner@example.invalid',
+      provisioningOperator: 'owner@example.invalid',
+      supabasePlatformOwner: 'owner@example.invalid',
+      cleanupOwner: 'owner@example.invalid',
+      evidenceCustodian: 'owner@example.invalid',
       databaseMigrationOperator: 'UNASSIGNED',
       disasterRecoveryOperator: 'UNASSIGNED',
       securityTenantReviewer: 'UNASSIGNED',
@@ -1253,15 +1488,33 @@ function makeValidFixture() {
       siteReliabilityOwner: 'UNASSIGNED',
       incidentCommander: 'UNASSIGNED',
     },
-    separationOfDuties: {
-      approvedByMustDifferFrom: [
+    operatorControl: {
+      mode: 'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1',
+      principalDisplayName: 'FUTOSHI IWASAWA',
+      principalId: 'owner@example.invalid',
+      principalIdType: 'OWNER_DECLARED_STABLE_PRINCIPAL_ID',
+      samePersonRoleKeys: [
+        'commercialReleaseOwner',
         'provisioningOperator',
         'supabasePlatformOwner',
         'cleanupOwner',
         'evidenceCustodian',
       ],
-      provisioningOperatorMustEqual: 'supabasePlatformOwner',
-      provisioningOperatorMustDifferFrom: ['cleanupOwner', 'evidenceCustodian'],
+      identitySeparationAvailable: false,
+      independentHumanReviewClaimed: false,
+      localPreparationExceptionAuthorized: true,
+      localPreparationExceptionAuthorizedOn: '2026-07-24',
+      finalActionSelfApprovalRequired: true,
+      minimumCoolingOffSeconds: 300,
+      maximumApprovalWindowSeconds: 1800,
+      compensatingControls: [
+        'EXACT_HEAD_BASE_GOVERNANCE_CONTRACT_WRAPPER_AND_PAYLOAD_HASHES',
+        'EXACT_ORGANIZATION_ALLOW_BINDING_AND_PRODUCTION_DENYLIST',
+        'ONE_DURABLE_CREATE_ONCE_CLAIM_NO_POST_RETRY',
+        'DPAPI_CURRENT_USER_CLAIM_BOUND_POST_CLAIM_RETRIEVAL',
+        'USD_50_OWNER_AUTHORIZATION_CEILING_FOR_72_HOURS',
+        'PHASE2_AND_CLEANUP_DELETION_REMAIN_SEPARATELY_UNAUTHORIZED',
+      ],
     },
     evidenceContract: {
       evidenceParentDirectoryPathSha256: '0'.repeat(64),
@@ -1287,65 +1540,122 @@ function makeValidFixture() {
     canonicalSha256(approvalMaterial);
 
   const approvalEvidence = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     recordType: 'PR12_SOURCE_PROJECT_PROVISIONING_OWNER_APPROVAL',
     decision: 'APPROVED',
     attestationStatus: 'VERIFIED',
-    attestationMethod: 'OWNER_EXPLICIT_APPROVAL_RECORD',
-    approver: 'approver@example.invalid',
+    attestationMethod: 'SOLE_OPERATOR_EXPLICIT_TWO_STEP_APPROVAL_RECORD',
+    approverPrincipalId: 'owner@example.invalid',
+    approverDisplayName: 'FUTOSHI IWASAWA',
+    operatorPrincipalId: 'owner@example.invalid',
+    operatorDisplayName: 'FUTOSHI IWASAWA',
+    operatorControlMode: 'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1',
+    identitySeparationAvailable: false,
+    independentHumanReviewClaimed: false,
+    soleOperatorRiskAccepted: true,
+    providerSpendCapLimitationAcknowledged: true,
     actionId: 'PR12-ACTION-003',
     gitCommit: 'a'.repeat(40),
     bindingMaterialSha256: binding.approval.approvedBindingMaterialSha256,
     payloadSha256: canonicalSha256(approvedRequestProjection),
     credentialConfigurationSha256: '6'.repeat(64),
-    quoteEvidenceSha256: '7'.repeat(64),
+    pricingEvidenceSha256: '7'.repeat(64),
     organizationId: 'org-isolated-001',
     organizationSlug: 'isolated-staging-org',
     projectName: 'seikotsuin-pr12-isolated-qualification-20260719',
     region: 'ap-northeast-1',
     tier: 'LARGE',
+    ownerAuthorizationCeilingUsdScaled: 500000,
+    authorizedDurationHours: 72,
     approvedAt: '2026-07-23T00:00:00.000Z',
-    expiresAt: '2026-07-24T00:00:00.000Z',
+    operatorReconfirmedAt: '2026-07-23T00:05:00.000Z',
+    expiresAt: '2026-07-23T00:30:00.000Z',
     phase2AndLaterAuthorized: false,
     cleanupDeletionAuthorized: false,
+    notes: 'Synthetic sole-operator action approval.',
   };
 
-  const quoteEvidence = {
-    schemaVersion: 1,
-    recordType: 'PR12_SOURCE_PROJECT_DASHBOARD_QUOTE',
+  const pricingEvidence = {
+    schemaVersion: 2,
+    recordType: 'PR12_SOURCE_PROJECT_OFFICIAL_PRICING_EVIDENCE',
     status: 'CAPTURED',
-    organizationId: 'org-isolated-001',
-    organizationSlug: 'isolated-staging-org',
-    organizationPlan: 'PRO',
+    provider: 'SUPABASE',
     currency: 'USD',
-    lineItems: {
-      planIncrementalUsd: 0,
-      sourceComputeMaximumUsd: 10.9224,
-      computeCreditAppliedUsd: 0,
-      taxAndOtherChargesUsd: 0,
+    moneyScale: 10000,
+    officialSources: [
+      {
+        sourceId: 'COMPUTE_AND_DISK',
+        url: 'https://supabase.com/docs/guides/platform/compute-and-disk',
+        retrievedAt: '2026-07-22T23:30:00.000Z',
+        artifactPath: 'official/compute-and-disk.html',
+        artifactSha256: '2'.repeat(64),
+      },
+      {
+        sourceId: 'COMPUTE_USAGE',
+        url: 'https://supabase.com/docs/guides/platform/manage-your-usage/compute',
+        retrievedAt: '2026-07-22T23:35:00.000Z',
+        artifactPath: 'official/compute-usage.html',
+        artifactSha256: '3'.repeat(64),
+      },
+      {
+        sourceId: 'PRICING',
+        url: 'https://supabase.com/pricing',
+        retrievedAt: '2026-07-22T23:40:00.000Z',
+        artifactPath: 'official/pricing.html',
+        artifactSha256: '4'.repeat(64),
+      },
+    ],
+    pricing: {
+      requiredExistingOrganizationPlan: 'PRO',
+      planPurchaseOrChangeAuthorized: false,
+      planIncrementalUsdScaled: 0,
+      computeTier: 'LARGE',
+      desiredInstanceSize: 'large',
+      computeAddonVariant: 'ci_large',
+      billingUnit: 'PROJECT_HOUR',
+      partialHourRounding: 'ROUNDED_UP_TO_FULL_HOUR',
+      hourlyRateUsdScaled: 1517,
+      maximumBillableHours: 72,
+      maximumComputeUsdScaled: 109224,
     },
-    actualDashboardQuoteUsd: 10.9224,
-    observedAt: '2026-07-22T23:00:00.000Z',
-    validThrough: '2026-07-24T23:00:00.000Z',
-    capturedBy: 'billing-owner@example.invalid',
-    rawDashboardArtifactPersistedInRepository: false,
+    conservativeTreatment: {
+      creditReliance: 'NONE',
+      computeCreditAppliedUsdScaled: 0,
+      taxAndOtherChargesQuoted: false,
+      taxAndOtherChargesEstimateUsdScaled: null,
+      unallocatedAuthorizationHeadroomUsdScaled: 390776,
+    },
+    authorizationBoundary: {
+      ownerAuthorizationCeilingUsdScaled: 500000,
+      providerSpendCapEnforced: false,
+      knownCostOverCeilingAction: 'ABORT_BEFORE_POST',
+      ceilingMeaning: 'OWNER_GOVERNANCE_AUTHORIZATION_NOT_PROVIDER_SPEND_CAP',
+    },
+    freshness: {
+      policy: 'LOCAL_24_HOUR_REVALIDATION_NOT_PROVIDER_QUOTE_VALIDITY',
+      maximumAgeAtApprovalSeconds: 3600,
+      lifetimeSeconds: 86400,
+      freshThrough: '2026-07-23T23:30:00.000Z',
+    },
+    capturedBy: 'owner@example.invalid',
+    rawOfficialSourceArtifactsPersistedInRepository: false,
+    notes: 'Synthetic official list-price source evidence.',
   };
-
   const context = {
     currentHead: 'a'.repeat(40),
     currentBaseCommit: '4475e1c641c2ff18f66021ee65cfecfceaa6b7ab',
     worktreeClean: true,
     nodeVersion: 'v24.0.0',
     nodeExecArgv: [],
-    now: '2026-07-23T12:00:00.000Z',
+    now: '2026-07-23T00:10:00.000Z',
     governanceSha256: '3'.repeat(64),
     contractSha256: '4'.repeat(64),
     wrapperSha256: '5'.repeat(64),
     credentialConfigurationSha256: '6'.repeat(64),
     approvalEvidenceSha256: '8'.repeat(64),
-    quoteEvidenceSha256: '7'.repeat(64),
+    pricingEvidenceSha256: '7'.repeat(64),
     approvalEvidence,
-    quoteEvidence,
+    pricingEvidence,
     ambientCredentialNames: [],
     priorActionState: null,
     approvalStage: 'PRE_CLAIM',
@@ -1358,7 +1668,7 @@ function makeValidFixture() {
     binding,
     context,
     credentialConfiguration,
-    quoteEvidence,
+    pricingEvidence,
   };
 }
 
@@ -1373,7 +1683,7 @@ function expectRejected(
 }
 
 describe('PR12 Phase 1 source project provisioning contract', () => {
-  test('accepts only a fully hash-bound, current, separated offline approval', () => {
+  test('accepts only a fully hash-bound, current sole-operator exception approval', () => {
     const fixture = makeValidFixture();
     const result = invokeContract('validateOfflineApproval', [
       fixture.binding,
@@ -1475,14 +1785,14 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       'PROJECT_NAME_INVALID',
     ],
     [
-      'owner separation violation',
+      'sole-operator principal mismatch',
       (fixture: ReturnType<typeof makeValidFixture>) => {
         fixture.binding.owners.provisioningOperator =
           'approver@example.invalid';
         fixture.binding.owners.supabasePlatformOwner =
           'approver@example.invalid';
       },
-      'OWNER_SEPARATION_INVALID',
+      'SOLE_OPERATOR_EXCEPTION_INVALID',
     ],
     [
       'missing secret-store handle',
@@ -1491,6 +1801,29 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
           'NOT_CAPTURED';
       },
       'CREDENTIAL_HANDLE_MISSING',
+    ],
+    [
+      'changed resolved provider-root fingerprint',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.credentialConfiguration.provider.providerRootResolvedPathSha256 =
+          '9'.repeat(64);
+      },
+      'CREDENTIAL_PROVIDER_NOT_APPROVED',
+    ],
+    [
+      'missing provider-root filesystem identity',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.credentialConfiguration.provider.providerRootDevice =
+          'NOT_CAPTURED';
+      },
+      'CREDENTIAL_PROVIDER_NOT_APPROVED',
+    ],
+    [
+      'disabled provider-root path-component guard',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.credentialConfiguration.storageBoundary.allProviderRootPathComponentsMustBeNonReparse = false;
+      },
+      'CREDENTIAL_STORAGE_INVALID',
     ],
     [
       'secret-store handle userinfo',
@@ -1574,17 +1907,33 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       'ACTION_ALREADY_CLAIMED',
     ],
     [
-      'missing quote',
+      'different recovery owner under sole-operator mode',
       (fixture: ReturnType<typeof makeValidFixture>) => {
-        fixture.binding.cost.actualDashboardQuoteUsd = 'NOT_CAPTURED';
+        fixture.binding.duplicateAndFailurePolicy.recoveryOwner =
+          'different-owner@example.invalid';
       },
-      'QUOTE_NOT_CAPTURED',
+      'DUPLICATE_GUARD_INVALID',
+    ],
+    [
+      'missing official pricing evidence binding',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.cost.pricingEvidence.freshThrough = 'NOT_CAPTURED';
+      },
+      'PRICING_EVIDENCE_NOT_CAPTURED',
     ],
     [
       'missing funding',
       (fixture: ReturnType<typeof makeValidFixture>) => {
         fixture.binding.retentionAndCleanupDecision.fundedThrough =
           'NOT_CAPTURED';
+      },
+      'FUNDING_NOT_CAPTURED',
+    ],
+    [
+      'non-classified funding source',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.retentionAndCleanupDecision.fundingSource =
+          'personal card ending 1234';
       },
       'FUNDING_NOT_CAPTURED',
     ],
@@ -1599,38 +1948,38 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       'shortened billable window',
       (fixture: ReturnType<typeof makeValidFixture>) => {
         fixture.binding.cost.sourceMaximumBillableHours = 1;
-        fixture.binding.cost.sourceMaximumComputeUsd = 0.1517;
+        fixture.binding.cost.sourceMaximumComputeUsdScaled = 1517;
       },
-      'QUOTE_ARITHMETIC_INVALID',
+      'PRICING_ARITHMETIC_INVALID',
     ],
     [
       'changed documented Large hourly rate',
       (fixture: ReturnType<typeof makeValidFixture>) => {
-        fixture.binding.cost.computeRateUsdPerProjectHour = 0.2;
-        fixture.binding.cost.sourceMaximumComputeUsd = 14.4;
+        fixture.binding.cost.computeRateUsdScaledPerProjectHour = 2000;
+        fixture.binding.cost.sourceMaximumComputeUsdScaled = 144000;
       },
-      'QUOTE_ARITHMETIC_INVALID',
+      'PRICING_ARITHMETIC_INVALID',
     ],
     [
       'changed funding ceiling',
       (fixture: ReturnType<typeof makeValidFixture>) => {
-        fixture.binding.cost.proposedBudgetCeilingUsd = 60;
-        fixture.binding.retentionAndCleanupDecision.fundingCeilingUsd = 60;
+        fixture.binding.cost.ownerAuthorizationCeilingUsdScaled = 600000;
+        fixture.binding.retentionAndCleanupDecision.fundingCeilingUsdScaled = 600000;
       },
-      'QUOTE_EXCEEDS_CEILING',
+      'PRICING_ARITHMETIC_INVALID',
     ],
     [
-      'negative quote',
+      'negative known additional charge',
       (fixture: ReturnType<typeof makeValidFixture>) => {
-        fixture.binding.cost.actualDashboardQuoteUsd = -1;
+        fixture.binding.cost.knownAdditionalChargesUsdScaled = -1;
       },
-      'QUOTE_ARITHMETIC_INVALID',
+      'KNOWN_COST_NOT_CAPTURED',
     ],
     [
       'past cleanup approval deadline',
       (fixture: ReturnType<typeof makeValidFixture>) => {
         fixture.binding.retentionAndCleanupDecision.deletionApprovalRequestDeadline =
-          '2026-07-23T11:59:59.000Z';
+          '2026-07-23T00:09:59.999Z';
       },
       'CLEANUP_DECISION_INCOMPLETE',
     ],
@@ -1644,10 +1993,9 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     [
       'case-variant approver identity',
       (fixture: ReturnType<typeof makeValidFixture>) => {
-        fixture.binding.approval.approvedBy = 'Approver@example.invalid';
-        fixture.binding.owners.commercialReleaseOwner =
-          'Approver@example.invalid';
-        fixture.approvalEvidence.approver = 'Approver@example.invalid';
+        fixture.binding.approval.approvedBy = 'Owner@example.invalid';
+        fixture.binding.owners.commercialReleaseOwner = 'Owner@example.invalid';
+        fixture.approvalEvidence.approverPrincipalId = 'Owner@example.invalid';
       },
       'APPROVAL_ATTESTATION_INVALID',
     ],
@@ -1659,12 +2007,81 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       'OWNER_ASSIGNMENT_INVALID',
     ],
     [
-      'incomplete declared operator separation',
+      'incomplete declared sole-operator role set',
       (fixture: ReturnType<typeof makeValidFixture>) => {
-        fixture.binding.separationOfDuties.provisioningOperatorMustDifferFrom =
-          ['cleanupOwner'];
+        fixture.binding.operatorControl.samePersonRoleKeys = [
+          'provisioningOperator',
+        ];
       },
-      'OWNER_SEPARATION_INVALID',
+      'SOLE_OPERATOR_EXCEPTION_INVALID',
+    ],
+    [
+      'sole-operator final action risk not accepted',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.approval.soleOperatorRiskAccepted = false;
+      },
+      'SOLE_OPERATOR_EXCEPTION_INVALID',
+    ],
+    [
+      'sole-operator cooling-off period bypassed',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.approval.operatorReconfirmedAt =
+          '2026-07-23T00:04:59.999Z';
+      },
+      'APPROVAL_WINDOW_INVALID',
+    ],
+    [
+      'claimed provider-enforced spend cap',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.cost.providerSpendCapEnforced = true;
+      },
+      'PRICING_ARITHMETIC_INVALID',
+    ],
+    [
+      'funding below the full owner authorization ceiling',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.retentionAndCleanupDecision.fundingApprovedAmountUsdScaled = 499999;
+      },
+      'FUNDING_NOT_CAPTURED',
+    ],
+    [
+      'legacy Dashboard quote evidence',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.pricingEvidence.recordType =
+          'PR12_SOURCE_PROJECT_DASHBOARD_QUOTE';
+      },
+      'PRICING_EVIDENCE_INVALID',
+    ],
+    [
+      'changed official pricing source URL',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.pricingEvidence.officialSources[0].url =
+          'https://example.invalid/pricing';
+      },
+      'PRICING_EVIDENCE_INVALID',
+    ],
+    [
+      'stale official pricing source at approval',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.pricingEvidence.officialSources[0].retrievedAt =
+          '2026-07-22T22:59:59.999Z';
+      },
+      'PRICING_EVIDENCE_FRESHNESS_INVALID',
+    ],
+    [
+      'non-DPAPI credential provider',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.credentialConfiguration.provider.providerId =
+          'OWNER_VAULT_PROVISIONING';
+      },
+      'CREDENTIAL_PROVIDER_NOT_APPROVED',
+    ],
+    [
+      'real credential bootstrap not completed',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.credentialConfiguration.bootstrap.realCredentialBootstrapCompleted = false;
+      },
+      'CREDENTIAL_BOOTSTRAP_INVALID',
     ],
     [
       'shared journal and evidence output directory',
@@ -1716,6 +2133,8 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     'POSTGRES_URL',
     'POSTGRES_PRISMA_URL',
     'PGPASSFILE',
+    'PR12_SUPABASE_ACCESS_TOKEN',
+    'PR12_SOURCE_DB_PASSWORD',
     'PR12_RESTORE_DB_PASSWORD',
     'PR12_RESTORE_SUPABASE_ACCESS_TOKEN',
     'PR12_SUPABASE_ACCESS_TOKEN_BACKUP',
@@ -1739,6 +2158,251 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     );
   });
 
+  test('builds exact claim-bound DPAPI requests and omits the database password from recovery', () => {
+    const fixture = makeValidFixture();
+    const common = {
+      bindingMaterialSha256: 'a'.repeat(64),
+      payloadSha256: 'b'.repeat(64),
+      claimSha256: 'c'.repeat(64),
+      credentialConfigurationSha256: 'd'.repeat(64),
+      credentialConfiguration: fixture.credentialConfiguration,
+      journalDirectory: 'C:\\PR12\\journal',
+      journalDirectoryPathSha256: 'e'.repeat(64),
+      evidenceParentDirectory: 'C:\\PR12\\evidence',
+      evidenceParentDirectoryPathSha256: '1'.repeat(64),
+      approvalExpiresAt: '2026-07-23T00:30:00.000Z',
+      requestNonce: 'f'.repeat(64),
+    };
+    const execute = invokeDpapiMethod('buildCredentialBrokerRequest', [
+      { ...common, mode: 'EXECUTE' },
+    ]);
+    const recovery = invokeDpapiMethod('buildCredentialBrokerRequest', [
+      { ...common, mode: 'RECOVERY' },
+    ]);
+    expect(execute.ok).toBe(true);
+    expect(JSON.stringify(execute.value)).toContain('MANAGEMENT_ACCESS_TOKEN');
+    expect(JSON.stringify(execute.value)).toContain('DATABASE_PASSWORD');
+    expect(JSON.stringify(execute.value)).toContain('bootstrapScriptSha256');
+    expect(JSON.stringify(execute.value)).toContain(
+      'providerRootResolvedPathSha256'
+    );
+    expect(JSON.stringify(execute.value)).toContain('evidenceParentDirectory');
+    expect(recovery.ok).toBe(true);
+    expect(JSON.stringify(recovery.value)).toContain('MANAGEMENT_ACCESS_TOKEN');
+    expect(JSON.stringify(recovery.value)).not.toContain('DATABASE_PASSWORD');
+  });
+
+  test('rejects overlapping provider, journal, and evidence directory trees', () => {
+    const provider = { realPath: 'c:/pr12/provider' };
+    const journal = { realPath: 'c:/pr12/provider/journal' };
+    const evidence = { realPath: 'c:/pr12/evidence' };
+    expect(
+      invokeDpapiMethod('assertDpapiDirectoryIsolation', [
+        provider,
+        journal,
+        evidence,
+      ])
+    ).toEqual({ ok: false, code: 'DPAPI_DIRECTORY_BOUNDARY_COLLISION' });
+    expect(
+      invokeDpapiMethod('assertDpapiDirectoryIsolation', [
+        provider,
+        { realPath: 'c:/pr12/journal' },
+        evidence,
+      ])
+    ).toMatchObject({ ok: true, value: true });
+  });
+
+  test('rejects a provider root beneath a junction ancestor on Windows', () => {
+    if (process.platform !== 'win32') return;
+    const root = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'pr12-dpapi-junction-ancestor-')
+    );
+    const target = path.join(root, 'target');
+    const leaf = path.join(target, 'leaf');
+    const junction = path.join(root, 'junction');
+    try {
+      fs.mkdirSync(leaf, { recursive: true });
+      fs.symlinkSync(target, junction, 'junction');
+      expect(
+        invokeDpapiMethod('inspectDpapiDirectoryIdentity', [
+          path.join(junction, 'leaf'),
+        ])
+      ).toEqual({ ok: false, code: 'DPAPI_PROVIDER_ROOT_INVALID' });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test('accepts only the exact bounded DPAPI binary frame', () => {
+    const fixture = makeValidFixture();
+    const requestBytes = Buffer.from('{"synthetic":"request"}\n', 'utf8');
+    const valid = makeDpapiFrame(
+      requestBytes,
+      [
+        { role: 1, bytes: Buffer.from('t'.repeat(20), 'utf8') },
+        { role: 2, bytes: Buffer.from('p'.repeat(32), 'utf8') },
+      ],
+      'EXECUTE'
+    );
+    const accepted = invokeDpapiFrameParser(
+      valid,
+      requestBytes,
+      'EXECUTE',
+      fixture.credentialConfiguration
+    );
+    expect(accepted.ok).toBe(true);
+    expect(accepted.value).toEqual({
+      managementAccessToken: 't'.repeat(20),
+      databasePassword: 'p'.repeat(32),
+    });
+
+    const wrongDigest = Buffer.from(valid);
+    wrongDigest[12] ^= 0xff;
+    const wrongRole = Buffer.from(valid);
+    wrongRole[44] = 2;
+    const invalidUtf8 = makeDpapiFrame(
+      requestBytes,
+      [
+        {
+          role: 1,
+          bytes: Buffer.from([0xff, ...Buffer.from('t'.repeat(19), 'utf8')]),
+        },
+        { role: 2, bytes: Buffer.from('p'.repeat(32), 'utf8') },
+      ],
+      'EXECUTE'
+    );
+    for (const malformed of [
+      valid.subarray(0, valid.length - 1),
+      Buffer.concat([valid, Buffer.from([0])]),
+      wrongDigest,
+      wrongRole,
+      invalidUtf8,
+      Buffer.alloc(8193),
+    ]) {
+      expect(
+        invokeDpapiFrameParser(
+          malformed,
+          requestBytes,
+          'EXECUTE',
+          fixture.credentialConfiguration
+        )
+      ).toEqual({ ok: false, code: 'DPAPI_BROKER_FRAME_INVALID' });
+    }
+  });
+
+  test('keeps DPAPI retrieval after the durable claim and never relays broker output', () => {
+    const wrapperSource = fs.readFileSync(provisioningWrapperPath, 'utf8');
+    const executeStart = wrapperSource.indexOf(
+      'async function executeProvisioning'
+    );
+    const claimIndex = wrapperSource.indexOf(
+      'claimActionJournal(journalDirectory, claim)',
+      executeStart
+    );
+    const brokerIndex = wrapperSource.indexOf(
+      'retrieveClaimBoundCredentials({',
+      executeStart
+    );
+    expect(executeStart).toBeGreaterThanOrEqual(0);
+    expect(claimIndex).toBeGreaterThan(executeStart);
+    expect(brokerIndex).toBeGreaterThan(claimIndex);
+    expect(wrapperSource).not.toContain('process.env[tokenName]');
+    expect(wrapperSource).not.toContain('process.env[passwordName]');
+
+    const channelSource = fs.readFileSync(dpapiChannelPath, 'utf8');
+    expect(channelSource).toContain('stdio');
+    expect(channelSource).toContain('stdout?.fill(0)');
+    expect(channelSource).toContain('stderr?.fill(0)');
+    expect(channelSource).not.toContain('process.stdout.write');
+    expect(channelSource).not.toContain('process.stderr.write');
+
+    const brokerSource = fs.readFileSync(dpapiBrokerPath, 'utf8');
+    const bootstrapSource = fs.readFileSync(dpapiBootstrapPath, 'utf8');
+    expect(brokerSource).toContain('[Console]::OpenStandardOutput()');
+    expect(brokerSource).not.toMatch(/\bWrite-(?:Host|Output|Error|Warning)\b/);
+    expect(brokerSource).toContain('Assert-NoReparsePathComponents');
+    expect(brokerSource).toContain(
+      'ConvertFrom-Json -Depth 20 -DateKind String'
+    );
+    expect(brokerSource).toContain('$envelope.bootstrapScriptSha256 -cne');
+    expect(bootstrapSource).toContain('[IO.FileMode]::CreateNew');
+    expect(bootstrapSource).toContain('realSecretInteractiveReadAuthorized');
+    expect(bootstrapSource).toContain('Assert-NoReparsePathComponents');
+    expect(bootstrapSource).toContain(
+      'ConvertFrom-Json -Depth 10 -DateKind String'
+    );
+    expect(bootstrapSource).toContain(
+      "$authorization.approvedByDisplayName -cne 'FUTOSHI IWASAWA'"
+    );
+    expect(wrapperSource).toContain(
+      'requireNoReparseDirectoryComponents(directory, code)'
+    );
+  });
+
+  test('parses the bootstrap approval template before stopping as unauthorized', () => {
+    if (process.platform !== 'win32') return;
+    const temporaryDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'pr12-dpapi-bootstrap-negative-')
+    );
+    try {
+      const template = JSON.parse(
+        fs.readFileSync(
+          path.join(
+            phase1EvidenceRoot,
+            'source-project-dpapi-bootstrap-approval-v1.template.json'
+          ),
+          'utf8'
+        )
+      ) as JsonObject;
+      const now = Date.now();
+      template.approvedAt = new Date(now - 60_000).toISOString();
+      template.expiresAt = new Date(now + 300_000).toISOString();
+      for (const key of [
+        'bootstrapScriptSha256',
+        'machineNameSha256',
+        'ownerSidSha256',
+        'providerRootPathSha256',
+        'providerRootResolvedPathSha256',
+      ]) {
+        template[key] = 'a'.repeat(64);
+      }
+      const authorizationPath = path.join(
+        temporaryDirectory,
+        'bootstrap-approval.json'
+      );
+      fs.writeFileSync(
+        authorizationPath,
+        `${JSON.stringify(template, null, 2)}\n`,
+        'utf8'
+      );
+      const child = spawnSync(
+        'pwsh.exe',
+        [
+          '-NoLogo',
+          '-NoProfile',
+          '-NonInteractive',
+          '-File',
+          dpapiBootstrapPath,
+          '-Role',
+          'MANAGEMENT_ACCESS_TOKEN',
+          '-AuthorizationEvidencePath',
+          authorizationPath,
+        ],
+        {
+          cwd: repoRoot,
+          encoding: 'utf8',
+          windowsHide: true,
+        }
+      );
+      expect(child.status).toBe(1);
+      expect(child.stdout).toBe('');
+      expect(child.stderr).toContain('BOOTSTRAP_NOT_AUTHORIZED');
+      expect(child.stderr).not.toContain('INVALID_SHAPE');
+    } finally {
+      fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+    }
+  });
+
   test('the wrapper stops an unapproved template before journal claim', () => {
     const journalDirectory = fs.mkdtempSync(
       path.join(os.tmpdir(), 'pr12-source-provisioning-journal-')
@@ -1754,22 +2418,22 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         '--binding',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-binding-v2.template.json'
+          'source-project-provisioning-binding-v3.template.json'
         ),
         '--credential-config',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-credential-configuration.template.json'
+          'source-project-provisioning-credential-configuration-v2.template.json'
         ),
         '--approval-evidence',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-owner-approval.template.json'
+          'source-project-provisioning-owner-approval-v2.template.json'
         ),
-        '--quote-evidence',
+        '--pricing-evidence',
         path.join(
           phase1EvidenceRoot,
-          'source-project-dashboard-quote.template.json'
+          'source-project-official-pricing-evidence-v2.template.json'
         ),
         '--journal-directory',
         journalDirectory,
@@ -1795,6 +2459,84 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     expect(fs.readdirSync(evidenceParent)).toEqual([]);
   });
 
+  test('rejects a copied implementation tree invoked from the approved Git cwd', () => {
+    const temporaryRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'pr12-source-provisioning-foreign-wrapper-')
+    );
+    const implementationDirectory = path.join(temporaryRoot, 'implementation');
+    const journalDirectory = path.join(temporaryRoot, 'journal');
+    const evidenceParent = path.join(temporaryRoot, 'evidence');
+    fs.mkdirSync(implementationDirectory);
+    fs.mkdirSync(journalDirectory);
+    fs.mkdirSync(evidenceParent);
+    const implementationFilenames = [
+      'run-pr12-source-project-provisioning.mjs',
+      'pr12-source-project-provisioning-contract.mjs',
+      'pr12-windows-dpapi-credential-channel.mjs',
+      'verify-pr12-source-project-provisioning-evidence.mjs',
+    ];
+    try {
+      for (const filename of implementationFilenames) {
+        fs.copyFileSync(
+          path.join(repoRoot, 'scripts', 'commercial-hardening', filename),
+          path.join(implementationDirectory, filename)
+        );
+      }
+      const child = spawnSync(
+        process.execPath,
+        [
+          path.join(
+            implementationDirectory,
+            'run-pr12-source-project-provisioning.mjs'
+          ),
+          '--offline-verify',
+          '--binding',
+          path.join(
+            phase1EvidenceRoot,
+            'source-project-provisioning-binding-v3.template.json'
+          ),
+          '--credential-config',
+          path.join(
+            phase1EvidenceRoot,
+            'source-project-provisioning-credential-configuration-v2.template.json'
+          ),
+          '--approval-evidence',
+          path.join(
+            phase1EvidenceRoot,
+            'source-project-provisioning-owner-approval-v2.template.json'
+          ),
+          '--pricing-evidence',
+          path.join(
+            phase1EvidenceRoot,
+            'source-project-official-pricing-evidence-v2.template.json'
+          ),
+          '--journal-directory',
+          journalDirectory,
+          '--evidence-parent',
+          evidenceParent,
+        ],
+        {
+          cwd: repoRoot,
+          env: {
+            PATH: process.env.PATH,
+            PATHEXT: process.env.PATHEXT,
+            SYSTEMROOT: process.env.SYSTEMROOT,
+            TEMP: process.env.TEMP,
+            TMP: process.env.TMP,
+          },
+          encoding: 'utf8',
+        }
+      );
+      expect(child.status).toBe(1);
+      expect(child.stdout).toBe('');
+      expect(child.stderr).toContain('EXECUTING_IMPLEMENTATION_ROOT_MISMATCH');
+      expect(fs.readdirSync(journalDirectory)).toEqual([]);
+      expect(fs.readdirSync(evidenceParent)).toEqual([]);
+    } finally {
+      fs.rmSync(temporaryRoot, { recursive: true, force: true });
+    }
+  });
+
   test('rejects a relative runtime output directory before reading approval inputs', () => {
     const evidenceParent = fs.mkdtempSync(
       path.join(os.tmpdir(), 'pr12-source-provisioning-absolute-output-')
@@ -1807,22 +2549,22 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         '--binding',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-binding-v2.template.json'
+          'source-project-provisioning-binding-v3.template.json'
         ),
         '--credential-config',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-credential-configuration.template.json'
+          'source-project-provisioning-credential-configuration-v2.template.json'
         ),
         '--approval-evidence',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-owner-approval.template.json'
+          'source-project-provisioning-owner-approval-v2.template.json'
         ),
-        '--quote-evidence',
+        '--pricing-evidence',
         path.join(
           phase1EvidenceRoot,
-          'source-project-dashboard-quote.template.json'
+          'source-project-official-pricing-evidence-v2.template.json'
         ),
         '--journal-directory',
         '.',
@@ -1847,7 +2589,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     expect(fs.readdirSync(evidenceParent)).toEqual([]);
   });
 
-  test('rejects a junctioned runtime output path that resolves inside the repository', () => {
+  test('rejects a junction ancestor in a runtime output path before approval parsing', () => {
     const linkRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), 'pr12-source-provisioning-junction-')
     );
@@ -1864,22 +2606,22 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         '--binding',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-binding-v2.template.json'
+          'source-project-provisioning-binding-v3.template.json'
         ),
         '--credential-config',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-credential-configuration.template.json'
+          'source-project-provisioning-credential-configuration-v2.template.json'
         ),
         '--approval-evidence',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-owner-approval.template.json'
+          'source-project-provisioning-owner-approval-v2.template.json'
         ),
-        '--quote-evidence',
+        '--pricing-evidence',
         path.join(
           phase1EvidenceRoot,
-          'source-project-dashboard-quote.template.json'
+          'source-project-official-pricing-evidence-v2.template.json'
         ),
         '--journal-directory',
         path.join(repositoryLink, 'docs'),
@@ -1900,9 +2642,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     );
     expect(child.status).toBe(1);
     expect(child.stdout).toBe('');
-    expect(child.stderr).toContain(
-      'RUNTIME_OUTPUT_DIRECTORY_INSIDE_REPOSITORY'
-    );
+    expect(child.stderr).toContain('ACTION_JOURNAL_DIRECTORY_INVALID');
     expect(fs.readdirSync(evidenceParent)).toEqual([]);
   });
 
@@ -2021,16 +2761,19 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     );
   });
 
-  test('blocks the create POST when the Dashboard quote lacks timeout margin', () => {
+  test('blocks the create POST when official pricing evidence lacks timeout margin', () => {
     expect(
-      invokeWrapperMethod('assertMutationQuoteCurrent', [
+      invokeWrapperMethod('assertMutationPricingCurrent', [
         '2026-07-23T12:00:30.000Z',
         '2026-07-23T12:00:00.000Z',
         30_000,
       ])
-    ).toEqual({ ok: false, code: 'QUOTE_EXPIRED_BEFORE_POST' });
+    ).toEqual({
+      ok: false,
+      code: 'PRICING_EVIDENCE_EXPIRED_BEFORE_POST',
+    });
     expect(
-      invokeWrapperMethod('assertMutationQuoteCurrent', [
+      invokeWrapperMethod('assertMutationPricingCurrent', [
         '2026-07-23T12:00:30.001Z',
         '2026-07-23T12:00:00.000Z',
         30_000,
@@ -2487,26 +3230,38 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       status: 'PASS',
       operator: fixture.binding.owners.provisioningOperator,
       approver: fixture.binding.approval.approvedBy,
+      operatorDisplayName: fixture.binding.operatorControl.principalDisplayName,
+      operatorControlMode: fixture.binding.operatorControl.mode,
+      identitySeparationAvailable: false,
+      independentHumanReviewClaimed: false,
       recoveryOwner: fixture.binding.duplicateAndFailurePolicy.recoveryOwner,
       actionStartedAt,
       createPostAttemptCount: 1,
-      quoteAndFunding: {
+      pricingAndFunding: {
         currency: fixture.binding.cost.currency,
-        actualDashboardQuoteUsd: fixture.binding.cost.actualDashboardQuoteUsd,
-        quoteObservedAt: fixture.binding.cost.quote.observedAt,
-        quoteValidThrough: fixture.binding.cost.quote.validThrough,
+        moneyScale: fixture.binding.cost.moneyScale,
+        pricingEvidenceFreshThrough:
+          fixture.binding.cost.pricingEvidence.freshThrough,
         sourceMaximumBillableHours:
           fixture.binding.cost.sourceMaximumBillableHours,
-        sourceMaximumComputeUsd: fixture.binding.cost.sourceMaximumComputeUsd,
-        fundingApprovedAmountUsd:
-          fixture.binding.retentionAndCleanupDecision.fundingApprovedAmountUsd,
-        fundingCeilingUsd:
-          fixture.binding.retentionAndCleanupDecision.fundingCeilingUsd,
+        sourceMaximumComputeUsdScaled:
+          fixture.binding.cost.sourceMaximumComputeUsdScaled,
+        unallocatedAuthorizationHeadroomUsdScaled:
+          fixture.binding.cost.unallocatedAuthorizationHeadroomUsdScaled,
+        ownerAuthorizationCeilingUsdScaled:
+          fixture.binding.cost.ownerAuthorizationCeilingUsdScaled,
+        providerSpendCapEnforced: false,
+        fundingSource:
+          fixture.binding.retentionAndCleanupDecision.fundingSource,
+        fundingApprovedAmountUsdScaled:
+          fixture.binding.retentionAndCleanupDecision
+            .fundingApprovedAmountUsdScaled,
         fundedThrough:
           fixture.binding.retentionAndCleanupDecision.fundedThrough,
       },
       approvalWindow: {
         approvedAt: fixture.binding.approval.approvedAt,
+        operatorReconfirmedAt: fixture.binding.approval.operatorReconfirmedAt,
         expiresAt: fixture.binding.approval.expiresAt,
         approvalEvidenceSha256: fixture.binding.approval.evidenceSha256,
       },
@@ -3126,6 +3881,39 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         const approvalWindow = artifact.approvalWindow as JsonObject;
         approvalWindow.expiresAt = '2026-07-24T00:00:00Z';
       }
+    );
+    const rejected = runEvidenceVerifier(directory);
+    expect(rejected.status).toBe(1);
+    expect(rejected.stderr).toContain('PROVISIONING_RESULT_INVALID');
+  });
+
+  test.each([
+    [
+      'funding-source drift',
+      (artifact: JsonObject) => {
+        const pricing = artifact.pricingAndFunding as JsonObject;
+        pricing.fundingSource = 'DIFFERENT_APPROVED_SOURCE';
+      },
+    ],
+    [
+      'recovery owner drift',
+      (artifact: JsonObject) => {
+        artifact.recoveryOwner = 'different-owner@example.invalid';
+      },
+    ],
+    [
+      'cleanup owner drift',
+      (artifact: JsonObject) => {
+        const cleanup = artifact.cleanupBoundary as JsonObject;
+        cleanup.cleanupOwner = 'different-owner@example.invalid';
+      },
+    ],
+  ])('rejects %s in sealed provisioning evidence', (_label, mutate) => {
+    const directory = makeSyntheticEvidenceBundle(false);
+    rewriteEvidenceArtifactAndReseal(
+      directory,
+      'provisioning-result.json',
+      mutate
     );
     const rejected = runEvidenceVerifier(directory);
     expect(rejected.status).toBe(1);

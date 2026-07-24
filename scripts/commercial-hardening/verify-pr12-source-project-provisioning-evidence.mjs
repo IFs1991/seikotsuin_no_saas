@@ -15,9 +15,12 @@ import { fileURLToPath } from 'node:url';
 import {
   ACTION_ID,
   FIXED_PROJECT_NAME,
-  FUNDING_CEILING_USD,
+  MONEY_SCALE,
+  OWNER_AUTHORIZATION_CEILING_USD_SCALED,
   PROVIDER_CREATED_AT_MAXIMUM_CLOCK_SKEW_SECONDS,
-  SOURCE_MAXIMUM_COMPUTE_USD,
+  SOLE_OPERATOR_CONTROL_MODE,
+  SOURCE_MAXIMUM_COMPUTE_USD_SCALED,
+  UNALLOCATED_AUTHORIZATION_HEADROOM_USD_SCALED,
   assertSecretFreeEvidence,
   canonicalJson,
   sha256Text,
@@ -654,11 +657,17 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
       'payloadSha256',
       'operator',
       'approver',
+      'operatorDisplayName',
+      'operatorControlMode',
+      'identitySeparationAvailable',
+      'independentHumanReviewClaimed',
       'actionStartedAt',
       'actionCompletedAt',
       'remoteContactCount',
       'createPostAttemptCount',
       'automaticRetryCount',
+      'credentialBrokerInvocationCount',
+      'credentialBrokerMode',
       'duplicateState',
       'partialFailureState',
       'readOnlyReconciliation',
@@ -668,7 +677,7 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
       'phase2AndLaterAuthorized',
       'createdEnvironment',
       'providerEvidence',
-      'quoteAndFunding',
+      'pricingAndFunding',
       'approvalWindow',
       'cleanupBoundary',
       'journalEvidence',
@@ -676,7 +685,7 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
     'PROVISIONING_RESULT_INVALID'
   );
   requireCondition(
-    result.schemaVersion === 2 &&
+    result.schemaVersion === 3 &&
       result.phase === 'SOURCE_PROJECT_PROVISIONING_RESULT' &&
       result.resultType === 'SOURCE_PROJECT_PROVISIONING_OPERATION' &&
       result.status === manifest.status &&
@@ -685,6 +694,10 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
       result.bindingMaterialSha256 === manifest.bindingMaterialSha256 &&
       result.payloadSha256 === manifest.payloadSha256 &&
       result.automaticRetryCount === 0 &&
+      result.operatorDisplayName === 'FUTOSHI IWASAWA' &&
+      result.operatorControlMode === SOLE_OPERATOR_CONTROL_MODE &&
+      result.identitySeparationAvailable === false &&
+      result.independentHumanReviewClaimed === false &&
       result.cleanupDeletionAuthorized === false &&
       result.databaseConnectionPerformed === false &&
       result.phase2AndLaterAuthorized === false,
@@ -694,7 +707,8 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
   requireCanonicalOwnerId(result.approver, 'PROVISIONING_RESULT_INVALID');
   requireCanonicalOwnerId(result.recoveryOwner, 'PROVISIONING_RESULT_INVALID');
   requireCondition(
-    result.operator !== result.approver,
+    result.operator === result.approver &&
+      result.recoveryOwner === result.operator,
     'PROVISIONING_RESULT_INVALID'
   );
   const startedAt = Date.parse(
@@ -712,6 +726,14 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
     [0, 1].includes(result.createPostAttemptCount),
     'PROVISIONING_RESULT_INVALID'
   );
+  requireCondition(
+    [0, 1].includes(result.credentialBrokerInvocationCount) &&
+      (result.credentialBrokerInvocationCount === 0
+        ? result.credentialBrokerMode === null
+        : result.credentialBrokerMode === 'EXECUTE' ||
+          result.credentialBrokerMode === 'RECOVERY'),
+    'PROVISIONING_RESULT_INVALID'
+  );
 
   const providerEvidence = requireExactKeys(
     result.providerEvidence,
@@ -725,7 +747,12 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
   );
   const approval = requireExactKeys(
     result.approvalWindow,
-    ['approvedAt', 'expiresAt', 'approvalEvidenceSha256'],
+    [
+      'approvedAt',
+      'operatorReconfirmedAt',
+      'expiresAt',
+      'approvalEvidenceSha256',
+    ],
     'PROVISIONING_RESULT_INVALID'
   );
   const approvedAt = Date.parse(
@@ -734,62 +761,77 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
   const expiresAt = Date.parse(
     requireTimestamp(approval.expiresAt, 'PROVISIONING_RESULT_INVALID')
   );
+  const operatorReconfirmedAt = Date.parse(
+    requireTimestamp(
+      approval.operatorReconfirmedAt,
+      'PROVISIONING_RESULT_INVALID'
+    )
+  );
   requireSha256(approval.approvalEvidenceSha256, 'PROVISIONING_RESULT_INVALID');
   requireCondition(
-    approvedAt <= startedAt && startedAt < expiresAt,
+    approvedAt < operatorReconfirmedAt &&
+      operatorReconfirmedAt - approvedAt >= 300_000 &&
+      expiresAt - approvedAt <= 1_800_000 &&
+      operatorReconfirmedAt <= startedAt &&
+      startedAt < expiresAt,
     'PROVISIONING_RESULT_INVALID'
   );
-  const quote = requireExactKeys(
-    result.quoteAndFunding,
+  const pricing = requireExactKeys(
+    result.pricingAndFunding,
     [
       'currency',
-      'actualDashboardQuoteUsd',
-      'quoteObservedAt',
-      'quoteValidThrough',
+      'moneyScale',
+      'pricingEvidenceFreshThrough',
       'sourceMaximumBillableHours',
-      'sourceMaximumComputeUsd',
-      'fundingApprovedAmountUsd',
-      'fundingCeilingUsd',
+      'sourceMaximumComputeUsdScaled',
+      'unallocatedAuthorizationHeadroomUsdScaled',
+      'ownerAuthorizationCeilingUsdScaled',
+      'providerSpendCapEnforced',
+      'fundingSource',
+      'fundingApprovedAmountUsdScaled',
       'fundedThrough',
     ],
     'PROVISIONING_RESULT_INVALID'
   );
-  const actualQuote = requireNonNegativeNumber(
-    quote.actualDashboardQuoteUsd,
-    'PROVISIONING_RESULT_INVALID'
-  );
-  const approvedFunding = requireNonNegativeNumber(
-    quote.fundingApprovedAmountUsd,
-    'PROVISIONING_RESULT_INVALID'
-  );
-  const fundingCeiling = requireNonNegativeNumber(
-    quote.fundingCeilingUsd,
-    'PROVISIONING_RESULT_INVALID'
-  );
   requireCondition(
-    quote.currency === 'USD' &&
-      quote.sourceMaximumBillableHours === 72 &&
-      requireNonNegativeNumber(
-        quote.sourceMaximumComputeUsd,
+    pricing.currency === 'USD' &&
+      pricing.moneyScale === MONEY_SCALE &&
+      pricing.sourceMaximumBillableHours === 72 &&
+      requireNonNegativeInteger(
+        pricing.sourceMaximumComputeUsdScaled,
         'PROVISIONING_RESULT_INVALID'
-      ) === SOURCE_MAXIMUM_COMPUTE_USD &&
-      fundingCeiling === FUNDING_CEILING_USD &&
-      approvedFunding >= actualQuote &&
-      approvedFunding <= fundingCeiling,
+      ) === SOURCE_MAXIMUM_COMPUTE_USD_SCALED &&
+      requireNonNegativeInteger(
+        pricing.unallocatedAuthorizationHeadroomUsdScaled,
+        'PROVISIONING_RESULT_INVALID'
+      ) === UNALLOCATED_AUTHORIZATION_HEADROOM_USD_SCALED &&
+      requireNonNegativeInteger(
+        pricing.ownerAuthorizationCeilingUsdScaled,
+        'PROVISIONING_RESULT_INVALID'
+      ) === OWNER_AUTHORIZATION_CEILING_USD_SCALED &&
+      pricing.providerSpendCapEnforced === false &&
+      /^[A-Z][A-Z0-9_:-]{7,127}$/.test(
+        requireString(pricing.fundingSource, 'PROVISIONING_RESULT_INVALID')
+      ) &&
+      pricing.fundingSource === manifest.fundingSource &&
+      requireNonNegativeInteger(
+        pricing.fundingApprovedAmountUsdScaled,
+        'PROVISIONING_RESULT_INVALID'
+      ) === OWNER_AUTHORIZATION_CEILING_USD_SCALED,
     'PROVISIONING_RESULT_INVALID'
   );
-  const quoteObservedAt = Date.parse(
-    requireTimestamp(quote.quoteObservedAt, 'PROVISIONING_RESULT_INVALID')
-  );
-  const quoteValidThrough = Date.parse(
-    requireTimestamp(quote.quoteValidThrough, 'PROVISIONING_RESULT_INVALID')
+  const pricingFreshThrough = Date.parse(
+    requireTimestamp(
+      pricing.pricingEvidenceFreshThrough,
+      'PROVISIONING_RESULT_INVALID'
+    )
   );
   const fundedThrough = Date.parse(
-    requireTimestamp(quote.fundedThrough, 'PROVISIONING_RESULT_INVALID')
+    requireTimestamp(pricing.fundedThrough, 'PROVISIONING_RESULT_INVALID')
   );
   requireCondition(
-    quoteObservedAt <= approvedAt &&
-      quoteValidThrough >= startedAt &&
+    pricingFreshThrough >= expiresAt &&
+      pricingFreshThrough >= startedAt &&
       fundedThrough >= expiresAt + 72 * 60 * 60 * 1000,
     'PROVISIONING_RESULT_INVALID'
   );
@@ -820,6 +862,15 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
   ]) {
     requireCanonicalOwnerId(cleanup[key], 'PROVISIONING_RESULT_INVALID');
   }
+  requireCondition(
+    [
+      cleanup.cleanupOwner,
+      cleanup.deletionApprovalRequester,
+      cleanup.billingEscalationOwner,
+      cleanup.fundedExtensionOwner,
+    ].every(owner => owner === result.operator),
+    'PROVISIONING_RESULT_INVALID'
+  );
   const cleanupDeadline = Date.parse(
     requireTimestamp(
       cleanup.deletionApprovalRequestDeadline,
@@ -859,6 +910,8 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
   if (result.status === 'PASS') {
     requireCondition(
       result.createPostAttemptCount === 1 &&
+        result.credentialBrokerInvocationCount === 1 &&
+        result.credentialBrokerMode === 'EXECUTE' &&
         result.duplicateState === 'ABSENT_ALL_PAGES' &&
         result.partialFailureState === null &&
         result.readOnlyReconciliation === null,
@@ -1164,7 +1217,7 @@ function validateProviderExport(providerInput, manifest, result) {
     const expectedProjectDeadline = new Date(
       Math.min(
         Date.parse(created.createdAt) + 72 * 60 * 60 * 1000,
-        Date.parse(result.quoteAndFunding.fundedThrough)
+        Date.parse(result.pricingAndFunding.fundedThrough)
       )
     ).toISOString();
     requireCondition(
@@ -1478,6 +1531,7 @@ export function verifyProvisioningEvidenceDirectory(
       'gitCommit',
       'bindingMaterialSha256',
       'payloadSha256',
+      'fundingSource',
       'artifacts',
       'artifactCount',
       'rawProviderBodiesPersisted',
@@ -1498,6 +1552,9 @@ export function verifyProvisioningEvidenceDirectory(
       SHA256_PATTERN.test(manifest.bindingMaterialSha256) &&
       typeof manifest.payloadSha256 === 'string' &&
       SHA256_PATTERN.test(manifest.payloadSha256) &&
+      /^[A-Z][A-Z0-9_:-]{7,127}$/.test(
+        requireString(manifest.fundingSource, 'MANIFEST_INVALID')
+      ) &&
       manifest.rawProviderBodiesPersisted === false &&
       manifest.rawHttpHeadersPersisted === false &&
       requireTimestamp(manifest.sealedAt, 'MANIFEST_INVALID').length > 0,

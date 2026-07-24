@@ -101,12 +101,14 @@ const REQUIRED_ARTIFACTS = [
   'docs/stabilization/evidence/commercial-hardening/pr12/qualification-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-binding.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v2.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-dashboard-quote.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v3.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-official-pricing-evidence-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-dpapi-bootstrap-approval-v1.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-windows-dpapi-envelope-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-action-journal.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v3.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v2.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-privacy-scan.template.json',
@@ -142,6 +144,9 @@ const REQUIRED_ARTIFACTS = [
   'docs/stabilization/evidence/commercial-hardening/pr12/comm-gate-evidence-map-v1.json',
   'scripts/commercial-hardening/scan-pr12-evidence.mjs',
   'scripts/commercial-hardening/pr12-source-project-provisioning-contract.mjs',
+  'scripts/commercial-hardening/pr12-windows-dpapi-credential-channel.mjs',
+  'scripts/commercial-hardening/pr12-windows-dpapi-credential-broker.ps1',
+  'scripts/commercial-hardening/initialize-pr12-windows-dpapi-credentials.ps1',
   'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs',
   'scripts/commercial-hardening/verify-pr12-source-project-provisioning-evidence.mjs',
   'scripts/commercial-hardening/verify-pr12-evidence-manifest.mjs',
@@ -1682,22 +1687,25 @@ function verifyProposalContracts() {
   }
 
   const provisioning = readJson(
-    `${prefix}source-project-provisioning-binding-v2.template.json`
+    `${prefix}source-project-provisioning-binding-v3.template.json`
   );
   const provisioningCredential = readJson(
-    `${prefix}source-project-provisioning-credential-configuration.template.json`
+    `${prefix}source-project-provisioning-credential-configuration-v2.template.json`
   );
   const provisioningOwnerApproval = readJson(
-    `${prefix}source-project-provisioning-owner-approval.template.json`
+    `${prefix}source-project-provisioning-owner-approval-v2.template.json`
   );
-  const provisioningQuote = readJson(
-    `${prefix}source-project-dashboard-quote.template.json`
+  const provisioningPricing = readJson(
+    `${prefix}source-project-official-pricing-evidence-v2.template.json`
+  );
+  const provisioningBootstrapApproval = readJson(
+    `${prefix}source-project-dpapi-bootstrap-approval-v1.template.json`
   );
   const provisioningJournal = readJson(
     `${prefix}source-project-provisioning-action-journal.template.json`
   );
   const provisioningResult = readJson(
-    `${prefix}source-project-provisioning-result-v2.template.json`
+    `${prefix}source-project-provisioning-result-v3.template.json`
   );
   const provisioningProviderExport = readJson(
     `${prefix}source-project-provider-safe-projection-v2.template.json`
@@ -1847,7 +1855,23 @@ function verifyProposalContracts() {
       normalizedApproval.includes(
         '    evidence_seal_order: PARTIAL_FLUSH_VERIFY_ATOMIC_RENAME_THEN_TERMINAL'
       ) &&
-      normalizedApproval.includes('    automatic_reseal_allowed: false'),
+      normalizedApproval.includes('    automatic_reseal_allowed: false') &&
+      normalizedApproval.includes(
+        '    template: source-project-provisioning-binding-v3.template.json'
+      ) &&
+      normalizedApproval.includes('    phase_local_contract_version: 3') &&
+      normalizedApproval.includes(
+        '    result_template: source-project-provisioning-result-v3.template.json'
+      ) &&
+      normalizedApproval.includes(
+        '    credential_configuration_template: source-project-provisioning-credential-configuration-v2.template.json'
+      ) &&
+      normalizedApproval.includes(
+        '    owner_approval_template: source-project-provisioning-owner-approval-v2.template.json'
+      ) &&
+      normalizedApproval.includes(
+        '    official_pricing_evidence_template: source-project-official-pricing-evidence-v2.template.json'
+      ),
     'source project provisioning action is not cross-bound across packet, ledger, and binding'
   );
   assert(
@@ -1855,7 +1879,7 @@ function verifyProposalContracts() {
       sourceAuthorization.isolatedStagingConnectionAuthorized === false &&
       sourceAuthorization.isolatedStagingExecutionAuthorized === false &&
       provisioning.status === 'NOT_RUN' &&
-      provisioning.schemaVersion === 2 &&
+      provisioning.schemaVersion === 3 &&
       provisionEnvironment.organizationId === 'NOT_CAPTURED' &&
       provisionEnvironment.organizationSlug === 'NOT_CAPTURED' &&
       JSON.stringify(provisionEnvironment.prohibitedOrganizationIds) ===
@@ -1877,6 +1901,10 @@ function verifyProposalContracts() {
         true &&
       provisioning.duplicateAndFailurePolicy
         .postIntentPermanentlyConsumesActionIdentity === true &&
+      provisioning.duplicateAndFailurePolicy
+        .credentialBrokerFailureConsumesActionIdentity === true &&
+      provisioning.duplicateAndFailurePolicy
+        .credentialBrokerAutomaticRetryAllowed === false &&
       provisioning.duplicateAndFailurePolicy.unknownRemoteOutcomeAction ===
         'NO_RETRY_READ_ONLY_RECONCILIATION_AND_OWNER_DECISION' &&
       provisioning.duplicateAndFailurePolicy.reconciliationOnlyMode ===
@@ -1887,30 +1915,100 @@ function verifyProposalContracts() {
       provisioning.evidenceContract
         .evidenceSealBeforeTerminalOutcomeRequired === true &&
       provisioning.evidenceContract.partialEvidenceAutomaticDeletionAllowed ===
-        false,
+        false &&
+      provisioning.operatorControl.mode ===
+        'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1' &&
+      provisioning.operatorControl.principalDisplayName === 'FUTOSHI IWASAWA' &&
+      provisioning.operatorControl.principalId === 'NOT_CAPTURED' &&
+      provisioning.operatorControl.identitySeparationAvailable === false &&
+      provisioning.operatorControl.independentHumanReviewClaimed === false &&
+      provisioning.operatorControl.localPreparationExceptionAuthorized ===
+        true &&
+      provisioning.approval.soleOperatorRiskAccepted === false &&
+      provisioning.approval.providerSpendCapLimitationAcknowledged === false &&
+      provisioning.cost.moneyScale === 10000 &&
+      provisioning.cost.computeRateUsdScaledPerProjectHour === 1517 &&
+      provisioning.cost.sourceMaximumComputeUsdScaled === 109224 &&
+      provisioning.cost.unallocatedAuthorizationHeadroomUsdScaled === 390776 &&
+      provisioning.cost.ownerAuthorizationCeilingUsdScaled === 500000 &&
+      provisioning.cost.providerSpendCapEnforced === false &&
+      ledgerSourceProjectAction.operatorControlMode ===
+        provisioning.operatorControl.mode &&
+      ledgerSourceProjectAction.operatorDisplayName ===
+        provisioning.operatorControl.principalDisplayName &&
+      ledgerSourceProjectAction.operatorCanonicalPrincipalId ===
+        'NOT_CAPTURED' &&
+      ledgerSourceProjectAction.ownerAuthorizationCeilingUsdScaled === 500000 &&
+      ledgerSourceProjectAction.moneyScale === 10000 &&
+      ledgerSourceProjectAction.authorizedDurationHours === 72 &&
+      ledgerSourceProjectAction.maximumComputeUsdScaled === 109224 &&
+      ledgerSourceProjectAction.unallocatedAuthorizationHeadroomUsdScaled ===
+        390776 &&
+      ledgerSourceProjectAction.providerSpendCapEnforced === false &&
+      ledgerSourceProjectAction.credentialProvider ===
+        'WINDOWS_DPAPI_CURRENT_USER_V1' &&
+      ledgerSourceProjectAction.realCredentialBootstrapAuthorized === false &&
+      normalizedApproval.includes(
+        '  phase1_source_project_owner_authorization_ceiling_usd: 50'
+      ) &&
+      normalizedApproval.includes(
+        '  phase1_source_project_ceiling_duration_hours: 72'
+      ) &&
+      normalizedApproval.includes(
+        '  phase1_source_project_provider_spend_cap_enforced: false'
+      ) &&
+      normalizedApproval.includes(
+        '  sole_operator_self_approval_exception_design_authorized: true'
+      ) &&
+      normalizedApproval.includes(
+        '  official_list_price_substitution_design_authorized: true'
+      ) &&
+      normalizedApproval.includes(
+        '  windows_dpapi_credential_channel_local_preparation_authorized: true'
+      ) &&
+      normalizedApproval.includes('  pr12_action_003_authorized: false') &&
+      normalizedApproval.includes(
+        '  source_project_creation_authorized: false'
+      ) &&
+      normalizedApproval.includes(
+        '  authenticated_supabase_contact_authorized: false'
+      ),
     'source provisioning phase boundary drift'
   );
   assert(
     provisioningCredential.resultType ===
       'SOURCE_PROJECT_PROVISIONING_CREDENTIAL_CONFIGURATION' &&
       provisioningCredential.status === 'NOT_CAPTURED' &&
+      provisioningCredential.schemaVersion === 2 &&
+      provisioningCredential.provider.providerId ===
+        'WINDOWS_DPAPI_CURRENT_USER_V1' &&
+      provisioningCredential.provider.retrievalChannel ===
+        'CLAIM_BOUND_CAPTURED_STDOUT_BINARY_V1' &&
       provisioningCredential.provider.ownerApproved === false &&
-      provisioningCredential.secrets.managementAccessToken
-        .environmentVariable === 'PR12_SUPABASE_ACCESS_TOKEN' &&
-      provisioningCredential.secrets.databasePassword.environmentVariable ===
-        'PR12_SOURCE_DB_PASSWORD' &&
-      provisioningCredential.secrets.databasePassword.minimumLength === 32 &&
+      provisioningCredential.secrets.managementAccessToken.opaqueHandle ===
+        'windows-dpapi-cu://pr12-source-project/management-access-token/v1' &&
+      provisioningCredential.secrets.databasePassword.opaqueHandle ===
+        'windows-dpapi-cu://pr12-source-project/database-password/v1' &&
+      provisioningCredential.secrets.databasePassword.minimumBytes === 32 &&
       provisioningCredential.processBoundary.genericOrAmbientFallbackAllowed ===
         false &&
       provisioningCredential.processBoundary.dotenvLoadingAllowed === false &&
       provisioningCredential.processBoundary.cliLoginSessionFallbackAllowed ===
         false &&
+      provisioningCredential.processBoundary.inheritedEnvironmentAllowed ===
+        false &&
       provisioningCredential.processBoundary.rawValueInArgvAllowed === false &&
       provisioningCredential.processBoundary.rawValueInUrlAllowed === false &&
-      provisioningCredential.processBoundary.rawValueInStdoutOrStderrAllowed ===
+      provisioningCredential.processBoundary.rawValueInEnvironmentAllowed ===
         false &&
+      provisioningCredential.processBoundary
+        .rawValueRelayToParentStdoutOrStderrAllowed === false &&
       provisioningCredential.processBoundary.rawValueInLogOrEvidenceAllowed ===
-        false,
+        false &&
+      provisioningCredential.bootstrap.realCredentialBootstrapCompleted ===
+        false &&
+      provisioningCredential.bootstrap
+        .realCredentialBootstrapAuthorizedByThisPreparation === false,
     'Phase 1 provisioning credential contract drift'
   );
   assert(
@@ -1918,12 +2016,29 @@ function verifyProposalContracts() {
       'PR12_SOURCE_PROJECT_PROVISIONING_OWNER_APPROVAL' &&
       provisioningOwnerApproval.decision === 'NOT_CAPTURED' &&
       provisioningOwnerApproval.actionId === 'PR12-ACTION-003' &&
+      provisioningOwnerApproval.operatorControlMode ===
+        'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1' &&
+      provisioningOwnerApproval.soleOperatorRiskAccepted === false &&
       provisioningOwnerApproval.phase2AndLaterAuthorized === false &&
       provisioningOwnerApproval.cleanupDeletionAuthorized === false &&
-      provisioningQuote.recordType === 'PR12_SOURCE_PROJECT_DASHBOARD_QUOTE' &&
-      provisioningQuote.status === 'NOT_CAPTURED' &&
-      provisioningQuote.rawDashboardArtifactPersistedInRepository === false,
-    'Phase 1 owner approval or quote contract drift'
+      provisioningPricing.recordType ===
+        'PR12_SOURCE_PROJECT_OFFICIAL_PRICING_EVIDENCE' &&
+      provisioningPricing.status === 'NOT_CAPTURED' &&
+      provisioningPricing.pricing.hourlyRateUsdScaled === 1517 &&
+      provisioningPricing.pricing.maximumBillableHours === 72 &&
+      provisioningPricing.pricing.maximumComputeUsdScaled === 109224 &&
+      provisioningPricing.authorizationBoundary
+        .ownerAuthorizationCeilingUsdScaled === 500000 &&
+      provisioningPricing.authorizationBoundary.providerSpendCapEnforced ===
+        false &&
+      provisioningPricing.rawOfficialSourceArtifactsPersistedInRepository ===
+        false &&
+      provisioningBootstrapApproval.realSecretInteractiveReadAuthorized ===
+        false &&
+      provisioningBootstrapApproval.envelopeCreationAuthorized === false &&
+      provisioningBootstrapApproval.sourceProjectProvisioningAuthorized ===
+        false,
+    'Phase 1 owner approval, pricing, or DPAPI bootstrap contract drift'
   );
   assert(
     provisioningJournal.actionId === 'PR12-ACTION-003' &&
@@ -1940,10 +2055,17 @@ function verifyProposalContracts() {
       provisioningJournal.automaticResealAllowed === false &&
       provisioningJournal.automaticCleanupAuthorized === false &&
       provisioningJournal.destructiveRecoveryAuthorized === false &&
-      provisioningResult.schemaVersion === 2 &&
+      provisioningResult.schemaVersion === 3 &&
       provisioningResult.status === 'NOT_RUN' &&
       provisioningResult.createPostAttemptCount === 0 &&
       provisioningResult.automaticRetryCount === 0 &&
+      provisioningResult.credentialBrokerInvocationCount === 0 &&
+      provisioningResult.operatorControlMode ===
+        'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1' &&
+      provisioningResult.identitySeparationAvailable === false &&
+      provisioningResult.pricingAndFunding
+        .ownerAuthorizationCeilingUsdScaled === 500000 &&
+      provisioningResult.pricingAndFunding.providerSpendCapEnforced === false &&
       provisioningResult.readOnlyReconciliation === null &&
       provisioningResult.databaseConnectionPerformed === false &&
       provisioningResult.phase2AndLaterAuthorized === false,
@@ -2025,7 +2147,7 @@ function verifyProposalContracts() {
       provisioningWrapper.includes('renameSync(directory, finalDirectory)') &&
       provisioningWrapper.includes('function readFileSnapshot(') &&
       provisioningWrapper.includes('assertRemoteContactWithinApproval(') &&
-      provisioningWrapper.includes('assertMutationQuoteCurrent(') &&
+      provisioningWrapper.includes('assertMutationPricingCurrent(') &&
       provisioningWrapper.includes('completeTerminalFromExistingEvidence') &&
       provisioningWrapper.includes('retainEvidenceAfterSealFailure(') &&
       provisioningWrapper.includes(

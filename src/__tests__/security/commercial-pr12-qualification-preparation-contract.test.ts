@@ -22,12 +22,14 @@ const requiredArtifacts = [
   'docs/stabilization/evidence/commercial-hardening/pr12/qualification-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-binding.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v2.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-dashboard-quote.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v3.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-official-pricing-evidence-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-dpapi-bootstrap-approval-v1.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-windows-dpapi-envelope-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-action-journal.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v3.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v2.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-privacy-scan.template.json',
@@ -63,6 +65,9 @@ const requiredArtifacts = [
   'docs/stabilization/evidence/commercial-hardening/pr12/comm-gate-evidence-map-v1.json',
   'scripts/commercial-hardening/verify-pr12-preparation.mjs',
   'scripts/commercial-hardening/pr12-source-project-provisioning-contract.mjs',
+  'scripts/commercial-hardening/pr12-windows-dpapi-credential-channel.mjs',
+  'scripts/commercial-hardening/pr12-windows-dpapi-credential-broker.ps1',
+  'scripts/commercial-hardening/initialize-pr12-windows-dpapi-credentials.ps1',
   'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs',
   'scripts/commercial-hardening/verify-pr12-source-project-provisioning-evidence.mjs',
   'scripts/commercial-hardening/verify-pr12-evidence-manifest.mjs',
@@ -509,6 +514,59 @@ describe('commercial PR-12 qualification preparation contract', () => {
     ]) {
       expect(combined).toContain(boundary);
     }
+  });
+
+  it('keeps Phase 1 posture expectation-only and does not reuse its USD 50 ceiling later', () => {
+    const ownerPacket = readRepositoryFile(
+      'docs/stabilization/pr12-staging-execution-owner-approval-packet-v0.2-20260719.md'
+    );
+    expect(ownerPacket).toContain('are Phase 2 expected-posture values only');
+    expect(ownerPacket).toContain(
+      'The Phase 1 create-project action cannot set or prove these values.'
+    );
+    expect(ownerPacket).not.toContain(
+      'The proposed creation-time settings are'
+    );
+
+    const evidencePrefix =
+      'docs/stabilization/evidence/commercial-hardening/pr12/';
+    const laterBinding = readJsonRecord(
+      `${evidencePrefix}staging-execution-binding.template.json`
+    );
+    const laterLifecycle = requireRecord(
+      laterBinding.lifecycle,
+      'staging execution lifecycle'
+    );
+    const laterCost = requireRecord(
+      laterBinding.cost,
+      'staging execution cost'
+    );
+    const restoreBinding = readJsonRecord(
+      `${evidencePrefix}restore-project-creation-binding.template.json`
+    );
+    const restoreLifecycle = requireRecord(
+      restoreBinding.lifecycle,
+      'restore creation lifecycle'
+    );
+    const restoreCost = requireRecord(
+      restoreBinding.cost,
+      'restore creation cost'
+    );
+    expect(laterLifecycle.fundingCeilingUsd).toBe('NOT_CAPTURED');
+    expect(laterCost.proposedBudgetCeilingUsd).toBe('NOT_CAPTURED');
+    expect(restoreLifecycle.fundingCeilingUsd).toBe('NOT_CAPTURED');
+    expect(restoreCost.proposedBudgetCeilingUsd).toBe('NOT_CAPTURED');
+
+    const verifier = readRepositoryFile(
+      'scripts/commercial-hardening/verify-pr12-evidence-manifest.mjs'
+    );
+    expect(verifier).not.toContain('lifecycle.fundingCeilingUsd === 50');
+    expect(verifier).not.toContain(
+      'creationLifecycle.fundingCeilingUsd === 50'
+    );
+    expect(verifier).not.toContain(
+      'creationCost.proposedBudgetCeilingUsd === 50'
+    );
   });
 
   it('pins a concrete owner proposal without relabeling it executable', () => {
@@ -1028,7 +1086,7 @@ describe('commercial PR-12 qualification preparation contract', () => {
     });
 
     const provisioning = readJsonRecord(
-      `${evidencePrefix}source-project-provisioning-binding-v2.template.json`
+      `${evidencePrefix}source-project-provisioning-binding-v3.template.json`
     );
     const sourceReplay = readJsonRecord(
       `${evidencePrefix}source-replay-catalog-capture-binding.template.json`
@@ -1076,6 +1134,18 @@ describe('commercial PR-12 qualification preparation contract', () => {
       wrapperExecuted: false,
       authorizedNow: false,
       requiresSeparateProvisioningBinding: true,
+      operatorControlMode: 'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1',
+      operatorDisplayName: 'FUTOSHI IWASAWA',
+      operatorCanonicalPrincipalId: 'NOT_CAPTURED',
+      ownerAuthorizationCeilingUsdScaled: 500000,
+      moneyScale: 10000,
+      authorizedDurationHours: 72,
+      maximumComputeUsdScaled: 109224,
+      unallocatedAuthorizationHeadroomUsdScaled: 390776,
+      providerSpendCapEnforced: false,
+      pricingBasis: 'FRESH_HASH_BOUND_OFFICIAL_LIST_PRICE_EVIDENCE',
+      credentialProvider: 'WINDOWS_DPAPI_CURRENT_USER_V1',
+      realCredentialBootstrapAuthorized: false,
     });
     expect(provisioningAction).toMatchObject({
       actionId: ledgerSourceProjectAction.actionId,
@@ -1101,6 +1171,22 @@ describe('commercial PR-12 qualification preparation contract', () => {
     expect(approvalPacket).toContain(
       `    endpoint: ${String(provisioningAction.endpoint)}`
     );
+    expect(approvalPacket).toContain(
+      '    template: source-project-provisioning-binding-v3.template.json'
+    );
+    expect(approvalPacket).toContain(
+      '    official_pricing_evidence_template: source-project-official-pricing-evidence-v2.template.json'
+    );
+    expect(approvalPacket).toContain(
+      '  sole_operator_self_approval_exception_design_authorized: true'
+    );
+    expect(approvalPacket).toContain(
+      '  windows_dpapi_credential_channel_local_preparation_authorized: true'
+    );
+    expect(approvalPacket).toContain(
+      '  phase1_72_hour_owner_authorization_ceiling_usd: 50'
+    );
+    expect(approvalPacket).toContain('  pr12_action_003_authorized: false');
     const governanceDigest = fileSha256(
       `${evidencePrefix}staging-execution-approval-packet.yaml`
     );
@@ -1186,7 +1272,23 @@ describe('commercial PR-12 qualification preparation contract', () => {
       sha256: 'NOT_CAPTURED',
     });
     expect(provisioning.status).toBe('NOT_RUN');
-    expect(provisioning.schemaVersion).toBe(2);
+    expect(provisioning.schemaVersion).toBe(3);
+    expect(provisioning.operatorControl).toMatchObject({
+      mode: 'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1',
+      principalDisplayName: 'FUTOSHI IWASAWA',
+      principalId: 'NOT_CAPTURED',
+      identitySeparationAvailable: false,
+      independentHumanReviewClaimed: false,
+      localPreparationExceptionAuthorized: true,
+    });
+    expect(provisioning.cost).toMatchObject({
+      moneyScale: 10000,
+      computeRateUsdScaledPerProjectHour: 1517,
+      sourceMaximumComputeUsdScaled: 109224,
+      unallocatedAuthorizationHeadroomUsdScaled: 390776,
+      ownerAuthorizationCeilingUsdScaled: 500000,
+      providerSpendCapEnforced: false,
+    });
     expect(
       requireRecord(provisioning.authorization, 'provisioning.authorization')
         .sourceProjectProvisioningAuthorized

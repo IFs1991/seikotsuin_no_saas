@@ -17,7 +17,7 @@
   },
   "governanceProposal": {
     "path": "staging-execution-approval-packet.yaml",
-    "sha256": "36a3e1f5e7b5ed300e971f1d86635ed5afb5cb83ae354bf2c8131545d167f4e2"
+    "sha256": "a56c7c13a525330145cee2cc88fd0edb5f9441408d1c4e2a7f36a0a7967f2986"
   },
   "sourceProjectProvisioningApproval": {
     "path": "NOT_CAPTURED",
@@ -103,7 +103,7 @@
     "sourceMaximumHoursFromCreation": 72,
     "restoreMaximumHoursFromCreation": 24,
     "cleanupDisposition": "DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION",
-    "fundingCeilingUsd": 50,
+    "fundingCeilingUsd": "NOT_CAPTURED",
     "cleanupOwner": "UNASSIGNED",
     "automaticDeletionAuthorized": false,
     "deletionRequiresSeparateApproval": true,
@@ -113,7 +113,7 @@
     "computeRateUsdPerProjectHour": 0.1517,
     "computeSubtotalUsd": 14.5632,
     "newProPlanIfRequiredUsd": 25,
-    "proposedBudgetCeilingUsd": 50,
+    "proposedBudgetCeilingUsd": "NOT_CAPTURED",
     "actualDashboardQuoteUsd": "NOT_CAPTURED",
     "ceilingEnforceableWithoutCleanupApproval": false
   },
@@ -165,7 +165,7 @@
     },
     "commandLedger": {
       "path": "staging-command-ledger.proposed.json",
-      "sha256": "f044fdf55d16bcbdc24b83094bbccb5d21c91ec0214641f52f6c0651e795ea7c"
+      "sha256": "e01ef1fe6b00d5e74dd38b639fc6e80d1b0be520ae1ae9826d06601b73672d31"
     },
     "dr": {
       "path": "dr-contract.proposed.json",
