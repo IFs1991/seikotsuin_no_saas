@@ -545,8 +545,9 @@
       "httpMethod": "POST",
       "endpoint": "https://api.supabase.com/v1/projects",
       "name": "seikotsuin-pr12-isolated-qualification-20260719",
+      "organizationName": "IFs1991's Org",
       "organizationId": "NOT_CAPTURED",
-      "organizationSlug": "NOT_CAPTURED",
+      "organizationSlug": "kbnsntifrawhimhfjrug",
       "existingOrganizationPlanRequired": "PRO",
       "organizationPlanChangeIncluded": false,
       "regionSelection": {
@@ -558,7 +559,7 @@
         "db_pass": "RUNTIME_SECRET_NOT_IN_EVIDENCE",
         "desired_instance_size": "large",
         "name": "seikotsuin-pr12-isolated-qualification-20260719",
-        "organization_slug": "NOT_CAPTURED",
+        "organization_slug": "kbnsntifrawhimhfjrug",
         "region_selection": {
           "code": "ap-northeast-1",
           "type": "specific"
@@ -577,13 +578,28 @@
       "durablePrePostState": "POST_INTENT_DURABLE",
       "postIntentPermanentlyConsumesActionIdentity": true,
       "readOnlySupportingRequests": [
-        "GET /v1/organizations/{approved-slug}",
-        "GET /v1/projects/available-regions?organization_slug={approved-slug}&desired_instance_size=large",
-        "GET all pages /v1/organizations/{approved-slug}/projects before and after POST",
+        "GET /v1/organizations/kbnsntifrawhimhfjrug",
+        "GET /v1/projects/available-regions?organization_slug=kbnsntifrawhimhfjrug&desired_instance_size=large",
+        "GET all pages /v1/organizations/kbnsntifrawhimhfjrug/projects before and after POST",
         "GET /v1/projects/{created-ref}/billing/addons"
       ],
-      "wrapper": "fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs --execute-authorized-action PR12-ACTION-003 --binding <approved-binding-v3.json> --credential-config <approved-dpapi-credential-config-v2.json> --approval-evidence <owner-approval-v2.json> --pricing-evidence <official-pricing-evidence-v2.json> --journal-directory <owner-controlled-absolute-directory> --evidence-parent <owner-controlled-absolute-directory>",
-      "reconciliationOnlyWrapper": "fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs --reconcile-dispatched-action PR12-ACTION-003 --binding <approved-binding-v3.json> --credential-config <approved-dpapi-credential-config-v2.json> --approval-evidence <owner-approval-v2.json> --pricing-evidence <official-pricing-evidence-v2.json> --journal-directory <owner-controlled-absolute-directory> --evidence-parent <owner-controlled-absolute-directory>",
+      "sameOrganizationException": {
+        "mode": "PHASE1_SAME_ORGANIZATION_PRODUCTION_PROJECT_DENY_EXCEPTION_V1",
+        "productionOrganizationId": "NOT_CAPTURED",
+        "productionOrganizationSlug": "kbnsntifrawhimhfjrug",
+        "productionProjectName": "seikotsuin-management",
+        "productionProjectRef": "qnanuoqveidwvacvbhqp",
+        "productionProjectOrigin": "https://qnanuoqveidwvacvbhqp.supabase.co",
+        "organizationProjectListProductionRefObservationAllowed": true,
+        "productionMetadataPersistenceAllowed": false,
+        "productionProjectSpecificManagementApiContactAuthorized": false,
+        "productionDataPlaneContactAuthorized": false,
+        "productionDatabaseContactAuthorized": false,
+        "productionCredentialAccessAuthorized": false
+      },
+      "outboundRequestGuard": "EXACT_HTTPS_HOST_METHOD_PATH_QUERY_ALLOWLIST_PRODUCTION_REF_AND_ORIGIN_DENY_BEFORE_FETCH",
+      "wrapper": "fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs --execute-authorized-action PR12-ACTION-003 --binding <approved-binding-v4.json> --credential-config <approved-dpapi-credential-config-v2.json> --approval-evidence <owner-approval-v3.json> --pricing-evidence <official-pricing-evidence-v2.json> --journal-directory <owner-controlled-absolute-directory> --evidence-parent <owner-controlled-absolute-directory>",
+      "reconciliationOnlyWrapper": "fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs --reconcile-dispatched-action PR12-ACTION-003 --binding <approved-binding-v4.json> --credential-config <approved-dpapi-credential-config-v2.json> --approval-evidence <owner-approval-v3.json> --pricing-evidence <official-pricing-evidence-v2.json> --journal-directory <owner-controlled-absolute-directory> --evidence-parent <owner-controlled-absolute-directory>",
       "recoveryModeHasPostPath": false,
       "wrapperImplemented": true,
       "wrapperExecuted": false,
@@ -609,7 +625,7 @@
       "realCredentialBootstrapAuthorized": false,
       "approvalBlockers": [
         "final head and artifact hashes",
-        "target and production organization identities",
+        "shared organization ID and exact production deny identity revalidation",
         "fresh official-pricing source captures and full USD 50 funding",
         "canonical sole-operator principal ID, final risk acceptance, and expiry",
         "cleanup/recovery deadlines and fundedThrough",
@@ -638,7 +654,7 @@
     "psql path and exact version are not captured",
     "post-load row/hash, schema/type, hosted PR11, hosted SLO, security, API, GraphQL, billing, Advisor diff, backup, and post-restore collectors are not implemented",
     "exact security, Data API, GraphQL, billing, and request matrices are not hash-pinned",
-    "Phase 1 Windows DPAPI channel is locally designed but its canonical principal ID, exact configuration/envelopes, real-secret bootstrap authorization, funding source, fundedThrough, final action approval, Upstash decision, and later-phase owners remain unresolved"
+    "Phase 1 shared-Organization target slug and production project ref/origin are fixed and locally guarded, but the shared Organization ID, canonical principal ID, exact DPAPI configuration/envelopes, real-secret bootstrap authorization, funding source, fundedThrough, final action approval, Upstash decision, and later-phase owners remain unresolved"
   ],
-  "notes": "This JSON is owner-reviewable proposal input, not an approved execution ledger. On 2026-07-24 the owner authorized only the Phase 1 sole-operator exception design, fresh official-list-price substitution design, Windows DPAPI channel local preparation, and a USD 50 owner-governance ceiling for 72 hours. PR12-ACTION-003, real credential bootstrap, authenticated Supabase contact, and project creation remain unauthorized; authorizedNow is false and the wrapper was not executed. Phase 2+ candidate commands remain explanatory and NOT_IMPLEMENTED until their own fail-closed adapters and approved bindings exist."
+  "notes": "This JSON is owner-reviewable proposal input, not an approved execution ledger. On 2026-07-24 the owner authorized only the Phase 1 sole-operator exception design, fresh official-list-price substitution design, Windows DPAPI channel local preparation, and a USD 50 owner-governance ceiling for 72 hours. On 2026-07-25 the owner additionally authorized local implementation of the same-Organization exception fixed to kbnsntifrawhimhfjrug and production ref qnanuoqveidwvacvbhqp, with direct production contact forbidden. PR12-ACTION-003, real credential bootstrap, authenticated Supabase contact, and project creation remain unauthorized; authorizedNow is false and the wrapper was not executed. Phase 2+ candidate commands remain explanatory and NOT_IMPLEMENTED until their own fail-closed adapters and approved bindings exist."
 }

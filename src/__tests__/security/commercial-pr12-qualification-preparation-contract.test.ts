@@ -22,15 +22,15 @@ const requiredArtifacts = [
   'docs/stabilization/evidence/commercial-hardening/pr12/qualification-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-binding.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v3.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v4.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration-v2.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v3.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-official-pricing-evidence-v2.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-dpapi-bootstrap-approval-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-windows-dpapi-envelope-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-action-journal.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v3.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v4.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v3.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-privacy-scan.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-identity-bootstrap-binding.template.json',
@@ -1086,7 +1086,7 @@ describe('commercial PR-12 qualification preparation contract', () => {
     });
 
     const provisioning = readJsonRecord(
-      `${evidencePrefix}source-project-provisioning-binding-v3.template.json`
+      `${evidencePrefix}source-project-provisioning-binding-v4.template.json`
     );
     const sourceReplay = readJsonRecord(
       `${evidencePrefix}source-replay-catalog-capture-binding.template.json`
@@ -1120,6 +1120,8 @@ describe('commercial PR-12 qualification preparation contract', () => {
       httpMethod: 'POST',
       endpoint: 'https://api.supabase.com/v1/projects',
       name: provisionEnvironment.projectName,
+      organizationName: "IFs1991's Org",
+      organizationSlug: 'kbnsntifrawhimhfjrug',
       existingOrganizationPlanRequired: 'PRO',
       organizationPlanChangeIncluded: false,
       regionSelection: {
@@ -1146,6 +1148,14 @@ describe('commercial PR-12 qualification preparation contract', () => {
       pricingBasis: 'FRESH_HASH_BOUND_OFFICIAL_LIST_PRICE_EVIDENCE',
       credentialProvider: 'WINDOWS_DPAPI_CURRENT_USER_V1',
       realCredentialBootstrapAuthorized: false,
+      sameOrganizationException: {
+        mode: 'PHASE1_SAME_ORGANIZATION_PRODUCTION_PROJECT_DENY_EXCEPTION_V1',
+        productionProjectRef: 'qnanuoqveidwvacvbhqp',
+        productionProjectSpecificManagementApiContactAuthorized: false,
+        productionDataPlaneContactAuthorized: false,
+        productionDatabaseContactAuthorized: false,
+        productionCredentialAccessAuthorized: false,
+      },
     });
     expect(provisioningAction).toMatchObject({
       actionId: ledgerSourceProjectAction.actionId,
@@ -1172,7 +1182,7 @@ describe('commercial PR-12 qualification preparation contract', () => {
       `    endpoint: ${String(provisioningAction.endpoint)}`
     );
     expect(approvalPacket).toContain(
-      '    template: source-project-provisioning-binding-v3.template.json'
+      '    template: source-project-provisioning-binding-v4.template.json'
     );
     expect(approvalPacket).toContain(
       '    official_pricing_evidence_template: source-project-official-pricing-evidence-v2.template.json'
@@ -1187,6 +1197,12 @@ describe('commercial PR-12 qualification preparation contract', () => {
       '  phase1_72_hour_owner_authorization_ceiling_usd: 50'
     );
     expect(approvalPacket).toContain('  pr12_action_003_authorized: false');
+    expect(approvalPacket).toContain(
+      '  same_organization_exception_local_implementation_authorized: true'
+    );
+    expect(approvalPacket).toContain(
+      '  production_project_direct_contact_authorized: false'
+    );
     const governanceDigest = fileSha256(
       `${evidencePrefix}staging-execution-approval-packet.yaml`
     );
@@ -1272,7 +1288,7 @@ describe('commercial PR-12 qualification preparation contract', () => {
       sha256: 'NOT_CAPTURED',
     });
     expect(provisioning.status).toBe('NOT_RUN');
-    expect(provisioning.schemaVersion).toBe(3);
+    expect(provisioning.schemaVersion).toBe(4);
     expect(provisioning.operatorControl).toMatchObject({
       mode: 'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1',
       principalDisplayName: 'FUTOSHI IWASAWA',
@@ -1298,15 +1314,30 @@ describe('commercial PR-12 qualification preparation contract', () => {
       projection: {
         db_pass: 'RUNTIME_SECRET_NOT_IN_EVIDENCE',
         desired_instance_size: 'large',
-        organization_slug: 'NOT_CAPTURED',
+        organization_slug: 'kbnsntifrawhimhfjrug',
         region_selection: { code: 'ap-northeast-1', type: 'specific' },
       },
     });
     expect(provisionEnvironment).toMatchObject({
       organizationId: 'NOT_CAPTURED',
-      organizationSlug: 'NOT_CAPTURED',
+      organizationSlug: 'kbnsntifrawhimhfjrug',
       prohibitedOrganizationIds: ['NOT_CAPTURED'],
-      prohibitedOrganizationSlugs: ['NOT_CAPTURED'],
+      prohibitedOrganizationSlugs: ['kbnsntifrawhimhfjrug'],
+    });
+    expect(provisioning.sameOrganizationException).toMatchObject({
+      mode: 'PHASE1_SAME_ORGANIZATION_PRODUCTION_PROJECT_DENY_EXCEPTION_V1',
+      targetOrganizationName: "IFs1991's Org",
+      targetOrganizationSlug: 'kbnsntifrawhimhfjrug',
+      productionOrganizationId: 'NOT_CAPTURED',
+      productionOrganizationSlug: 'kbnsntifrawhimhfjrug',
+      productionProjectName: 'seikotsuin-management',
+      productionProjectRef: 'qnanuoqveidwvacvbhqp',
+      productionProjectOrigin: 'https://qnanuoqveidwvacvbhqp.supabase.co',
+      organizationProjectEnumerationAllowed: true,
+      productionProjectSpecificManagementApiContactAuthorized: false,
+      productionProjectDataPlaneContactAuthorized: false,
+      productionDatabaseContactAuthorized: false,
+      productionCredentialAccessAuthorized: false,
     });
     expect(provisioning.initialPlatformPosture).toMatchObject({
       mutationsIncludedInPhase1: false,

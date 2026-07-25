@@ -6,6 +6,8 @@ Date: 2026-07-23 JST
 
 Revision: 2026-07-24 JST — owner-authorized local preparation for the sole-operator exception, official-pricing-evidence substitution, Windows DPAPI credential channel, and a USD 50 / 72-hour owner-governance ceiling. This revision is not approval of `PR12-ACTION-003`.
 
+Revision: 2026-07-25 JST — owner-authorized local preparation for a same-Organization exception fixed to target slug `kbnsntifrawhimhfjrug` and production ref `qnanuoqveidwvacvbhqp`. Only production-ref recognition during mandatory organization-wide duplicate enumeration is permitted; production-project-specific Management API, data-plane, database, and credential contact remains forbidden. This revision is not approval of `PR12-ACTION-003`.
+
 ## 1. Purpose and authority
 
 This specification prepares only the approval boundary for creating the isolated PR12 source project. It does not approve or perform that creation.
@@ -123,8 +125,10 @@ If the post-creation defaults differ from the expected posture, the action stops
 - governance packet, contract, wrapper, Windows DPAPI credential configuration, official pricing evidence, and approval evidence SHA-256 values;
 - canonical secret-free payload projection and SHA-256;
 - canonical UTC owner-attestation timestamps, an unexpired window, and explicit action/head/payload/material bindings;
-- exact target organization allow-binding;
-- production organization ID/slug denylist and production project-ref denylist;
+- exact shared target/production organization allow-binding, including target name `IFs1991's Org`, slug `kbnsntifrawhimhfjrug`, and one still-unresolved organization ID that must be identical on both sides;
+- the fixed production name `seikotsuin-management`, ref `qnanuoqveidwvacvbhqp`, origin `https://qnanuoqveidwvacvbhqp.supabase.co`, and explicit same-Organization exception;
+- a central outbound-request guard that allows only the exact HTTPS Management API host, method, path, and query shapes needed for organization entitlement, Tokyo/Large availability, all-page organization duplicate enumeration, one create POST, and the accepted newly-created ref's compute add-on observation;
+- rejection before remote contact of the production ref in a path/query (including encoded forms), the production origin/host, every unlisted route, extra/duplicate query, wrong method, redirect, port, userinfo, or unbound project-specific ref;
 - current Pro entitlement expectation, the literal `seikotsuin-pr12-isolated-qualification-20260719` name, Tokyo, and Large;
 - the frozen production ref `qnanuoqveidwvacvbhqp` in the denylist;
 - the canonical lowercase stable sole-operator principal ID, the display name `FUTOSHI IWASAWA`, transparent same-person role consolidation, no independent-human-review claim, explicit self-approval risk acceptance, a minimum five-minute approval/reconfirmation cooling-off period, and a maximum 30-minute approval window;
@@ -158,7 +162,7 @@ Supabase's documented create endpoint exposes no idempotency key. This preparati
 2. prove the executing wrapper/contract/credential-channel/evidence-verifier paths and stable file identities belong to the approved clean Git worktree, then create an exclusive action claim keyed by action ID, binding-material hash, and payload hash in the owner-bound stable journal directory;
 3. read back the claim, revalidate all approval/pricing/DPAPI files and identities, then invoke the claim-bound broker exactly once; broker failure consumes the claim and sends no remote request;
 4. retrieve both credentials only through the captured binary broker channel after the claim;
-5. enumerate every project page, require bounded pagination arithmetic and unique refs across pages, and stop if the fixed name already exists;
+5. enumerate every project page, require bounded pagination arithmetic, unique refs, and exactly one recognized production ref across all pages; reduce that production row in memory to `{ projectRef, protectedProductionProject: true }`, persist no production name/region/status/database metadata or raw body, and stop if the fixed source name already exists;
 6. re-read each approval input and official source artifact into one stable file snapshot, re-hash the same bytes that were parsed, and revalidate file identity, head, clean worktree, governance/implementation hashes, approval expiry, pricing freshness, DPAPI resources, ambient-credential absence, and payload immediately before POST;
 7. durably flush and read back `POST_INTENT_DURABLE` before sending;
 8. send at most one POST; and
@@ -168,14 +172,15 @@ The stable journal blocks reuse even when POST was not sent, including a local b
 
 ## 9. Evidence contract
 
-The Phase 1 runtime contract uses the explicitly versioned [binding v3](evidence/commercial-hardening/pr12/source-project-provisioning-binding-v3.template.json), [credential configuration v2](evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration-v2.template.json), [owner approval v2](evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v2.template.json), [official pricing evidence v2](evidence/commercial-hardening/pr12/source-project-official-pricing-evidence-v2.template.json), [result v3](evidence/commercial-hardening/pr12/source-project-provisioning-result-v3.template.json), and [provider safe projection v2](evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v2.template.json). V2 binding/result and unversioned schema-v1 files remain historical/legacy inputs; they are not silently redefined. Promotion from every Phase 1-local schema version 2 or later into the existing full commercial-manifest verifier is `NOT_IMPLEMENTED`; a Phase 1-local PASS never implies a COMM PASS. Raw provider bodies must not be retained or reconstructed to bridge the schemas. A separately reviewed, hash-bound v3 promotion verifier is required before any Phase 1 evidence may support commercial qualification.
+The Phase 1 runtime contract uses the explicitly versioned [binding v4](evidence/commercial-hardening/pr12/source-project-provisioning-binding-v4.template.json), [credential configuration v2](evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration-v2.template.json), [owner approval v3](evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v3.template.json), [official pricing evidence v2](evidence/commercial-hardening/pr12/source-project-official-pricing-evidence-v2.template.json), [result v4](evidence/commercial-hardening/pr12/source-project-provisioning-result-v4.template.json), and [provider safe projection v3](evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v3.template.json). V3 and earlier binding/result/provider/approval files remain historical or superseded inputs; they are not silently redefined and are not accepted by the current runtime contract. Promotion from every Phase 1-local schema version 2 or later into the existing full commercial-manifest verifier is `NOT_IMPLEMENTED`; a Phase 1-local PASS never implies a COMM PASS. Raw provider bodies must not be retained or reconstructed to bridge the schemas. A separately reviewed, hash-bound v4 promotion verifier is required before any Phase 1 evidence may support commercial qualification.
 
 The wrapper creates a new evidence directory and persists only:
 
 - ordered action-state events;
 - secret-free request and provider response projections;
 - response-body SHA-256 digests, never bodies or headers;
-- organization, region, page coverage, duplicate count, project ref, provider `created_at`, status, and nested Large variant observation;
+- organization, region, page coverage, duplicate count, protected-production-ref count, created project ref, provider `created_at`, status, and nested Large variant observation;
+- a zero-count production boundary for direct production-project Management API, data-plane, database, and credential contact;
 - sole operator/approver identity, explicit lack of independent separation, timestamps, broker mode/count, retry count zero, pricing/funding/expiry, project deadline, and cleanup boundary;
 - explicit abort, duplicate, unknown-outcome, reconciled, and partial-failure states;
 - a privacy/secret scan result; and
@@ -187,7 +192,7 @@ Before a file is written, the object is traversed as raw keys/string values and 
 
 ## 10. Side effects, billing, and cleanup
 
-If eventually approved and successful, the exact expected side effect is one new billable Supabase project in the approved non-production organization, with its project ref and compute lifecycle created in Tokyo at Large. Creation may also cause provider-internal billing, compute, storage, backup, and control-plane records normally associated with a project. No application schema, migration history, seed, Auth user, API call, backup/restore drill, or integration side effect is authorized.
+If eventually approved and successful, the exact expected side effect is one new billable Supabase project in the shared Pro organization `kbnsntifrawhimhfjrug`, separate from the protected production project, with its project ref and compute lifecycle created in Tokyo at Large. Creation may also cause provider-internal organization billing, compute, storage, backup, IAM visibility, and control-plane records normally associated with a project. No production-project mutation/contact, application schema, migration history, seed, Auth user, Data API call, backup/restore drill, or integration side effect is authorized.
 
 Current public list-price inputs are:
 
@@ -198,7 +203,7 @@ Current public list-price inputs are:
 - unallocated authorization headroom for known/unknown tax or other incremental charges: `390776` USD×10^-4 (`$39.0776`); and
 - owner-governance authorization ceiling and required approved funding: `500000` USD×10^-4 (`$50.0000`).
 
-Those inputs are not an actual quote, tax estimate, or provider-enforced cap. The `$39.0776` is authorization headroom, not an assertion that unknown charges equal zero. The owner has authorized the ceiling design, but existing target-organization Pro status, known additional charges, funding source, full `$50` funding record, `fundedThrough`, official-source byte captures/hashes, and acknowledgment of unknown-charge/provider-cap residual risk are still `NOT_CAPTURED`. The action remains blocked until all three official source captures are fresh and unchanged, known incremental charges fit within headroom, exactly `$50` is funded through at least approval expiry plus 72 hours, and the owner explicitly acknowledges that delayed deletion or other organization usage can exceed this local governance boundary.
+Those inputs are not an actual quote, tax estimate, or provider-enforced cap. The `$39.0776` is authorization headroom, not an assertion that unknown charges equal zero. The owner reported that the shared organization is Pro, its payment method is active, and Spend Cap is enabled, but those facts have not been authenticated or provider-captured by this local-only work and Spend Cap does not enforce Compute. Known additional charges, funding source, full `$50` funding record, `fundedThrough`, official-source byte captures/hashes, and acknowledgment of unknown-charge/provider-cap and shared-organization blast-radius risk are still `NOT_CAPTURED`. The action remains blocked until all three official source captures are fresh and unchanged, known incremental charges fit within headroom, exactly `$50` is funded through at least approval expiry plus 72 hours, and the owner explicitly acknowledges that delayed deletion or other organization usage can exceed this local governance boundary.
 
 The project deadline is exactly `min(provider created_at + 72h, fundedThrough)`. The deletion-approval request deadline must remain in the future, be no later than 72 hours from every validation immediately preceding execution, and precede `fundedThrough`; sealed PASS evidence also requires it to be no later than the actual project deadline. Paid projects cannot be treated as pausable. Automatic deletion is forbidden. Deletion is permanent and requires separate approval. The cleanup owner, deletion-approval requester/deadline, billing escalation owner, and funded-extension owner must be named before provisioning.
 
@@ -207,13 +212,13 @@ The project deadline is exactly `min(provider created_at + 72h, fundedThrough)`.
 The following must remain unresolved rather than inferred:
 
 - final PR head SHA and the final governance/contract/wrapper/config/evidence hashes;
-- target organization ID and slug;
-- production organization ID and slug denylist;
-- confirmation of the existing Pro entitlement and fixed project name;
+- the shared target/production organization ID; the name `IFs1991's Org` and slug `kbnsntifrawhimhfjrug` are fixed, but the ID remains `NOT_CAPTURED`;
+- final revalidation of the fixed production name/ref/origin and acknowledgment that organization-wide enumeration necessarily observes its ref while persisting no production metadata;
+- provider-authenticated confirmation of the existing Pro entitlement and fixed project name;
 - fresh official-source byte artifacts/hashes, their retrieval timestamps, known incremental charges within the `$39.0776` headroom, and acknowledgment that tax/other charges are not quoted;
 - exact `$50` approved funding record, funding source, and `fundedThrough`;
 - the stable lowercase principal ID and ID type for `FUTOSHI IWASAWA`; Phase 1 commercial approver, provisioning/Supabase operator, cleanup/recovery owner, deletion requester, billing/funded-extension owner, and evidence custodian all consolidate to that principal under the explicit exception;
-- final sole-operator self-approval risk acceptance, no-independent-review acknowledgment, five-minute reconfirmation, and provider-spend-cap limitation acknowledgment;
+- final sole-operator self-approval risk acceptance, no-independent-review acknowledgment, same-Organization IAM/billing/control-plane blast-radius acceptance, organization-list production-ref observation acceptance, production direct-contact prohibition acknowledgment, five-minute reconfirmation, and provider-spend-cap limitation acknowledgment;
 - fine-grained Management token type/permissions; DPAPI configuration ID; current SID/machine; provider-root lexical/resolved fingerprints and device/inode identity; journal/evidence resolved identities; PowerShell/script/envelope hashes; and ACL evidence;
 - a separately approved and completed real-credential bootstrap record; populated encrypted envelopes and both fixed handle fingerprints;
 - stable journal and evidence-parent directory fingerprints;

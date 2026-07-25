@@ -17,9 +17,13 @@ import {
   FIXED_PROJECT_NAME,
   MONEY_SCALE,
   OWNER_AUTHORIZATION_CEILING_USD_SCALED,
+  PRODUCTION_PROJECT_REF,
   PROVIDER_CREATED_AT_MAXIMUM_CLOCK_SKEW_SECONDS,
+  SAME_ORGANIZATION_EXCEPTION_MODE,
   SOLE_OPERATOR_CONTROL_MODE,
   SOURCE_MAXIMUM_COMPUTE_USD_SCALED,
+  TARGET_ORGANIZATION_NAME,
+  TARGET_ORGANIZATION_SLUG,
   UNALLOCATED_AUTHORIZATION_HEADROOM_USD_SCALED,
   assertSecretFreeEvidence,
   canonicalJson,
@@ -160,10 +164,40 @@ function requireNonNegativeInteger(value, code) {
   return value;
 }
 
+function validateProductionBoundary(value, code) {
+  const boundary = requireExactKeys(
+    value,
+    [
+      'exceptionMode',
+      'targetOrganizationSlug',
+      'productionProjectRef',
+      'organizationProjectEnumerationAllowed',
+      'directProductionProjectManagementApiContactCount',
+      'productionProjectDataPlaneContactCount',
+      'productionDatabaseContactCount',
+      'productionCredentialAccessCount',
+    ],
+    code
+  );
+  requireCondition(
+    boundary.exceptionMode === SAME_ORGANIZATION_EXCEPTION_MODE &&
+      boundary.targetOrganizationSlug === TARGET_ORGANIZATION_SLUG &&
+      boundary.productionProjectRef === PRODUCTION_PROJECT_REF &&
+      boundary.organizationProjectEnumerationAllowed === true &&
+      boundary.directProductionProjectManagementApiContactCount === 0 &&
+      boundary.productionProjectDataPlaneContactCount === 0 &&
+      boundary.productionDatabaseContactCount === 0 &&
+      boundary.productionCredentialAccessCount === 0,
+    code
+  );
+  return boundary;
+}
+
 function validateProjectListPages(value, code = 'PROVIDER_PREFLIGHT_INVALID') {
   requireCondition(Array.isArray(value) && value.length > 0, code);
   let expectedOffset = 0;
   let totalCount = null;
+  let protectedProductionProjectCount = 0;
   for (const item of value) {
     const page = requireExactKeys(
       item,
@@ -174,6 +208,7 @@ function validateProjectListPages(value, code = 'PROVIDER_PREFLIGHT_INVALID') {
         'limit',
         'totalCount',
         'returnedCount',
+        'protectedProductionProjectCount',
         'safeProjectionSha256',
       ],
       code
@@ -186,17 +221,21 @@ function validateProjectListPages(value, code = 'PROVIDER_PREFLIGHT_INVALID') {
     requireCondition(Number.isInteger(page.limit) && page.limit > 0, code);
     requireNonNegativeInteger(page.totalCount, code);
     requireNonNegativeInteger(page.returnedCount, code);
+    requireNonNegativeInteger(page.protectedProductionProjectCount, code);
     requireCondition(
       page.returnedCount <= page.limit &&
-        page.offset + page.returnedCount <= page.totalCount,
+        page.offset + page.returnedCount <= page.totalCount &&
+        page.protectedProductionProjectCount <= page.returnedCount,
       code
     );
+    protectedProductionProjectCount += page.protectedProductionProjectCount;
     if (totalCount === null) totalCount = page.totalCount;
     requireCondition(page.totalCount === totalCount, code);
     expectedOffset += page.returnedCount;
   }
   requireCondition(totalCount !== null && expectedOffset >= totalCount, code);
-  return totalCount;
+  requireCondition(protectedProductionProjectCount === 1, code);
+  return { totalCount, protectedProductionProjectCount };
 }
 
 function validateSafeProjectProjection(value, code) {
@@ -207,6 +246,7 @@ function validateSafeProjectProjection(value, code) {
   );
   requireCondition(
     PROJECT_REF_PATTERN.test(project.projectRef) &&
+      project.projectRef !== PRODUCTION_PROJECT_REF &&
       project.projectName === FIXED_PROJECT_NAME &&
       project.region === 'ap-northeast-1' &&
       project.isBranch === false &&
@@ -229,6 +269,7 @@ export function validateReconciliation(value, expectedProjectRef = undefined) {
         'observedAt',
         'reasonCode',
         'projectCount',
+        'protectedProductionProjectCount',
         'matchingProjects',
         'projectListPages',
         'automaticPostRetryPerformed',
@@ -238,6 +279,7 @@ export function validateReconciliation(value, expectedProjectRef = undefined) {
         'state',
         'observedAt',
         'projectCount',
+        'protectedProductionProjectCount',
         'matchingProjects',
         'projectListPages',
         'automaticPostRetryPerformed',
@@ -256,18 +298,21 @@ export function validateReconciliation(value, expectedProjectRef = undefined) {
     requireString(record.reasonCode, 'RECONCILIATION_INVALID');
     requireCondition(record.projectCount === null, 'RECONCILIATION_INVALID');
     requireCondition(
-      record.matchingProjects.length === 0 &&
+      record.protectedProductionProjectCount === 0 &&
+        record.matchingProjects.length === 0 &&
         record.projectListPages.length === 0,
       'RECONCILIATION_INVALID'
     );
   } else {
     requireNonNegativeInteger(record.projectCount, 'RECONCILIATION_INVALID');
+    const pageSummary = validateProjectListPages(
+      record.projectListPages,
+      'RECONCILIATION_INVALID'
+    );
     requireCondition(
-      record.projectCount ===
-        validateProjectListPages(
-          record.projectListPages,
-          'RECONCILIATION_INVALID'
-        ),
+      record.projectCount === pageSummary.totalCount &&
+        record.protectedProductionProjectCount ===
+          pageSummary.protectedProductionProjectCount,
       'RECONCILIATION_INVALID'
     );
     const matchingProjects = record.matchingProjects.map(project =>
@@ -295,6 +340,7 @@ export function validateReconciliation(value, expectedProjectRef = undefined) {
       requireCondition(
         typeof expectedProjectRef === 'string' &&
           PROJECT_REF_PATTERN.test(expectedProjectRef) &&
+          expectedProjectRef !== PRODUCTION_PROJECT_REF &&
           matchingProjects[0].projectRef !== expectedProjectRef,
         'RECONCILIATION_INVALID'
       );
@@ -305,6 +351,7 @@ export function validateReconciliation(value, expectedProjectRef = undefined) {
     ) {
       requireCondition(
         PROJECT_REF_PATTERN.test(expectedProjectRef) &&
+          expectedProjectRef !== PRODUCTION_PROJECT_REF &&
           matchingProjects[0].projectRef === expectedProjectRef,
         'RECONCILIATION_INVALID'
       );
@@ -351,13 +398,13 @@ function validateReadinessObservation({
     const observedAt = Date.parse(
       requireTimestamp(projectedPoll.observedAt, code)
     );
-    const totalCount = validateProjectListPages(projectedPoll.pages, code);
+    const pageSummary = validateProjectListPages(projectedPoll.pages, code);
     requireNonNegativeInteger(projectedPoll.matchCount, code);
     requireCondition(
       observedAt >= actionStartedAt &&
         observedAt >= previousObservedAt &&
         observedAt <= actionCompletedAt &&
-        projectedPoll.matchCount <= totalCount &&
+        projectedPoll.matchCount <= pageSummary.totalCount &&
         projectedPoll.matchCount <= 1,
       code
     );
@@ -475,6 +522,7 @@ function validateActionEvents(eventsArtifact, outcome, result, provider) {
     if (Object.hasOwn(event, 'projectRef')) {
       requireCondition(
         PROJECT_REF_PATTERN.test(event.projectRef) &&
+          event.projectRef !== PRODUCTION_PROJECT_REF &&
           (expectedProjectRef === null ||
             event.projectRef === expectedProjectRef),
         'ACTION_EVENTS_INVALID'
@@ -675,6 +723,7 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
       'cleanupDeletionAuthorized',
       'databaseConnectionPerformed',
       'phase2AndLaterAuthorized',
+      'productionBoundary',
       'createdEnvironment',
       'providerEvidence',
       'pricingAndFunding',
@@ -685,7 +734,7 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
     'PROVISIONING_RESULT_INVALID'
   );
   requireCondition(
-    result.schemaVersion === 3 &&
+    result.schemaVersion === 4 &&
       result.phase === 'SOURCE_PROJECT_PROVISIONING_RESULT' &&
       result.resultType === 'SOURCE_PROJECT_PROVISIONING_OPERATION' &&
       result.status === manifest.status &&
@@ -701,6 +750,10 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
       result.cleanupDeletionAuthorized === false &&
       result.databaseConnectionPerformed === false &&
       result.phase2AndLaterAuthorized === false,
+    'PROVISIONING_RESULT_INVALID'
+  );
+  validateProductionBoundary(
+    result.productionBoundary,
     'PROVISIONING_RESULT_INVALID'
   );
   requireCanonicalOwnerId(result.operator, 'PROVISIONING_RESULT_INVALID');
@@ -961,6 +1014,7 @@ function validateProviderExport(providerInput, manifest, result) {
       'readinessObservation',
       'computeObservation',
       'reconciliation',
+      'productionBoundary',
       'rawProviderBodiesPersisted',
       'capturedAt',
       'capturedBy',
@@ -968,7 +1022,7 @@ function validateProviderExport(providerInput, manifest, result) {
     'PROVIDER_EXPORT_INVALID'
   );
   requireCondition(
-    provider.schemaVersion === 2 &&
+    provider.schemaVersion === 3 &&
       provider.exportType ===
         'SUPABASE_SOURCE_PROJECT_PROVIDER_SAFE_PROJECTION' &&
       provider.status === manifest.status &&
@@ -977,6 +1031,15 @@ function validateProviderExport(providerInput, manifest, result) {
       provider.capturedBy === result.operator &&
       provider.capturedAt === result.actionCompletedAt,
     'PROVIDER_EXPORT_INVALID'
+  );
+  const providerProductionBoundary = validateProductionBoundary(
+    provider.productionBoundary,
+    'PROVIDER_EXPORT_INVALID'
+  );
+  requireCondition(
+    canonicalJson(providerProductionBoundary) ===
+      canonicalJson(result.productionBoundary),
+    'EVIDENCE_CROSS_ARTIFACT_MISMATCH'
   );
   const actionStartedAt = Date.parse(result.actionStartedAt);
   const actionCompletedAt = Date.parse(result.actionCompletedAt);
@@ -1018,7 +1081,7 @@ function validateProviderExport(providerInput, manifest, result) {
       projection.db_pass === 'RUNTIME_SECRET_NOT_IN_EVIDENCE' &&
       projection.desired_instance_size === 'large' &&
       projection.name === FIXED_PROJECT_NAME &&
-      typeof projection.organization_slug === 'string' &&
+      projection.organization_slug === TARGET_ORGANIZATION_SLUG &&
       ORGANIZATION_SLUG_PATTERN.test(projection.organization_slug) &&
       regionSelection.code === 'ap-northeast-1' &&
       regionSelection.type === 'specific',
@@ -1038,13 +1101,14 @@ function validateProviderExport(providerInput, manifest, result) {
         'projectListPages',
         'projectCount',
         'duplicateMatchCount',
+        'protectedProductionProjectCount',
         'observedAt',
       ],
       'PROVIDER_PREFLIGHT_INVALID'
     );
     const organization = requireExactKeys(
       preflight.organization,
-      ['organizationId', 'organizationSlug', 'plan'],
+      ['organizationId', 'organizationName', 'organizationSlug', 'plan'],
       'PROVIDER_PREFLIGHT_INVALID'
     );
     const region = requireExactKeys(
@@ -1062,6 +1126,7 @@ function validateProviderExport(providerInput, manifest, result) {
     );
     requireCondition(
       organization.plan === 'PRO' &&
+        organization.organizationName === TARGET_ORGANIZATION_NAME &&
         requireString(organization.organizationId, 'PROVIDER_PREFLIGHT_INVALID')
           .length > 0 &&
         organization.organizationSlug === projection.organization_slug &&
@@ -1079,7 +1144,11 @@ function validateProviderExport(providerInput, manifest, result) {
           preflight.regionResponseBodySha256,
           'PROVIDER_PREFLIGHT_INVALID'
         ).length === 64 &&
-        projectCount === validateProjectListPages(preflight.projectListPages) &&
+        projectCount ===
+          validateProjectListPages(preflight.projectListPages).totalCount &&
+        preflight.protectedProductionProjectCount ===
+          validateProjectListPages(preflight.projectListPages)
+            .protectedProductionProjectCount &&
         duplicateMatchCount <= projectCount &&
         Number.isFinite(
           Date.parse(
@@ -1138,6 +1207,7 @@ function validateProviderExport(providerInput, manifest, result) {
         requireSha256(create.responseBodySha256, 'PROVIDER_PASS_INVALID')
           .length === 64 &&
         PROJECT_REF_PATTERN.test(created.projectRef) &&
+        created.projectRef !== PRODUCTION_PROJECT_REF &&
         created.organizationId === preflight.organization.organizationId &&
         created.organizationSlug === projection.organization_slug &&
         created.projectName === projection.name &&

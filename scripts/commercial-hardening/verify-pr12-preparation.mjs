@@ -101,15 +101,15 @@ const REQUIRED_ARTIFACTS = [
   'docs/stabilization/evidence/commercial-hardening/pr12/qualification-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-binding.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v3.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v4.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration-v2.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v3.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-official-pricing-evidence-v2.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-dpapi-bootstrap-approval-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-windows-dpapi-envelope-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-action-journal.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v3.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v4.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v3.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-privacy-scan.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-identity-bootstrap-binding.template.json',
@@ -1687,13 +1687,13 @@ function verifyProposalContracts() {
   }
 
   const provisioning = readJson(
-    `${prefix}source-project-provisioning-binding-v3.template.json`
+    `${prefix}source-project-provisioning-binding-v4.template.json`
   );
   const provisioningCredential = readJson(
     `${prefix}source-project-provisioning-credential-configuration-v2.template.json`
   );
   const provisioningOwnerApproval = readJson(
-    `${prefix}source-project-provisioning-owner-approval-v2.template.json`
+    `${prefix}source-project-provisioning-owner-approval-v3.template.json`
   );
   const provisioningPricing = readJson(
     `${prefix}source-project-official-pricing-evidence-v2.template.json`
@@ -1705,10 +1705,10 @@ function verifyProposalContracts() {
     `${prefix}source-project-provisioning-action-journal.template.json`
   );
   const provisioningResult = readJson(
-    `${prefix}source-project-provisioning-result-v3.template.json`
+    `${prefix}source-project-provisioning-result-v4.template.json`
   );
   const provisioningProviderExport = readJson(
-    `${prefix}source-project-provider-safe-projection-v2.template.json`
+    `${prefix}source-project-provider-safe-projection-v3.template.json`
   );
   const provisioningEvidenceManifest = readJson(
     `${prefix}source-project-provisioning-evidence-manifest.template.json`
@@ -1808,6 +1808,14 @@ function verifyProposalContracts() {
       ledgerSourceProjectAction.httpMethod === provisioningAction.httpMethod &&
       ledgerSourceProjectAction.endpoint === provisioningAction.endpoint &&
       ledgerSourceProjectAction.name === provisionEnvironment.projectName &&
+      ledgerSourceProjectAction.organizationName === "IFs1991's Org" &&
+      ledgerSourceProjectAction.organizationSlug === 'kbnsntifrawhimhfjrug' &&
+      ledgerSourceProjectAction.sameOrganizationException.mode ===
+        'PHASE1_SAME_ORGANIZATION_PRODUCTION_PROJECT_DENY_EXCEPTION_V1' &&
+      ledgerSourceProjectAction.sameOrganizationException
+        .productionProjectRef === 'qnanuoqveidwvacvbhqp' &&
+      ledgerSourceProjectAction.sameOrganizationException
+        .productionProjectSpecificManagementApiContactAuthorized === false &&
       ledgerSourceProjectAction.existingOrganizationPlanRequired === 'PRO' &&
       ledgerSourceProjectAction.organizationPlanChangeIncluded === false &&
       ledgerSourceProjectAction.regionSelection.code ===
@@ -1857,17 +1865,17 @@ function verifyProposalContracts() {
       ) &&
       normalizedApproval.includes('    automatic_reseal_allowed: false') &&
       normalizedApproval.includes(
-        '    template: source-project-provisioning-binding-v3.template.json'
+        '    template: source-project-provisioning-binding-v4.template.json'
       ) &&
-      normalizedApproval.includes('    phase_local_contract_version: 3') &&
+      normalizedApproval.includes('    phase_local_contract_version: 4') &&
       normalizedApproval.includes(
-        '    result_template: source-project-provisioning-result-v3.template.json'
+        '    result_template: source-project-provisioning-result-v4.template.json'
       ) &&
       normalizedApproval.includes(
         '    credential_configuration_template: source-project-provisioning-credential-configuration-v2.template.json'
       ) &&
       normalizedApproval.includes(
-        '    owner_approval_template: source-project-provisioning-owner-approval-v2.template.json'
+        '    owner_approval_template: source-project-provisioning-owner-approval-v3.template.json'
       ) &&
       normalizedApproval.includes(
         '    official_pricing_evidence_template: source-project-official-pricing-evidence-v2.template.json'
@@ -1879,13 +1887,39 @@ function verifyProposalContracts() {
       sourceAuthorization.isolatedStagingConnectionAuthorized === false &&
       sourceAuthorization.isolatedStagingExecutionAuthorized === false &&
       provisioning.status === 'NOT_RUN' &&
-      provisioning.schemaVersion === 3 &&
+      provisioning.schemaVersion === 4 &&
       provisionEnvironment.organizationId === 'NOT_CAPTURED' &&
-      provisionEnvironment.organizationSlug === 'NOT_CAPTURED' &&
+      provisionEnvironment.organizationSlug === 'kbnsntifrawhimhfjrug' &&
       JSON.stringify(provisionEnvironment.prohibitedOrganizationIds) ===
         JSON.stringify(['NOT_CAPTURED']) &&
       JSON.stringify(provisionEnvironment.prohibitedOrganizationSlugs) ===
-        JSON.stringify(['NOT_CAPTURED']) &&
+        JSON.stringify(['kbnsntifrawhimhfjrug']) &&
+      provisioning.approvedRequest.projection.organization_slug ===
+        'kbnsntifrawhimhfjrug' &&
+      provisioning.sameOrganizationException.mode ===
+        'PHASE1_SAME_ORGANIZATION_PRODUCTION_PROJECT_DENY_EXCEPTION_V1' &&
+      provisioning.sameOrganizationException.targetOrganizationName ===
+        "IFs1991's Org" &&
+      provisioning.sameOrganizationException.targetOrganizationSlug ===
+        'kbnsntifrawhimhfjrug' &&
+      provisioning.sameOrganizationException.productionOrganizationId ===
+        'NOT_CAPTURED' &&
+      provisioning.sameOrganizationException.productionOrganizationSlug ===
+        'kbnsntifrawhimhfjrug' &&
+      provisioning.sameOrganizationException.productionProjectRef ===
+        'qnanuoqveidwvacvbhqp' &&
+      provisioning.sameOrganizationException.productionProjectOrigin ===
+        'https://qnanuoqveidwvacvbhqp.supabase.co' &&
+      provisioning.sameOrganizationException
+        .organizationProjectEnumerationAllowed === true &&
+      provisioning.sameOrganizationException
+        .productionProjectSpecificManagementApiContactAuthorized === false &&
+      provisioning.sameOrganizationException
+        .productionProjectDataPlaneContactAuthorized === false &&
+      provisioning.sameOrganizationException
+        .productionDatabaseContactAuthorized === false &&
+      provisioning.sameOrganizationException
+        .productionCredentialAccessAuthorized === false &&
       initialPlatformPosture.mutationsIncludedInPhase1 === false &&
       initialPlatformPosture.phase2ReadOnlyObservationRequired === true &&
       provisioning.approvedRequest.projection.db_pass ===
@@ -1926,6 +1960,14 @@ function verifyProposalContracts() {
         true &&
       provisioning.approval.soleOperatorRiskAccepted === false &&
       provisioning.approval.providerSpendCapLimitationAcknowledged === false &&
+      provisioning.approval.sameOrganizationExceptionRiskAccepted === false &&
+      provisioning.approval.organizationListProductionRefObservationAccepted ===
+        false &&
+      provisioning.approval
+        .sharedOrganizationIamBillingControlPlaneRiskAccepted === false &&
+      provisioning.approval.productionDirectContactProhibitionAcknowledged ===
+        false &&
+      provisioning.cost.organizationCurrentPlan === 'PRO' &&
       provisioning.cost.moneyScale === 10000 &&
       provisioning.cost.computeRateUsdScaledPerProjectHour === 1517 &&
       provisioning.cost.sourceMaximumComputeUsdScaled === 109224 &&
@@ -1972,6 +2014,18 @@ function verifyProposalContracts() {
       ) &&
       normalizedApproval.includes(
         '  authenticated_supabase_contact_authorized: false'
+      ) &&
+      normalizedApproval.includes(
+        '  same_organization_exception_local_implementation_authorized: true'
+      ) &&
+      normalizedApproval.includes(
+        '  target_organization_slug: kbnsntifrawhimhfjrug'
+      ) &&
+      normalizedApproval.includes(
+        '  production_project_ref: qnanuoqveidwvacvbhqp'
+      ) &&
+      normalizedApproval.includes(
+        '  production_project_direct_contact_authorized: false'
       ),
     'source provisioning phase boundary drift'
   );
@@ -2016,9 +2070,15 @@ function verifyProposalContracts() {
       'PR12_SOURCE_PROJECT_PROVISIONING_OWNER_APPROVAL' &&
       provisioningOwnerApproval.decision === 'NOT_CAPTURED' &&
       provisioningOwnerApproval.actionId === 'PR12-ACTION-003' &&
+      provisioningOwnerApproval.schemaVersion === 3 &&
       provisioningOwnerApproval.operatorControlMode ===
         'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1' &&
       provisioningOwnerApproval.soleOperatorRiskAccepted === false &&
+      provisioningOwnerApproval.sameOrganizationExceptionRiskAccepted ===
+        false &&
+      provisioningOwnerApproval.productionProjectRef ===
+        'qnanuoqveidwvacvbhqp' &&
+      provisioningOwnerApproval.organizationSlug === 'kbnsntifrawhimhfjrug' &&
       provisioningOwnerApproval.phase2AndLaterAuthorized === false &&
       provisioningOwnerApproval.cleanupDeletionAuthorized === false &&
       provisioningPricing.recordType ===
@@ -2055,7 +2115,7 @@ function verifyProposalContracts() {
       provisioningJournal.automaticResealAllowed === false &&
       provisioningJournal.automaticCleanupAuthorized === false &&
       provisioningJournal.destructiveRecoveryAuthorized === false &&
-      provisioningResult.schemaVersion === 3 &&
+      provisioningResult.schemaVersion === 4 &&
       provisioningResult.status === 'NOT_RUN' &&
       provisioningResult.createPostAttemptCount === 0 &&
       provisioningResult.automaticRetryCount === 0 &&
@@ -2072,13 +2132,17 @@ function verifyProposalContracts() {
     'Phase 1 journal or result contract drift'
   );
   assert(
-    provisioningProviderExport.schemaVersion === 2 &&
+    provisioningProviderExport.schemaVersion === 3 &&
       provisioningProviderExport.exportType ===
         'SUPABASE_SOURCE_PROJECT_PROVIDER_SAFE_PROJECTION' &&
       provisioningProviderExport.request.rawWireBodyPersisted === false &&
       provisioningProviderExport.request.rawHttpHeadersPersisted === false &&
       provisioningProviderExport.computeObservation.variantId === 'ci_large' &&
       provisioningProviderExport.reconciliation === null &&
+      provisioningProviderExport.productionBoundary
+        .directProductionProjectManagementApiContactCount === 0 &&
+      provisioningProviderExport.productionBoundary
+        .productionProjectDataPlaneContactCount === 0 &&
       provisioningProviderExport.rawProviderBodiesPersisted === false &&
       provisioningEvidenceManifest.manifestType ===
         'PR12_PHASE1_SOURCE_PROJECT_PROVISIONING_EVIDENCE' &&
@@ -2138,6 +2202,17 @@ function verifyProposalContracts() {
     'Phase 1 wrapper must contain exactly one create POST call path'
   );
   const recoverySource = provisioningWrapper.slice(recoveryStart, recoveryEnd);
+  const providerFetchStart = provisioningWrapper.indexOf(
+    'async function providerFetch('
+  );
+  const providerFetchEnd = provisioningWrapper.indexOf(
+    '\nasync function fetchReadOnlyProjection(',
+    providerFetchStart
+  );
+  const providerFetchSource = provisioningWrapper.slice(
+    providerFetchStart,
+    providerFetchEnd
+  );
   assert(
     !recoverySource.includes('providerFetch(') &&
       !recoverySource.includes("{ method: 'POST'") &&
@@ -2148,6 +2223,11 @@ function verifyProposalContracts() {
       provisioningWrapper.includes('function readFileSnapshot(') &&
       provisioningWrapper.includes('assertRemoteContactWithinApproval(') &&
       provisioningWrapper.includes('assertMutationPricingCurrent(') &&
+      providerFetchSource.indexOf('assertAllowedManagementApiRequest({') >= 0 &&
+      providerFetchSource.indexOf('assertAllowedManagementApiRequest({') <
+        providerFetchSource.indexOf('onRemoteContact();') &&
+      providerFetchSource.indexOf('onRemoteContact();') <
+        providerFetchSource.indexOf('return fetch(url,') &&
       provisioningWrapper.includes('completeTerminalFromExistingEvidence') &&
       provisioningWrapper.includes('retainEvidenceAfterSealFailure(') &&
       provisioningWrapper.includes(

@@ -23,6 +23,7 @@ import {
   MAX_PROVIDER_BODY_BYTES,
   ProvisioningContractError,
   addonResponseToSafeProjection,
+  assertAllowedManagementApiRequest,
   assertProviderBodyEnvelope,
   assertSecretFreeEvidence,
   assertSourceProjectProvisioningAuthorized,
@@ -1351,8 +1352,16 @@ async function providerFetch(
   timeoutMilliseconds,
   approvalExpiresAt,
   onRemoteContact = () => undefined,
-  pricingFreshThrough = null
+  pricingFreshThrough = null,
+  binding,
+  createdProjectRef = null
 ) {
+  assertAllowedManagementApiRequest({
+    url,
+    method: options.method,
+    binding,
+    createdProjectRef,
+  });
   assertRemoteContactWithinApproval(
     approvalExpiresAt,
     new Date().toISOString(),
@@ -1388,6 +1397,8 @@ async function fetchReadOnlyProjection({
   approvalExpiresAt,
   onRemoteContact,
   projector,
+  binding,
+  createdProjectRef = null,
 }) {
   let response;
   try {
@@ -1397,7 +1408,10 @@ async function fetchReadOnlyProjection({
       accessToken,
       timeoutMilliseconds,
       approvalExpiresAt,
-      onRemoteContact
+      onRemoteContact,
+      null,
+      binding,
+      createdProjectRef
     );
   } catch (error) {
     if (error instanceof SafeExecutionError) throw error;
@@ -1470,6 +1484,7 @@ async function listAllOrganizationProjects(
   const organizationSlug = binding.environmentProposal.organizationSlug;
   const pages = [];
   const targetMatches = [];
+  let protectedProductionProjectCount = 0;
   let paginationState = {
     expectedCount: null,
     nextOffset: 0,
@@ -1490,6 +1505,7 @@ async function listAllOrganizationProjects(
       approvalExpiresAt: binding.approval.expiresAt,
       onRemoteContact,
       projector: body => organizationProjectPageToSafeProjection(body, binding),
+      binding,
     });
     const projection = result.projection;
     paginationState = advanceProjectPaginationState(
@@ -1502,6 +1518,8 @@ async function listAllOrganizationProjects(
         project.isBranch === false
     );
     targetMatches.push(...currentMatches);
+    protectedProductionProjectCount +=
+      projection.protectedProductionProjectCount;
     pages.push({
       bodySha256: result.bodySha256,
       httpStatus: result.httpStatus,
@@ -1509,6 +1527,8 @@ async function listAllOrganizationProjects(
       limit: projection.pagination.limit,
       totalCount: projection.pagination.count,
       returnedCount: projection.projects.length,
+      protectedProductionProjectCount:
+        projection.protectedProductionProjectCount,
       safeProjectionSha256: sha256Canonical(projection),
     });
     if (paginationState.nextOffset >= paginationState.expectedCount) break;
@@ -1521,10 +1541,14 @@ async function listAllOrganizationProjects(
   ) {
     fail('PROJECT_LIST_PAGINATION_INCOMPLETE');
   }
+  if (protectedProductionProjectCount !== 1) {
+    fail('PRODUCTION_PROJECT_NOT_UNIQUELY_OBSERVED');
+  }
   return {
     pages,
     targetMatches,
     totalCount: paginationState.expectedCount,
+    protectedProductionProjectCount,
   };
 }
 
@@ -1558,6 +1582,8 @@ async function reconcileAfterPostAttempt({
       state,
       observedAt,
       projectCount: observation.totalCount,
+      protectedProductionProjectCount:
+        observation.protectedProductionProjectCount,
       matchingProjects: matches,
       projectListPages: observation.pages,
       automaticPostRetryPerformed: false,
@@ -1569,6 +1595,7 @@ async function reconcileAfterPostAttempt({
       observedAt,
       reasonCode: safeErrorCode(error),
       projectCount: null,
+      protectedProductionProjectCount: 0,
       matchingProjects: [],
       projectListPages: [],
       automaticPostRetryPerformed: false,
@@ -1765,7 +1792,7 @@ function sealEvidence({
 
 function makeBaseResult(binding, validation, startedAt, claimSha256) {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     phase: 'SOURCE_PROJECT_PROVISIONING_RESULT',
     resultType: 'SOURCE_PROJECT_PROVISIONING_OPERATION',
     status: 'NOT_RUN',
@@ -1793,6 +1820,18 @@ function makeBaseResult(binding, validation, startedAt, claimSha256) {
     cleanupDeletionAuthorized: false,
     databaseConnectionPerformed: false,
     phase2AndLaterAuthorized: false,
+    productionBoundary: {
+      exceptionMode: binding.sameOrganizationException.mode,
+      targetOrganizationSlug:
+        binding.sameOrganizationException.targetOrganizationSlug,
+      productionProjectRef:
+        binding.sameOrganizationException.productionProjectRef,
+      organizationProjectEnumerationAllowed: true,
+      directProductionProjectManagementApiContactCount: 0,
+      productionProjectDataPlaneContactCount: 0,
+      productionDatabaseContactCount: 0,
+      productionCredentialAccessCount: 0,
+    },
     createdEnvironment: null,
     providerEvidence: null,
     pricingAndFunding: {
@@ -1903,7 +1942,7 @@ async function executeProvisioning(inputs, validation) {
     claimResult.claimSha256
   );
   const providerExport = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     exportType: 'SUPABASE_SOURCE_PROJECT_PROVIDER_SAFE_PROJECTION',
     status: 'NOT_RUN',
     actionId: ACTION_ID,
@@ -1920,6 +1959,18 @@ async function executeProvisioning(inputs, validation) {
     readinessObservation: null,
     computeObservation: null,
     reconciliation: null,
+    productionBoundary: {
+      exceptionMode: binding.sameOrganizationException.mode,
+      targetOrganizationSlug:
+        binding.sameOrganizationException.targetOrganizationSlug,
+      productionProjectRef:
+        binding.sameOrganizationException.productionProjectRef,
+      organizationProjectEnumerationAllowed: true,
+      directProductionProjectManagementApiContactCount: 0,
+      productionProjectDataPlaneContactCount: 0,
+      productionDatabaseContactCount: 0,
+      productionCredentialAccessCount: 0,
+    },
     rawProviderBodiesPersisted: false,
     capturedAt: null,
     capturedBy: binding.owners.provisioningOperator,
@@ -1977,6 +2028,7 @@ async function executeProvisioning(inputs, validation) {
         remoteContactCount += 1;
       },
       projector: body => organizationResponseToSafeProjection(body, binding),
+      binding,
     });
     const regionsUrl = new URL(
       '/v1/projects/available-regions',
@@ -1993,6 +2045,7 @@ async function executeProvisioning(inputs, validation) {
         remoteContactCount += 1;
       },
       projector: body => availableRegionsToSafeProjection(body, binding),
+      binding,
     });
     const projectPreflight = await listAllOrganizationProjects(
       binding,
@@ -2015,6 +2068,8 @@ async function executeProvisioning(inputs, validation) {
       projectListPages: projectPreflight.pages,
       projectCount: projectPreflight.totalCount,
       duplicateMatchCount: projectPreflight.targetMatches.length,
+      protectedProductionProjectCount:
+        projectPreflight.protectedProductionProjectCount,
       observedAt: new Date().toISOString(),
     };
     if (projectPreflight.targetMatches.length > 0) {
@@ -2082,7 +2137,9 @@ async function executeProvisioning(inputs, validation) {
           remoteContactCount += 1;
           result.remoteContactCount = remoteContactCount;
         },
-        binding.cost.pricingEvidence.freshThrough
+        binding.cost.pricingEvidence.freshThrough,
+        binding,
+        null
       );
     } catch (error) {
       if (error instanceof SafeExecutionError) throw error;
@@ -2190,6 +2247,8 @@ async function executeProvisioning(inputs, validation) {
       },
       projector: body =>
         addonResponseToSafeProjection(body, createProjection.projectRef),
+      binding,
+      createdProjectRef: createProjection.projectRef,
     });
     result.remoteContactCount = remoteContactCount;
     providerExport.computeObservation = {
@@ -2692,7 +2751,7 @@ async function executeReadOnlyRecovery(inputs, validation, journalState) {
   result.createPostAttemptCount = 1;
   result.journalEvidence.postIntentSha256 = journalState.postIntentSha256;
   const providerExport = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     exportType: 'SUPABASE_SOURCE_PROJECT_PROVIDER_SAFE_PROJECTION',
     status: 'UNKNOWN_REMOTE_OUTCOME',
     actionId: ACTION_ID,
@@ -2709,6 +2768,18 @@ async function executeReadOnlyRecovery(inputs, validation, journalState) {
     readinessObservation: null,
     computeObservation: null,
     reconciliation: null,
+    productionBoundary: {
+      exceptionMode: inputs.binding.sameOrganizationException.mode,
+      targetOrganizationSlug:
+        inputs.binding.sameOrganizationException.targetOrganizationSlug,
+      productionProjectRef:
+        inputs.binding.sameOrganizationException.productionProjectRef,
+      organizationProjectEnumerationAllowed: true,
+      directProductionProjectManagementApiContactCount: 0,
+      productionProjectDataPlaneContactCount: 0,
+      productionDatabaseContactCount: 0,
+      productionCredentialAccessCount: 0,
+    },
     rawProviderBodiesPersisted: false,
     capturedAt: null,
     capturedBy: inputs.binding.owners.provisioningOperator,

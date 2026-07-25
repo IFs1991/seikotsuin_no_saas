@@ -18,7 +18,7 @@
   },
   "governanceProposal": {
     "path": "staging-execution-approval-packet.yaml",
-    "sha256": "a56c7c13a525330145cee2cc88fd0edb5f9441408d1c4e2a7f36a0a7967f2986"
+    "sha256": "f19c7a57c1a942dbd55ab17505084cb8d74fd2b5dd5320fb452f4fda2872a64f"
   },
   "sourceProjectProvisioningApproval": {
     "path": "NOT_CAPTURED",

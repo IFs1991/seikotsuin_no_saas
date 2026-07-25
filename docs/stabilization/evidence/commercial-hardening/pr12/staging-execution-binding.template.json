@@ -17,7 +17,7 @@
   },
   "governanceProposal": {
     "path": "staging-execution-approval-packet.yaml",
-    "sha256": "a56c7c13a525330145cee2cc88fd0edb5f9441408d1c4e2a7f36a0a7967f2986"
+    "sha256": "f19c7a57c1a942dbd55ab17505084cb8d74fd2b5dd5320fb452f4fda2872a64f"
   },
   "sourceProjectProvisioningApproval": {
     "path": "NOT_CAPTURED",
@@ -165,7 +165,7 @@
     },
     "commandLedger": {
       "path": "staging-command-ledger.proposed.json",
-      "sha256": "e01ef1fe6b00d5e74dd38b639fc6e80d1b0be520ae1ae9826d06601b73672d31"
+      "sha256": "802b7978394dc29b0fd85a8f513c9fc53108caf8c7960a85ffd7c40c4fa834c6"
     },
     "dr": {
       "path": "dr-contract.proposed.json",

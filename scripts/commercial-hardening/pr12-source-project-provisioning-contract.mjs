@@ -17,7 +17,14 @@ export const MAX_PROVIDER_BODY_BYTES = 1_048_576;
 export const APPROVED_BASE_COMMIT = '4475e1c641c2ff18f66021ee65cfecfceaa6b7ab';
 export const FIXED_PROJECT_NAME =
   'seikotsuin-pr12-isolated-qualification-20260719';
+export const TARGET_ORGANIZATION_NAME = "IFs1991's Org";
+export const TARGET_ORGANIZATION_SLUG = 'kbnsntifrawhimhfjrug';
+export const PRODUCTION_PROJECT_NAME = 'seikotsuin-management';
 export const PRODUCTION_PROJECT_REF = 'qnanuoqveidwvacvbhqp';
+export const PRODUCTION_PROJECT_ORIGIN =
+  'https://qnanuoqveidwvacvbhqp.supabase.co';
+export const SAME_ORGANIZATION_EXCEPTION_MODE =
+  'PHASE1_SAME_ORGANIZATION_PRODUCTION_PROJECT_DENY_EXCEPTION_V1';
 export const MONEY_SCALE = 10_000;
 export const SOURCE_COMPUTE_RATE_USD_SCALED_PER_PROJECT_HOUR = 1_517;
 export const SOURCE_MAXIMUM_COMPUTE_USD_SCALED = 109_224;
@@ -384,6 +391,146 @@ export function sha256Canonical(value) {
   return sha256Text(canonicalJson(value));
 }
 
+function decodeUrlComponentRepeatedly(value) {
+  let decoded = value;
+  for (let count = 0; count < 3; count += 1) {
+    let next;
+    try {
+      next = decodeURIComponent(decoded);
+    } catch {
+      fail('OUTBOUND_URL_INVALID');
+    }
+    if (next === decoded) return decoded;
+    decoded = next;
+  }
+  return decoded;
+}
+
+function requireExactSearchParameters(url, expected) {
+  const entries = [...url.searchParams.entries()];
+  requireCondition(
+    entries.length === Object.keys(expected).length,
+    'OUTBOUND_ROUTE_NOT_ALLOWED'
+  );
+  for (const [key, expectedValue] of Object.entries(expected)) {
+    const values = url.searchParams.getAll(key);
+    requireCondition(
+      values.length === 1 && values[0] === expectedValue,
+      'OUTBOUND_ROUTE_NOT_ALLOWED'
+    );
+  }
+}
+
+export function assertAllowedManagementApiRequest(requestInput) {
+  const request = assertExactKeys(
+    requestInput,
+    ['url', 'method', 'binding', 'createdProjectRef'],
+    'OUTBOUND_REQUEST_INVALID'
+  );
+  const binding = requireRecord(request.binding, 'BINDING_INVALID');
+  const environment = requireRecord(
+    binding.environmentProposal,
+    'ENVIRONMENT_PROPOSAL_INVALID'
+  );
+  validateSameOrganizationException(binding);
+  requireCondition(
+    environment.organizationSlug === TARGET_ORGANIZATION_SLUG,
+    'TARGET_ORGANIZATION_INVALID'
+  );
+  const method = requireString(request.method, 'OUTBOUND_REQUEST_INVALID');
+  requireCondition(
+    method === 'GET' || method === 'POST',
+    'OUTBOUND_ROUTE_NOT_ALLOWED'
+  );
+  const rawUrl =
+    request.url instanceof URL
+      ? request.url.href
+      : requireString(request.url, 'OUTBOUND_URL_INVALID');
+  let url;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    fail('OUTBOUND_URL_INVALID');
+  }
+  const productionHost = new URL(PRODUCTION_PROJECT_ORIGIN).hostname;
+  const decodedRouteMaterial = decodeUrlComponentRepeatedly(
+    `${url.pathname}${url.search}`
+  ).toLowerCase();
+  requireCondition(
+    url.hostname.toLowerCase() !== productionHost &&
+      !rawUrl.toLowerCase().includes(PRODUCTION_PROJECT_REF) &&
+      !decodedRouteMaterial.includes(PRODUCTION_PROJECT_REF),
+    'PRODUCTION_CONTACT_DENIED'
+  );
+  requireCondition(
+    rawUrl === url.href &&
+      url.protocol === 'https:' &&
+      url.origin === 'https://api.supabase.com' &&
+      url.hostname === 'api.supabase.com' &&
+      url.username === '' &&
+      url.password === '' &&
+      url.port === '' &&
+      url.hash === '',
+    'OUTBOUND_URL_INVALID'
+  );
+
+  if (
+    method === 'GET' &&
+    url.pathname === `/v1/organizations/${TARGET_ORGANIZATION_SLUG}` &&
+    url.search === ''
+  ) {
+    return 'TARGET_ORGANIZATION_ENTITLEMENT';
+  }
+  if (method === 'GET' && url.pathname === '/v1/projects/available-regions') {
+    requireExactSearchParameters(url, {
+      organization_slug: TARGET_ORGANIZATION_SLUG,
+      desired_instance_size: 'large',
+    });
+    return 'TARGET_AVAILABLE_REGIONS';
+  }
+  if (
+    method === 'GET' &&
+    url.pathname === `/v1/organizations/${TARGET_ORGANIZATION_SLUG}/projects`
+  ) {
+    requireExactSearchParameters(url, {
+      offset: url.searchParams.get('offset'),
+      limit: '100',
+      sort: 'name_asc',
+    });
+    requireCondition(
+      /^(?:0|[1-9][0-9]*)$/.test(url.searchParams.get('offset') ?? ''),
+      'OUTBOUND_ROUTE_NOT_ALLOWED'
+    );
+    return 'TARGET_ORGANIZATION_PROJECT_LIST';
+  }
+  if (method === 'POST' && url.href === CREATE_ENDPOINT && url.search === '') {
+    requireCondition(
+      request.createdProjectRef === null,
+      'OUTBOUND_ROUTE_NOT_ALLOWED'
+    );
+    return 'CREATE_SOURCE_PROJECT';
+  }
+  const addonMatch = /^\/v1\/projects\/([a-z]{20})\/billing\/addons$/.exec(
+    url.pathname
+  );
+  if (method === 'GET' && addonMatch !== null && url.search === '') {
+    const createdProjectRef = requireString(
+      request.createdProjectRef,
+      'CREATED_PROJECT_REF_NOT_BOUND'
+    );
+    requireCondition(
+      PROJECT_REF_PATTERN.test(createdProjectRef) &&
+        createdProjectRef !== PRODUCTION_PROJECT_REF &&
+        addonMatch[1] === createdProjectRef,
+      addonMatch[1] === PRODUCTION_PROJECT_REF
+        ? 'PRODUCTION_CONTACT_DENIED'
+        : 'CREATED_PROJECT_REF_NOT_BOUND'
+    );
+    return 'CREATED_SOURCE_PROJECT_COMPUTE_ADDONS';
+  }
+  fail('OUTBOUND_ROUTE_NOT_ALLOWED');
+}
+
 export function journalDirectoryFingerprint(directoryInput) {
   const directory = requireConcreteString(
     directoryInput,
@@ -431,6 +578,59 @@ function requireSafeEvidencePath(value, code) {
   return text;
 }
 
+function validateSameOrganizationException(binding) {
+  const exception = assertExactKeys(
+    binding.sameOrganizationException,
+    [
+      'mode',
+      'localPreparationAuthorized',
+      'localPreparationAuthorizedOn',
+      'targetOrganizationName',
+      'targetOrganizationSlug',
+      'productionOrganizationId',
+      'productionOrganizationSlug',
+      'productionProjectName',
+      'productionProjectRef',
+      'productionProjectOrigin',
+      'organizationProjectEnumerationAllowed',
+      'organizationProjectEnumerationDataMinimization',
+      'productionProjectSpecificManagementApiContactAuthorized',
+      'productionProjectDataPlaneContactAuthorized',
+      'productionDatabaseContactAuthorized',
+      'productionCredentialAccessAuthorized',
+      'sharedOrganizationRiskAcceptanceRequiredForFinalAction',
+    ],
+    'SAME_ORGANIZATION_EXCEPTION_INVALID'
+  );
+  const environment = requireRecord(
+    binding.environmentProposal,
+    'ENVIRONMENT_PROPOSAL_INVALID'
+  );
+  requireCondition(
+    exception.mode === SAME_ORGANIZATION_EXCEPTION_MODE &&
+      exception.localPreparationAuthorized === true &&
+      exception.localPreparationAuthorizedOn === '2026-07-25' &&
+      exception.targetOrganizationName === TARGET_ORGANIZATION_NAME &&
+      exception.targetOrganizationSlug === TARGET_ORGANIZATION_SLUG &&
+      exception.productionOrganizationId === environment.organizationId &&
+      exception.productionOrganizationSlug === TARGET_ORGANIZATION_SLUG &&
+      exception.productionProjectName === PRODUCTION_PROJECT_NAME &&
+      exception.productionProjectRef === PRODUCTION_PROJECT_REF &&
+      exception.productionProjectOrigin === PRODUCTION_PROJECT_ORIGIN &&
+      exception.organizationProjectEnumerationAllowed === true &&
+      exception.organizationProjectEnumerationDataMinimization ===
+        'PRODUCTION_REF_ONLY_IN_MEMORY_NO_RAW_BODY_OR_METADATA_PERSISTENCE' &&
+      exception.productionProjectSpecificManagementApiContactAuthorized ===
+        false &&
+      exception.productionProjectDataPlaneContactAuthorized === false &&
+      exception.productionDatabaseContactAuthorized === false &&
+      exception.productionCredentialAccessAuthorized === false &&
+      exception.sharedOrganizationRiskAcceptanceRequiredForFinalAction === true,
+    'SAME_ORGANIZATION_EXCEPTION_INVALID'
+  );
+  return exception;
+}
+
 function validateBindingShape(binding) {
   assertExactKeys(
     binding,
@@ -446,6 +646,7 @@ function validateBindingShape(binding) {
       'credentialControls',
       'approvedRequest',
       'environmentProposal',
+      'sameOrganizationException',
       'initialPlatformPosture',
       'duplicateAndFailurePolicy',
       'lifecycle',
@@ -538,6 +739,25 @@ function validateBindingShape(binding) {
     'prohibitedOrganizationIds',
     'prohibitedOrganizationSlugs',
   ]);
+  exact(binding.sameOrganizationException, [
+    'mode',
+    'localPreparationAuthorized',
+    'localPreparationAuthorizedOn',
+    'targetOrganizationName',
+    'targetOrganizationSlug',
+    'productionOrganizationId',
+    'productionOrganizationSlug',
+    'productionProjectName',
+    'productionProjectRef',
+    'productionProjectOrigin',
+    'organizationProjectEnumerationAllowed',
+    'organizationProjectEnumerationDataMinimization',
+    'productionProjectSpecificManagementApiContactAuthorized',
+    'productionProjectDataPlaneContactAuthorized',
+    'productionDatabaseContactAuthorized',
+    'productionCredentialAccessAuthorized',
+    'sharedOrganizationRiskAcceptanceRequiredForFinalAction',
+  ]);
   exact(binding.initialPlatformPosture, [
     'mutationsIncludedInPhase1',
     'dataApiExpected',
@@ -617,6 +837,10 @@ function validateBindingShape(binding) {
     'expiresAt',
     'soleOperatorRiskAccepted',
     'providerSpendCapLimitationAcknowledged',
+    'sameOrganizationExceptionRiskAccepted',
+    'organizationListProductionRefObservationAccepted',
+    'sharedOrganizationIamBillingControlPlaneRiskAccepted',
+    'productionDirectContactProhibitionAcknowledged',
     'evidencePath',
     'evidenceSha256',
     'approvedActionId',
@@ -1140,7 +1364,7 @@ function validateAuthorization(binding) {
 }
 
 function validateApprovalStatus(binding) {
-  requireCondition(binding.schemaVersion === 3, 'BINDING_SCHEMA_INVALID');
+  requireCondition(binding.schemaVersion === 4, 'BINDING_SCHEMA_INVALID');
   requireCondition(
     binding.phase === 'SOURCE_PROJECT_PROVISIONING' &&
       binding.status === 'APPROVED',
@@ -1236,10 +1460,14 @@ function validateTargetAndDenylist(binding) {
   const normalizedProhibitedSlugs = prohibitedSlugs.map(value =>
     value.toLowerCase()
   );
+  const sameOrganizationException = validateSameOrganizationException(binding);
   requireCondition(
-    !prohibitedIds.includes(organizationId) &&
-      !normalizedProhibitedSlugs.includes(organizationSlug.toLowerCase()),
-    'PRODUCTION_ORGANIZATION_DENIED'
+    organizationSlug === TARGET_ORGANIZATION_SLUG &&
+      sameOrganizationException.productionOrganizationId === organizationId &&
+      canonicalJson(prohibitedIds) === canonicalJson([organizationId]) &&
+      canonicalJson(normalizedProhibitedSlugs) ===
+        canonicalJson([TARGET_ORGANIZATION_SLUG]),
+    'SAME_ORGANIZATION_EXCEPTION_INVALID'
   );
   requireCondition(
     CANONICAL_ORGANIZATION_SLUG_PATTERN.test(organizationSlug) &&
@@ -1338,7 +1566,8 @@ function validateOwnersAndCleanup(binding) {
       canonicalJson(operatorControl.compensatingControls) ===
         canonicalJson([
           'EXACT_HEAD_BASE_GOVERNANCE_CONTRACT_WRAPPER_AND_PAYLOAD_HASHES',
-          'EXACT_ORGANIZATION_ALLOW_BINDING_AND_PRODUCTION_DENYLIST',
+          'SAME_ORGANIZATION_LIST_ONLY_EXCEPTION_WITH_CENTRAL_PRODUCTION_CONTACT_DENY',
+          'OUTBOUND_MANAGEMENT_API_ROUTE_METHOD_HOST_AND_QUERY_ALLOWLIST',
           'ONE_DURABLE_CREATE_ONCE_CLAIM_NO_POST_RETRY',
           'DPAPI_CURRENT_USER_CLAIM_BOUND_POST_CLAIM_RETRIEVAL',
           'USD_50_OWNER_AUTHORIZATION_CEILING_FOR_72_HOURS',
@@ -1347,7 +1576,11 @@ function validateOwnersAndCleanup(binding) {
       consolidatedOwnerKeys.every(key => owners[key] === principalId) &&
       approval.approvedBy === principalId &&
       approval.soleOperatorRiskAccepted === true &&
-      approval.providerSpendCapLimitationAcknowledged === true,
+      approval.providerSpendCapLimitationAcknowledged === true &&
+      approval.sameOrganizationExceptionRiskAccepted === true &&
+      approval.organizationListProductionRefObservationAccepted === true &&
+      approval.sharedOrganizationIamBillingControlPlaneRiskAccepted === true &&
+      approval.productionDirectContactProhibitionAcknowledged === true,
     'SOLE_OPERATOR_EXCEPTION_INVALID'
   );
 
@@ -1804,6 +2037,10 @@ function validateApprovalEvidence(
       'independentHumanReviewClaimed',
       'soleOperatorRiskAccepted',
       'providerSpendCapLimitationAcknowledged',
+      'sameOrganizationExceptionRiskAccepted',
+      'organizationListProductionRefObservationAccepted',
+      'sharedOrganizationIamBillingControlPlaneRiskAccepted',
+      'productionDirectContactProhibitionAcknowledged',
       'actionId',
       'gitCommit',
       'bindingMaterialSha256',
@@ -1812,6 +2049,12 @@ function validateApprovalEvidence(
       'pricingEvidenceSha256',
       'organizationId',
       'organizationSlug',
+      'sameOrganizationExceptionMode',
+      'productionOrganizationId',
+      'productionOrganizationSlug',
+      'productionProjectName',
+      'productionProjectRef',
+      'productionProjectOrigin',
       'projectName',
       'region',
       'tier',
@@ -1829,7 +2072,7 @@ function validateApprovalEvidence(
   const approval = binding.approval;
   const environment = binding.environmentProposal;
   requireCondition(
-    evidence.schemaVersion === 2 &&
+    evidence.schemaVersion === 3 &&
       evidence.recordType ===
         'PR12_SOURCE_PROJECT_PROVISIONING_OWNER_APPROVAL' &&
       evidence.decision === 'APPROVED' &&
@@ -1846,6 +2089,10 @@ function validateApprovalEvidence(
       evidence.independentHumanReviewClaimed === false &&
       evidence.soleOperatorRiskAccepted === true &&
       evidence.providerSpendCapLimitationAcknowledged === true &&
+      evidence.sameOrganizationExceptionRiskAccepted === true &&
+      evidence.organizationListProductionRefObservationAccepted === true &&
+      evidence.sharedOrganizationIamBillingControlPlaneRiskAccepted === true &&
+      evidence.productionDirectContactProhibitionAcknowledged === true &&
       evidence.actionId === ACTION_ID &&
       evidence.gitCommit === binding.target.gitCommit &&
       evidence.bindingMaterialSha256 === bindingMaterialSha256 &&
@@ -1856,6 +2103,14 @@ function validateApprovalEvidence(
         binding.cost.pricingEvidence.artifactSha256 &&
       evidence.organizationId === environment.organizationId &&
       evidence.organizationSlug === environment.organizationSlug &&
+      evidence.sameOrganizationExceptionMode ===
+        SAME_ORGANIZATION_EXCEPTION_MODE &&
+      evidence.productionOrganizationId ===
+        binding.sameOrganizationException.productionOrganizationId &&
+      evidence.productionOrganizationSlug === TARGET_ORGANIZATION_SLUG &&
+      evidence.productionProjectName === PRODUCTION_PROJECT_NAME &&
+      evidence.productionProjectRef === PRODUCTION_PROJECT_REF &&
+      evidence.productionProjectOrigin === PRODUCTION_PROJECT_ORIGIN &&
       evidence.projectName === environment.projectName &&
       evidence.region === environment.region &&
       evidence.tier === environment.databaseTier &&
@@ -2244,6 +2499,27 @@ export function organizationProjectPageToSafeProjection(
       ],
       'PROVIDER_RESPONSE_UNEXPECTED_FIELD'
     );
+    const projectRef = requireString(project.ref, 'PROVIDER_RESPONSE_INVALID');
+    requireCondition(
+      PROJECT_REF_PATTERN.test(projectRef) && typeof project.name === 'string',
+      'PROVIDER_RESPONSE_INVALID'
+    );
+    if (prohibitedProjectRefs.includes(projectRef)) {
+      validateSameOrganizationException(binding);
+      requireCondition(
+        projectRef === PRODUCTION_PROJECT_REF &&
+          project.name === PRODUCTION_PROJECT_NAME,
+        'PRODUCTION_PROJECT_IDENTITY_MISMATCH'
+      );
+      requireCondition(
+        project.name !== environment.projectName,
+        'PRODUCTION_TARGET_NAME_COLLISION'
+      );
+      return {
+        projectRef,
+        protectedProductionProject: true,
+      };
+    }
     const databases = requireArray(
       project.databases,
       'PROVIDER_RESPONSE_INVALID'
@@ -2298,9 +2574,7 @@ export function organizationProjectPageToSafeProjection(
       }
     });
     requireCondition(
-      PROJECT_REF_PATTERN.test(project.ref) &&
-        typeof project.name === 'string' &&
-        typeof project.cloud_provider === 'string' &&
+      typeof project.cloud_provider === 'string' &&
         typeof project.region === 'string' &&
         typeof project.is_branch === 'boolean' &&
         PROJECT_STATUSES.has(project.status),
@@ -2310,12 +2584,8 @@ export function organizationProjectPageToSafeProjection(
       project.inserted_at,
       'PROVIDER_RESPONSE_INVALID'
     );
-    requireCondition(
-      !prohibitedProjectRefs.includes(project.ref),
-      'PRODUCTION_TARGET_DENIED'
-    );
     return {
-      projectRef: project.ref,
+      projectRef,
       projectName: project.name,
       region: project.region,
       isBranch: project.is_branch,
@@ -2341,6 +2611,9 @@ export function organizationProjectPageToSafeProjection(
       offset: pagination.offset,
     },
     duplicateProjectRefs: duplicates.map(project => project.projectRef),
+    protectedProductionProjectCount: projects.filter(
+      project => project.protectedProductionProject === true
+    ).length,
   };
 }
 
@@ -2360,7 +2633,7 @@ export function organizationResponseToSafeProjection(
   );
   requireCondition(
     response.id === environment.organizationId &&
-      typeof response.name === 'string' &&
+      response.name === TARGET_ORGANIZATION_NAME &&
       response.plan === 'pro' &&
       Array.isArray(response.opt_in_tags) &&
       response.opt_in_tags.every(value => typeof value === 'string') &&
@@ -2372,6 +2645,7 @@ export function organizationResponseToSafeProjection(
   );
   return {
     organizationId: response.id,
+    organizationName: response.name,
     organizationSlug: environment.organizationSlug,
     plan: 'PRO',
   };
@@ -2473,8 +2747,11 @@ export function addonResponseToSafeProjection(responseInput, projectRefInput) {
     'PROVIDER_RESPONSE_INVALID'
   );
   requireCondition(
-    PROJECT_REF_PATTERN.test(projectRef),
-    'PROVIDER_RESPONSE_INVALID'
+    PROJECT_REF_PATTERN.test(projectRef) &&
+      projectRef !== PRODUCTION_PROJECT_REF,
+    projectRef === PRODUCTION_PROJECT_REF
+      ? 'PRODUCTION_CONTACT_DENIED'
+      : 'PROVIDER_RESPONSE_INVALID'
   );
   const addons = requireArray(
     response.selected_addons,

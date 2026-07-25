@@ -111,7 +111,7 @@ function makeSyntheticEvidenceBundle(
     db_pass: 'RUNTIME_SECRET_NOT_IN_EVIDENCE',
     desired_instance_size: 'large',
     name: 'seikotsuin-pr12-isolated-qualification-20260719',
-    organization_slug: 'isolated-staging-org',
+    organization_slug: 'kbnsntifrawhimhfjrug',
     region_selection: { code: 'ap-northeast-1', type: 'specific' },
   };
   const payloadSha256 = canonicalSha256(requestProjection);
@@ -120,8 +120,9 @@ function makeSyntheticEvidenceBundle(
     httpStatus: 200,
     offset: 0,
     limit: 100,
-    totalCount: 0,
-    returnedCount: 0,
+    totalCount: 1,
+    returnedCount: 1,
+    protectedProductionProjectCount: 1,
     safeProjectionSha256: '2'.repeat(64),
   };
   const eventsMetadata = writeCanonicalJson(directory, 'action-events.json', {
@@ -169,7 +170,7 @@ function makeSyntheticEvidenceBundle(
     directory,
     'provider-export.safe.json',
     {
-      schemaVersion: 2,
+      schemaVersion: 3,
       exportType: 'SUPABASE_SOURCE_PROJECT_PROVIDER_SAFE_PROJECTION',
       status: 'PASS',
       actionId: 'PR12-ACTION-003',
@@ -183,8 +184,9 @@ function makeSyntheticEvidenceBundle(
       },
       preflight: {
         organization: {
-          organizationId: 'org-isolated-001',
-          organizationSlug: 'isolated-staging-org',
+          organizationId: 'org-shared-001',
+          organizationName: "IFs1991's Org",
+          organizationSlug: 'kbnsntifrawhimhfjrug',
           plan: 'PRO',
         },
         organizationResponseBodySha256: '3'.repeat(64),
@@ -196,16 +198,17 @@ function makeSyntheticEvidenceBundle(
         },
         regionResponseBodySha256: '4'.repeat(64),
         projectListPages: [page],
-        projectCount: 0,
+        projectCount: 1,
         duplicateMatchCount: 0,
+        protectedProductionProjectCount: 1,
         observedAt: '2026-07-23T12:00:09.000Z',
       },
       createResponse: {
         httpStatus: 201,
         safeProjection: {
           projectRef,
-          organizationId: 'org-isolated-001',
-          organizationSlug: 'isolated-staging-org',
+          organizationId: 'org-shared-001',
+          organizationSlug: 'kbnsntifrawhimhfjrug',
           projectName: 'seikotsuin-pr12-isolated-qualification-20260719',
           region: 'ap-northeast-1',
           createdAt: '2026-07-23T12:00:19.000Z',
@@ -229,8 +232,8 @@ function makeSyntheticEvidenceBundle(
             pages: [
               {
                 ...page,
-                totalCount: 1,
-                returnedCount: 1,
+                totalCount: 2,
+                returnedCount: 2,
                 safeProjectionSha256: '6'.repeat(64),
               },
             ],
@@ -248,6 +251,17 @@ function makeSyntheticEvidenceBundle(
         observedAt: '2026-07-23T12:00:59.000Z',
       },
       reconciliation: null,
+      productionBoundary: {
+        exceptionMode:
+          'PHASE1_SAME_ORGANIZATION_PRODUCTION_PROJECT_DENY_EXCEPTION_V1',
+        targetOrganizationSlug: 'kbnsntifrawhimhfjrug',
+        productionProjectRef: 'qnanuoqveidwvacvbhqp',
+        organizationProjectEnumerationAllowed: true,
+        directProductionProjectManagementApiContactCount: 0,
+        productionProjectDataPlaneContactCount: 0,
+        productionDatabaseContactCount: 0,
+        productionCredentialAccessCount: 0,
+      },
       rawProviderBodiesPersisted: false,
       capturedAt: '2026-07-23T12:01:00.000Z',
       capturedBy: secretBearing
@@ -259,7 +273,7 @@ function makeSyntheticEvidenceBundle(
     directory,
     'provisioning-result.json',
     {
-      schemaVersion: 3,
+      schemaVersion: 4,
       phase: 'SOURCE_PROJECT_PROVISIONING_RESULT',
       resultType: 'SOURCE_PROJECT_PROVISIONING_OPERATION',
       status: 'PASS',
@@ -291,9 +305,20 @@ function makeSyntheticEvidenceBundle(
       cleanupDeletionAuthorized: false,
       databaseConnectionPerformed: false,
       phase2AndLaterAuthorized: false,
+      productionBoundary: {
+        exceptionMode:
+          'PHASE1_SAME_ORGANIZATION_PRODUCTION_PROJECT_DENY_EXCEPTION_V1',
+        targetOrganizationSlug: 'kbnsntifrawhimhfjrug',
+        productionProjectRef: 'qnanuoqveidwvacvbhqp',
+        organizationProjectEnumerationAllowed: true,
+        directProductionProjectManagementApiContactCount: 0,
+        productionProjectDataPlaneContactCount: 0,
+        productionDatabaseContactCount: 0,
+        productionCredentialAccessCount: 0,
+      },
       createdEnvironment: {
-        organizationId: 'org-isolated-001',
-        organizationSlug: 'isolated-staging-org',
+        organizationId: 'org-shared-001',
+        organizationSlug: 'kbnsntifrawhimhfjrug',
         organizationPlan: 'PRO',
         projectRef,
         projectName: 'seikotsuin-pr12-isolated-qualification-20260719',
@@ -546,6 +571,7 @@ function makeSyntheticRecoveryEvidenceBundle(): string {
     state: 'PROJECT_OBSERVED_OWNER_DECISION_REQUIRED',
     observedAt: '2026-07-23T12:00:50.000Z',
     projectCount: 1,
+    protectedProductionProjectCount: 1,
     matchingProjects: [
       {
         projectRef: 'abcdefghijklmnopqrst',
@@ -564,6 +590,7 @@ function makeSyntheticRecoveryEvidenceBundle(): string {
         limit: 100,
         totalCount: 1,
         returnedCount: 1,
+        protectedProductionProjectCount: 1,
         safeProjectionSha256: '2'.repeat(64),
       },
     ],
@@ -660,6 +687,7 @@ function makeSyntheticPartialAcceptedEvidenceBundle(): string {
     state: 'PROJECT_OBSERVED_OWNER_DECISION_REQUIRED',
     observedAt: '2026-07-23T12:00:50.000Z',
     projectCount: 1,
+    protectedProductionProjectCount: 1,
     matchingProjects: [
       {
         projectRef: 'abcdefghijklmnopqrst',
@@ -678,6 +706,7 @@ function makeSyntheticPartialAcceptedEvidenceBundle(): string {
         limit: 100,
         totalCount: 1,
         returnedCount: 1,
+        protectedProductionProjectCount: 1,
         safeProjectionSha256: '2'.repeat(64),
       },
     ],
@@ -1294,7 +1323,7 @@ function makeValidFixture() {
     db_pass: 'RUNTIME_SECRET_NOT_IN_EVIDENCE',
     desired_instance_size: 'large',
     name: 'seikotsuin-pr12-isolated-qualification-20260719',
-    organization_slug: 'isolated-staging-org',
+    organization_slug: 'kbnsntifrawhimhfjrug',
     region_selection: {
       code: 'ap-northeast-1',
       type: 'specific',
@@ -1302,7 +1331,7 @@ function makeValidFixture() {
   };
 
   const binding = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     phase: 'SOURCE_PROJECT_PROVISIONING',
     status: 'APPROVED',
     authorization: {
@@ -1376,16 +1405,36 @@ function makeValidFixture() {
       ],
     },
     environmentProposal: {
-      organizationId: 'org-isolated-001',
-      organizationSlug: 'isolated-staging-org',
+      organizationId: 'org-shared-001',
+      organizationSlug: 'kbnsntifrawhimhfjrug',
       exactOrganizationAllowBinding: true,
       organizationPlan: 'PRO',
       projectName: 'seikotsuin-pr12-isolated-qualification-20260719',
       region: 'ap-northeast-1',
       databaseTier: 'LARGE',
       prohibitedProjectRefs: ['qnanuoqveidwvacvbhqp'],
-      prohibitedOrganizationIds: ['org-production-001'],
-      prohibitedOrganizationSlugs: ['production-org'],
+      prohibitedOrganizationIds: ['org-shared-001'],
+      prohibitedOrganizationSlugs: ['kbnsntifrawhimhfjrug'],
+    },
+    sameOrganizationException: {
+      mode: 'PHASE1_SAME_ORGANIZATION_PRODUCTION_PROJECT_DENY_EXCEPTION_V1',
+      localPreparationAuthorized: true,
+      localPreparationAuthorizedOn: '2026-07-25',
+      targetOrganizationName: "IFs1991's Org",
+      targetOrganizationSlug: 'kbnsntifrawhimhfjrug',
+      productionOrganizationId: 'org-shared-001',
+      productionOrganizationSlug: 'kbnsntifrawhimhfjrug',
+      productionProjectName: 'seikotsuin-management',
+      productionProjectRef: 'qnanuoqveidwvacvbhqp',
+      productionProjectOrigin: 'https://qnanuoqveidwvacvbhqp.supabase.co',
+      organizationProjectEnumerationAllowed: true,
+      organizationProjectEnumerationDataMinimization:
+        'PRODUCTION_REF_ONLY_IN_MEMORY_NO_RAW_BODY_OR_METADATA_PERSISTENCE',
+      productionProjectSpecificManagementApiContactAuthorized: false,
+      productionProjectDataPlaneContactAuthorized: false,
+      productionDatabaseContactAuthorized: false,
+      productionCredentialAccessAuthorized: false,
+      sharedOrganizationRiskAcceptanceRequiredForFinalAction: true,
     },
     initialPlatformPosture: {
       mutationsIncludedInPhase1: false,
@@ -1468,6 +1517,10 @@ function makeValidFixture() {
       expiresAt: '2026-07-23T00:30:00.000Z',
       soleOperatorRiskAccepted: true,
       providerSpendCapLimitationAcknowledged: true,
+      sameOrganizationExceptionRiskAccepted: true,
+      organizationListProductionRefObservationAccepted: true,
+      sharedOrganizationIamBillingControlPlaneRiskAccepted: true,
+      productionDirectContactProhibitionAcknowledged: true,
       evidencePath: 'owner-private/source-project-approval.json',
       evidenceSha256: '8'.repeat(64),
       approvedActionId: 'PR12-ACTION-003',
@@ -1509,7 +1562,8 @@ function makeValidFixture() {
       maximumApprovalWindowSeconds: 1800,
       compensatingControls: [
         'EXACT_HEAD_BASE_GOVERNANCE_CONTRACT_WRAPPER_AND_PAYLOAD_HASHES',
-        'EXACT_ORGANIZATION_ALLOW_BINDING_AND_PRODUCTION_DENYLIST',
+        'SAME_ORGANIZATION_LIST_ONLY_EXCEPTION_WITH_CENTRAL_PRODUCTION_CONTACT_DENY',
+        'OUTBOUND_MANAGEMENT_API_ROUTE_METHOD_HOST_AND_QUERY_ALLOWLIST',
         'ONE_DURABLE_CREATE_ONCE_CLAIM_NO_POST_RETRY',
         'DPAPI_CURRENT_USER_CLAIM_BOUND_POST_CLAIM_RETRIEVAL',
         'USD_50_OWNER_AUTHORIZATION_CEILING_FOR_72_HOURS',
@@ -1540,7 +1594,7 @@ function makeValidFixture() {
     canonicalSha256(approvalMaterial);
 
   const approvalEvidence = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     recordType: 'PR12_SOURCE_PROJECT_PROVISIONING_OWNER_APPROVAL',
     decision: 'APPROVED',
     attestationStatus: 'VERIFIED',
@@ -1554,14 +1608,25 @@ function makeValidFixture() {
     independentHumanReviewClaimed: false,
     soleOperatorRiskAccepted: true,
     providerSpendCapLimitationAcknowledged: true,
+    sameOrganizationExceptionRiskAccepted: true,
+    organizationListProductionRefObservationAccepted: true,
+    sharedOrganizationIamBillingControlPlaneRiskAccepted: true,
+    productionDirectContactProhibitionAcknowledged: true,
     actionId: 'PR12-ACTION-003',
     gitCommit: 'a'.repeat(40),
     bindingMaterialSha256: binding.approval.approvedBindingMaterialSha256,
     payloadSha256: canonicalSha256(approvedRequestProjection),
     credentialConfigurationSha256: '6'.repeat(64),
     pricingEvidenceSha256: '7'.repeat(64),
-    organizationId: 'org-isolated-001',
-    organizationSlug: 'isolated-staging-org',
+    organizationId: 'org-shared-001',
+    organizationSlug: 'kbnsntifrawhimhfjrug',
+    sameOrganizationExceptionMode:
+      'PHASE1_SAME_ORGANIZATION_PRODUCTION_PROJECT_DENY_EXCEPTION_V1',
+    productionOrganizationId: 'org-shared-001',
+    productionOrganizationSlug: 'kbnsntifrawhimhfjrug',
+    productionProjectName: 'seikotsuin-management',
+    productionProjectRef: 'qnanuoqveidwvacvbhqp',
+    productionProjectOrigin: 'https://qnanuoqveidwvacvbhqp.supabase.co',
     projectName: 'seikotsuin-pr12-isolated-qualification-20260719',
     region: 'ap-northeast-1',
     tier: 'LARGE',
@@ -1745,18 +1810,64 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       'REQUEST_PAYLOAD_HASH_MISMATCH',
     ],
     [
-      'production organization',
+      'shared production organization ID mismatch',
       (fixture: ReturnType<typeof makeValidFixture>) => {
-        fixture.binding.environmentProposal.organizationSlug = 'production-org';
+        fixture.binding.sameOrganizationException.productionOrganizationId =
+          'different-production-organization';
       },
-      'PRODUCTION_ORGANIZATION_DENIED',
+      'SAME_ORGANIZATION_EXCEPTION_INVALID',
     ],
     [
-      'alternate-case production organization',
+      'alternate-case shared organization slug',
       (fixture: ReturnType<typeof makeValidFixture>) => {
-        fixture.binding.environmentProposal.organizationSlug = 'Production-Org';
+        fixture.binding.sameOrganizationException.productionOrganizationSlug =
+          'Production-Org';
       },
-      'PRODUCTION_ORGANIZATION_DENIED',
+      'SAME_ORGANIZATION_EXCEPTION_INVALID',
+    ],
+    [
+      'changed shared target organization slug',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.environmentProposal.organizationSlug =
+          'different-shared-org';
+      },
+      'SAME_ORGANIZATION_EXCEPTION_INVALID',
+    ],
+    [
+      'changed production origin',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.sameOrganizationException.productionProjectOrigin =
+          'https://abcdefghijklmnopqrst.supabase.co';
+      },
+      'SAME_ORGANIZATION_EXCEPTION_INVALID',
+    ],
+    [
+      'same-Organization exception risk not accepted',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.approval.sameOrganizationExceptionRiskAccepted = false;
+      },
+      'SOLE_OPERATOR_EXCEPTION_INVALID',
+    ],
+    [
+      'organization-list production-ref observation not accepted',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.approval.organizationListProductionRefObservationAccepted = false;
+      },
+      'SOLE_OPERATOR_EXCEPTION_INVALID',
+    ],
+    [
+      'shared IAM billing control-plane risk not accepted',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.approval.sharedOrganizationIamBillingControlPlaneRiskAccepted = false;
+      },
+      'SOLE_OPERATOR_EXCEPTION_INVALID',
+    ],
+    [
+      'production direct-contact prohibition not acknowledged',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.approval.productionDirectContactProhibitionAcknowledged = false;
+      },
+      'SOLE_OPERATOR_EXCEPTION_INVALID',
     ],
     [
       'missing frozen production project ref',
@@ -2418,7 +2529,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         '--binding',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-binding-v3.template.json'
+          'source-project-provisioning-binding-v4.template.json'
         ),
         '--credential-config',
         path.join(
@@ -2428,7 +2539,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         '--approval-evidence',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-owner-approval-v2.template.json'
+          'source-project-provisioning-owner-approval-v3.template.json'
         ),
         '--pricing-evidence',
         path.join(
@@ -2493,7 +2604,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
           '--binding',
           path.join(
             phase1EvidenceRoot,
-            'source-project-provisioning-binding-v3.template.json'
+            'source-project-provisioning-binding-v4.template.json'
           ),
           '--credential-config',
           path.join(
@@ -2503,7 +2614,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
           '--approval-evidence',
           path.join(
             phase1EvidenceRoot,
-            'source-project-provisioning-owner-approval-v2.template.json'
+            'source-project-provisioning-owner-approval-v3.template.json'
           ),
           '--pricing-evidence',
           path.join(
@@ -2549,7 +2660,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         '--binding',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-binding-v3.template.json'
+          'source-project-provisioning-binding-v4.template.json'
         ),
         '--credential-config',
         path.join(
@@ -2559,7 +2670,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         '--approval-evidence',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-owner-approval-v2.template.json'
+          'source-project-provisioning-owner-approval-v3.template.json'
         ),
         '--pricing-evidence',
         path.join(
@@ -2606,7 +2717,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         '--binding',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-binding-v3.template.json'
+          'source-project-provisioning-binding-v4.template.json'
         ),
         '--credential-config',
         path.join(
@@ -2616,7 +2727,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         '--approval-evidence',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-owner-approval-v2.template.json'
+          'source-project-provisioning-owner-approval-v3.template.json'
         ),
         '--pricing-evidence',
         path.join(
@@ -2664,8 +2775,8 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     const response = {
       id: 'deprecated-provider-project-id',
       ref: 'abcdefghijklmnopqrst',
-      organization_id: 'org-isolated-001',
-      organization_slug: 'isolated-staging-org',
+      organization_id: 'org-shared-001',
+      organization_slug: 'kbnsntifrawhimhfjrug',
       name: 'seikotsuin-pr12-isolated-qualification-20260719',
       region: 'ap-northeast-1',
       created_at: '2026-07-23T12:01:00.000Z',
@@ -2716,6 +2827,167 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       [{ ...response, created_at: '2026-02-31T12:01:00Z' }, fixture.binding],
       'PROVIDER_RESPONSE_TARGET_MISMATCH'
     );
+  });
+
+  test('redacts the protected production row to its fixed ref only', () => {
+    const fixture = makeValidFixture();
+    const response = {
+      projects: [
+        {
+          ref: 'qnanuoqveidwvacvbhqp',
+          name: 'seikotsuin-management',
+          cloud_provider: 'AWS',
+          region: 'ap-northeast-1',
+          is_branch: false,
+          status: 'ACTIVE_HEALTHY',
+          inserted_at: '2026-07-01T00:00:00.000Z',
+          databases: [
+            {
+              identifier: 'production-database-metadata-must-not-persist',
+              region: 'ap-northeast-1',
+              status: 'ACTIVE_HEALTHY',
+              cloud_provider: 'AWS',
+              type: 'PRIMARY',
+            },
+          ],
+        },
+        {
+          ref: 'bcdefghijklmnopqrstu',
+          name: 'unrelated-project',
+          cloud_provider: 'AWS',
+          region: 'ap-northeast-1',
+          is_branch: false,
+          status: 'ACTIVE_HEALTHY',
+          inserted_at: '2026-07-02T00:00:00Z',
+          databases: [
+            {
+              identifier: 'unrelated-primary',
+              region: 'ap-northeast-1',
+              status: 'ACTIVE_HEALTHY',
+              cloud_provider: 'AWS',
+              type: 'PRIMARY',
+            },
+          ],
+        },
+      ],
+      pagination: { count: 2, limit: 100, offset: 0 },
+    };
+    const result = invokeContract('organizationProjectPageToSafeProjection', [
+      response,
+      fixture.binding,
+    ]);
+    expect(result.ok).toBe(true);
+    expect(result.value).toEqual({
+      projects: [
+        {
+          projectRef: 'qnanuoqveidwvacvbhqp',
+          protectedProductionProject: true,
+        },
+        {
+          projectRef: 'bcdefghijklmnopqrstu',
+          projectName: 'unrelated-project',
+          region: 'ap-northeast-1',
+          isBranch: false,
+          status: 'ACTIVE_HEALTHY',
+          insertedAt: '2026-07-02T00:00:00.000Z',
+        },
+      ],
+      pagination: { count: 2, limit: 100, offset: 0 },
+      duplicateProjectRefs: [],
+      protectedProductionProjectCount: 1,
+    });
+    expect(JSON.stringify(result.value)).not.toContain(
+      'production-database-metadata-must-not-persist'
+    );
+    expectRejected(
+      'organizationProjectPageToSafeProjection',
+      [
+        {
+          ...response,
+          projects: [
+            {
+              ...response.projects[0],
+              name: 'unexpected-production-name',
+            },
+          ],
+          pagination: { count: 1, limit: 100, offset: 0 },
+        },
+        fixture.binding,
+      ],
+      'PRODUCTION_PROJECT_IDENTITY_MISMATCH'
+    );
+  });
+
+  test('allows only the fixed Management API routes and denies every production target', () => {
+    const fixture = makeValidFixture();
+    const invokeGuard = (
+      url: string,
+      method: 'GET' | 'POST',
+      createdProjectRef: string | null = null
+    ) =>
+      invokeContract('assertAllowedManagementApiRequest', [
+        { url, method, binding: fixture.binding, createdProjectRef },
+      ]);
+    expect(
+      invokeGuard(
+        'https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug',
+        'GET'
+      ).value
+    ).toBe('TARGET_ORGANIZATION_ENTITLEMENT');
+    expect(
+      invokeGuard(
+        'https://api.supabase.com/v1/projects/available-regions?organization_slug=kbnsntifrawhimhfjrug&desired_instance_size=large',
+        'GET'
+      ).value
+    ).toBe('TARGET_AVAILABLE_REGIONS');
+    expect(
+      invokeGuard(
+        'https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug/projects?offset=0&limit=100&sort=name_asc',
+        'GET'
+      ).value
+    ).toBe('TARGET_ORGANIZATION_PROJECT_LIST');
+    expect(
+      invokeGuard('https://api.supabase.com/v1/projects', 'POST').value
+    ).toBe('CREATE_SOURCE_PROJECT');
+    expect(
+      invokeGuard(
+        'https://api.supabase.com/v1/projects/abcdefghijklmnopqrst/billing/addons',
+        'GET',
+        'abcdefghijklmnopqrst'
+      ).value
+    ).toBe('CREATED_SOURCE_PROJECT_COMPUTE_ADDONS');
+
+    for (const url of [
+      'https://qnanuoqveidwvacvbhqp.supabase.co',
+      'https://api.supabase.com/v1/projects/qnanuoqveidwvacvbhqp',
+      'https://api.supabase.com/v1/projects/%71nanuoqveidwvacvbhqp/billing/addons',
+      'https://api.supabase.com/v1/projects?ref=qnanuoqveidwvacvbhqp',
+    ]) {
+      expect(invokeGuard(url, 'GET')).toEqual({
+        ok: false,
+        code: 'PRODUCTION_CONTACT_DENIED',
+      });
+    }
+    expect(
+      invokeGuard(
+        'https://api.supabase.com/v1/projects/qnanuoqveidwvacvbhqp/billing/addons',
+        'GET',
+        'qnanuoqveidwvacvbhqp'
+      )
+    ).toEqual({ ok: false, code: 'PRODUCTION_CONTACT_DENIED' });
+    expect(
+      invokeGuard(
+        'https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug/projects?offset=0&limit=100&sort=name_asc&extra=true',
+        'GET'
+      )
+    ).toEqual({ ok: false, code: 'OUTBOUND_ROUTE_NOT_ALLOWED' });
+    expect(
+      invokeGuard(
+        'https://api.supabase.com/v1/projects/bcdefghijklmnopqrstu/billing/addons',
+        'GET',
+        'abcdefghijklmnopqrst'
+      )
+    ).toEqual({ ok: false, code: 'CREATED_PROJECT_REF_NOT_BOUND' });
   });
 
   test('strictly validates documented JSON media types', () => {
@@ -3025,6 +3297,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       limit: 100,
       totalCount: 1,
       returnedCount: 1,
+      protectedProductionProjectCount: 1,
       safeProjectionSha256: '2'.repeat(64),
     };
     const project = {
@@ -3039,6 +3312,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       state: 'PROJECT_OBSERVED_OWNER_DECISION_REQUIRED',
       observedAt: '2026-07-23T12:00:30.000Z',
       projectCount: 1,
+      protectedProductionProjectCount: 1,
       matchingProjects: [project],
       projectListPages: [page],
       automaticPostRetryPerformed: false,
@@ -3598,6 +3872,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
                   limit: 100,
                   totalCount: 1,
                   returnedCount: 1,
+                  protectedProductionProjectCount: 1,
                   safeProjectionSha256: '6'.repeat(64),
                 },
               ],
@@ -3633,8 +3908,8 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
           httpStatus: 201,
           safeProjection: {
             projectRef: 'abcdefghijklmnopqrst',
-            organizationId: 'org-isolated-001',
-            organizationSlug: 'isolated-staging-org',
+            organizationId: 'org-shared-001',
+            organizationSlug: 'kbnsntifrawhimhfjrug',
             projectName: 'seikotsuin-pr12-isolated-qualification-20260719',
             region: 'ap-northeast-1',
             createdAt: '2026-07-23T12:00:19.000Z',
@@ -3791,6 +4066,54 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     }
   });
 
+  test('rejects a resealed result claiming direct production contact', () => {
+    const directory = makeSyntheticEvidenceBundle(false);
+    rewriteEvidenceArtifactAndReseal(
+      directory,
+      'provisioning-result.json',
+      artifact => {
+        const boundary = artifact.productionBoundary as JsonObject;
+        boundary.directProductionProjectManagementApiContactCount = 1;
+      }
+    );
+    const rejected = runEvidenceVerifier(directory);
+    expect(rejected.status).toBe(1);
+    expect(rejected.stderr).toContain('PROVISIONING_RESULT_INVALID');
+  });
+
+  test('rejects a resealed provider projection using the production ref', () => {
+    const directory = makeSyntheticEvidenceBundle(false);
+    rewriteEvidenceArtifactAndReseal(
+      directory,
+      'provider-export.safe.json',
+      artifact => {
+        const createResponse = artifact.createResponse as JsonObject;
+        const safeProjection = createResponse.safeProjection as JsonObject;
+        safeProjection.projectRef = 'qnanuoqveidwvacvbhqp';
+      }
+    );
+    refreshResultProviderHash(directory);
+    const rejected = runEvidenceVerifier(directory);
+    expect(rejected.status).toBe(1);
+    expect(rejected.stderr).toContain('PROVIDER_PASS_INVALID');
+  });
+
+  test('rejects a resealed action event using the production ref', () => {
+    const directory = makeSyntheticEvidenceBundle(false);
+    rewriteEvidenceArtifactAndReseal(
+      directory,
+      'action-events.json',
+      artifact => {
+        const events = artifact.events as JsonValue[];
+        const responseAccepted = events[2] as JsonObject;
+        responseAccepted.projectRef = 'qnanuoqveidwvacvbhqp';
+      }
+    );
+    const rejected = runEvidenceVerifier(directory);
+    expect(rejected.status).toBe(1);
+    expect(rejected.stderr).toContain('ACTION_EVENTS_INVALID');
+  });
+
   test('rejects an internally hash-consistent secret-bearing evidence bundle', () => {
     const directory = makeSyntheticEvidenceBundle(true);
     const rejected = runEvidenceVerifier(directory);
@@ -3863,7 +4186,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       'provider-export.safe.json',
       artifact => {
         const preflight = artifact.preflight as JsonObject;
-        preflight.duplicateMatchCount = 1;
+        preflight.duplicateMatchCount = 2;
       }
     );
     refreshResultProviderHash(directory);

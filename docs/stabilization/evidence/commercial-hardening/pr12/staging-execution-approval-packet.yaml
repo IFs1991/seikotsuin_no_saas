@@ -19,12 +19,12 @@ machine_readable_execution_binding:
   must_be_parsed_and_matched_by_execution_verifier: true
 authorization_phases:
   source_project_provisioning:
-    template: source-project-provisioning-binding-v3.template.json
-    phase_local_contract_version: 3
-    result_template: source-project-provisioning-result-v3.template.json
-    provider_safe_projection_template: source-project-provider-safe-projection-v2.template.json
+    template: source-project-provisioning-binding-v4.template.json
+    phase_local_contract_version: 4
+    result_template: source-project-provisioning-result-v4.template.json
+    provider_safe_projection_template: source-project-provider-safe-projection-v3.template.json
     credential_configuration_template: source-project-provisioning-credential-configuration-v2.template.json
-    owner_approval_template: source-project-provisioning-owner-approval-v2.template.json
+    owner_approval_template: source-project-provisioning-owner-approval-v3.template.json
     official_pricing_evidence_template: source-project-official-pricing-evidence-v2.template.json
     dpapi_envelope_template: source-project-windows-dpapi-envelope-v1.template.json
     dpapi_bootstrap_approval_template: source-project-dpapi-bootstrap-approval-v1.template.json
@@ -42,6 +42,27 @@ authorization_phases:
     reconciliation_only_mode: --reconcile-dispatched-action
     recovery_mode_has_post_path: false
     duplicate_preflight: ALL_ORGANIZATION_PROJECT_PAGES_EXACT_FIXED_NAME
+    same_organization_exception:
+      mode: PHASE1_SAME_ORGANIZATION_PRODUCTION_PROJECT_DENY_EXCEPTION_V1
+      target_organization_name: IFs1991's Org
+      target_organization_slug: kbnsntifrawhimhfjrug
+      production_organization_id: NOT_CAPTURED
+      production_organization_slug: kbnsntifrawhimhfjrug
+      production_project_name: seikotsuin-management
+      production_project_ref: qnanuoqveidwvacvbhqp
+      production_project_origin: https://qnanuoqveidwvacvbhqp.supabase.co
+      organization_project_list_production_ref_observation_allowed: true
+      production_metadata_persistence_allowed: false
+      production_project_specific_management_api_contact_authorized: false
+      production_data_plane_contact_authorized: false
+      production_database_contact_authorized: false
+      production_credential_access_authorized: false
+    outbound_request_guard:
+      exact_https_api_supabase_com_host_required: true
+      exact_method_path_and_query_allowlist_required: true
+      redirect_allowed: false
+      production_ref_in_path_or_query_action: FAIL_BEFORE_REMOTE_CONTACT
+      production_origin_action: FAIL_BEFORE_REMOTE_CONTACT
     unknown_remote_outcome: STOP_READ_ONLY_RECONCILIATION_OWNER_DECISION
     evidence_seal_order: PARTIAL_FLUSH_VERIFY_ATOMIC_RENAME_THEN_TERMINAL
     automatic_reseal_allowed: false
@@ -162,12 +183,13 @@ environment:
   project_name: seikotsuin-pr12-isolated-qualification-20260719
   project_name_state: PROPOSED_OWNER_APPROVAL_REQUIRED
   organization_plan: PRO
+  organization_name: IFs1991's Org
   organization_id: NOT_CAPTURED
-  organization_slug: NOT_CAPTURED
+  organization_slug: kbnsntifrawhimhfjrug
   prohibited_organization_ids:
     - NOT_CAPTURED
   prohibited_organization_slugs:
-    - NOT_CAPTURED
+    - kbnsntifrawhimhfjrug
   region: ap-northeast-1
   region_name: Northeast Asia (Tokyo)
   database_tier: LARGE
@@ -177,6 +199,12 @@ environment:
   qualification_scope_if_approved: Large only; a different production tier requires reapproval and rerun.
   prohibited_project_refs:
     - qnanuoqveidwvacvbhqp
+  protected_production_project:
+    name: seikotsuin-management
+    ref: qnanuoqveidwvacvbhqp
+    origin: https://qnanuoqveidwvacvbhqp.supabase.co
+    same_organization_as_source: true
+    direct_contact_authorized: false
   database_version: NOT_CAPTURED
   required_database_major: 17
   expected_database_size: less_than_1_gib_after_fixtures_and_probes
@@ -804,7 +832,7 @@ cli:
     - gen_types
     - status
   command_ledger_path: staging-command-ledger.proposed.json
-  command_ledger_sha256: e01ef1fe6b00d5e74dd38b639fc6e80d1b0be520ae1ae9826d06601b73672d31
+  command_ledger_sha256: 802b7978394dc29b0fd85a8f513c9fc53108caf8c7960a85ffd7c40c4fa834c6
   exact_commands: PROPOSED_NOT_EXECUTABLE
   exact_commands_blocker: Phase 1 now has a local fail-closed binding guard, at-most-one-POST wrapper/collector, action journal, and phase-local privacy/evidence sealing, but its owner inputs remain unresolved and it was not executed. Phase 2+ target guards, hosted credential/seed adapter, post-load row/hash and schema/type collectors, canonical PR11 and hosted SLO runners, security/Auth/tenant/Data API/GraphQL/COMM claim/COMM-BILL matrices, Advisor diff, backup metadata/watermark, post-restore, side-effect, and full-qualification privacy collectors remain NOT_IMPLEMENTED.
   executable_command_metadata_required:
@@ -917,6 +945,18 @@ phase1_local_preparation_decision:
   official_list_price_substitution_design_authorized: true
   windows_dpapi_credential_channel_local_preparation_authorized: true
   phase1_72_hour_owner_authorization_ceiling_usd: 50
+  same_organization_exception_local_implementation_authorized: true
+  same_organization_exception_authorized_on: '2026-07-25'
+  target_organization_name: IFs1991's Org
+  target_organization_slug: kbnsntifrawhimhfjrug
+  target_organization_plan_owner_reported: PRO
+  target_organization_payment_method_status_owner_reported: ACTIVE
+  target_organization_spend_cap_owner_reported: ENABLED
+  target_organization_next_billing_date_owner_reported: '2026-08-24'
+  production_project_name: seikotsuin-management
+  production_project_ref: qnanuoqveidwvacvbhqp
+  production_project_origin: https://qnanuoqveidwvacvbhqp.supabase.co
+  production_project_direct_contact_authorized: false
   real_credential_bootstrap_authorized: false
   pr12_action_003_authorized: false
   source_project_creation_authorized: false
@@ -1041,5 +1081,5 @@ residual_risk:
   - Safe authority lookup query-error induction, dedicated hosted Auth actor provisioning, stale-authority/token-expiry/skew evidence, and relational selector/query/timestamp collectors are not implemented; COMM-AUTH-002 and related COMM-TENANT gates cannot PASS.
   - The immutable 54-gate COMM claim map is defined, but its typed collector registry is incomplete; execution PASS is intentionally impossible.
   - Maximum acceptable clock skew across provider, database, and operator clocks is UNASSIGNED; RTO/RPO PASS is blocked.
-  - FUTOSHI IWASAWA is the captured Phase 1 sole-operator display name, but the canonical principal ID, final sole-operator risk acceptance, exact DPAPI configuration/envelopes, fresh official-pricing source captures, full USD 50 funding source/amount/fundedThrough, cleanup deadlines, exact API/GraphQL matrices, psql version, application URL, and stricter RTO/RPO authority decision remain blockers.
+  - FUTOSHI IWASAWA is the captured Phase 1 sole-operator display name and the shared Organization slug/name plus production project name/ref/origin are fixed, but the shared Organization ID, canonical principal ID, final sole-operator and same-Organization blast-radius risk acceptance, exact DPAPI configuration/envelopes, fresh official-pricing source captures, full USD 50 funding source/amount/fundedThrough, cleanup deadlines, exact API/GraphQL matrices, psql version, application URL, and stricter RTO/RPO authority decision remain blockers.
 notes: No isolated staging project was contacted or created while concretizing this proposal. This file remains NOT_RUN. All provisioning, remote, restore, Ready, merge, production, and release authorizations remain false.
