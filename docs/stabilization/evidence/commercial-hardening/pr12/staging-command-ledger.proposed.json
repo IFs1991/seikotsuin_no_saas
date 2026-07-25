@@ -22,6 +22,9 @@
   "targetGuard": {
     "status": "PHASE1_IMPLEMENTED_LATER_PHASES_NOT_IMPLEMENTED",
     "phase1ImplementationPath": "scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs",
+    "organizationIdentityCaptureImplementationPath": "scripts/commercial-hardening/run-pr12-source-organization-identity-capture.mjs",
+    "organizationIdentityCaptureRequiredBeforeSourceProvisioning": true,
+    "organizationIdentityCaptureEvidenceLinkageStatus": "NOT_IMPLEMENTED",
     "laterPhaseImplementationPath": "NOT_IMPLEMENTED",
     "requiredForEveryRemoteCommand": true,
     "approvedBindingEnvironmentName": "PR12_APPROVED_STAGING_BINDING",
@@ -539,6 +542,55 @@
     "failureEffect": "ABORT_NO_GO"
   },
   "provisioningActions": {
+    "organizationIdentityCapture": {
+      "actionId": "PR12-ACTION-002",
+      "method": "OWNER_MANAGEMENT_API_GET_ORGANIZATION_IDENTITY",
+      "httpMethod": "GET",
+      "endpoint": "https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug",
+      "secretFreeRequestProjection": {
+        "bodyPresent": false,
+        "method": "GET",
+        "url": "https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug"
+      },
+      "secretFreeRequestProjectionSha256": "NOT_CAPTURED",
+      "maximumRemoteContactCount": 1,
+      "maximumRequestAttempts": 1,
+      "automaticRetryAllowed": false,
+      "redirectAllowed": false,
+      "queryAllowed": false,
+      "requestBodyAllowed": false,
+      "projectEnumerationAllowed": false,
+      "productionProjectSpecificPathAllowed": false,
+      "databasePasswordRetrievalAllowed": false,
+      "tokenOnlyDpapiRetrievalRequired": true,
+      "durableClaimState": "CLAIMED_GET_NOT_SENT",
+      "durablePreGetState": "GET_INTENT_DURABLE",
+      "remoteRecoveryAllowed": false,
+      "wrapper": "fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-organization-identity-capture.mjs --execute-authorized-action PR12-ACTION-002 --binding <approved-binding-v1.json> --credential-config <approved-dpapi-credential-config-v2.json> --approval-evidence <approved-owner-approval-v1.json> --journal-directory <owner-controlled-absolute-directory> --evidence-parent <owner-controlled-absolute-directory>",
+      "wrapperImplemented": true,
+      "wrapperExecuted": false,
+      "authorizedNow": false,
+      "organizationId": "NOT_CAPTURED",
+      "expectedOrganizationName": "IFs1991's Org",
+      "expectedOrganizationSlug": "kbnsntifrawhimhfjrug",
+      "expectedOrganizationPlan": "PRO",
+      "productionProjectSpecificManagementApiContactAuthorized": false,
+      "productionDataPlaneContactAuthorized": false,
+      "productionDatabaseContactAuthorized": false,
+      "productionCredentialAccessAuthorized": false,
+      "rawProviderBodiesPersisted": false,
+      "rawHttpHeadersPersisted": false,
+      "evidenceSealOrder": "PARTIAL_FLUSH_VERIFY_ATOMIC_RENAME_THEN_TERMINAL",
+      "action003IdentityEvidenceLinkageStatus": "NOT_IMPLEMENTED",
+      "terminalJournalToManifestVerifierStatus": "NOT_IMPLEMENTED_ACTION_003_LINKAGE_BLOCKER",
+      "approvalBlockers": [
+        "final head and implementation/governance/configuration hashes",
+        "canonical sole-operator principal ID and unexpired cooling-off approval",
+        "completed DPAPI bootstrap and token envelope",
+        "stable journal/evidence directory identities",
+        "separate explicit remote GET execution approval"
+      ]
+    },
     "sourceProject": {
       "actionId": "PR12-ACTION-003",
       "method": "OWNER_MANAGEMENT_API_CREATE_PROJECT",
@@ -622,14 +674,26 @@
       "providerSpendCapEnforced": false,
       "pricingBasis": "FRESH_HASH_BOUND_OFFICIAL_LIST_PRICE_EVIDENCE",
       "credentialProvider": "WINDOWS_DPAPI_CURRENT_USER_V1",
-      "realCredentialBootstrapAuthorized": false,
+      "realCredentialBootstrapAuthorized": true,
+      "realCredentialBootstrapCompleted": false,
+      "fundingApprovedAmountUsd": 50.0,
+      "fundingSource": "FUTOSHI IWASAWAが管理するIFs1991's Org登録済み支払方法",
+      "fundedThroughPolicy": "PR12-ACTION-003 scheduled execution time plus 73 hours",
+      "scheduledExecutionAt": "NOT_CAPTURED",
+      "fundedThrough": "NOT_CAPTURED",
+      "organizationIdentityCaptureActionId": "PR12-ACTION-002",
+      "organizationIdentityEvidenceLinkageStatus": "NOT_IMPLEMENTED",
+      "fundedThroughPolicyBindingStatus": "NOT_IMPLEMENTED",
+      "fundedThroughPolicyVerifierStatus": "NOT_IMPLEMENTED",
+      "actionApprovable": false,
       "approvalBlockers": [
         "final head and artifact hashes",
-        "shared organization ID and exact production deny identity revalidation",
-        "fresh official-pricing source captures and full USD 50 funding",
+        "sealed PR12-ACTION-002 organization ID evidence and Action-003 linkage",
+        "exact production deny identity revalidation",
+        "fresh official-pricing source captures",
         "canonical sole-operator principal ID, final risk acceptance, and expiry",
-        "cleanup/recovery deadlines and fundedThrough",
-        "exact DPAPI configuration, hashes, and real credential envelopes",
+        "cleanup/recovery deadlines and scheduled/fundedThrough timestamps",
+        "exact DPAPI configuration, hashes, completed bootstrap, and real credential envelopes",
         "stable journal/evidence path fingerprints",
         "timeouts and unexpired hash-bound owner approval"
       ]
@@ -654,7 +718,7 @@
     "psql path and exact version are not captured",
     "post-load row/hash, schema/type, hosted PR11, hosted SLO, security, API, GraphQL, billing, Advisor diff, backup, and post-restore collectors are not implemented",
     "exact security, Data API, GraphQL, billing, and request matrices are not hash-pinned",
-    "Phase 1 shared-Organization target slug and production project ref/origin are fixed and locally guarded, but the shared Organization ID, canonical principal ID, exact DPAPI configuration/envelopes, real-secret bootstrap authorization, funding source, fundedThrough, final action approval, Upstash decision, and later-phase owners remain unresolved"
+    "Phase 1 shared-Organization target slug and production project ref/origin are fixed and locally guarded; USD 50, the named payment source, the scheduled+73-hour funding policy, and local DPAPI bootstrap scope are captured. The shared Organization ID, PR12-ACTION-002 evidence linkage into PR12-ACTION-003, canonical principal ID, completed bootstrap/configuration/envelopes, exact scheduled/fundedThrough timestamps, final action approvals, Upstash decision, and later-phase owners remain unresolved"
   ],
-  "notes": "This JSON is owner-reviewable proposal input, not an approved execution ledger. On 2026-07-24 the owner authorized only the Phase 1 sole-operator exception design, fresh official-list-price substitution design, Windows DPAPI channel local preparation, and a USD 50 owner-governance ceiling for 72 hours. On 2026-07-25 the owner additionally authorized local implementation of the same-Organization exception fixed to kbnsntifrawhimhfjrug and production ref qnanuoqveidwvacvbhqp, with direct production contact forbidden. PR12-ACTION-003, real credential bootstrap, authenticated Supabase contact, and project creation remain unauthorized; authorizedNow is false and the wrapper was not executed. Phase 2+ candidate commands remain explanatory and NOT_IMPLEMENTED until their own fail-closed adapters and approved bindings exist."
+  "notes": "This JSON is owner-reviewable proposal input, not an approved execution ledger. On 2026-07-24 the owner authorized the Phase 1 sole-operator exception design, fresh official-list-price substitution design, Windows DPAPI channel local preparation, and a USD 50 owner-governance ceiling. On 2026-07-25 the owner fixed the shared Organization/production deny boundary, named the USD 50 funding source and scheduled+73-hour funding policy, authorized but did not execute local DPAPI bootstrap, and authorized local implementation of the dedicated PR12-ACTION-002 Organization identity capture contract. The current implementation decision does not authorize that remote GET, PR12-ACTION-003, authenticated production contact, or project creation; authorizedNow is false and neither wrapper was executed. Phase 2+ candidate commands remain explanatory and NOT_IMPLEMENTED until their own fail-closed adapters and approved bindings exist."
 }

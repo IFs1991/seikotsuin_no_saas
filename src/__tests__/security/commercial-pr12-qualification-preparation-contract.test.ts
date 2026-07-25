@@ -953,10 +953,25 @@ describe('commercial PR-12 qualification preparation contract', () => {
       `${evidencePrefix}staging-command-ledger.proposed.json`
     );
     const targetGuard = requireRecord(ledger.targetGuard, 'ledger.targetGuard');
+    expect(targetGuard).toMatchObject({
+      phase1ImplementationPath:
+        'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs',
+      organizationIdentityCaptureImplementationPath:
+        'scripts/commercial-hardening/run-pr12-source-organization-identity-capture.mjs',
+      organizationIdentityCaptureRequiredBeforeSourceProvisioning: true,
+      organizationIdentityCaptureEvidenceLinkageStatus: 'NOT_IMPLEMENTED',
+    });
+    const ledgerProvisioningActions = requireRecord(
+      ledger.provisioningActions,
+      'ledger.provisioningActions'
+    );
     const ledgerSourceProjectAction = requireRecord(
-      requireRecord(ledger.provisioningActions, 'ledger.provisioningActions')
-        .sourceProject,
+      ledgerProvisioningActions.sourceProject,
       'ledger.provisioningActions.sourceProject'
+    );
+    const ledgerOrganizationIdentityAction = requireRecord(
+      ledgerProvisioningActions.organizationIdentityCapture,
+      'ledger.provisioningActions.organizationIdentityCapture'
     );
     const commands = requireArray(ledger.commands, 'ledger.commands');
     expect(ledger.status).toBe('PROPOSED_NOT_EXECUTABLE');
@@ -1147,7 +1162,16 @@ describe('commercial PR-12 qualification preparation contract', () => {
       providerSpendCapEnforced: false,
       pricingBasis: 'FRESH_HASH_BOUND_OFFICIAL_LIST_PRICE_EVIDENCE',
       credentialProvider: 'WINDOWS_DPAPI_CURRENT_USER_V1',
-      realCredentialBootstrapAuthorized: false,
+      realCredentialBootstrapAuthorized: true,
+      realCredentialBootstrapCompleted: false,
+      fundingApprovedAmountUsd: 50,
+      fundingSource: "FUTOSHI IWASAWAが管理するIFs1991's Org登録済み支払方法",
+      fundedThroughPolicy:
+        'PR12-ACTION-003 scheduled execution time plus 73 hours',
+      scheduledExecutionAt: 'NOT_CAPTURED',
+      fundedThrough: 'NOT_CAPTURED',
+      organizationIdentityCaptureActionId: 'PR12-ACTION-002',
+      organizationIdentityEvidenceLinkageStatus: 'NOT_IMPLEMENTED',
       sameOrganizationException: {
         mode: 'PHASE1_SAME_ORGANIZATION_PRODUCTION_PROJECT_DENY_EXCEPTION_V1',
         productionProjectRef: 'qnanuoqveidwvacvbhqp',
@@ -1156,6 +1180,31 @@ describe('commercial PR-12 qualification preparation contract', () => {
         productionDatabaseContactAuthorized: false,
         productionCredentialAccessAuthorized: false,
       },
+    });
+    expect(ledgerOrganizationIdentityAction).toMatchObject({
+      actionId: 'PR12-ACTION-002',
+      method: 'OWNER_MANAGEMENT_API_GET_ORGANIZATION_IDENTITY',
+      httpMethod: 'GET',
+      endpoint:
+        'https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug',
+      maximumRemoteContactCount: 1,
+      maximumRequestAttempts: 1,
+      automaticRetryAllowed: false,
+      redirectAllowed: false,
+      queryAllowed: false,
+      requestBodyAllowed: false,
+      projectEnumerationAllowed: false,
+      productionProjectSpecificPathAllowed: false,
+      databasePasswordRetrievalAllowed: false,
+      tokenOnlyDpapiRetrievalRequired: true,
+      durableClaimState: 'CLAIMED_GET_NOT_SENT',
+      durablePreGetState: 'GET_INTENT_DURABLE',
+      remoteRecoveryAllowed: false,
+      wrapperImplemented: true,
+      wrapperExecuted: false,
+      authorizedNow: false,
+      organizationId: 'NOT_CAPTURED',
+      action003IdentityEvidenceLinkageStatus: 'NOT_IMPLEMENTED',
     });
     expect(provisioningAction).toMatchObject({
       actionId: ledgerSourceProjectAction.actionId,
@@ -1168,6 +1217,13 @@ describe('commercial PR-12 qualification preparation contract', () => {
       remoteContact: true,
       mutating: true,
       mutationScope: 'SOURCE_PROJECT_CREATION',
+    });
+    expect(provisioning.retentionAndCleanupDecision).toMatchObject({
+      sourceFundedHours: 72,
+      fundedThrough: 'NOT_CAPTURED',
+      fundingCeilingUsdScaled: 500000,
+      fundingApprovedAmountUsdScaled: 500000,
+      fundingSource: 'OWNER_REGISTERED_ORGANIZATION_PAYMENT_METHOD',
     });
     const approvalPacket = readRepositoryFile(
       `${evidencePrefix}staging-execution-approval-packet.yaml`
@@ -1202,6 +1258,20 @@ describe('commercial PR-12 qualification preparation contract', () => {
     );
     expect(approvalPacket).toContain(
       '  production_project_direct_contact_authorized: false'
+    );
+    expect(approvalPacket).toContain('  source_organization_identity_capture:');
+    expect(approvalPacket).toContain('    action_id: PR12-ACTION-002');
+    expect(approvalPacket).toContain(
+      '    database_password_retrieval_allowed: false'
+    );
+    expect(approvalPacket).toContain(
+      '  real_credential_bootstrap_authorized: true'
+    );
+    expect(approvalPacket).toContain(
+      '  real_credential_bootstrap_completed: false'
+    );
+    expect(approvalPacket).toContain(
+      '  organization_identity_capture_remote_get_authorized_by_this_decision: false'
     );
     const governanceDigest = fileSha256(
       `${evidencePrefix}staging-execution-approval-packet.yaml`

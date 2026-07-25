@@ -65,7 +65,36 @@ The [v0.2 human approval packet](../stabilization/pr12-staging-execution-owner-a
 - staging, migration, restore, security, privacy, monitoring, incident, and approval owners
 - approval expiry and every revalidation trigger
 
-If a field required by the stage being entered remains `UNASSIGNED`, `NOT_CAPTURED`, or `NOT_RUN`, stop. Stage 1 fixes the shared Organization name/slug and production name/ref/origin but remains blocked by the shared Organization ID, final head/artifact hashes, provider-authenticated Pro evidence, fresh official-pricing bytes/hashes, known charges, exact `$50` funding source/`fundedThrough`, cleanup/recovery decisions, distinct journal/evidence directory identities, timeout values, the stable sole-operator principal ID for `FUTOSHI IWASAWA`, separately approved/completed DPAPI bootstrap, SID/machine/root/PowerShell/script/envelope bindings, fine-grained Management token permissions, two-step self-approval plus same-Organization blast-radius acceptance, and unexpired approval. Stage 2 additionally needs the provider-created source identity, source-only post-creation credential configuration, read-only platform collector, and exact tool evidence. Stage 3 needs guarded replay/catalog tooling. Stage 4 needs the fresh-catalog classification, exact matrices/collectors, closed typed COMM registry, clocks, and full execution approval. Stages 5 and 6 have separate selected-backup/provider-evidence/restore-credential blockers.
+If a field required by the stage being entered remains `UNASSIGNED`, `NOT_CAPTURED`, or `NOT_RUN`, stop. Stage 1 fixes the shared Organization name/slug and production name/ref/origin but remains blocked by the shared Organization ID, sealed Action-002-to-Action-003 identity-evidence linkage, final head/artifact hashes, provider-authenticated Pro evidence, fresh official-pricing bytes/hashes, known charges, exact scheduled/funded-through timestamps under the approved `$50` / named payment source / scheduled+73-hour policy, cleanup/recovery decisions, distinct journal/evidence directory identities, timeout values, the stable sole-operator principal ID for `FUTOSHI IWASAWA`, completion of the separately authorized DPAPI bootstrap, SID/machine/root/PowerShell/script/envelope bindings, fine-grained Management token permissions, two-step self-approval plus same-Organization blast-radius acceptance, and unexpired approval. Stage 2 additionally needs the provider-created source identity, source-only post-creation credential configuration, read-only platform collector, and exact tool evidence. Stage 3 needs guarded replay/catalog tooling. Stage 4 needs the fresh-catalog classification, exact matrices/collectors, closed typed COMM registry, clocks, and full execution approval. Stages 5 and 6 have separate selected-backup/provider-evidence/restore-credential blockers.
+
+### 3.0 Organization identity capture prerequisite — prepared, not approved or run
+
+`PR12-ACTION-002` is the only action reserved for capturing the shared Organization ID. Its local binding, wrapper, token-only DPAPI path, evidence collector, verifier, and RED contracts permit exactly one future `GET https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug`. The request guard rejects a query, fragment, userinfo, port, redirect, request body, POST, every other Management API route, project enumeration, the raw or encoded production ref/origin, and any project-specific path before remote contact.
+
+The populated binding must match the final clean head, governance/configuration hashes, all six direct implementation/dependency hashes, exact request hash, owner-controlled repository-external directory identities, canonical owner principal, five-minute cooling interval, maximum 30-minute expiry, and Node 24 with empty `process.execArgv`. The wrapper requires its lexical/resolved root to equal the canonical Git top-level and rechecks the runtime before claim and immediately before fetch. It must explicitly authorize Organization capture while keeping source provisioning, project creation, production contact, database access, Ready, merge, release, and Phase 2+ false. The exclusive `CLAIMED_GET_NOT_SENT` file is flushed and read back before token retrieval. The exact token-only DPAPI broker mode rejects any second role before opening a path and never opens the database-password envelope. `GET_INTENT_DURABLE` is flushed and read back before fetch and permanently consumes the action identity.
+
+The response is accepted only with exact fields `id`, `name`, `plan`, `opt_in_tags`, and `allowed_release_channels`; name must be `IFs1991's Org` and plan must be `pro`. Strict bounded parsing rejects duplicate JSON members, and decoded raw text plus parsed values are both scanned for the production ref/origin before projection. Raw provider bodies and headers are discarded. The exact six-file evidence bundle persists only the safe identity projection, hashes, timestamps, Node 24/zero-runtime-flag facts, zero production counters, one-attempt/no-retry counters, and secret scan. It is verified before atomic rename and before the terminal journal. Failure after possible dispatch is `UNKNOWN_REMOTE_OUTCOME` with a one-contact failure event; no recovery GET or retry exists.
+
+The future command, after a separate populated hash-bound execution approval, is:
+
+```powershell
+fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-organization-identity-capture.mjs `
+  --execute-authorized-action PR12-ACTION-002 `
+  --binding <approved-binding-v1.json> `
+  --credential-config <approved-dpapi-credential-config-v2.json> `
+  --approval-evidence <approved-identity-capture-owner-approval-v1.json> `
+  --journal-directory <owner-controlled-absolute-directory> `
+  --evidence-parent <owner-controlled-absolute-directory>
+```
+
+This command was not executed and is not approved by the current local implementation decision. After a future run, verify the sealed directory locally with:
+
+```powershell
+fnm exec --using=24 node scripts/commercial-hardening/verify-pr12-source-organization-identity-capture-evidence.mjs `
+  --evidence-directory <owner-controlled-evidence-directory>
+```
+
+The verified Organization ID still cannot authorize provisioning by itself. Hash-binding the sealed evidence and terminal journal into `PR12-ACTION-003`, adding independent terminal-to-manifest verification, resolving the provisioning wrapper's existing Organization entitlement GET, and enforcing exact `fundedThrough = scheduledExecutionAt + 73 hours` in the Action-003 binding/verifier are `NOT_IMPLEMENTED`; Action-003 is not approvable. Stop until those integrations are implemented, tested, audited, and separately approved.
 
 ### 3.1 Phase 1-only wrapper — prepared, not approved or run
 

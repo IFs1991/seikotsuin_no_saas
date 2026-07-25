@@ -12,6 +12,9 @@ import path from 'node:path';
 
 const ACTION_ID = 'PR12-ACTION-003';
 const CLAIM_FILE = 'source-project-provisioning-action.claim.json';
+const ORGANIZATION_IDENTITY_CAPTURE_ACTION_ID = 'PR12-ACTION-002';
+const ORGANIZATION_IDENTITY_CAPTURE_CLAIM_FILE =
+  'source-organization-identity-capture-action.claim.json';
 const PROVIDER_ID = 'WINDOWS_DPAPI_CURRENT_USER_V1';
 const REQUEST_PROTOCOL = 'PR12_DPAPI_BROKER_REQUEST_V1';
 const RESPONSE_MAGIC = Buffer.from('PR12DPB1', 'ascii');
@@ -308,8 +311,17 @@ function validateRoleConfiguration(entry, role) {
 
 export function validateDpapiCredentialResources(
   credentialConfiguration,
-  repositoryRoot
+  repositoryRoot,
+  options = {}
 ) {
+  const includeDatabasePassword =
+    options.includeDatabasePassword === undefined
+      ? true
+      : options.includeDatabasePassword;
+  requireCondition(
+    typeof includeDatabasePassword === 'boolean',
+    'DPAPI_CONFIGURATION_INVALID'
+  );
   requireCondition(
     process.platform === 'win32',
     'DPAPI_WINDOWS_PLATFORM_REQUIRED'
@@ -438,30 +450,39 @@ export function validateDpapiCredentialResources(
     secrets.managementAccessToken,
     'MANAGEMENT_ACCESS_TOKEN'
   );
-  validateRoleConfiguration(secrets.databasePassword, 'DATABASE_PASSWORD');
+  if (includeDatabasePassword) {
+    validateRoleConfiguration(secrets.databasePassword, 'DATABASE_PASSWORD');
+  }
   const tokenPath = envelopePath(
     provider.providerRoot,
     secrets.managementAccessToken.envelopeFilename
-  );
-  const passwordPath = envelopePath(
-    provider.providerRoot,
-    secrets.databasePassword.envelopeFilename
   );
   const tokenEnvelopeSnapshot = stableFileSnapshot(
     tokenPath,
     'DPAPI_TOKEN_ENVELOPE_INVALID'
   );
-  const passwordEnvelopeSnapshot = stableFileSnapshot(
-    passwordPath,
-    'DPAPI_PASSWORD_ENVELOPE_INVALID'
-  );
   requireCondition(
     tokenEnvelopeSnapshot.sha256 ===
-      secrets.managementAccessToken.envelopeSha256 &&
-      passwordEnvelopeSnapshot.sha256 ===
-        secrets.databasePassword.envelopeSha256,
+      secrets.managementAccessToken.envelopeSha256,
     'DPAPI_ENVELOPE_HASH_MISMATCH'
   );
+  let passwordPath;
+  let passwordEnvelopeSnapshot;
+  if (includeDatabasePassword) {
+    passwordPath = envelopePath(
+      provider.providerRoot,
+      secrets.databasePassword.envelopeFilename
+    );
+    passwordEnvelopeSnapshot = stableFileSnapshot(
+      passwordPath,
+      'DPAPI_PASSWORD_ENVELOPE_INVALID'
+    );
+    requireCondition(
+      passwordEnvelopeSnapshot.sha256 ===
+        secrets.databasePassword.envelopeSha256,
+      'DPAPI_ENVELOPE_HASH_MISMATCH'
+    );
+  }
   return {
     providerRootIdentity,
     powershellPath,
@@ -480,27 +501,56 @@ export function validateDpapiCredentialResources(
 export function revalidateDpapiCredentialResources(
   credentialConfiguration,
   repositoryRoot,
-  expected
+  expected,
+  options = {}
 ) {
   const current = validateDpapiCredentialResources(
     credentialConfiguration,
-    repositoryRoot
+    repositoryRoot,
+    options
   );
   requireCondition(
     canonicalJson(current.providerRootIdentity) ===
       canonicalJson(expected.providerRootIdentity),
     'DPAPI_PROVIDER_ROOT_CHANGED'
   );
-  for (const key of [
+  const snapshotKeys = [
     'powershellSnapshot',
     'brokerSnapshot',
     'bootstrapSnapshot',
     'tokenEnvelopeSnapshot',
-    'passwordEnvelopeSnapshot',
-  ]) {
+  ];
+  if (options.includeDatabasePassword !== false) {
+    snapshotKeys.push('passwordEnvelopeSnapshot');
+  }
+  for (const key of snapshotKeys) {
     assertStableSnapshot(current[key], expected[key], 'DPAPI_RESOURCE_CHANGED');
   }
   return current;
+}
+
+export function validateDpapiOrganizationIdentityCaptureResources(
+  credentialConfiguration,
+  repositoryRoot
+) {
+  return validateDpapiCredentialResources(
+    credentialConfiguration,
+    repositoryRoot,
+    { includeDatabasePassword: false }
+  );
+}
+
+export function revalidateDpapiOrganizationIdentityCaptureResources(
+  credentialConfiguration,
+  repositoryRoot,
+  expected
+) {
+  return revalidateDpapiCredentialResources(
+    credentialConfiguration,
+    repositoryRoot,
+    expected,
+    { includeDatabasePassword: false }
+  );
 }
 
 export function buildCredentialBrokerRequest({
@@ -518,7 +568,9 @@ export function buildCredentialBrokerRequest({
   requestNonce,
 }) {
   requireCondition(
-    mode === 'EXECUTE' || mode === 'RECOVERY',
+    mode === 'EXECUTE' ||
+      mode === 'RECOVERY' ||
+      mode === 'ORGANIZATION_IDENTITY_CAPTURE',
     'DPAPI_BROKER_MODE_INVALID'
   );
   const { provider, secrets } = credentialConfiguration;
@@ -542,7 +594,10 @@ export function buildCredentialBrokerRequest({
     schemaVersion: 1,
     protocol: REQUEST_PROTOCOL,
     mode,
-    actionId: ACTION_ID,
+    actionId:
+      mode === 'ORGANIZATION_IDENTITY_CAPTURE'
+        ? ORGANIZATION_IDENTITY_CAPTURE_ACTION_ID
+        : ACTION_ID,
     bindingMaterialSha256,
     payloadSha256,
     claimSha256,
@@ -610,7 +665,14 @@ export function parseCredentialBrokerFrame(
       frame.length <= credentialConfiguration.protocol.responseMaximumBytes &&
       frame.subarray(0, 8).equals(RESPONSE_MAGIC) &&
       frame[8] === 1 &&
-      frame[9] === (mode === 'EXECUTE' ? 1 : 2) &&
+      frame[9] ===
+        (mode === 'EXECUTE'
+          ? 1
+          : mode === 'RECOVERY'
+            ? 2
+            : mode === 'ORGANIZATION_IDENTITY_CAPTURE'
+              ? 3
+              : 0) &&
       frame[10] === (mode === 'EXECUTE' ? 2 : 1) &&
       frame[11] === 0 &&
       frame
@@ -751,6 +813,9 @@ export function retrieveClaimBoundCredentials({
 export const DPAPI_CHANNEL_CONSTANTS = Object.freeze({
   actionId: ACTION_ID,
   claimFile: CLAIM_FILE,
+  organizationIdentityCaptureActionId: ORGANIZATION_IDENTITY_CAPTURE_ACTION_ID,
+  organizationIdentityCaptureClaimFile:
+    ORGANIZATION_IDENTITY_CAPTURE_CLAIM_FILE,
   providerId: PROVIDER_ID,
   requestProtocol: REQUEST_PROTOCOL,
   brokerRelativePath: BROKER_RELATIVE_PATH,

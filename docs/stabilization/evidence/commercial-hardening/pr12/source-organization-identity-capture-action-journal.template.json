@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "actionId": "PR12-ACTION-002",
+  "state": "NOT_RUN",
+  "bindingMaterialSha256": "NOT_CAPTURED",
+  "payloadSha256": "NOT_CAPTURED",
+  "claimedAt": "NOT_CAPTURED",
+  "getIntentAt": "NOT_CAPTURED",
+  "getIntentSha256": "NOT_CAPTURED",
+  "remoteContactCountBeforeGet": 0,
+  "requestAttemptCount": 0,
+  "automaticRetryCount": 0,
+  "terminalOutcome": "NOT_CAPTURED",
+  "notes": "Template only. CLAIMED_GET_NOT_SENT is written exclusively before token retrieval. GET_INTENT_DURABLE permanently consumes this action identity before fetch. No remote recovery or retry exists."
+}

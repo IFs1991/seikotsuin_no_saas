@@ -146,8 +146,8 @@
     "sourceFundedHours": 72,
     "fundedThrough": "NOT_CAPTURED",
     "fundingCeilingUsdScaled": 500000,
-    "fundingApprovedAmountUsdScaled": "NOT_CAPTURED",
-    "fundingSource": "NOT_CAPTURED",
+    "fundingApprovedAmountUsdScaled": 500000,
+    "fundingSource": "OWNER_REGISTERED_ORGANIZATION_PAYMENT_METHOD",
     "cleanupOwner": "UNASSIGNED",
     "deletionApprovalRequester": "UNASSIGNED",
     "deletionApprovalRequestDeadline": "NOT_CAPTURED",
@@ -254,5 +254,5 @@
     "partialEvidenceAutomaticDeletionAllowed": false,
     "abortDuplicateAndPartialFailureEvidenceRequired": true
   },
-  "notes": "Preparation template only. On 2026-07-25 the owner authorized local implementation of the same-Organization sole-operator exception with target organization slug kbnsntifrawhimhfjrug and production project ref qnanuoqveidwvacvbhqp fixed. Organization-wide duplicate enumeration may recognize only the production ref in memory; no production project metadata or raw body may be persisted, and every production-project-specific Management API, data-plane, database, and credential contact remains forbidden. PR12-ACTION-003, real-secret bootstrap, project creation, authenticated remote contact, Phase 2+, cleanup/deletion, Ready, merge, production, and commercial release remain unauthorized. Every NOT_CAPTURED or UNASSIGNED execution field is a hard stop."
+  "notes": "Preparation template only. On 2026-07-25 the owner authorized local implementation of the same-Organization sole-operator exception with target organization slug kbnsntifrawhimhfjrug and production project ref qnanuoqveidwvacvbhqp fixed. Organization-wide duplicate enumeration may recognize only the production ref in memory; no production project metadata or raw body may be persisted, and every production-project-specific Management API, data-plane, database, and credential contact remains forbidden. Real-secret DPAPI bootstrap scope is separately owner-authorized but remains NOT_RUN; its concrete approval/configuration/envelopes are NOT_CAPTURED. The owner-approved scheduled Action-003 plus 73-hour funded-through policy is captured, but its exact timestamp hash binding and verifier linkage are NOT_IMPLEMENTED, so PR12-ACTION-003 is not approvable. Project creation, authenticated remote contact, Phase 2+, cleanup/deletion, Ready, merge, production, and commercial release remain unauthorized. Every NOT_CAPTURED, NOT_IMPLEMENTED, or UNASSIGNED execution field is a hard stop."
 }

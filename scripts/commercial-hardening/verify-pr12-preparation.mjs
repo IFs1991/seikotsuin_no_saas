@@ -112,6 +112,13 @@ const REQUIRED_ARTIFACTS = [
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v3.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-privacy-scan.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-organization-identity-capture-binding-v1.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-organization-identity-capture-owner-approval-v1.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-organization-identity-capture-action-journal.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-organization-identity-capture-result-v1.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-organization-identity-provider-safe-projection-v1.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-organization-identity-capture-evidence-manifest-v1.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-organization-identity-capture-privacy-scan-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-identity-bootstrap-binding.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-identity-bootstrap-result.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-platform-configuration-raw-evidence.template.json',
@@ -149,9 +156,13 @@ const REQUIRED_ARTIFACTS = [
   'scripts/commercial-hardening/initialize-pr12-windows-dpapi-credentials.ps1',
   'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs',
   'scripts/commercial-hardening/verify-pr12-source-project-provisioning-evidence.mjs',
+  'scripts/commercial-hardening/pr12-source-organization-identity-capture-contract.mjs',
+  'scripts/commercial-hardening/run-pr12-source-organization-identity-capture.mjs',
+  'scripts/commercial-hardening/verify-pr12-source-organization-identity-capture-evidence.mjs',
   'scripts/commercial-hardening/verify-pr12-evidence-manifest.mjs',
   'src/__tests__/security/commercial-pr12-qualification-preparation-contract.test.ts',
   'src/__tests__/security/commercial-pr12-source-project-provisioning-contract.test.ts',
+  'src/__tests__/security/commercial-pr12-source-organization-identity-capture-contract.test.ts',
   'src/__tests__/security/commercial-pr12-evidence-verifier.test.ts',
 ];
 
@@ -1592,6 +1603,10 @@ function verifyProposalContracts() {
     ledgerProvisioningActions.sourceProject,
     'ledger.provisioningActions.sourceProject'
   );
+  const ledgerOrganizationIdentityAction = requireRecord(
+    ledgerProvisioningActions.organizationIdentityCapture,
+    'ledger.provisioningActions.organizationIdentityCapture'
+  );
   const ledgerSupabaseCli = requireRecord(
     ledger.supabaseCli,
     'ledger.supabaseCli'
@@ -1604,6 +1619,12 @@ function verifyProposalContracts() {
         'PHASE1_IMPLEMENTED_LATER_PHASES_NOT_IMPLEMENTED' &&
       targetGuard.phase1ImplementationPath ===
         'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs' &&
+      targetGuard.organizationIdentityCaptureImplementationPath ===
+        'scripts/commercial-hardening/run-pr12-source-organization-identity-capture.mjs' &&
+      targetGuard.organizationIdentityCaptureRequiredBeforeSourceProvisioning ===
+        true &&
+      targetGuard.organizationIdentityCaptureEvidenceLinkageStatus ===
+        'NOT_IMPLEMENTED' &&
       targetGuard.requiredForEveryRemoteCommand === true &&
       JSON.stringify(targetGuard.prohibitedProjectRefs) ===
         JSON.stringify(['qnanuoqveidwvacvbhqp']),
@@ -1716,6 +1737,27 @@ function verifyProposalContracts() {
   const provisioningPrivacyScan = readJson(
     `${prefix}source-project-provisioning-privacy-scan.template.json`
   );
+  const organizationIdentityBinding = readJson(
+    `${prefix}source-organization-identity-capture-binding-v1.template.json`
+  );
+  const organizationIdentityOwnerApproval = readJson(
+    `${prefix}source-organization-identity-capture-owner-approval-v1.template.json`
+  );
+  const organizationIdentityJournal = readJson(
+    `${prefix}source-organization-identity-capture-action-journal.template.json`
+  );
+  const organizationIdentityResult = readJson(
+    `${prefix}source-organization-identity-capture-result-v1.template.json`
+  );
+  const organizationIdentityProvider = readJson(
+    `${prefix}source-organization-identity-provider-safe-projection-v1.template.json`
+  );
+  const organizationIdentityManifest = readJson(
+    `${prefix}source-organization-identity-capture-evidence-manifest-v1.template.json`
+  );
+  const organizationIdentityPrivacy = readJson(
+    `${prefix}source-organization-identity-capture-privacy-scan-v1.template.json`
+  );
   const sourceReplay = readJson(
     `${prefix}source-replay-catalog-capture-binding.template.json`
   );
@@ -1753,6 +1795,111 @@ function verifyProposalContracts() {
       'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml' &&
       provisioning.governanceProposal.sha256 === 'NOT_CAPTURED',
     'source provisioning final governance hash must remain an approval blocker'
+  );
+  assert(
+    organizationIdentityBinding.status === 'NOT_RUN' &&
+      organizationIdentityBinding.phase ===
+        'SOURCE_ORGANIZATION_IDENTITY_CAPTURE' &&
+      organizationIdentityBinding.action.actionId === 'PR12-ACTION-002' &&
+      organizationIdentityBinding.action.httpMethod === 'GET' &&
+      organizationIdentityBinding.action.endpoint ===
+        'https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug' &&
+      organizationIdentityBinding.action.maximumRemoteContactCount === 1 &&
+      organizationIdentityBinding.action.maximumRequestAttempts === 1 &&
+      organizationIdentityBinding.action.automaticRetryAllowed === false &&
+      organizationIdentityBinding.action.redirectAllowed === false &&
+      organizationIdentityBinding.action.requestBodyAllowed === false &&
+      organizationIdentityBinding.authorization
+        .organizationIdentityCaptureAuthorized === false &&
+      Object.values(organizationIdentityBinding.authorization).every(
+        value => value === false
+      ) &&
+      organizationIdentityBinding.credentialControls
+        .managementAccessTokenRetrievalAllowed === true &&
+      organizationIdentityBinding.credentialControls
+        .databasePasswordRetrievalAllowed === false &&
+      organizationIdentityBinding.productionBoundary.productionProjectRef ===
+        'qnanuoqveidwvacvbhqp' &&
+      organizationIdentityBinding.productionBoundary
+        .productionProjectSpecificManagementApiContactAuthorized === false &&
+      organizationIdentityBinding.evidenceContract
+        .rawProviderBodiesPersisted === false &&
+      organizationIdentityBinding.evidenceContract.rawHttpHeadersPersisted ===
+        false,
+    'Organization identity capture binding template drift'
+  );
+  assert(
+    organizationIdentityOwnerApproval.decision === 'NOT_CAPTURED' &&
+      organizationIdentityOwnerApproval.actionId === 'PR12-ACTION-002' &&
+      organizationIdentityOwnerApproval.tokenOnlyCredentialRetrievalAuthorized ===
+        false &&
+      organizationIdentityOwnerApproval.databasePasswordRetrievalAuthorized ===
+        false &&
+      organizationIdentityOwnerApproval.sourceProjectProvisioningAuthorized ===
+        false &&
+      organizationIdentityOwnerApproval.soleOperatorSelfApprovalRiskAccepted ===
+        false &&
+      organizationIdentityOwnerApproval.sameUserDpapiCredentialExposureRiskAccepted ===
+        false &&
+      organizationIdentityOwnerApproval.productionContactProhibitionAcknowledged ===
+        false &&
+      organizationIdentityJournal.state === 'NOT_RUN' &&
+      organizationIdentityJournal.automaticRetryCount === 0 &&
+      organizationIdentityResult.status === 'NOT_RUN' &&
+      organizationIdentityResult.contact.remoteContactCount === 0 &&
+      organizationIdentityResult.contact.automaticRetryCount === 0 &&
+      organizationIdentityResult.credential.databasePasswordRetrieved ===
+        false &&
+      organizationIdentityResult.ownerControl
+        .soleOperatorSelfApprovalRiskAccepted === false &&
+      organizationIdentityResult.ownerControl
+        .sameUserDpapiCredentialExposureRiskAccepted === false &&
+      organizationIdentityProvider.status === 'NOT_RUN' &&
+      organizationIdentityProvider.rawProviderBodiesPersisted === false &&
+      organizationIdentityManifest.status === 'NOT_RUN' &&
+      organizationIdentityManifest.artifactCount === 0 &&
+      organizationIdentityPrivacy.status === 'NOT_RUN' &&
+      organizationIdentityPrivacy.runtimeSecretValueCount === 0,
+    'Organization identity capture approval, journal, or evidence template drift'
+  );
+  assert(
+    ledgerOrganizationIdentityAction.actionId === 'PR12-ACTION-002' &&
+      ledgerOrganizationIdentityAction.httpMethod === 'GET' &&
+      ledgerOrganizationIdentityAction.endpoint ===
+        'https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug' &&
+      ledgerOrganizationIdentityAction.maximumRemoteContactCount === 1 &&
+      ledgerOrganizationIdentityAction.maximumRequestAttempts === 1 &&
+      ledgerOrganizationIdentityAction.automaticRetryAllowed === false &&
+      ledgerOrganizationIdentityAction.redirectAllowed === false &&
+      ledgerOrganizationIdentityAction.queryAllowed === false &&
+      ledgerOrganizationIdentityAction.requestBodyAllowed === false &&
+      ledgerOrganizationIdentityAction.projectEnumerationAllowed === false &&
+      ledgerOrganizationIdentityAction.productionProjectSpecificPathAllowed ===
+        false &&
+      ledgerOrganizationIdentityAction.databasePasswordRetrievalAllowed ===
+        false &&
+      ledgerOrganizationIdentityAction.tokenOnlyDpapiRetrievalRequired ===
+        true &&
+      ledgerOrganizationIdentityAction.wrapperImplemented === true &&
+      ledgerOrganizationIdentityAction.wrapperExecuted === false &&
+      ledgerOrganizationIdentityAction.authorizedNow === false &&
+      ledgerOrganizationIdentityAction.action003IdentityEvidenceLinkageStatus ===
+        'NOT_IMPLEMENTED' &&
+      normalizedApproval.includes('  source_organization_identity_capture:') &&
+      normalizedApproval.includes('    action_id: PR12-ACTION-002') &&
+      normalizedApproval.includes(
+        '    endpoint: https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug'
+      ) &&
+      normalizedApproval.includes('    automatic_retry_allowed: false') &&
+      normalizedApproval.includes('    redirect_allowed: false') &&
+      normalizedApproval.includes('    query_allowed: false') &&
+      normalizedApproval.includes(
+        '    database_password_retrieval_allowed: false'
+      ) &&
+      normalizedApproval.includes(
+        '    action_003_identity_evidence_linkage_status: NOT_IMPLEMENTED'
+      ),
+    'Organization identity capture action is not cross-bound across packet, ledger, and template'
   );
   const requiredOwnerFields = [
     'commercialReleaseOwner',
@@ -1974,6 +2121,12 @@ function verifyProposalContracts() {
       provisioning.cost.unallocatedAuthorizationHeadroomUsdScaled === 390776 &&
       provisioning.cost.ownerAuthorizationCeilingUsdScaled === 500000 &&
       provisioning.cost.providerSpendCapEnforced === false &&
+      provisioning.retentionAndCleanupDecision
+        .fundingApprovedAmountUsdScaled === 500000 &&
+      provisioning.retentionAndCleanupDecision.fundingSource ===
+        'OWNER_REGISTERED_ORGANIZATION_PAYMENT_METHOD' &&
+      provisioning.retentionAndCleanupDecision.fundedThrough ===
+        'NOT_CAPTURED' &&
       ledgerSourceProjectAction.operatorControlMode ===
         provisioning.operatorControl.mode &&
       ledgerSourceProjectAction.operatorDisplayName ===
@@ -1989,7 +2142,24 @@ function verifyProposalContracts() {
       ledgerSourceProjectAction.providerSpendCapEnforced === false &&
       ledgerSourceProjectAction.credentialProvider ===
         'WINDOWS_DPAPI_CURRENT_USER_V1' &&
-      ledgerSourceProjectAction.realCredentialBootstrapAuthorized === false &&
+      ledgerSourceProjectAction.realCredentialBootstrapAuthorized === true &&
+      ledgerSourceProjectAction.realCredentialBootstrapCompleted === false &&
+      ledgerSourceProjectAction.fundingApprovedAmountUsd === 50 &&
+      ledgerSourceProjectAction.fundingSource ===
+        "FUTOSHI IWASAWAが管理するIFs1991's Org登録済み支払方法" &&
+      ledgerSourceProjectAction.fundedThroughPolicy ===
+        'PR12-ACTION-003 scheduled execution time plus 73 hours' &&
+      ledgerSourceProjectAction.scheduledExecutionAt === 'NOT_CAPTURED' &&
+      ledgerSourceProjectAction.fundedThrough === 'NOT_CAPTURED' &&
+      ledgerSourceProjectAction.organizationIdentityCaptureActionId ===
+        'PR12-ACTION-002' &&
+      ledgerSourceProjectAction.organizationIdentityEvidenceLinkageStatus ===
+        'NOT_IMPLEMENTED' &&
+      ledgerSourceProjectAction.fundedThroughPolicyBindingStatus ===
+        'NOT_IMPLEMENTED' &&
+      ledgerSourceProjectAction.fundedThroughPolicyVerifierStatus ===
+        'NOT_IMPLEMENTED' &&
+      ledgerSourceProjectAction.actionApprovable === false &&
       normalizedApproval.includes(
         '  phase1_source_project_owner_authorization_ceiling_usd: 50'
       ) &&
@@ -2026,7 +2196,32 @@ function verifyProposalContracts() {
       ) &&
       normalizedApproval.includes(
         '  production_project_direct_contact_authorized: false'
-      ),
+      ) &&
+      normalizedApproval.includes(
+        '  real_credential_bootstrap_authorized: true'
+      ) &&
+      normalizedApproval.includes(
+        '  real_credential_bootstrap_completed: false'
+      ) &&
+      normalizedApproval.includes(
+        '  organization_identity_capture_local_implementation_authorized: true'
+      ) &&
+      normalizedApproval.includes(
+        '  organization_identity_capture_remote_get_authorized_by_this_decision: false'
+      ) &&
+      normalizedApproval.includes(
+        '  phase1_funding_approved_amount_usd: 50.00'
+      ) &&
+      normalizedApproval.includes(
+        '  phase1_funding_source: "FUTOSHI IWASAWAが管理するIFs1991\'s Org登録済み支払方法"'
+      ) &&
+      normalizedApproval.includes(
+        '  source_funded_through_policy_binding_status: NOT_IMPLEMENTED'
+      ) &&
+      normalizedApproval.includes(
+        '  source_funded_through_policy_verifier_status: NOT_IMPLEMENTED'
+      ) &&
+      normalizedApproval.includes('  pr12_action_003_approvable: false'),
     'source provisioning phase boundary drift'
   );
   assert(
@@ -2160,6 +2355,62 @@ function verifyProposalContracts() {
   );
   const provisioningWrapper = readRepositoryFile(
     'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs'
+  );
+  const organizationIdentityContract = readRepositoryFile(
+    'scripts/commercial-hardening/pr12-source-organization-identity-capture-contract.mjs'
+  );
+  const organizationIdentityWrapper = readRepositoryFile(
+    'scripts/commercial-hardening/run-pr12-source-organization-identity-capture.mjs'
+  );
+  const organizationIdentityVerifier = readRepositoryFile(
+    'scripts/commercial-hardening/verify-pr12-source-organization-identity-capture-evidence.mjs'
+  );
+  for (const requiredIdentityBoundary of [
+    'PR12-ACTION-002',
+    'ORGANIZATION_IDENTITY_CAPTURE_ENDPOINT',
+    'TARGET_ORGANIZATION_SLUG',
+    'OUTBOUND_ROUTE_NOT_ALLOWED',
+    'PRODUCTION_OR_PROJECT_ROUTE_FORBIDDEN',
+    'CLAIMED_GET_NOT_SENT',
+    'GET_INTENT_DURABLE',
+    'databasePasswordRetrievalAllowed',
+    'assertNoAmbientOrganizationCaptureCredentialEnvironment',
+    'sharedProvisioningContractSha256',
+    'UNSAFE_NODE_RUNTIME',
+    'EXECUTING_IMPLEMENTATION_ROOT_MISMATCH',
+    'RUNTIME_OUTPUT_DIRECTORY_INSIDE_REPOSITORY',
+    'PROVIDER_RESPONSE_DUPLICATE_MEMBER',
+    'GET_ATTEMPT_TERMINATED_WITHOUT_ACCEPTED_RESPONSE',
+  ]) {
+    assert(
+      organizationIdentityContract.includes(requiredIdentityBoundary) ||
+        organizationIdentityWrapper.includes(requiredIdentityBoundary),
+      `Organization identity capture boundary missing: ${requiredIdentityBoundary}`
+    );
+  }
+  for (const requiredIdentityVerifierBoundary of [
+    'EVIDENCE_FILE_SET_INVALID',
+    'MANIFEST_SIDECAR_INVALID',
+    'EVIDENCE_CROSS_BINDING_INVALID',
+    'ACTION_EVENTS_INVALID',
+    'PROVIDER_EVIDENCE_INVALID',
+    'PRIVACY_SCAN_INVALID',
+    'assertOrganizationIdentityCaptureEvidenceSecretFree',
+    'UNKNOWN_REMOTE_OUTCOME',
+    'processExecArgvCount',
+  ]) {
+    assert(
+      organizationIdentityVerifier.includes(requiredIdentityVerifierBoundary),
+      `Organization identity evidence verifier boundary missing: ${requiredIdentityVerifierBoundary}`
+    );
+  }
+  assert(
+    (organizationIdentityWrapper.match(/\bfetchImplementation\(/g) ?? [])
+      .length === 1 &&
+      organizationIdentityWrapper.includes("redirect: 'error'") &&
+      !organizationIdentityWrapper.includes("method: 'POST'") &&
+      !organizationIdentityWrapper.includes('--reconcile-dispatched-action'),
+    'Organization identity wrapper must retain one exact no-retry GET path'
   );
   for (const requiredVerifierBoundary of [
     'ARTIFACT_HASH_OR_SIZE_MISMATCH',

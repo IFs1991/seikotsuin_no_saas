@@ -18,6 +18,45 @@ machine_readable_execution_binding:
   status: NOT_RUN
   must_be_parsed_and_matched_by_execution_verifier: true
 authorization_phases:
+  source_organization_identity_capture:
+    template: source-organization-identity-capture-binding-v1.template.json
+    phase_local_contract_version: 1
+    result_template: source-organization-identity-capture-result-v1.template.json
+    provider_safe_projection_template: source-organization-identity-provider-safe-projection-v1.template.json
+    owner_approval_template: source-organization-identity-capture-owner-approval-v1.template.json
+    action_journal_template: source-organization-identity-capture-action-journal.template.json
+    evidence_manifest_template: source-organization-identity-capture-evidence-manifest-v1.template.json
+    privacy_scan_template: source-organization-identity-capture-privacy-scan-v1.template.json
+    action_id: PR12-ACTION-002
+    method: OWNER_MANAGEMENT_API_GET_ORGANIZATION_IDENTITY
+    http_method: GET
+    endpoint: https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug
+    maximum_remote_contact_count: 1
+    maximum_request_attempt_count: 1
+    automatic_retry_allowed: false
+    redirect_allowed: false
+    query_allowed: false
+    request_body_allowed: false
+    project_enumeration_allowed: false
+    production_project_specific_path_allowed: false
+    database_password_retrieval_allowed: false
+    token_only_dpapi_retrieval_required: true
+    durable_claim_state: CLAIMED_GET_NOT_SENT
+    durable_pre_get_state: GET_INTENT_DURABLE
+    remote_recovery_allowed: false
+    evidence_seal_order: PARTIAL_FLUSH_VERIFY_ATOMIC_RENAME_THEN_TERMINAL
+    production_project_specific_management_api_contact_authorized: false
+    production_data_plane_contact_authorized: false
+    production_database_contact_authorized: false
+    production_credential_access_authorized: false
+    approved_binding_path: NOT_CAPTURED
+    approved_binding_sha256: NOT_CAPTURED
+    authorized: false
+    wrapper_implemented: true
+    wrapper_executed: false
+    organization_id: NOT_CAPTURED
+    action_003_identity_evidence_linkage_status: NOT_IMPLEMENTED
+    expiry: NOT_CAPTURED
   source_project_provisioning:
     template: source-project-provisioning-binding-v4.template.json
     phase_local_contract_version: 4
@@ -832,7 +871,7 @@ cli:
     - gen_types
     - status
   command_ledger_path: staging-command-ledger.proposed.json
-  command_ledger_sha256: 802b7978394dc29b0fd85a8f513c9fc53108caf8c7960a85ffd7c40c4fa834c6
+  command_ledger_sha256: cb9f553bb14458520c0e2d685003a6d71ec77514d648fd26beb8b47135a79ec6
   exact_commands: PROPOSED_NOT_EXECUTABLE
   exact_commands_blocker: Phase 1 now has a local fail-closed binding guard, at-most-one-POST wrapper/collector, action journal, and phase-local privacy/evidence sealing, but its owner inputs remain unresolved and it was not executed. Phase 2+ target guards, hosted credential/seed adapter, post-load row/hash and schema/type collectors, canonical PR11 and hosted SLO runners, security/Auth/tenant/Data API/GraphQL/COMM claim/COMM-BILL matrices, Advisor diff, backup metadata/watermark, post-restore, side-effect, and full-qualification privacy collectors remain NOT_IMPLEMENTED.
   executable_command_metadata_required:
@@ -931,10 +970,15 @@ time_and_cost:
   funded_retention_and_cleanup_decision_required_before_provisioning: true
   cleanup_disposition: DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION
   funded_through: NOT_CAPTURED
-  source_funding_requirement: funded_through must be at least 72 hours after source-provisioning approval expiry
+  source_funded_through_policy: PR12-ACTION-003 scheduled execution time plus 73 hours
+  source_scheduled_execution_at: NOT_CAPTURED
+  source_funding_requirement: exact funded_through must equal the approved PR12-ACTION-003 scheduled execution time plus 73 hours
+  source_funded_through_policy_binding_status: NOT_IMPLEMENTED
+  source_funded_through_policy_verifier_status: NOT_IMPLEMENTED
+  pr12_action_003_approvable: false
   restore_funding_requirement: funded_through must be at least 24 hours after restore-creation approval expiry
-  phase1_funding_approved_amount_usd: NOT_CAPTURED
-  phase1_funding_source: NOT_CAPTURED
+  phase1_funding_approved_amount_usd: 50.00
+  phase1_funding_source: "FUTOSHI IWASAWAが管理するIFs1991's Org登録済み支払方法"
   billing_extension_after_source_72h_or_restore_24h_requires_separate_funded_approval: true
 phase1_local_preparation_decision:
   status: AUTHORIZED
@@ -957,7 +1001,16 @@ phase1_local_preparation_decision:
   production_project_ref: qnanuoqveidwvacvbhqp
   production_project_origin: https://qnanuoqveidwvacvbhqp.supabase.co
   production_project_direct_contact_authorized: false
-  real_credential_bootstrap_authorized: false
+  real_credential_bootstrap_authorized: true
+  real_credential_bootstrap_completed: false
+  organization_identity_capture_local_implementation_authorized: true
+  organization_identity_capture_local_implementation_authorized_on: '2026-07-25'
+  organization_identity_capture_action_id: PR12-ACTION-002
+  organization_identity_capture_remote_get_authorized_by_this_decision: false
+  organization_identity_capture_remote_get_executed: false
+  organization_identity_capture_action_003_linkage_status: NOT_IMPLEMENTED
+  organization_identity_terminal_to_manifest_journal_verifier_status: NOT_IMPLEMENTED
+  pr12_action_003_scheduled_plus_73h_binding_and_verifier_linkage: NOT_IMPLEMENTED
   pr12_action_003_authorized: false
   source_project_creation_authorized: false
   authenticated_supabase_contact_authorized: false
@@ -1048,8 +1101,9 @@ approval_checklist:
   privacy_machine_and_human_review: NOT_CAPTURED
   integrations_and_billing_sandbox: PROPOSED_UPSTASH_UNASSIGNED
   exact_commands_and_side_effects: PROPOSED_ADAPTERS_NOT_IMPLEMENTED
-  credential_channel: WINDOWS_DPAPI_CURRENT_USER_V1_LOCAL_DESIGN_ONLY_REAL_BOOTSTRAP_NOT_AUTHORIZED
-  time_cost_and_owners: PHASE1_CEILING_AUTHORIZED_DISPLAY_NAME_CAPTURED_CANONICAL_ID_FUNDING_AND_EXPIRY_NOT_CAPTURED
+  credential_channel: WINDOWS_DPAPI_CURRENT_USER_V1_OWNER_AUTHORIZED_NOT_RUN_CONCRETE_APPROVAL_CONFIGURATION_AND_ENVELOPES_NOT_CAPTURED
+  time_cost_and_owners: PHASE1_CEILING_AND_FUNDING_SOURCE_AMOUNT_POLICY_CAPTURED_DISPLAY_NAME_CAPTURED_CANONICAL_ID_SCHEDULED_EXECUTION_FUNDED_THROUGH_AND_EXPIRY_NOT_CAPTURED
+  pr12_action_003_scheduled_plus_73h_binding_and_verifier_linkage: NOT_IMPLEMENTED_ACTION_003_NOT_APPROVABLE
   funded_retention_and_cleanup_decision: UNASSIGNED
   stricter_product_rto_rpo_authority_decision: UNASSIGNED
   maximum_allowed_clock_skew_seconds: UNASSIGNED
@@ -1081,5 +1135,5 @@ residual_risk:
   - Safe authority lookup query-error induction, dedicated hosted Auth actor provisioning, stale-authority/token-expiry/skew evidence, and relational selector/query/timestamp collectors are not implemented; COMM-AUTH-002 and related COMM-TENANT gates cannot PASS.
   - The immutable 54-gate COMM claim map is defined, but its typed collector registry is incomplete; execution PASS is intentionally impossible.
   - Maximum acceptable clock skew across provider, database, and operator clocks is UNASSIGNED; RTO/RPO PASS is blocked.
-  - FUTOSHI IWASAWA is the captured Phase 1 sole-operator display name and the shared Organization slug/name plus production project name/ref/origin are fixed, but the shared Organization ID, canonical principal ID, final sole-operator and same-Organization blast-radius risk acceptance, exact DPAPI configuration/envelopes, fresh official-pricing source captures, full USD 50 funding source/amount/fundedThrough, cleanup deadlines, exact API/GraphQL matrices, psql version, application URL, and stricter RTO/RPO authority decision remain blockers.
+  - FUTOSHI IWASAWA is the captured Phase 1 sole-operator display name; the shared Organization slug/name, production project name/ref/origin, USD 50 amount, named funding source, scheduled+73-hour fundedThrough policy, and local DPAPI bootstrap scope decision are captured. The shared Organization ID, Action-002-to-Action-003 evidence linkage, canonical principal ID, scheduled execution/fundedThrough timestamps, completed bootstrap artifact/envelopes, final sole-operator and same-Organization blast-radius risk acceptance, fresh official-pricing source captures, cleanup deadlines, exact API/GraphQL matrices, psql version, application URL, and stricter RTO/RPO authority decision remain blockers.
 notes: No isolated staging project was contacted or created while concretizing this proposal. This file remains NOT_RUN. All provisioning, remote, restore, Ready, merge, production, and release authorizations remain false.

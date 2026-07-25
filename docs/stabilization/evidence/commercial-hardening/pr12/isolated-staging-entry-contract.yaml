@@ -88,7 +88,7 @@ integration_and_credential_contract:
   owner_approved: false
 command_ledger:
   path: staging-command-ledger.proposed.json
-  sha256: 802b7978394dc29b0fd85a8f513c9fc53108caf8c7960a85ffd7c40c4fa834c6
+  sha256: cb9f553bb14458520c0e2d685003a6d71ec77514d648fd26beb8b47135a79ec6
   status: PROPOSED_NOT_EXECUTABLE
 stage_3_ordered_command_ids:
   - PR12-CMD-003

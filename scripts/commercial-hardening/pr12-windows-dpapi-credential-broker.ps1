@@ -5,10 +5,13 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
-$ActionId = 'PR12-ACTION-003'
+$ProvisioningActionId = 'PR12-ACTION-003'
+$OrganizationIdentityCaptureActionId = 'PR12-ACTION-002'
 $ProviderId = 'WINDOWS_DPAPI_CURRENT_USER_V1'
 $RequestProtocol = 'PR12_DPAPI_BROKER_REQUEST_V1'
-$ClaimFileName = 'source-project-provisioning-action.claim.json'
+$ProvisioningClaimFileName = 'source-project-provisioning-action.claim.json'
+$OrganizationIdentityCaptureClaimFileName =
+  'source-organization-identity-capture-action.claim.json'
 $MaximumRequestBytes = 16384
 $MaximumResponseBytes = 8192
 $Utf8Strict = [System.Text.UTF8Encoding]::new($false, $true)
@@ -264,7 +267,7 @@ function Get-Entropy {
   )
   $domain = (
     'PR12_DPAPI_ENTROPY_V1|{0}|{1}|{2}|{3}|{4}' -f
-    $ActionId,
+    $ProvisioningActionId,
     $ConfigurationId,
     $Role,
     $OpaqueHandleSha256,
@@ -350,7 +353,7 @@ function Unprotect-Envelope {
       $envelope.envelopeType -cne 'PR12_WINDOWS_DPAPI_SECRET_ENVELOPE' -or
       $envelope.providerId -cne $ProviderId -or
       $envelope.configurationId -cne $Request.configurationId -or
-      $envelope.actionId -cne $ActionId -or
+      $envelope.actionId -cne $ProvisioningActionId -or
       $envelope.role -cne $Entry.role -or
       $envelope.opaqueHandle -cne $Entry.opaqueHandle -or
       $envelope.opaqueHandleSha256 -cne $Entry.opaqueHandleSha256 -or
@@ -483,16 +486,38 @@ try {
     )) {
     Assert-LowerSha256 -Value $request.$property
   }
+  $isIdentityCapture =
+    $request.mode -ceq 'ORGANIZATION_IDENTITY_CAPTURE'
+  $expectedActionId = if ($isIdentityCapture) {
+    $OrganizationIdentityCaptureActionId
+  }
+  else {
+    $ProvisioningActionId
+  }
   if (
     $request.schemaVersion -ne 1 -or
     $request.protocol -cne $RequestProtocol -or
-    $request.actionId -cne $ActionId -or
+    $request.actionId -cne $expectedActionId -or
     $request.providerId -cne $ProviderId -or
-    ($request.mode -cne 'EXECUTE' -and $request.mode -cne 'RECOVERY') -or
+    ($request.mode -cne 'EXECUTE' -and
+      $request.mode -cne 'RECOVERY' -and
+      $request.mode -cne 'ORGANIZATION_IDENTITY_CAPTURE') -or
     $request.configurationId -isnot [string] -or
     [string]::IsNullOrWhiteSpace($request.configurationId)
   ) {
     throw 'REQUEST_INVALID'
+  }
+  $entries = @($request.entries)
+  $expectedCount = if ($request.mode -ceq 'EXECUTE') { 2 } else { 1 }
+  if ($entries.Count -ne $expectedCount) {
+    throw 'ENTRY_COUNT_INVALID'
+  }
+  if (
+    $entries[0].role -cne 'MANAGEMENT_ACCESS_TOKEN' -or
+    ($request.mode -ceq 'EXECUTE' -and
+      $entries[1].role -cne 'DATABASE_PASSWORD')
+  ) {
+    throw 'ENTRY_ORDER_INVALID'
   }
   $expiresAt = Assert-CanonicalUtcTimestamp -Value $request.approvalExpiresAt
   if ($expiresAt -le [DateTimeOffset]::UtcNow) {
@@ -556,10 +581,20 @@ try {
     -Value $request.journalDirectory `
     -Directory $true `
     -CurrentSid $ownerSid
+  Assert-StrictAcl `
+    -Value $request.evidenceParentDirectory `
+    -Directory $true `
+    -CurrentSid $ownerSid
 
+  $claimFileName = if ($isIdentityCapture) {
+    $OrganizationIdentityCaptureClaimFileName
+  }
+  else {
+    $ProvisioningClaimFileName
+  }
   $claimPath = [IO.Path]::Combine(
     $request.journalDirectory,
-    $ClaimFileName
+    $claimFileName
   )
   Assert-NoReparsePoint -Value $claimPath
   $claimBytes = Read-StableFileBytes -Value $claimPath -MaximumBytes 65536
@@ -576,11 +611,17 @@ try {
       'payloadSha256',
       'state'
     )
+    $expectedClaimState = if ($isIdentityCapture) {
+      'CLAIMED_GET_NOT_SENT'
+    }
+    else {
+      'CLAIMED_POST_NOT_SENT'
+    }
     if (
-      $claim.actionId -cne $ActionId -or
+      $claim.actionId -cne $expectedActionId -or
       $claim.bindingMaterialSha256 -cne $request.bindingMaterialSha256 -or
       $claim.payloadSha256 -cne $request.payloadSha256 -or
-      $claim.state -cne 'CLAIMED_POST_NOT_SENT'
+      $claim.state -cne $expectedClaimState
     ) {
       throw 'CLAIM_BINDING_MISMATCH'
     }
@@ -590,18 +631,6 @@ try {
     [Array]::Clear($claimBytes, 0, $claimBytes.Length)
   }
 
-  $entries = @($request.entries)
-  $expectedCount = if ($request.mode -ceq 'EXECUTE') { 2 } else { 1 }
-  if ($entries.Count -ne $expectedCount) {
-    throw 'ENTRY_COUNT_INVALID'
-  }
-  if (
-    $entries[0].role -cne 'MANAGEMENT_ACCESS_TOKEN' -or
-    ($request.mode -ceq 'EXECUTE' -and
-      $entries[1].role -cne 'DATABASE_PASSWORD')
-  ) {
-    throw 'ENTRY_ORDER_INVALID'
-  }
   $values = [System.Collections.Generic.List[byte[]]]::new()
   foreach ($entry in $entries) {
     $values.Add(
@@ -632,7 +661,15 @@ try {
   $ResponseBuffer = [byte[]]::new($responseLength)
   [Text.Encoding]::ASCII.GetBytes('PR12DPB1').CopyTo($ResponseBuffer, 0)
   $ResponseBuffer[8] = 1
-  $ResponseBuffer[9] = if ($request.mode -ceq 'EXECUTE') { 1 } else { 2 }
+  $ResponseBuffer[9] = if ($request.mode -ceq 'EXECUTE') {
+    1
+  }
+  elseif ($request.mode -ceq 'RECOVERY') {
+    2
+  }
+  else {
+    3
+  }
   $ResponseBuffer[10] = [byte]$values.Count
   $ResponseBuffer[11] = 0
   $requestSha = [Security.Cryptography.SHA256]::HashData($RequestBytes)

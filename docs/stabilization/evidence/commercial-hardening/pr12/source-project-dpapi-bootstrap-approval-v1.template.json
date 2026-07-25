@@ -11,7 +11,7 @@
   "envelopeCreationAuthorized": false,
   "expiresAt": "NOT_CAPTURED",
   "machineNameSha256": "NOT_CAPTURED",
-  "notes": "Template only. The 2026-07-24 authorization covers local code preparation, not interactive reading of real credentials and not DPAPI envelope creation. Populate and separately approve this record before running the bootstrap script.",
+  "notes": "Template only. The owner separately authorized local interactive bootstrap scope, but execution remains NOT_RUN and this concrete approval instance, configuration, SID/machine/root bindings, and encrypted envelopes remain NOT_CAPTURED. Populate and verify this record before running the bootstrap script. This template does not authorize PR12-ACTION-002, PR12-ACTION-003, project creation, production contact, or Phase 2+.",
   "ownerSidSha256": "NOT_CAPTURED",
   "providerRoot": "NOT_CAPTURED",
   "providerRootPathSha256": "NOT_CAPTURED",
