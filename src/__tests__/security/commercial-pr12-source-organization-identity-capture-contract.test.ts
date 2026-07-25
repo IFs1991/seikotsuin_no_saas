@@ -1370,52 +1370,59 @@ describe('PR12 source Organization identity capture contract', () => {
         'Assert-NoReparsePathComponents -Value $request.providerRoot'
       )
     );
-
-    const injectedRequest = {
-      schemaVersion: 1,
-      protocol: 'PR12_DPAPI_BROKER_REQUEST_V1',
-      actionId: 'PR12-ACTION-002',
-      mode: 'ORGANIZATION_IDENTITY_CAPTURE',
-      providerId: 'WINDOWS_DPAPI_CURRENT_USER_V1',
-      configurationId: 'synthetic',
-      approvalExpiresAt: '2999-01-01T00:00:00.000Z',
-      bindingMaterialSha256: 'a'.repeat(64),
-      bootstrapScriptSha256: 'b'.repeat(64),
-      claimSha256: 'c'.repeat(64),
-      credentialConfigurationSha256: 'd'.repeat(64),
-      evidenceParentDirectory: 'C:\\does-not-exist\\evidence',
-      evidenceParentDirectoryPathSha256: 'e'.repeat(64),
-      journalDirectory: 'C:\\does-not-exist\\journal',
-      journalDirectoryPathSha256: 'f'.repeat(64),
-      payloadSha256: '0'.repeat(64),
-      providerRoot: 'C:\\does-not-exist\\provider',
-      providerRootPathSha256: '1'.repeat(64),
-      providerRootResolvedPathSha256: '2'.repeat(64),
-      requestNonce: '3'.repeat(64),
-      entries: [
-        { role: 'MANAGEMENT_ACCESS_TOKEN' },
-        { role: 'DATABASE_PASSWORD' },
-      ],
-    };
-    const brokerResult = spawnSync(
-      'pwsh.exe',
-      ['-NoLogo', '-NoProfile', '-NonInteractive', '-File', dpapiBrokerPath],
-      {
-        cwd: repoRoot,
-        env: {
-          PATH: process.env.PATH,
-          PATHEXT: process.env.PATHEXT,
-          SYSTEMROOT: process.env.SYSTEMROOT,
-        },
-        input: `${JSON.stringify(injectedRequest)}\n`,
-        encoding: null,
-      }
-    );
-    expect(brokerResult.error).toBeUndefined();
-    expect(brokerResult.status).toBe(70);
-    expect(brokerResult.stdout).toHaveLength(0);
-    expect(brokerResult.stderr).toHaveLength(0);
   });
+
+  const testOnWindows = process.platform === 'win32' ? test : test.skip;
+
+  testOnWindows(
+    'rejects a database-password broker entry before provider-path access',
+    () => {
+      const injectedRequest = {
+        schemaVersion: 1,
+        protocol: 'PR12_DPAPI_BROKER_REQUEST_V1',
+        actionId: 'PR12-ACTION-002',
+        mode: 'ORGANIZATION_IDENTITY_CAPTURE',
+        providerId: 'WINDOWS_DPAPI_CURRENT_USER_V1',
+        configurationId: 'synthetic',
+        approvalExpiresAt: '2999-01-01T00:00:00.000Z',
+        bindingMaterialSha256: 'a'.repeat(64),
+        bootstrapScriptSha256: 'b'.repeat(64),
+        claimSha256: 'c'.repeat(64),
+        credentialConfigurationSha256: 'd'.repeat(64),
+        evidenceParentDirectory: 'C:\\does-not-exist\\evidence',
+        evidenceParentDirectoryPathSha256: 'e'.repeat(64),
+        journalDirectory: 'C:\\does-not-exist\\journal',
+        journalDirectoryPathSha256: 'f'.repeat(64),
+        payloadSha256: '0'.repeat(64),
+        providerRoot: 'C:\\does-not-exist\\provider',
+        providerRootPathSha256: '1'.repeat(64),
+        providerRootResolvedPathSha256: '2'.repeat(64),
+        requestNonce: '3'.repeat(64),
+        entries: [
+          { role: 'MANAGEMENT_ACCESS_TOKEN' },
+          { role: 'DATABASE_PASSWORD' },
+        ],
+      };
+      const brokerResult = spawnSync(
+        'pwsh.exe',
+        ['-NoLogo', '-NoProfile', '-NonInteractive', '-File', dpapiBrokerPath],
+        {
+          cwd: repoRoot,
+          env: {
+            PATH: process.env.PATH,
+            PATHEXT: process.env.PATHEXT,
+            SYSTEMROOT: process.env.SYSTEMROOT,
+          },
+          input: `${JSON.stringify(injectedRequest)}\n`,
+          encoding: null,
+        }
+      );
+      expect(brokerResult.error).toBeUndefined();
+      expect(brokerResult.status).toBe(70);
+      expect(brokerResult.stdout).toHaveLength(0);
+      expect(brokerResult.stderr).toHaveLength(0);
+    }
+  );
 
   test('contacts the exact endpoint once with redirect errors and no body', () => {
     expect(runFetchHarness('success')).toEqual({
