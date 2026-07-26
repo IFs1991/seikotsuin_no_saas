@@ -402,6 +402,19 @@ export function assertOutputDirectoryOutsideRepository(
   }
 }
 
+export function captureAmbientEnvironmentSnapshot() {
+  return Object.freeze(
+    Object.fromEntries(
+      Object.entries(process.env).map(([name, value]) => {
+        if (typeof value !== 'string') {
+          fail('AMBIENT_ENVIRONMENT_INVALID');
+        }
+        return [name, value.length === 0 ? '' : 'PRESENT'];
+      })
+    )
+  );
+}
+
 function minimalGitEnvironment() {
   const allowed = [
     'SystemRoot',
@@ -569,7 +582,7 @@ function buildOfflineInputs(parsed) {
     evidenceParentDirectoryDevice: evidenceIdentity.device,
     evidenceParentDirectoryInode: evidenceIdentity.inode,
     now: new Date().toISOString(),
-    environment: process.env,
+    environment: captureAmbientEnvironmentSnapshot(),
   };
   const validation = validateOrganizationIdentityCaptureOffline(
     binding,
@@ -619,7 +632,9 @@ function revalidateOfflineInputs(inputs, code) {
     inputs.repositoryRoot,
     inputs.evidenceParent
   );
-  assertNoAmbientOrganizationCaptureCredentialEnvironment(process.env);
+  assertNoAmbientOrganizationCaptureCredentialEnvironment(
+    captureAmbientEnvironmentSnapshot()
+  );
   const currentImplementationSnapshots = captureImplementationSnapshots(
     inputs.repositoryRoot
   );
@@ -678,7 +693,7 @@ function revalidateOfflineInputs(inputs, code) {
     {
       ...inputs.context,
       now: new Date().toISOString(),
-      environment: process.env,
+      environment: captureAmbientEnvironmentSnapshot(),
     }
   );
 }

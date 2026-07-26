@@ -131,6 +131,110 @@ function invokeContract(method: string, args: JsonValue[]): HarnessResult {
   return invokeModule(contractUrl, method, args);
 }
 
+function runAmbientEnvironmentSnapshotHarness() {
+  const harness = `
+    const wrapper = await import(${JSON.stringify(wrapperUrl)});
+    const contract = await import(${JSON.stringify(contractUrl)});
+    try {
+      const liveEnvironmentPrototypeIsPlain =
+        Object.getPrototypeOf(process.env) === Object.prototype;
+      let liveEnvironmentCode = null;
+      try {
+        contract.assertNoAmbientOrganizationCaptureCredentialEnvironment(
+          process.env
+        );
+      } catch (error) {
+        liveEnvironmentCode =
+          error && typeof error === 'object' && 'code' in error &&
+          typeof error.code === 'string' ? error.code : 'UNEXPECTED_ERROR';
+      }
+      process.env.AMBIENT_SNAPSHOT_SAFE_TEST =
+        'synthetic-value-that-must-not-be-copied';
+      const cleanSnapshot = wrapper.captureAmbientEnvironmentSnapshot();
+      delete process.env.AMBIENT_SNAPSHOT_SAFE_TEST;
+      contract.assertNoAmbientOrganizationCaptureCredentialEnvironment(
+        cleanSnapshot
+      );
+      process.env.PGDATA = '';
+      const emptyForbiddenSnapshot =
+        wrapper.captureAmbientEnvironmentSnapshot();
+      delete process.env.PGDATA;
+      contract.assertNoAmbientOrganizationCaptureCredentialEnvironment(
+        emptyForbiddenSnapshot
+      );
+      process.env.PGDATA = 'synthetic-forbidden-value';
+      const forbiddenSnapshot =
+        wrapper.captureAmbientEnvironmentSnapshot();
+      let forbiddenCode = null;
+      try {
+        contract.assertNoAmbientOrganizationCaptureCredentialEnvironment(
+          forbiddenSnapshot
+        );
+      } catch (error) {
+        forbiddenCode =
+          error && typeof error === 'object' && 'code' in error &&
+          typeof error.code === 'string' ? error.code : 'UNEXPECTED_ERROR';
+      } finally {
+        delete process.env.PGDATA;
+      }
+      process.stdout.write(JSON.stringify({
+        ok: true,
+        cleanAccepted: true,
+        runtimePlatform: process.platform,
+        liveEnvironmentPrototypeIsPlain,
+        liveEnvironmentCode,
+        liveEnvironmentContractMatchedPrototype:
+          liveEnvironmentPrototypeIsPlain
+            ? liveEnvironmentCode === null
+            : liveEnvironmentCode === 'AMBIENT_ENVIRONMENT_INVALID',
+        snapshotIsFresh: cleanSnapshot !== process.env,
+        snapshotIsFrozen: Object.isFrozen(cleanSnapshot),
+        snapshotPrototypeIsPlain:
+          Object.getPrototypeOf(cleanSnapshot) === Object.prototype,
+        snapshotIsStable:
+          !Object.prototype.hasOwnProperty.call(cleanSnapshot, 'PGDATA'),
+        valuesArePresenceOnly:
+          cleanSnapshot.AMBIENT_SNAPSHOT_SAFE_TEST === 'PRESENT' &&
+          Object.values(cleanSnapshot).every(
+            (value) => value === '' || value === 'PRESENT'
+          ),
+        emptyForbiddenPreserved:
+          Object.prototype.hasOwnProperty.call(
+            emptyForbiddenSnapshot,
+            'PGDATA'
+          ) && emptyForbiddenSnapshot.PGDATA === '',
+        forbiddenCode
+      }));
+    } catch (error) {
+      const code = error && typeof error === 'object' && 'code' in error &&
+        typeof error.code === 'string' ? error.code : 'UNEXPECTED_ERROR';
+      process.stdout.write(JSON.stringify({ ok: false, code }));
+    }
+  `;
+  const child = spawnSync(
+    process.execPath,
+    ['--input-type=module', '-e', harness],
+    {
+      cwd: repoRoot,
+      env: {
+        PATH: process.env.PATH,
+        PATHEXT: process.env.PATHEXT,
+        SYSTEMROOT: process.env.SYSTEMROOT,
+        TEMP: process.env.TEMP,
+        TMP: process.env.TMP,
+      },
+      encoding: 'utf8',
+    }
+  );
+  expect(child.stderr).toBe('');
+  const parsed: unknown = JSON.parse(child.stdout);
+  expect(isJsonObject(parsed)).toBe(true);
+  if (!isJsonObject(parsed)) {
+    throw new Error('ambient environment harness returned an invalid result');
+  }
+  return parsed;
+}
+
 function makeValidFixture() {
   const approvedRequestProjection = {
     bodyPresent: false,
@@ -1455,6 +1559,42 @@ describe('PR12 source Organization identity capture contract', () => {
     expect(source).toContain("redirect: 'error'");
     expect(source).not.toContain("method: 'POST'");
     expect(source).not.toContain('/v1/projects/');
+  });
+
+  test('snapshots the runtime environment as a plain record without weakening forbidden-name rejection', () => {
+    const source = fs.readFileSync(wrapperPath, 'utf8');
+    expect(source).not.toMatch(/\benvironment:\s*process\.env\b/);
+    expect(source).not.toMatch(
+      /\bassertNoAmbientOrganizationCaptureCredentialEnvironment\(\s*process\.env\s*\)/
+    );
+    expect(
+      source.match(/environment:\s*captureAmbientEnvironmentSnapshot\(\)/g)
+    ).toHaveLength(2);
+    expect(
+      source.match(
+        /assertNoAmbientOrganizationCaptureCredentialEnvironment\(\s*captureAmbientEnvironmentSnapshot\(\)\s*\)/g
+      )
+    ).toHaveLength(1);
+    const result = runAmbientEnvironmentSnapshotHarness();
+    expect(result).toMatchObject({
+      ok: true,
+      cleanAccepted: true,
+      runtimePlatform: process.platform,
+      liveEnvironmentContractMatchedPrototype: true,
+      snapshotIsFresh: true,
+      snapshotIsFrozen: true,
+      snapshotPrototypeIsPlain: true,
+      snapshotIsStable: true,
+      valuesArePresenceOnly: true,
+      emptyForbiddenPreserved: true,
+      forbiddenCode: 'AMBIENT_CREDENTIAL_OR_TRANSPORT_ENVIRONMENT_FORBIDDEN',
+    });
+    if (process.platform === 'win32') {
+      expect(result).toMatchObject({
+        liveEnvironmentPrototypeIsPlain: false,
+        liveEnvironmentCode: 'AMBIENT_ENVIRONMENT_INVALID',
+      });
+    }
   });
 
   test('rejects Node preload flags before any remote-contact callback', () => {
