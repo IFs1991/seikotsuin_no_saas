@@ -36,12 +36,19 @@ project:
     anonymous_auth_enabled: false
 data:
   contract: representative-data-contract.proposed.json
-  contract_sha256: 67907af4a24bfe24a0f3c95dafe13031e77e55d79a44d6e9f1ede67f50746c79
-  source: hash-pinned tracked Supabase and E2E synthetic fixtures
+  contract_sha256: ca7493b1eea025064b33e0164dabe3e37897f0b491156805aad63f89c1337bc1
+  source: strict PR12-only fixture compiler; raw Supabase seed and existing E2E seed are forbidden
   classification: SYNTHETIC
-  volume: 74 explicit persistent rows plus captured derived rows; canonical PR11 transaction-scoped volume probes
-  source_hash: contract source hash set
-  row_count_targets: contract explicitPersistentRowTargets
+  volume: 83 explicit persistent rows plus exactly 12 trigger-derived reservation_history rows = 95 rows across 19 relations; canonical PR11 probes remain transaction-scoped
+  fixture_plan_sha256: a2446817c50b1d2ada0c4701acedc7abd2e00623c2ba503873f325a78d421028
+  source_hash: a2446817c50b1d2ada0c4701acedc7abd2e00623c2ba503873f325a78d421028
+  runtime_source_snapshot_sha256: NOT_CAPTURED
+  fixture_payload_aggregate_sha256: 0c5c6237faa673171a618b9a815cba41f6ced4e5a8e89814e399f006fa747e39
+  actor_topology_sha256: beae5bba032aadcb88adacc21146b47c95ce4582407a19e2b68f6891dbba83a3
+  row_count_targets: exact 18 explicit relations plus one derived relation
+  implementation_status: IMPLEMENTED_OFFLINE_VERIFIED
+  execution_status: NOT_RUN
+  execution_authorized: false
   patient_pii_allowed: false
   persistent_capacity_representative: false
   capacity_acceptance_owner_approved: false
@@ -78,7 +85,7 @@ dr_contract:
   owner_approved: false
 integration_and_credential_contract:
   path: integration-credential-contract.proposed.json
-  sha256: 9c70a291017c201da56aefe06485b4cb9122f33badb5336f948f1f084a05c103
+  sha256: 9a7a39acc6d28c1e2fd6eebb7b24faaa12f7a3098fc646120bfaa341c2f70a61
   source_mode: SANDBOXED_STRIPE_TEST_ONLY
   restore_mode: DISABLED_NO_STRIPE_CREDENTIALS
   upstash_disposition: UNASSIGNED
@@ -86,10 +93,49 @@ integration_and_credential_contract:
   side_effect_descriptor_path: external-side-effect-collector-descriptors-v2.json
   side_effect_descriptor_sha256: c5b11dbb2cd4f676e2cef46bda3c1fd65e1311cbc14eed49f3addc4392cb98b9
   owner_approved: false
+  stage_command_runtime:
+    module_contract_status: IMPLEMENTED_OFFLINE_VERIFIED
+    populated_staging_binding_adapter_status: NOT_IMPLEMENTED
+    remote_dispatcher_call_site_status: NOT_IMPLEMENTED
+    execution_status: NOT_RUN
+    execution_authorized: false
+    database_secret_child_environment_name: PGPASSWORD
+    hosted_types_management_token_child_environment_name: SUPABASE_ACCESS_TOKEN
+    database_and_management_child_processes_must_be_distinct: true
+    dotenv_or_ambient_credential_fallback_allowed: false
 command_ledger:
   path: staging-command-ledger.proposed.json
-  sha256: 61fbe573810f6052b8bdfe31f00b3af34a0733d10c90a8f87ad159b8853bf384
+  sha256: 5816d16a619eacac12c1dfefb1556bf2bcbc11a7c12bbf232f5ee03e535a8225
   status: PROPOSED_NOT_EXECUTABLE
+local_readiness:
+  status: IMPLEMENTED_OFFLINE_VERIFIED
+  execution_status: NOT_RUN
+  execution_authorized: false
+  remote_contact_performed: false
+  source_replay_command_order: PR12-CMD-003_THROUGH_PR12-CMD-008A_EXACT
+  source_identity_collector: PR12-CMD-004A_IMPLEMENTED_OFFLINE_VERIFIED_NOT_RUN
+  hosted_types_collector: PR12-CMD-010_IMPLEMENTED_OFFLINE_VERIFIED_NOT_RUN
+  advisor_before_after_collector: PR12-CMD-006_AND_PR12-CMD-016_IMPLEMENTED_OFFLINE_VERIFIED_NOT_RUN
+  all_role_smoke_component: PR12-CMD-013_COMPONENT_IMPLEMENTED_OFFLINE_VERIFIED_NOT_RUN
+  supabase_version: 2.109.0
+  supabase_executable_sha256: 903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118
+  adjacent_supabase_go_version: 2.109.0
+  adjacent_supabase_go_executable_sha256: 59cd06ac674fdf5d6add75206408ada0a24b1dcb796d099c13b1f2aaf3f463f0
+  psql_version: 17.9
+  psql_executable_sha256: 6a4b5cd854ee1c0e50646e7612a9e769c9ae86aa97bf94c50342dad058c2b531
+  runtime_path_projection_sha256: NOT_CAPTURED
+  runtime_path_projection_exact_path_count: 7
+  runtime_path_projection_raw_paths_retained: false
+  runtime_path_projection_required_paths:
+    - supabase_executable
+    - adjacent_supabase_go_executable
+    - psql_executable
+    - ca_bundle
+    - external_runtime_workdir
+    - supabase_home
+    - docker_config
+  repository_link_metadata_allowed: false
+  linked_command_or_flag_allowed: false
 stage_3_ordered_command_ids:
   - PR12-CMD-003
   - PR12-CMD-004
@@ -160,9 +206,9 @@ data_api_contract:
   acl_inventory_proposal_sha256: bf6b315e4644b360593f0d0fa2e11c80e2db2d5a5b6ca5ba0a44a95239ac9a32
   acl_inventory_owner: UNASSIGNED
   executable_acl_inventory_authority: nested_in_hash_bound_data_api_matrix
-  post_replay_catalog_collector: NOT_IMPLEMENTED
+  post_replay_catalog_collector: SQL_DESCRIPTOR_AND_FAIL_CLOSED_SETTINGS_MAPPER_IMPLEMENTED_OFFLINE_RUNTIME_NOT_RUN_COMPLETE_ACL_AND_ENDPOINT_STATE_NOT_IMPLEMENTED
   post_replay_catalog_query_contract_sha256: NOT_CAPTURED
-  independent_settings_and_pg_catalog_raw_command: NOT_IMPLEMENTED
+  independent_settings_and_pg_catalog_raw_command: IMPLEMENTED_OFFLINE_VERIFIED_EXECUTION_NOT_RUN
   matrix_collector: NOT_IMPLEMENTED
   enabled_state: NOT_CAPTURED
   exposed_schemas: NOT_CAPTURED
@@ -221,7 +267,7 @@ security_contract:
   jwt_signing_secret_acquisition_allowed: false
   fabricated_user_jwt_allowed: false
   target_inventory_proposal: security-target-inventory.proposed.json
-  target_inventory_proposal_sha256: a87899df1b40799c063315f6293727ef88dddfd2f1d00258cb4b235f49fabe5e
+  target_inventory_proposal_sha256: 77ce4fd3fc70668f7ccc830bb4e321764bc97116b9501e08ffc783943e935c03
   target_classification_proposal: security-target-classification.proposed.json
   target_classification_proposal_sha256: 21d2f08c78b98a036a2538d7a0ec36cc96f72dd6ad2bb7bbb9874d477c754342
   finalized_target_inventory: NOT_CAPTURED
@@ -230,6 +276,7 @@ security_contract:
   matrix_self_selected_targets_allowed: false
   missing_extra_duplicate_draft_or_unclassified_target_allowed: false
   target_relations_functions_and_operations: PROVISIONAL_OWNER_APPROVAL_REQUIRED
+  all_role_smoke_readiness: IMPLEMENTED_OFFLINE_VERIFIED_EXECUTION_NOT_RUN_NOT_COMM_PASS
   expected_http_sqlstate_row_count_acl_rls_outcomes: NOT_CAPTURED
   negative_cases:
     - tenant_a_b_read_insert_update_delete
@@ -343,9 +390,9 @@ abort_on:
 evidence: []
 residual_risk:
   - Project refs, exact platform settings, named owners, secret store, API matrices, and actual cost are not captured.
-  - The hosted PR11 adapter, hosted SLO collector, exact request matrix, and post-load row validator are not implemented.
+  - The hosted PR11 adapter, hosted SLO collector, and exact request matrix are not implemented; fixture plan/load/hash readiness exists offline but has not run.
   - Safe permissions/profile query-error induction, dedicated Auth actor provisioning, stale-authority proof, token-expiry/skew capture, and the authority lookup collector are not implemented.
-  - Relational row selectors, canonical snapshot query hashes, exact fixture lifecycle, row counts, and per-snapshot chronology are not captured or implemented.
+  - Runtime relational selectors, catalog classification, credential provider, CA/path fingerprints, exact fixture lifecycle timestamps, row counts, and per-snapshot chronology are not captured.
   - The 54-gate COMM map is frozen but its typed claim collector registry is not implemented, so execution PASS remains blocked.
   - Maximum acceptable provider/database/operator clock skew is UNASSIGNED, so RTO/RPO PASS remains blocked.
   - The tracked persistent fixture is not capacity representative; owner acceptance or a new generator is required.

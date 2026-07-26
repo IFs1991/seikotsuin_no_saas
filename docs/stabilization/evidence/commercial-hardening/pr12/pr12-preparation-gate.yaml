@@ -16,15 +16,18 @@ approval_source: explicit_user_instruction_2026-07-19
 verified_at: NOT_CAPTURED
 expires_at: NOT_CAPTURED
 authority:
-  current_ssot:
-    - docs/quality/change-dod-v1.0.md
-    - docs/releases/commercial-release-qualification-v1.0.md
-    - docs/stabilization/spec-commercial-hardening-migration-v1.0.md
+  implementation_ssot: docs/stabilization/spec-commercial-hardening-migration-v1.0.md
+  pr12_section_sha256: 71fe7972430268396ca405a388e2cdf87b937962f735dfae6af48b2cb1d66b94
+  gate_and_evidence_state_semantics: docs/quality/change-dod-v1.0.md
+  commercial_gate_definitions: docs/releases/commercial-release-qualification-v1.0.md
+  pr12_binding_command_evidence_shape: docs/stabilization/spec-commercial-pr12-isolated-release-qualification-v1.0.md
+  subordinate_sources_may_tighten_but_not_replace_canonical_pr12: true
+  mismatch_disposition: BLOCK_NO_GO_BEFORE_REMOTE_CONTACT
   historical_entry_snapshot: pr11-performance-entry-gate.yaml
   historical_entry_snapshot_mutated: false
   dated_original:
     path_outside_clean_worktree: docs/stabilization/1-seikotsuin-commercial-hardening-migration-spec-v1.0-2026-07-11.md
-    sha256: fb3960ef365f803c718f7e297fd6b49378341c3f7a1b9250828fd64d0b0a40b5
+    dated_original_sha256: fb3960ef365f803c718f7e297fd6b49378341c3f7a1b9250828fd64d0b0a40b5
     committed_to_pr12: false
     relationship_to_current_ssot: original_audit_input_not_implementation_override
 scope:

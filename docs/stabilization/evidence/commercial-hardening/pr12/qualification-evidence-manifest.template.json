@@ -114,7 +114,8 @@
   "toolVersions": {
     "node": "NOT_CAPTURED",
     "supabaseCli": "2.109.0",
-    "psql": "NOT_CAPTURED"
+    "supabaseGo": "2.109.0",
+    "psql": "psql (PostgreSQL) 17.9"
   },
   "toolBinaries": {
     "supabaseCli": {
@@ -125,11 +126,80 @@
       "archiveSha256": "d2b687ec3427fe7847cf7a8f603413fa8d4331f6fdbbc825eea6aa34a64d686b",
       "archiveHashCommandId": "NOT_CAPTURED"
     },
+    "supabaseGo": {
+      "path": "NOT_CAPTURED",
+      "sha256": "59cd06ac674fdf5d6add75206408ada0a24b1dcb796d099c13b1f2aaf3f463f0",
+      "hashCommandId": "NOT_CAPTURED"
+    },
     "psql": {
       "path": "NOT_CAPTURED",
-      "sha256": "NOT_CAPTURED",
+      "sha256": "6a4b5cd854ee1c0e50646e7612a9e769c9ae86aa97bf94c50342dad058c2b531",
       "hashCommandId": "NOT_CAPTURED"
     }
+  },
+  "runtimePathProjection": {
+    "schemaVersion": 1,
+    "status": "NOT_CAPTURED",
+    "entries": {
+      "caBundlePath": {
+        "schemaVersion": 1,
+        "canonicalization": "NOT_CAPTURED",
+        "pathSha256": "NOT_CAPTURED",
+        "resolvedPathSha256": "NOT_CAPTURED",
+        "lexicalAndResolvedPathMatch": "NOT_CAPTURED",
+        "rawPathRetained": false
+      },
+      "dockerConfig": {
+        "schemaVersion": 1,
+        "canonicalization": "NOT_CAPTURED",
+        "pathSha256": "NOT_CAPTURED",
+        "resolvedPathSha256": "NOT_CAPTURED",
+        "lexicalAndResolvedPathMatch": "NOT_CAPTURED",
+        "rawPathRetained": false
+      },
+      "externalWorkdir": {
+        "schemaVersion": 1,
+        "canonicalization": "NOT_CAPTURED",
+        "pathSha256": "NOT_CAPTURED",
+        "resolvedPathSha256": "NOT_CAPTURED",
+        "lexicalAndResolvedPathMatch": "NOT_CAPTURED",
+        "rawPathRetained": false
+      },
+      "psqlPath": {
+        "schemaVersion": 1,
+        "canonicalization": "NOT_CAPTURED",
+        "pathSha256": "NOT_CAPTURED",
+        "resolvedPathSha256": "NOT_CAPTURED",
+        "lexicalAndResolvedPathMatch": "NOT_CAPTURED",
+        "rawPathRetained": false
+      },
+      "supabaseGoPath": {
+        "schemaVersion": 1,
+        "canonicalization": "NOT_CAPTURED",
+        "pathSha256": "NOT_CAPTURED",
+        "resolvedPathSha256": "NOT_CAPTURED",
+        "lexicalAndResolvedPathMatch": "NOT_CAPTURED",
+        "rawPathRetained": false
+      },
+      "supabaseHome": {
+        "schemaVersion": 1,
+        "canonicalization": "NOT_CAPTURED",
+        "pathSha256": "NOT_CAPTURED",
+        "resolvedPathSha256": "NOT_CAPTURED",
+        "lexicalAndResolvedPathMatch": "NOT_CAPTURED",
+        "rawPathRetained": false
+      },
+      "supabasePath": {
+        "schemaVersion": 1,
+        "canonicalization": "NOT_CAPTURED",
+        "pathSha256": "NOT_CAPTURED",
+        "resolvedPathSha256": "NOT_CAPTURED",
+        "lexicalAndResolvedPathMatch": "NOT_CAPTURED",
+        "rawPathRetained": false
+      }
+    },
+    "rawPathsRetained": false,
+    "projectionSha256": "NOT_CAPTURED"
   },
   "timing": {
     "startedAt": "NOT_CAPTURED",

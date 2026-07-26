@@ -14,6 +14,7 @@
     "credentialHandling",
     "toolVersions",
     "toolBinaries",
+    "runtimePathProjection",
     "timing",
     "commands",
     "artifacts",
@@ -286,18 +287,27 @@
     },
     "toolVersions": {
       "type": "object",
-      "minProperties": 1,
-      "required": ["node", "supabaseCli", "psql"],
-      "additionalProperties": { "type": "string", "minLength": 1 }
+      "additionalProperties": false,
+      "required": ["node", "supabaseCli", "supabaseGo", "psql"],
+      "properties": {
+        "node": { "type": "string", "minLength": 1 },
+        "supabaseCli": { "type": "string", "minLength": 1 },
+        "supabaseGo": { "type": "string", "minLength": 1 },
+        "psql": { "type": "string", "minLength": 1 }
+      }
     },
     "toolBinaries": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["supabaseCli", "psql"],
+      "required": ["supabaseCli", "supabaseGo", "psql"],
       "properties": {
         "supabaseCli": { "$ref": "#/$defs/toolBinary" },
+        "supabaseGo": { "$ref": "#/$defs/toolBinary" },
         "psql": { "$ref": "#/$defs/toolBinary" }
       }
+    },
+    "runtimePathProjection": {
+      "$ref": "#/$defs/runtimePathProjection"
     },
     "timing": {
       "type": "object",
@@ -1055,15 +1065,74 @@
             }
           },
           "toolVersions": {
-            "minProperties": 1,
             "properties": {
               "node": { "pattern": "^v?24\\.\\d+\\.\\d+$" },
               "supabaseCli": { "const": "2.109.0" },
-              "psql": {
-                "pattern": "^psql \\(PostgreSQL\\) \\d+(?:\\.\\d+){0,2}(?:\\s.*)?$"
-              }
+              "supabaseGo": { "const": "2.109.0" },
+              "psql": { "const": "psql (PostgreSQL) 17.9" }
             },
-            "additionalProperties": { "$ref": "#/$defs/concreteString" }
+            "additionalProperties": false
+          },
+          "toolBinaries": {
+            "properties": {
+              "supabaseCli": {
+                "properties": {
+                  "sha256": {
+                    "const": "903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118"
+                  },
+                  "archiveSha256": {
+                    "const": "d2b687ec3427fe7847cf7a8f603413fa8d4331f6fdbbc825eea6aa34a64d686b"
+                  }
+                }
+              },
+              "supabaseGo": {
+                "properties": {
+                  "sha256": {
+                    "const": "59cd06ac674fdf5d6add75206408ada0a24b1dcb796d099c13b1f2aaf3f463f0"
+                  }
+                }
+              },
+              "psql": {
+                "properties": {
+                  "sha256": {
+                    "const": "6a4b5cd854ee1c0e50646e7612a9e769c9ae86aa97bf94c50342dad058c2b531"
+                  }
+                }
+              }
+            }
+          },
+          "runtimePathProjection": {
+            "properties": {
+              "status": {
+                "const": "EXTERNAL_PATH_FINGERPRINTS_CAPTURED"
+              },
+              "entries": {
+                "properties": {
+                  "caBundlePath": {
+                    "$ref": "#/$defs/concreteRuntimePathFingerprint"
+                  },
+                  "dockerConfig": {
+                    "$ref": "#/$defs/concreteRuntimePathFingerprint"
+                  },
+                  "externalWorkdir": {
+                    "$ref": "#/$defs/concreteRuntimePathFingerprint"
+                  },
+                  "psqlPath": {
+                    "$ref": "#/$defs/concreteRuntimePathFingerprint"
+                  },
+                  "supabaseGoPath": {
+                    "$ref": "#/$defs/concreteRuntimePathFingerprint"
+                  },
+                  "supabaseHome": {
+                    "$ref": "#/$defs/concreteRuntimePathFingerprint"
+                  },
+                  "supabasePath": {
+                    "$ref": "#/$defs/concreteRuntimePathFingerprint"
+                  }
+                }
+              },
+              "projectionSha256": { "$ref": "#/$defs/sha256" }
+            }
           },
           "timing": {
             "properties": {
@@ -1483,6 +1552,107 @@
         "archivePath": { "type": "string", "minLength": 1 },
         "archiveSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
         "archiveHashCommandId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "runtimePathFingerprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "canonicalization",
+        "pathSha256",
+        "resolvedPathSha256",
+        "lexicalAndResolvedPathMatch",
+        "rawPathRetained"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "canonicalization": {
+          "enum": [
+            "win32-lowercase-backslash-absolute-v1",
+            "native-posix-absolute-v1",
+            "NOT_CAPTURED"
+          ]
+        },
+        "pathSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+        "resolvedPathSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+        "lexicalAndResolvedPathMatch": {
+          "oneOf": [{ "type": "boolean" }, { "const": "NOT_CAPTURED" }]
+        },
+        "rawPathRetained": { "const": false }
+      }
+    },
+    "concreteRuntimePathFingerprint": {
+      "allOf": [
+        { "$ref": "#/$defs/runtimePathFingerprint" },
+        {
+          "properties": {
+            "canonicalization": {
+              "enum": [
+                "win32-lowercase-backslash-absolute-v1",
+                "native-posix-absolute-v1"
+              ]
+            },
+            "pathSha256": { "$ref": "#/$defs/sha256" },
+            "resolvedPathSha256": { "$ref": "#/$defs/sha256" },
+            "lexicalAndResolvedPathMatch": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "runtimePathProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "status",
+        "entries",
+        "rawPathsRetained",
+        "projectionSha256"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "status": {
+          "enum": ["EXTERNAL_PATH_FINGERPRINTS_CAPTURED", "NOT_CAPTURED"]
+        },
+        "entries": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "caBundlePath",
+            "dockerConfig",
+            "externalWorkdir",
+            "psqlPath",
+            "supabaseGoPath",
+            "supabaseHome",
+            "supabasePath"
+          ],
+          "properties": {
+            "caBundlePath": {
+              "$ref": "#/$defs/runtimePathFingerprint"
+            },
+            "dockerConfig": {
+              "$ref": "#/$defs/runtimePathFingerprint"
+            },
+            "externalWorkdir": {
+              "$ref": "#/$defs/runtimePathFingerprint"
+            },
+            "psqlPath": {
+              "$ref": "#/$defs/runtimePathFingerprint"
+            },
+            "supabaseGoPath": {
+              "$ref": "#/$defs/runtimePathFingerprint"
+            },
+            "supabaseHome": {
+              "$ref": "#/$defs/runtimePathFingerprint"
+            },
+            "supabasePath": {
+              "$ref": "#/$defs/runtimePathFingerprint"
+            }
+          }
+        },
+        "rawPathsRetained": { "const": false },
+        "projectionSha256": { "$ref": "#/$defs/sha256OrPlaceholder" }
       }
     },
     "gateResult": {

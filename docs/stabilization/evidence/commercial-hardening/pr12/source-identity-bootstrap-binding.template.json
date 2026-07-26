@@ -5,7 +5,7 @@
   "authorization": {
     "sourceIdentityConnectionAuthorized": false,
     "sourceIdentityCaptureAuthorized": false,
-    "sourceLinkAuthorized": false,
+    "sourceReplayAuthorized": false,
     "cleanMigrationReplayAuthorized": false,
     "representativeSeedAuthorized": false,
     "fullQualificationAuthorized": false,
@@ -18,7 +18,7 @@
   },
   "governanceProposal": {
     "path": "staging-execution-approval-packet.yaml",
-    "sha256": "5b94db7eafbfc4f400c54753f3bb002b0d882debbd654fb0e3e87859852e6326"
+    "sha256": "94a891991f268b4945a604523e96b362aa47458432c33f5a4c7af1273d00cc14"
   },
   "sourceProjectProvisioningApproval": {
     "path": "NOT_CAPTURED",
@@ -91,7 +91,7 @@
     "mutating": false,
     "mutationScope": "NONE",
     "preKnownSystemIdentifierRequired": false,
-    "mustCompleteBeforeLinkHistoryAdvisorOrReplay": true,
+    "mustCompleteBeforeRuntimeMaterializationHistoryAdvisorOrReplay": true,
     "bootstrapGuardUsesProvisioningResult": true,
     "subsequentCommandsMustMatchCapturedSystemIdentifier": true,
     "readOnlyPlatformConfigurationCaptureRequired": true,
@@ -137,5 +137,5 @@
     "cleanupOwner": "UNASSIGNED",
     "evidenceCustodian": "UNASSIGNED"
   },
-  "notes": "This approval permits only the first read-only source identity/clock and Data API/Auth/GraphQL configuration capture. It stops before link, history, Advisor, migration replay, seed, qualification, backup, or restore."
+  "notes": "This approval permits only the first read-only source identity/clock and Data API/Auth/GraphQL configuration capture. It stops before repository-external runtime materialization, history, Advisor, migration replay, seed, qualification, backup, or restore."
 }

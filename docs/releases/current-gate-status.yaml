@@ -15,7 +15,12 @@ authority:
   change_dod: docs/quality/change-dod-v1.0.md
   commercial_release: docs/releases/commercial-release-qualification-v1.0.md
   implementation_ssot: docs/stabilization/spec-commercial-hardening-migration-v1.0.md
+  pr12_section_sha256: 71fe7972430268396ca405a388e2cdf87b937962f735dfae6af48b2cb1d66b94
+  dated_original_path_outside_clean_worktree: docs/stabilization/1-seikotsuin-commercial-hardening-migration-spec-v1.0-2026-07-11.md
+  dated_original_sha256: fb3960ef365f803c718f7e297fd6b49378341c3f7a1b9250828fd64d0b0a40b5
   pr12_spec: docs/stabilization/spec-commercial-pr12-isolated-release-qualification-v1.0.md
+  subordinate_sources_may_tighten_but_not_replace_canonical_pr12: true
+  mismatch_disposition: BLOCK_NO_GO_BEFORE_REMOTE_CONTACT
 summary:
   change_dod: NOT_RUN
   pilot_release: NO_GO

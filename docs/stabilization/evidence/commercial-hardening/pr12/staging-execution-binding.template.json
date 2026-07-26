@@ -17,7 +17,7 @@
   },
   "governanceProposal": {
     "path": "staging-execution-approval-packet.yaml",
-    "sha256": "5b94db7eafbfc4f400c54753f3bb002b0d882debbd654fb0e3e87859852e6326"
+    "sha256": "94a891991f268b4945a604523e96b362aa47458432c33f5a4c7af1273d00cc14"
   },
   "sourceProjectProvisioningApproval": {
     "path": "NOT_CAPTURED",
@@ -120,26 +120,106 @@
   "toolVersions": {
     "node": "NOT_CAPTURED",
     "supabaseCli": "2.109.0",
-    "psql": "NOT_CAPTURED"
+    "supabaseGo": "2.109.0",
+    "psql": "17.9"
   },
   "toolVersionCommands": {
     "node": "NOT_CAPTURED",
     "supabaseCli": "NOT_CAPTURED",
+    "supabaseGo": "NOT_CAPTURED",
     "psql": "NOT_CAPTURED"
   },
   "toolBinaries": {
     "supabaseCli": {
       "path": "NOT_CAPTURED",
+      "pathSha256": "NOT_CAPTURED",
+      "resolvedPathSha256": "NOT_CAPTURED",
       "sha256": "903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118",
       "hashCommandId": "NOT_CAPTURED",
       "archivePath": "NOT_CAPTURED",
+      "archivePathSha256": "NOT_CAPTURED",
+      "archiveResolvedPathSha256": "NOT_CAPTURED",
       "archiveSha256": "d2b687ec3427fe7847cf7a8f603413fa8d4331f6fdbbc825eea6aa34a64d686b",
       "archiveHashCommandId": "NOT_CAPTURED"
     },
+    "supabaseGo": {
+      "path": "NOT_CAPTURED",
+      "pathSha256": "NOT_CAPTURED",
+      "resolvedPathSha256": "NOT_CAPTURED",
+      "sha256": "59cd06ac674fdf5d6add75206408ada0a24b1dcb796d099c13b1f2aaf3f463f0",
+      "hashCommandId": "NOT_CAPTURED"
+    },
     "psql": {
       "path": "NOT_CAPTURED",
-      "sha256": "NOT_CAPTURED",
+      "pathSha256": "NOT_CAPTURED",
+      "resolvedPathSha256": "NOT_CAPTURED",
+      "sha256": "6a4b5cd854ee1c0e50646e7612a9e769c9ae86aa97bf94c50342dad058c2b531",
       "hashCommandId": "NOT_CAPTURED"
+    },
+    "caBundle": {
+      "path": "NOT_CAPTURED",
+      "pathSha256": "NOT_CAPTURED",
+      "resolvedPathSha256": "NOT_CAPTURED",
+      "contentSha256": "NOT_CAPTURED"
+    },
+    "externalRuntimeWorkdir": {
+      "path": "NOT_CAPTURED",
+      "pathSha256": "NOT_CAPTURED",
+      "resolvedPathSha256": "NOT_CAPTURED",
+      "copiedFileCount": 65,
+      "migrationCount": 61,
+      "collectorSqlAssetCount": 3
+    }
+  },
+  "runtimeReadiness": {
+    "moduleContractStatus": "IMPLEMENTED_OFFLINE_VERIFIED",
+    "populatedStagingBindingAdapterStatus": "NOT_IMPLEMENTED",
+    "remoteDispatcherCallSiteStatus": "NOT_IMPLEMENTED",
+    "executionStatus": "NOT_RUN",
+    "executionAuthorized": false,
+    "runtimePathProjection": {
+      "schemaVersion": 1,
+      "status": "NOT_CAPTURED",
+      "entries": {
+        "caBundlePath": {
+          "pathSha256": "NOT_CAPTURED",
+          "resolvedPathSha256": "NOT_CAPTURED"
+        },
+        "dockerConfig": {
+          "pathSha256": "NOT_CAPTURED",
+          "resolvedPathSha256": "NOT_CAPTURED"
+        },
+        "externalWorkdir": {
+          "pathSha256": "NOT_CAPTURED",
+          "resolvedPathSha256": "NOT_CAPTURED"
+        },
+        "psqlPath": {
+          "pathSha256": "NOT_CAPTURED",
+          "resolvedPathSha256": "NOT_CAPTURED"
+        },
+        "supabaseGoPath": {
+          "pathSha256": "NOT_CAPTURED",
+          "resolvedPathSha256": "NOT_CAPTURED"
+        },
+        "supabaseHome": {
+          "pathSha256": "NOT_CAPTURED",
+          "resolvedPathSha256": "NOT_CAPTURED"
+        },
+        "supabasePath": {
+          "pathSha256": "NOT_CAPTURED",
+          "resolvedPathSha256": "NOT_CAPTURED"
+        }
+      },
+      "exactPathCount": 7,
+      "rawPathsRetained": false,
+      "projectionSha256": "NOT_CAPTURED"
+    },
+    "productionDenylist": {
+      "projectRefs": ["qnanuoqveidwvacvbhqp"],
+      "hosts": ["db.qnanuoqveidwvacvbhqp.supabase.co"],
+      "databaseSystemIdentifiers": [],
+      "databaseSystemIdentifiersStatus": "NOT_CAPTURED_BLOCKING",
+      "allThreeDimensionsRequiredBeforeRemoteContact": true
     }
   },
   "reviewedProposals": {
@@ -149,11 +229,11 @@
     },
     "representativeData": {
       "path": "representative-data-contract.proposed.json",
-      "sha256": "67907af4a24bfe24a0f3c95dafe13031e77e55d79a44d6e9f1ede67f50746c79"
+      "sha256": "ca7493b1eea025064b33e0164dabe3e37897f0b491156805aad63f89c1337bc1"
     },
     "securityTargetInventory": {
       "path": "security-target-inventory.proposed.json",
-      "sha256": "a87899df1b40799c063315f6293727ef88dddfd2f1d00258cb4b235f49fabe5e"
+      "sha256": "77ce4fd3fc70668f7ccc830bb4e321764bc97116b9501e08ffc783943e935c03"
     },
     "securityTargetClassification": {
       "path": "security-target-classification.proposed.json",
@@ -165,7 +245,7 @@
     },
     "commandLedger": {
       "path": "staging-command-ledger.proposed.json",
-      "sha256": "61fbe573810f6052b8bdfe31f00b3af34a0733d10c90a8f87ad159b8853bf384"
+      "sha256": "5816d16a619eacac12c1dfefb1556bf2bcbc11a7c12bbf232f5ee03e535a8225"
     },
     "dr": {
       "path": "dr-contract.proposed.json",
@@ -173,7 +253,7 @@
     },
     "integrationCredential": {
       "path": "integration-credential-contract.proposed.json",
-      "sha256": "9c70a291017c201da56aefe06485b4cb9122f33badb5336f948f1f084a05c103"
+      "sha256": "9a7a39acc6d28c1e2fd6eebb7b24faaa12f7a3098fc646120bfaa341c2f70a61"
     },
     "commGateEvidenceMap": {
       "path": "comm-gate-evidence-map-v1.json",

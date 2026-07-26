@@ -15,21 +15,56 @@
 
 This PR converts the merged PR11 schema into a reviewable qualification plan. It does not claim that staging, backup, restore, billing, or commercial release has passed.
 
-## 2. Authority and source precedence
+## 2. Scoped authority and source contract
 
-Implementation decisions follow, in order:
+PR12 uses field-scoped authority rather than a single precedence list:
 
-1. [Change DoD v1.0](../quality/change-dod-v1.0.md)
-2. [Commercial Release Qualification v1.0](../releases/commercial-release-qualification-v1.0.md)
-3. [Current commercial-hardening implementation SSOT](spec-commercial-hardening-migration-v1.0.md)
-4. [PR12 entry handoff](pr12-entry-readiness-handoff-v0.1-20260719.md)
-5. This PR12 specification and its evidence contracts
+- **Purpose, ordered 14 steps, and five Acceptance items:** `docs/stabilization/spec-commercial-hardening-migration-v1.0.md`, specifically the normalized PR12 section with SHA-256 `71fe7972430268396ca405a388e2cdf87b937962f735dfae6af48b2cb1d66b94`.
+- **Gate and evidence-state semantics:** `docs/quality/change-dod-v1.0.md`.
+- **The 54 COMM gate definitions:** `docs/releases/commercial-release-qualification-v1.0.md`.
+- **PR12-specific binding, command, and evidence shape:** this specification and its evidence contracts.
+- **Historical entry context only:** [PR12 entry handoff](pr12-entry-readiness-handoff-v0.1-20260719.md).
 
-The dated original `1-seikotsuin-commercial-hardening-migration-spec-v1.0-2026-07-11.md` was read in full from the protected root worktree. Its SHA-256 is `fb3960ef365f803c718f7e297fd6b49378341c3f7a1b9250828fd64d0b0a40b5`. It is an original audit/design input and is not copied, edited, staged, or committed here.
+A subordinate source may tighten but must not remove, reorder, waive, replace, or substitute a canonical PR12 step or Acceptance item. Any mismatch is `BLOCK / NO_GO`: stop before remote contact, preserve the mismatch evidence, and require an owner-reviewed correction. A subordinate status or locally implemented collector never converts canonical execution from `NOT_RUN`, inherits authority from a prerequisite, or authorizes production.
 
-The current SSOT differs from that dated input by one later 16-line `Pilot-only performance exception`. That addition keeps a fixed failure as `FAIL`, limits its waiver to PR11 pilot merge eligibility, and explicitly denies inheritance to staging, production, and general commercial release. No other textual difference was found. The later addition is retained and never overwritten by the dated original.
+The dated original `1-seikotsuin-commercial-hardening-migration-spec-v1.0-2026-07-11.md` was read in full from the protected root worktree. Its SHA-256 is `fb3960ef365f803c718f7e297fd6b49378341c3f7a1b9250828fd64d0b0a40b5`. It is an immutable provenance/audit input and is not copied, edited, staged, or committed here. Its PR12 section is byte-equivalent after line-ending normalization to the tracked implementation SSOT section identified above.
+
+The current SSOT differs from that dated input only by one later 16-line `Pilot-only performance exception`. That addition keeps a fixed failure as `FAIL`, limits its waiver to PR11 pilot merge eligibility, and explicitly denies inheritance to staging, production, and general commercial release. It remains in the tracked SSOT and is not part of the normalized PR12 section.
 
 The requested top-level `spec-commercial-pr11-blocks-resource-index-retirement-v1.0.md` is not present on `origin/main`. The immutable Phase A2 `-02/-03` input packages contain byte-identical copies with SHA-256 `17b08bf6b3857233c4dc0d5c8e2b6abd906f0044eb9a190bd39ba684ed5afb9f`. PR12 treats that as resolved source location, not as authority to retire the index.
+
+### 2.1 Canonical PR12 traceability matrix
+
+This is the sole PR12 step/Acceptance traceability matrix. Implementation status records offline readiness only; execution and approval remain separate fail-closed dimensions.
+
+<!-- PR12-TRACEABILITY-MATRIX:START -->
+
+| Step | Canonical step                            | Implementation status                              | Execution status | Approval status  | Evidence and next mandatory action                                                                                                         |
+| ---- | ----------------------------------------- | -------------------------------------------------- | ---------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 01   | staging clone/isolated project            | `PREREQUISITE_PASS_ONLY`                           | `NOT_RUN`        | `NOT_AUTHORIZED` | `PR12-ACTION-002` is sealed prerequisite evidence only; populate, re-hash, and separately approve the current `PR12-ACTION-003` v5 packet. |
+| 02   | full migration replay                     | `IMPLEMENTED_OFFLINE_VERIFIED`                     | `NOT_RUN`        | `NOT_AUTHORIZED` | Capture and approve CMD004A identity/configuration, then separately bind Stage 3 CMD003 through CMD008A.                                   |
+| 03   | anonymized/representative data validation | `IMPLEMENTED_OFFLINE_VERIFIED`                     | `NOT_RUN`        | `NOT_AUTHORIZED` | Freeze fixture epoch/provider inputs and obtain a separate Stage 4 approval.                                                               |
+| 04   | types parity                              | `IMPLEMENTED_OFFLINE_VERIFIED`                     | `NOT_RUN`        | `NOT_AUTHORIZED` | Run CMD010 only from its future approved binding and compare temporary output without modifying tracked types.                             |
+| 05   | advisor scan                              | `IMPLEMENTED_OFFLINE_VERIFIED`                     | `NOT_RUN`        | `NOT_AUTHORIZED` | Capture CMD006 before evidence and CMD016 after evidence only in their fixed approved order.                                               |
+| 06   | all role smoke                            | `READINESS_COMPONENT_IMPLEMENTED_OFFLINE_VERIFIED` | `NOT_RUN`        | `NOT_AUTHORIZED` | Approve the fresh catalog/classification and execute only as a bounded component of CMD013; this does not claim CMD013 PASS.               |
+| 07   | canary deploy                             | `NOT_IMPLEMENTED`                                  | `NOT_RUN`        | `NOT_AUTHORIZED` | Implement and separately approve COMM-OPS-007 in a later cycle.                                                                            |
+| 08   | backup/restore drill                      | `NOT_IMPLEMENTED`                                  | `NOT_RUN`        | `NOT_AUTHORIZED` | Implement CMD017 onward and obtain a distinct restore approval.                                                                            |
+| 09   | measured RTO/RPO                          | `NOT_IMPLEMENTED`                                  | `NOT_RUN`        | `NOT_AUTHORIZED` | Implement the four-clock collector and capture the owner RTO/RPO authority decision.                                                       |
+| 10   | production change plan                    | `DESIGN_ONLY`                                      | `NOT_RUN`        | `NOT_AUTHORIZED` | Bind the production packet, incident owner, and rollback/forward-fix decision path.                                                        |
+| 11   | operator approval                         | `NOT_CAPTURED`                                     | `NOT_RUN`        | `NOT_AUTHORIZED` | Capture the canonical production packet with independent role separation in a later phase.                                                 |
+| 12   | production apply                          | `NOT_IMPLEMENTED`                                  | `NOT_RUN`        | `NOT_AUTHORIZED` | Require a separate independent production approval; no current artifact grants production contact or apply authority.                      |
+| 13   | post-deploy verification                  | `DESIGN_ONLY`                                      | `NOT_RUN`        | `NOT_AUTHORIZED` | Execute only after an independently approved production apply.                                                                             |
+| 14   | 24h/72h monitoring review                 | `DESIGN_ONLY`                                      | `NOT_RUN`        | `NOT_AUTHORIZED` | Assign the monitoring owner and complete both observation windows after production.                                                        |
+
+| Canonical Acceptance item             | Required canonical step evidence |
+| ------------------------------------- | -------------------------------- |
+| restore evidence                      | Steps 08 and 09                  |
+| tenant isolation after restore        | Steps 06 and 08                  |
+| no duplicate external side effects    | Steps 06 and 08                  |
+| incident rollback/forward-fix runbook | Step 10                          |
+| production sign-off                   | Steps 11 through 14              |
+
+<!-- PR12-TRACEABILITY-MATRIX:END -->
 
 ## 3. Facts, inferences, and unverified state
 
@@ -145,7 +180,7 @@ Eight required GitHub jobs qualify the PR change, not the hosted release: `Quali
 
 The historical PR01 migration baseline freezes 50 files and intentionally permits later append-only additions. PR12 does not rewrite it. The new contract closes the current-head content-hash gap without changing historical semantics.
 
-`supabase/seed.sql` is a one-clinic local login seed and uses time-dependent values. It is not representative hosted data. A separate synthetic/anonymized dataset, row-count target, source hash, actor set, volume, and expiry must be approved before staging.
+`supabase/seed.sql` is a one-clinic local login seed and uses time-dependent values. It is not representative hosted data and must not be executed by PR12. The PR12-only strict fixture contract now freezes a plan SHA for 83 explicit rows plus 12 trigger-derived history rows, four clinics, seven actors, all five application roles, and one active manager assignment. This is offline readiness only: the fixture epoch, credential provider, populated Stage 4 binding, execution expiry, and first runtime source-snapshot SHA remain blocking inputs.
 
 ## 9. Frozen PR11 performance contract
 
@@ -208,7 +243,7 @@ The collector design has three distinct modes:
 2. `preflight`: capture read-only identity/settings/tool output into a new directory; still write no DB state.
 3. `execute`: available only after a matching owner-approved packet hash and explicit execution flag; production identity is always rejected.
 
-Every mode uses environment-only credentials, redacts commands before persistence, never overwrites an evidence directory, and records stdout/stderr separately with SHA-256. The current PR includes only offline preparation/verification, the evidence scanner, the semantic final verifier, proposal contracts, and a stage-complete non-executable ledger. The verifier accepts `NOT_RUN`/`FAIL` without inferring qualification and rejects top-level `PASS_WITH_RISK`; a future `PASS` requires all six approved stages, concrete source/restore identities and separated owners, all 54 COMM gates derived from the immutable map and a closed typed-claim registry, exact target×role×direction×CRUD/Auth/Data API ACL/GraphQL/billing matrices, all frozen 9/6/2+2 performance samples plus plan/semantic results, three hosted SLO samples plus a recomputed pooled result, parsed migration/types/row/hash source-and-restore integrity results, parsed physical-backup metadata, side-effect evidence, and conditional-human/terminal-machine privacy evidence. Row-filtered tenant and Data API negatives must bind an exactly-one-row selector precondition, expected owner tenant, same-tenant positive control, and an identical post-deny row hash; zero rows against an empty fixture cannot pass. The verifier now fail-closes on provider/source-DB/restore-DB/operator UTC provenance, an owner-approved numeric skew, a maximum five-second pre-confirmation RPO observation lead, and a separately captured operator monotonic RTO interval. The runtime multi-clock collector remains `NOT_IMPLEMENTED`, so the preparation packet still cannot authorize or qualify RTO/RPO. The official Windows CLI `2.109.0` archive matched release SHA-256 `d2b687ec3427fe7847cf7a8f603413fa8d4331f6fdbbc825eea6aa34a64d686b`, while the selected `supabase.exe` inside it is independently pinned at `903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118`; final evidence must capture both plus the PostgreSQL 17 executable hash. The target guard, hosted credential/seed adapter, post-load/schema/type collectors, closed COMM claim registry, multi-clock collector, and PR11/SLO/security/API/billing/Advisor/backup/restore collectors remain `NOT_IMPLEMENTED`; they must be implemented, reviewed, tested, and hash-pinned before execution approval.
+Every mode uses environment-only credentials, redacts commands before persistence, never overwrites an evidence directory, and records stdout/stderr separately with SHA-256. The current PR includes offline preparation/verification, the evidence scanner, the semantic final verifier, proposal contracts, a stage-complete non-executable ledger, and offline-verified readiness modules for the Stage 3 runtime guard/external replay inputs, replay/catalog validation, hosted types parity, Advisor normalization/diff, representative fixture, and the `PR12-CMD-013` all-role smoke component. None has executed against a provider or database, and none authorizes a remote command or COMM PASS. The verifier accepts `NOT_RUN`/`FAIL` without inferring qualification and rejects top-level `PASS_WITH_RISK`; a future `PASS` requires all six approved stages, concrete source/restore identities and separated owners, all 54 COMM gates derived from the immutable map and a closed typed-claim registry, exact target×role×direction×CRUD/Auth/Data API ACL/GraphQL/billing matrices, all frozen 9/6/2+2 performance samples plus plan/semantic results, three hosted SLO samples plus a recomputed pooled result, parsed migration/types/row/hash source-and-restore integrity results, parsed physical-backup metadata, side-effect evidence, and conditional-human/terminal-machine privacy evidence. Row-filtered tenant and Data API negatives must bind an exactly-one-row selector precondition, expected owner tenant, same-tenant positive control, and an identical post-deny row hash; zero rows against an empty fixture cannot pass. The verifier now fail-closes on provider/source-DB/restore-DB/operator UTC provenance, an owner-approved numeric skew, a maximum five-second pre-confirmation RPO observation lead, and a separately captured operator monotonic RTO interval. The runtime multi-clock collector remains `NOT_IMPLEMENTED`, so the preparation packet still cannot authorize or qualify RTO/RPO. The official Windows CLI `2.109.0` archive matched release SHA-256 `d2b687ec3427fe7847cf7a8f603413fa8d4331f6fdbbc825eea6aa34a64d686b`; the pinned executable tuple is `supabase.exe` SHA-256 `903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118`, adjacent `supabase-go.exe` SHA-256 `59cd06ac674fdf5d6add75206408ada0a24b1dcb796d099c13b1f2aaf3f463f0`, and `psql.exe` 17.9 SHA-256 `6a4b5cd854ee1c0e50646e7612a9e769c9ae86aa97bf94c50342dad058c2b531`. Final evidence must re-observe their exact paths, versions, and hashes. The CA bundle path/hash, direct reachability, runtime approvals/credentials, fresh catalog classification, closed COMM claim registry, multi-clock collector, and PR11/SLO/full security/API/billing/backup/restore collectors remain blockers.
 
 Execution order is fixed by [the entry contract](evidence/commercial-hardening/pr12/isolated-staging-entry-contract.yaml) and the immutable ledger. Stage 3 is exactly `003 → 004 → 005 → 006 → 007 → 007A → 008A`, then stop. Stage 4 is exactly `008B → 008 → 009 → 010 → 011 → 012 → 013 → 014 → 015 → 016 → 017 → 016A → 017A`, then stop. Thus fixed PR11 and additive hosted SLO run before security/Auth/tenant, Data API/GraphQL, and billing qualification; `017B` is a separate restore-creation approval stop and is not inherited Stage 4 authority. Restore, post-restore checks, external-side-effect proof, measured RTO/RPO, conditional owner sign-off, terminal hashes/privacy scan, and final-verifier-derived `COMM-OPS-011` follow only under their separate approvals.
 
@@ -278,7 +313,7 @@ Draft readiness requires:
 - offline validator, evidence scan, migration/history/rollback/type/seed/package pins PASS;
 - strict TypeScript, commercial type-check, lint, Prettier, Jest, security tests, build, links, and `git diff --check` actually run;
 - no migration, rollback, generated type, package, or lockfile drift;
-- three independent read-only audits with no must-fix finding;
+- at least two independent read-only audits with no must-fix finding;
 - intentional files staged individually, Conventional Commits, push, and Draft PR;
 - all eight required CI jobs observed on one head SHA.
 

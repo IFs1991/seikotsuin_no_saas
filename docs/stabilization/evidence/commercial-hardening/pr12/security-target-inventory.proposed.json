@@ -21,7 +21,7 @@
     },
     "representativeDataContract": {
       "path": "representative-data-contract.proposed.json",
-      "sha256": "67907af4a24bfe24a0f3c95dafe13031e77e55d79a44d6e9f1ede67f50746c79",
+      "sha256": "ca7493b1eea025064b33e0164dabe3e37897f0b491156805aad63f89c1337bc1",
       "role": "fixture coverage subset only; never a mother-set source"
     },
     "classificationContract": {

@@ -310,13 +310,20 @@ environment:
     any_change_requires_reapproval: true
 representative_data:
   contract_path: representative-data-contract.proposed.json
-  contract_sha256: 67907af4a24bfe24a0f3c95dafe13031e77e55d79a44d6e9f1ede67f50746c79
+  contract_sha256: ca7493b1eea025064b33e0164dabe3e37897f0b491156805aad63f89c1337bc1
   contract_state: PROPOSED_OWNER_APPROVAL_REQUIRED
-  source: hash-pinned supabase seed plus tracked E2E synthetic fixture
+  source: strict PR12-only fixture compiler; raw supabase/seed.sql and existing E2E seed are forbidden
   classification: SYNTHETIC
-  data_volume: 74 explicit persistent rows plus captured platform/trigger-derived rows; canonical PR11 probes are transaction-scoped
-  table_row_targets: contract byRelation map; every post-load count and normalized data hash must match
-  source_sha256: b06ae82ee4da29aa6fff6796b4c9a9720948df9783d047c4479bb72750e0696a
+  data_volume: 83 explicit persistent rows plus exactly 12 trigger-derived reservation_history rows = 95 rows across 19 relations; canonical PR11 probes are transaction-scoped
+  table_row_targets: exact 18 explicit relation map plus one derived relation; every post-load count and canonical normalized hash must match
+  fixture_plan_sha256: a2446817c50b1d2ada0c4701acedc7abd2e00623c2ba503873f325a78d421028
+  source_sha256: a2446817c50b1d2ada0c4701acedc7abd2e00623c2ba503873f325a78d421028
+  runtime_source_snapshot_sha256: NOT_CAPTURED
+  fixture_payload_aggregate_sha256: 0c5c6237faa673171a618b9a815cba41f6ced4e5a8e89814e399f006fa747e39
+  actor_topology_sha256: beae5bba032aadcb88adacc21146b47c95ce4582407a19e2b68f6891dbba83a3
+  implementation_status: IMPLEMENTED_OFFLINE_VERIFIED
+  execution_status: NOT_RUN
+  execution_authorized: false
   patient_pii_allowed: false
   patient_pii_observed: NOT_CAPTURED
   safety_review_owner: UNASSIGNED
@@ -481,7 +488,7 @@ dr:
   rto_rpo_pass_currently_possible: false
 integrations:
   contract_path: integration-credential-contract.proposed.json
-  contract_sha256: 9c70a291017c201da56aefe06485b4cb9122f33badb5336f948f1f084a05c103
+  contract_sha256: 9a7a39acc6d28c1e2fd6eebb7b24faaa12f7a3098fc646120bfaa341c2f70a61
   contract_state: PROPOSED_OWNER_APPROVAL_REQUIRED
   source_mode: SANDBOXED
   restore_mode: DISABLED
@@ -506,15 +513,32 @@ integrations:
   raw_mode_or_configuration_self_attestation_allowed: false
   normalized_state_must_derive_from_fixed_probe_and_raw_facts: true
   no_real_send_or_charge_without_separate_approval: true
+  stage_command_runtime:
+    module_contract_status: IMPLEMENTED_OFFLINE_VERIFIED
+    populated_staging_binding_adapter_status: NOT_IMPLEMENTED
+    remote_dispatcher_call_site_status: NOT_IMPLEMENTED
+    execution_status: NOT_RUN
+    execution_authorized: false
+    database_secret_child_environment_name: PGPASSWORD
+    hosted_types_management_token_child_environment_name: SUPABASE_ACCESS_TOKEN
+    database_and_management_child_processes_must_be_distinct: true
+    password_free_direct_url_in_argv_allowed: true
+    database_password_in_url_or_argv_allowed: false
+    shell: false
+    stdin: CLOSED
+    wrapper_retry_count: 0
+    maximum_dispatch_count: 1
+    dotenv_allowed: false
+    ambient_credential_fallback_allowed: false
 data_api:
   acl_inventory_proposal_path: data-api-acl-inventory.proposed.json
   acl_inventory_proposal_sha256: bf6b315e4644b360593f0d0fa2e11c80e2db2d5a5b6ca5ba0a44a95239ac9a32
   acl_inventory_proposal_status: PROPOSED_OWNER_APPROVAL_REQUIRED
   acl_inventory_owner: UNASSIGNED
   executable_acl_inventory_authority: nested_in_hash_bound_data_api_matrix
-  post_replay_catalog_collector_status: NOT_IMPLEMENTED
+  post_replay_catalog_collector_status: SQL_DESCRIPTOR_AND_FAIL_CLOSED_SETTINGS_MAPPER_IMPLEMENTED_OFFLINE_RUNTIME_NOT_RUN_COMPLETE_ACL_AND_ENDPOINT_STATE_NOT_IMPLEMENTED
   post_replay_catalog_query_contract_sha256: NOT_CAPTURED
-  independent_settings_and_pg_catalog_raw_command: NOT_IMPLEMENTED
+  independent_settings_and_pg_catalog_raw_command: IMPLEMENTED_OFFLINE_VERIFIED_EXECUTION_NOT_RUN
   synchronized_catalog_and_matrix_omission_can_pass: false
   acl_matrix_collector_status: NOT_IMPLEMENTED
   provisioning_proposal_enabled: true
@@ -609,7 +633,7 @@ auth_configuration:
   smtp_sms_oauth_hook_presence_is_fail_closed: true
   expected_real_external_delivery_or_hook_configured: false
   actual_state: NOT_CAPTURED
-  collector_status: NOT_IMPLEMENTED
+  collector_status: IMPLEMENTED_OFFLINE_VERIFIED_EXECUTION_NOT_RUN
 security_matrix:
   matrix_path: NOT_CAPTURED
   security_matrix_sha256: NOT_CAPTURED
@@ -622,7 +646,7 @@ security_matrix:
   fabricated_user_jwt_allowed: false
   hosted_auth_provenance_collector_status: NOT_IMPLEMENTED
   target_inventory_proposal_path: security-target-inventory.proposed.json
-  target_inventory_proposal_sha256: a87899df1b40799c063315f6293727ef88dddfd2f1d00258cb4b235f49fabe5e
+  target_inventory_proposal_sha256: 77ce4fd3fc70668f7ccc830bb4e321764bc97116b9501e08ffc783943e935c03
   target_classification_proposal_path: security-target-classification.proposed.json
   target_classification_proposal_sha256: 21d2f08c78b98a036a2538d7a0ec36cc96f72dd6ad2bb7bbb9874d477c754342
   execution_target_inventory_path: NOT_CAPTURED
@@ -646,6 +670,14 @@ security_matrix:
   current_unknown_public_relation_count: 48
   all_catalog_relations_owner_approved: false
   draft_or_unassigned_classification_allows_execution: false
+  all_role_smoke_readiness:
+    component_id: PR12-CMD-013-ALL-ROLE-SMOKE
+    implementation_status: IMPLEMENTED_OFFLINE_VERIFIED
+    execution_status: NOT_RUN
+    evaluation_status: NOT_EVALUATED
+    comm_gate_status: NOT_RUN
+    remote_contact_performed: false
+    full_PR12_CMD_013_implemented: false
   required_roles:
     - anon
     - authenticated
@@ -762,7 +794,30 @@ security_matrix:
   relational_integrity_pass_currently_possible: false
 credentials:
   credential_contract_path: integration-credential-contract.proposed.json
-  credential_contract_sha256: 9c70a291017c201da56aefe06485b4cb9122f33badb5336f948f1f084a05c103
+  credential_contract_sha256: 9a7a39acc6d28c1e2fd6eebb7b24faaa12f7a3098fc646120bfaa341c2f70a61
+  action_003_two_role_configuration:
+    status: NOT_CAPTURED_BLOCKING
+    template: source-project-provisioning-credential-configuration-v2.template.json
+    populated_configuration_path_sha256: NOT_CAPTURED
+    populated_configuration_resolved_path_sha256: NOT_CAPTURED
+    populated_configuration_content_sha256: NOT_CAPTURED
+    same_windows_user_and_machine_boundary_required: true
+    same_user_dpapi_risk_acceptance: NOT_CAPTURED
+    management_token_role:
+      opaque_handle: windows-dpapi-cu://pr12-source-project/management-token/v1
+      envelope_path_sha256: NOT_CAPTURED
+      envelope_resolved_path_sha256: NOT_CAPTURED
+      envelope_content_sha256: NOT_CAPTURED
+      allowed_child_environment_name: SUPABASE_ACCESS_TOKEN
+    database_password_role:
+      opaque_handle: windows-dpapi-cu://pr12-source-project/database-password/v1
+      envelope_path_sha256: NOT_CAPTURED
+      envelope_resolved_path_sha256: NOT_CAPTURED
+      envelope_content_sha256: NOT_CAPTURED
+      allowed_child_environment_name: PGPASSWORD
+    management_and_database_children_must_be_distinct: true
+    credential_decrypt_authorized_by_this_packet: false
+    credential_bootstrap_authorized_by_this_packet: false
   channel: process_environment
   required_channel: process_environment
   storage: UNASSIGNED
@@ -889,18 +944,43 @@ cli:
   required_supabase_cli: 2.109.0
   supabase_version_command_id: NOT_CAPTURED
   supabase_version_stdout_sha256: NOT_CAPTURED
-  exact_psql_version: NOT_CAPTURED
+  exact_psql_version: 17.9
   psql_version_command_id: NOT_CAPTURED
   psql_version_stdout_sha256: NOT_CAPTURED
   repository_pin: 2.109.0
   observed_path_cli: 2.109.1
+  observed_path_cli_status: REJECTED_NOT_SELECTED
   validated_ephemeral_cli: 2.109.0
   official_release_tag: v2.109.0
   validated_executable_sha256: 903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118
+  adjacent_supabase_go_version: 2.109.0
+  adjacent_supabase_go_executable_sha256: 59cd06ac674fdf5d6add75206408ada0a24b1dcb796d099c13b1f2aaf3f463f0
+  psql_executable_sha256: 6a4b5cd854ee1c0e50646e7612a9e769c9ae86aa97bf94c50342dad058c2b531
   official_windows_archive_sha256: d2b687ec3427fe7847cf7a8f603413fa8d4331f6fdbbc825eea6aa34a64d686b
+  supabase_executable_path_sha256: NOT_CAPTURED
+  supabase_executable_resolved_path_sha256: NOT_CAPTURED
+  adjacent_supabase_go_path_sha256: NOT_CAPTURED
+  adjacent_supabase_go_resolved_path_sha256: NOT_CAPTURED
+  psql_executable_path_sha256: NOT_CAPTURED
+  psql_executable_resolved_path_sha256: NOT_CAPTURED
+  ca_bundle_path_sha256: NOT_CAPTURED
+  ca_bundle_resolved_path_sha256: NOT_CAPTURED
+  ca_bundle_content_sha256: NOT_CAPTURED
+  external_runtime_workdir_path_sha256: NOT_CAPTURED
+  external_runtime_workdir_resolved_path_sha256: NOT_CAPTURED
+  supabase_home_path_sha256: NOT_CAPTURED
+  supabase_home_resolved_path_sha256: NOT_CAPTURED
+  docker_config_path_sha256: NOT_CAPTURED
+  docker_config_resolved_path_sha256: NOT_CAPTURED
+  runtime_path_projection_sha256: NOT_CAPTURED
+  runtime_path_projection_canonicalization: SHA256_UTF8_CANONICAL_WINDOWS_PATH_AND_RESOLVED_PATH_FOR_EXACT_SEVEN_PATHS
+  runtime_path_projection_exact_path_count: 7
+  runtime_path_projection_raw_paths_retained: false
+  external_runtime_workdir_file_count: 65
+  repository_link_metadata_allowed: false
+  linked_command_or_flag_allowed: false
   pinned_cli_help_verified: true
   verified_help_subcommands:
-    - link
     - migration_list
     - db_push
     - db_dump
@@ -908,9 +988,9 @@ cli:
     - gen_types
     - status
   command_ledger_path: staging-command-ledger.proposed.json
-  command_ledger_sha256: 61fbe573810f6052b8bdfe31f00b3af34a0733d10c90a8f87ad159b8853bf384
+  command_ledger_sha256: 5816d16a619eacac12c1dfefb1556bf2bcbc11a7c12bbf232f5ee03e535a8225
   exact_commands: PROPOSED_NOT_EXECUTABLE
-  exact_commands_blocker: Phase 1 now has a local fail-closed binding guard, at-most-one-POST wrapper/collector, action journal, and phase-local privacy/evidence sealing, but its owner inputs remain unresolved and it was not executed. Phase 2+ target guards, hosted credential/seed adapter, post-load row/hash and schema/type collectors, canonical PR11 and hosted SLO runners, security/Auth/tenant/Data API/GraphQL/COMM claim/COMM-BILL matrices, Advisor diff, backup metadata/watermark, post-restore, side-effect, and full-qualification privacy collectors remain NOT_IMPLEMENTED.
+  exact_commands_blocker: Phase 1 and selected runtime/replay/fixture/types/Advisor/all-role readiness are implemented offline, but all remote execution remains NOT_RUN and unauthorized. External path/CA fingerprints, runtime target identity, credentials, fresh target catalog/classification approval, canonical PR11 and hosted SLO runners, full security/Data API/GraphQL/COMM/backup/restore/side-effect collectors, and later owner decisions remain blockers.
   executable_command_metadata_required:
     - id
     - redactedCommand
@@ -976,7 +1056,7 @@ expected_side_effects:
   status: PROPOSED_OWNER_APPROVAL_REQUIRED
   potential:
     - one new isolated billable Supabase source project in an exact existing Pro organization, with Large compute and initial provider-managed database/project state via PR12-ACTION-003; no plan purchase or change is included
-    - isolated project link metadata
+    - repository-external local runtime metadata and hash-verified workdir only; no repository link metadata and no --linked mode
     - migration history and schema writes
     - synthetic or anonymized fixture writes
     - performance probe transaction-local writes and WAL
@@ -1069,7 +1149,7 @@ owners:
   cleanup_owner: UNASSIGNED
   phase1_operator_control_mode: PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1
   phase1_operator_display_name: FUTOSHI IWASAWA
-  phase1_operator_canonical_principal_id: NOT_CAPTURED
+  phase1_operator_canonical_principal_id: owner:futoshi-iwasawa
   phase1_identity_separation_available: false
   phase1_independent_human_review_claimed: false
   phase1_final_action_risk_acceptance: NOT_CAPTURED
@@ -1139,7 +1219,7 @@ approval_checklist:
   restore_target_supplemental_binding: NOT_CAPTURED
   privacy_machine_and_human_review: NOT_CAPTURED
   integrations_and_billing_sandbox: PROPOSED_UPSTASH_UNASSIGNED
-  exact_commands_and_side_effects: PROPOSED_ADAPTERS_NOT_IMPLEMENTED
+  exact_commands_and_side_effects: SELECTED_READINESS_IMPLEMENTED_OFFLINE_ALL_REMOTE_EXECUTION_NOT_RUN
   credential_channel: WINDOWS_DPAPI_CURRENT_USER_V1_ACTION_002_TOKEN_BOOTSTRAPPED_ACTION_003_TWO_ROLE_CONFIGURATION_AND_DATABASE_PASSWORD_ENVELOPE_NOT_CAPTURED
   time_cost_and_owners: PHASE1_CEILING_AND_FUNDING_SOURCE_AMOUNT_POLICY_CAPTURED_DISPLAY_NAME_CAPTURED_CANONICAL_ID_SCHEDULED_EXECUTION_FUNDED_THROUGH_AND_EXPIRY_NOT_CAPTURED
   pr12_action_003_scheduled_plus_73h_binding_and_verifier_linkage: IMPLEMENTED_TIMESTAMPS_NOT_CAPTURED_ACTION_003_NOT_APPROVABLE
@@ -1149,6 +1229,17 @@ approval_checklist:
   maximum_rpo_observation_lead_seconds: UNASSIGNED
   comm_claim_collectors_and_registry: NOT_IMPLEMENTED
   approval_expiry_and_revalidation: NOT_CAPTURED
+final_hash_risk_and_expiry:
+  packet_self_hash_location: EXTERNAL_GOVERNANCE_PROPOSAL_BINDINGS
+  packet_self_hash_embedded_here: false
+  populated_binding_material_sha256: NOT_CAPTURED
+  populated_request_sha256: NOT_CAPTURED
+  final_git_head_binding: NOT_CAPTURED
+  sole_operator_self_approval_risk_acceptance: NOT_CAPTURED
+  same_user_dpapi_risk_acceptance: NOT_CAPTURED
+  production_contact_prohibition_acceptance: NOT_CAPTURED
+  expires_at: NOT_CAPTURED
+  execution_authorized: false
 owner_decision: UNASSIGNED
 approved_by: UNASSIGNED
 approved_at: NOT_CAPTURED
@@ -1169,10 +1260,10 @@ residual_risk:
   - The proposed persistent dataset is flow/security representative but not capacity representative.
   - Large qualification does not prove a different production tier.
   - Restore to a New Project is Beta and does not copy Storage object bodies, Auth settings/API keys, Edge Functions, or Realtime settings.
-  - The hosted canonical PR11 adapter, hosted SLO collector/request matrix, and post-load exact-row validator are not implemented.
-  - The fail-closed target/credential/seed adapter and security, Data API ACL catalog/matrix, API, GraphQL, billing, backup, restore, and side-effect collectors are not implemented.
+  - The hosted canonical PR11 adapter and hosted SLO collector/request matrix are not implemented; fixture plan/load/hash readiness is implemented offline but has not run.
+  - Runtime target/catalog/credential inputs are not captured. Full security, Data API ACL matrix, GraphQL, billing, backup, restore, and side-effect collectors remain unimplemented even though selected replay/types/Advisor/all-role components are implemented offline.
   - Safe authority lookup query-error induction, dedicated hosted Auth actor provisioning, stale-authority/token-expiry/skew evidence, and relational selector/query/timestamp collectors are not implemented; COMM-AUTH-002 and related COMM-TENANT gates cannot PASS.
   - The immutable 54-gate COMM claim map is defined, but its typed collector registry is incomplete; execution PASS is intentionally impossible.
   - Maximum acceptable clock skew across provider, database, and operator clocks is UNASSIGNED; RTO/RPO PASS is blocked.
-  - FUTOSHI IWASAWA is the captured Phase 1 sole-operator display name and owner:futoshi-iwasawa is the recorded canonical principal. PR12-ACTION-002 completed PASS with one GET, zero retry, zero production contact, and the shared Organization ID/plan captured. Action-002 sealed-evidence/terminal-journal linkage, duplicate-GET removal, and exact scheduled+73-hour enforcement are implemented. Populated Action-002 path fingerprints, Action-003 scheduled/funded-through timestamps, its two-role credential configuration/database-password envelope, final hashes/risk acceptance/expiry, fresh official-pricing source captures, cleanup deadlines, exact API/GraphQL matrices, psql version, application URL, and stricter RTO/RPO authority decision remain blockers.
+  - FUTOSHI IWASAWA is the captured Phase 1 sole-operator display name and owner:futoshi-iwasawa is the recorded canonical principal. PR12-ACTION-002 completed PASS with one GET, zero retry, zero production contact, and the shared Organization ID/plan captured. Action-002 sealed-evidence/terminal-journal linkage, duplicate-GET removal, and exact scheduled+73-hour enforcement are implemented. Populated Action-002 path fingerprints, Action-003 scheduled/funded-through timestamps, its two-role credential configuration/database-password envelope, final hashes/risk acceptance/expiry, fresh official-pricing source captures, cleanup deadlines, exact API/GraphQL matrices, runtime psql version-command/path observation, application URL, and stricter RTO/RPO authority decision remain blockers.
 notes: PR12-ACTION-002 separately completed PASS without production contact. No isolated staging project was contacted or created by this Action-003 enablement work. This packet remains NOT_RUN for staging and all Action-003, provisioning, restore, Ready, merge, production, and release authorizations remain false.
