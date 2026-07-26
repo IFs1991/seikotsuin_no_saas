@@ -2206,6 +2206,8 @@ function verifyProposalContracts() {
       provisioning.operatorControl.localPreparationExceptionAuthorized ===
         true &&
       provisioning.approval.soleOperatorRiskAccepted === false &&
+      provisioning.approval.sameUserDpapiCredentialExposureRiskAccepted ===
+        false &&
       provisioning.approval.providerSpendCapLimitationAcknowledged === false &&
       provisioning.approval.sameOrganizationExceptionRiskAccepted === false &&
       provisioning.approval.organizationListProductionRefObservationAccepted ===
@@ -2372,6 +2374,8 @@ function verifyProposalContracts() {
       provisioningOwnerApproval.operatorControlMode ===
         'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1' &&
       provisioningOwnerApproval.soleOperatorRiskAccepted === false &&
+      provisioningOwnerApproval.sameUserDpapiCredentialExposureRiskAccepted ===
+        false &&
       provisioningOwnerApproval.sameOrganizationExceptionRiskAccepted ===
         false &&
       provisioningOwnerApproval.productionProjectRef ===

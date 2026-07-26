@@ -12,6 +12,7 @@
   "identitySeparationAvailable": false,
   "independentHumanReviewClaimed": false,
   "soleOperatorRiskAccepted": false,
+  "sameUserDpapiCredentialExposureRiskAccepted": false,
   "providerSpendCapLimitationAcknowledged": false,
   "sameOrganizationExceptionRiskAccepted": false,
   "organizationListProductionRefObservationAccepted": false,
@@ -47,5 +48,5 @@
   "expiresAt": "NOT_CAPTURED",
   "phase2AndLaterAuthorized": false,
   "cleanupDeletionAuthorized": false,
-  "notes": "Template only. PR12-ACTION-002 completed PASS and its manifest, terminal journal, source binding, source request, and captured Organization identity are fixed here. A populated Action-003 owner record must also bind the exact v5 binding, canonical scheduledExecutionAt, and fundedThrough equal to that schedule plus exactly 73 hours. This template does not approve PR12-ACTION-003, project creation, production contact, cleanup/deletion, or Phase 2+."
+  "notes": "Template only. PR12-ACTION-002 completed PASS and its manifest, terminal journal, source binding, source request, and captured Organization identity are fixed here. A populated Action-003 owner record must also bind the exact v5 binding, canonical scheduledExecutionAt, fundedThrough equal to that schedule plus exactly 73 hours, and explicit acceptance of the same-user DPAPI credential-exposure and non-guaranteed JavaScript/.NET zeroization residual risk. This template does not approve PR12-ACTION-003, project creation, production contact, cleanup/deletion, or Phase 2+."
 }

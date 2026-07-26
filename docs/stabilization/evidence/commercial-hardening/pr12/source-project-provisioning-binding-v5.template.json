@@ -233,6 +233,7 @@
     "operatorReconfirmedAt": "NOT_CAPTURED",
     "expiresAt": "NOT_CAPTURED",
     "soleOperatorRiskAccepted": false,
+    "sameUserDpapiCredentialExposureRiskAccepted": false,
     "providerSpendCapLimitationAcknowledged": false,
     "sameOrganizationExceptionRiskAccepted": false,
     "organizationListProductionRefObservationAccepted": false,
@@ -302,5 +303,5 @@
     "partialEvidenceAutomaticDeletionAllowed": false,
     "abortDuplicateAndPartialFailureEvidenceRequired": true
   },
-  "notes": "Preparation template only. The sealed PR12-ACTION-002 PASS evidence captured organization kbnsntifrawhimhfjrug and is the sole Organization identity/plan source for Action-003; Action-003 must not repeat the Organization GET. The v5 runtime contract must verify the bound manifest and terminal journal plus raw-path-free directory fingerprints before credential retrieval or remote contact. The exact canonical scheduledExecutionAt and fundedThrough remain NOT_CAPTURED, but v5 requires fundedThrough to equal scheduledExecutionAt plus exactly 73 hours. The Management-token bootstrap used by Action-002 does not complete the two-role Action-003 credential configuration or database-password envelope. Project creation, Action-003 remote contact, Phase 2+, cleanup/deletion, Ready, merge, production, and commercial release remain unauthorized. Every NOT_CAPTURED, NOT_RUN, or UNASSIGNED Action-003 field is a hard stop."
+  "notes": "Preparation template only. The sealed PR12-ACTION-002 PASS evidence captured organization kbnsntifrawhimhfjrug and is the sole Organization identity/plan source for Action-003; Action-003 must not repeat the Organization GET. The v5 runtime contract must verify the bound manifest and terminal journal plus raw-path-free directory fingerprints before credential retrieval or remote contact. The exact canonical scheduledExecutionAt and fundedThrough remain NOT_CAPTURED, but v5 requires fundedThrough to equal scheduledExecutionAt plus exactly 73 hours. The Management-token bootstrap used by Action-002 does not complete the two-role Action-003 credential configuration or database-password envelope. Final approval must explicitly accept the same-user DPAPI credential-exposure and non-guaranteed JavaScript/.NET zeroization residual risk. Project creation, Action-003 remote contact, Phase 2+, cleanup/deletion, Ready, merge, production, and commercial release remain unauthorized. Every NOT_CAPTURED, NOT_RUN, or UNASSIGNED Action-003 field is a hard stop."
 }

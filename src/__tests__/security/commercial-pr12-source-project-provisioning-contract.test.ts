@@ -40,6 +40,10 @@ const phase1EvidenceRoot = path.join(
   repoRoot,
   'docs/stabilization/evidence/commercial-hardening/pr12'
 );
+const provisioningBindingV5TemplatePath = path.join(
+  phase1EvidenceRoot,
+  'source-project-provisioning-binding-v5.template.json'
+);
 
 type JsonObject = { [key: string]: JsonValue };
 type JsonValue = JsonObject | JsonValue[] | boolean | number | string | null;
@@ -1605,6 +1609,7 @@ function makeValidFixture() {
       operatorReconfirmedAt: '2026-07-23T00:05:00.000Z',
       expiresAt: '2026-07-23T00:30:00.000Z',
       soleOperatorRiskAccepted: true,
+      sameUserDpapiCredentialExposureRiskAccepted: true,
       providerSpendCapLimitationAcknowledged: true,
       sameOrganizationExceptionRiskAccepted: true,
       organizationListProductionRefObservationAccepted: true,
@@ -1651,11 +1656,13 @@ function makeValidFixture() {
       maximumApprovalWindowSeconds: 1800,
       compensatingControls: [
         'EXACT_HEAD_BASE_GOVERNANCE_CONTRACT_WRAPPER_AND_PAYLOAD_HASHES',
+        'ACTION_002_SEALED_EVIDENCE_AND_TERMINAL_JOURNAL_HASH_LINKAGE',
         'SAME_ORGANIZATION_LIST_ONLY_EXCEPTION_WITH_CENTRAL_PRODUCTION_CONTACT_DENY',
         'OUTBOUND_MANAGEMENT_API_ROUTE_METHOD_HOST_AND_QUERY_ALLOWLIST',
         'ONE_DURABLE_CREATE_ONCE_CLAIM_NO_POST_RETRY',
         'DPAPI_CURRENT_USER_CLAIM_BOUND_POST_CLAIM_RETRIEVAL',
         'USD_50_OWNER_AUTHORIZATION_CEILING_FOR_72_HOURS',
+        'EXACT_SCHEDULED_EXECUTION_PLUS_73_HOURS_FUNDING_BINDING',
         'PHASE2_AND_CLEANUP_DELETION_REMAIN_SEPARATELY_UNAUTHORIZED',
       ],
     },
@@ -1696,6 +1703,7 @@ function makeValidFixture() {
     identitySeparationAvailable: false,
     independentHumanReviewClaimed: false,
     soleOperatorRiskAccepted: true,
+    sameUserDpapiCredentialExposureRiskAccepted: true,
     providerSpendCapLimitationAcknowledged: true,
     sameOrganizationExceptionRiskAccepted: true,
     organizationListProductionRefObservationAccepted: true,
@@ -1861,6 +1869,40 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     expect(result.ok).toBe(true);
   });
 
+  test('accepts the exact v5 template compensating controls when fully populated', () => {
+    const fixture = makeValidFixture();
+    const template = JSON.parse(
+      fs.readFileSync(provisioningBindingV5TemplatePath, 'utf8')
+    ) as JsonObject;
+    const templateOperatorControl = template.operatorControl as JsonObject;
+    fixture.binding.operatorControl.compensatingControls =
+      templateOperatorControl.compensatingControls;
+    const approvalMaterial = Object.fromEntries(
+      Object.entries(fixture.binding).filter(([key]) => key !== 'approval')
+    ) as JsonObject;
+    fixture.binding.approval.approvedBindingMaterialSha256 =
+      canonicalSha256(approvalMaterial);
+    fixture.approvalEvidence.bindingMaterialSha256 =
+      fixture.binding.approval.approvedBindingMaterialSha256;
+
+    const result = invokeContract('validateOfflineApproval', [
+      fixture.binding,
+      fixture.credentialConfiguration,
+      fixture.context,
+    ]);
+    expect(result.ok).toBe(true);
+  });
+
+  test('rejects owner approval evidence without same-user DPAPI risk acceptance', () => {
+    const fixture = makeValidFixture();
+    fixture.approvalEvidence.sameUserDpapiCredentialExposureRiskAccepted = false;
+    expectRejected(
+      'validateOfflineApproval',
+      [fixture.binding, fixture.credentialConfiguration, fixture.context],
+      'APPROVAL_EVIDENCE_INVALID'
+    );
+  });
+
   test('rejects approval without a sealed ACTION-002 terminal-to-manifest linkage', () => {
     const fixture = makeValidFixture();
     Reflect.deleteProperty(fixture.context, 'organizationIdentityEvidence');
@@ -2024,6 +2066,13 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       'production direct-contact prohibition not acknowledged',
       (fixture: ReturnType<typeof makeValidFixture>) => {
         fixture.binding.approval.productionDirectContactProhibitionAcknowledged = false;
+      },
+      'SOLE_OPERATOR_EXCEPTION_INVALID',
+    ],
+    [
+      'same-user DPAPI credential-exposure risk not accepted',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.approval.sameUserDpapiCredentialExposureRiskAccepted = false;
       },
       'SOLE_OPERATOR_EXCEPTION_INVALID',
     ],

@@ -1508,11 +1508,21 @@ describe('commercial PR-12 qualification preparation contract', () => {
         snapshotSha256: 'NOT_CAPTURED',
       },
     });
+    expect(provisioning.approval).toMatchObject({
+      soleOperatorRiskAccepted: false,
+      sameUserDpapiCredentialExposureRiskAccepted: false,
+      providerSpendCapLimitationAcknowledged: false,
+      sameOrganizationExceptionRiskAccepted: false,
+      organizationListProductionRefObservationAccepted: false,
+      sharedOrganizationIamBillingControlPlaneRiskAccepted: false,
+      productionDirectContactProhibitionAcknowledged: false,
+    });
     expect(provisioningOwnerApproval).toMatchObject({
       schemaVersion: 4,
       decision: 'NOT_CAPTURED',
       approverPrincipalId: 'owner:futoshi-iwasawa',
       operatorPrincipalId: 'owner:futoshi-iwasawa',
+      sameUserDpapiCredentialExposureRiskAccepted: false,
       organizationId: 'kbnsntifrawhimhfjrug',
       organizationIdentityManifestSha256:
         '66db9ed2b7fdb7573b76e79273c71d95551cdb7385e0ca8ee21724c56399f582',

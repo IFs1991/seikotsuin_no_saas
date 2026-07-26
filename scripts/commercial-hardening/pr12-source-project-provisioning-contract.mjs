@@ -881,6 +881,7 @@ function validateBindingShape(binding) {
     'operatorReconfirmedAt',
     'expiresAt',
     'soleOperatorRiskAccepted',
+    'sameUserDpapiCredentialExposureRiskAccepted',
     'providerSpendCapLimitationAcknowledged',
     'sameOrganizationExceptionRiskAccepted',
     'organizationListProductionRefObservationAccepted',
@@ -1737,16 +1738,19 @@ function validateOwnersAndCleanup(binding) {
       canonicalJson(operatorControl.compensatingControls) ===
         canonicalJson([
           'EXACT_HEAD_BASE_GOVERNANCE_CONTRACT_WRAPPER_AND_PAYLOAD_HASHES',
+          'ACTION_002_SEALED_EVIDENCE_AND_TERMINAL_JOURNAL_HASH_LINKAGE',
           'SAME_ORGANIZATION_LIST_ONLY_EXCEPTION_WITH_CENTRAL_PRODUCTION_CONTACT_DENY',
           'OUTBOUND_MANAGEMENT_API_ROUTE_METHOD_HOST_AND_QUERY_ALLOWLIST',
           'ONE_DURABLE_CREATE_ONCE_CLAIM_NO_POST_RETRY',
           'DPAPI_CURRENT_USER_CLAIM_BOUND_POST_CLAIM_RETRIEVAL',
           'USD_50_OWNER_AUTHORIZATION_CEILING_FOR_72_HOURS',
+          'EXACT_SCHEDULED_EXECUTION_PLUS_73_HOURS_FUNDING_BINDING',
           'PHASE2_AND_CLEANUP_DELETION_REMAIN_SEPARATELY_UNAUTHORIZED',
         ]) &&
       consolidatedOwnerKeys.every(key => owners[key] === principalId) &&
       approval.approvedBy === principalId &&
       approval.soleOperatorRiskAccepted === true &&
+      approval.sameUserDpapiCredentialExposureRiskAccepted === true &&
       approval.providerSpendCapLimitationAcknowledged === true &&
       approval.sameOrganizationExceptionRiskAccepted === true &&
       approval.organizationListProductionRefObservationAccepted === true &&
@@ -2217,6 +2221,7 @@ function validateApprovalEvidence(
       'identitySeparationAvailable',
       'independentHumanReviewClaimed',
       'soleOperatorRiskAccepted',
+      'sameUserDpapiCredentialExposureRiskAccepted',
       'providerSpendCapLimitationAcknowledged',
       'sameOrganizationExceptionRiskAccepted',
       'organizationListProductionRefObservationAccepted',
@@ -2275,6 +2280,7 @@ function validateApprovalEvidence(
       evidence.identitySeparationAvailable === false &&
       evidence.independentHumanReviewClaimed === false &&
       evidence.soleOperatorRiskAccepted === true &&
+      evidence.sameUserDpapiCredentialExposureRiskAccepted === true &&
       evidence.providerSpendCapLimitationAcknowledged === true &&
       evidence.sameOrganizationExceptionRiskAccepted === true &&
       evidence.organizationListProductionRefObservationAccepted === true &&
