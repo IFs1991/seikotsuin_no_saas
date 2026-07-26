@@ -5,6 +5,8 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { verifyPr12AuthorityArtifactContract } from './pr12-authority-artifact-contract.mjs';
+import { verifyPr12LocalReadinessContracts } from './pr12-local-readiness-contract.mjs';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const REPO_ROOT = path.resolve(path.dirname(SCRIPT_PATH), '../..');
@@ -102,18 +104,14 @@ const REQUIRED_ARTIFACTS = [
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-binding.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v5.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v4.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration-v2.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v4.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v3.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-official-pricing-evidence-v2.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-dpapi-bootstrap-approval-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-windows-dpapi-envelope-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-action-journal.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v5.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v4.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v4.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v3.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-privacy-scan.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-organization-identity-capture-binding-v1.template.json',
@@ -164,10 +162,33 @@ const REQUIRED_ARTIFACTS = [
   'scripts/commercial-hardening/run-pr12-source-organization-identity-capture.mjs',
   'scripts/commercial-hardening/verify-pr12-source-organization-identity-capture-evidence.mjs',
   'scripts/commercial-hardening/verify-pr12-evidence-manifest.mjs',
+  'scripts/commercial-hardening/pr12-authority-artifact-contract.mjs',
+  'scripts/commercial-hardening/pr12-stage-command-runtime.mjs',
+  'scripts/commercial-hardening/pr12-source-identity-configuration-contract.mjs',
+  'scripts/commercial-hardening/pr12-source-replay-catalog-contract.mjs',
+  'scripts/commercial-hardening/pr12-hosted-types-parity.mjs',
+  'scripts/commercial-hardening/pr12-advisor-diff.mjs',
+  'scripts/commercial-hardening/pr12-representative-fixture-contract.mjs',
+  'scripts/commercial-hardening/pr12-representative-fixture-adapter.mjs',
+  'scripts/commercial-hardening/pr12-all-role-smoke-contract.mjs',
+  'scripts/commercial-hardening/pr12-all-role-smoke-adapter.mjs',
+  'scripts/commercial-hardening/pr12-local-readiness-contract.mjs',
+  'scripts/commercial-hardening/sql/pr12-source-clean-replay-precondition.sql',
+  'scripts/commercial-hardening/sql/pr12-post-replay-catalog-capture.sql',
+  'scripts/commercial-hardening/sql/pr12-migration-history-parity.sql',
   'src/__tests__/security/commercial-pr12-qualification-preparation-contract.test.ts',
   'src/__tests__/security/commercial-pr12-source-project-provisioning-contract.test.ts',
   'src/__tests__/security/commercial-pr12-source-organization-identity-capture-contract.test.ts',
   'src/__tests__/security/commercial-pr12-evidence-verifier.test.ts',
+  'src/__tests__/security/commercial-pr12-authority-artifact-contract.test.ts',
+  'src/__tests__/security/commercial-pr12-stage-command-runtime.test.ts',
+  'src/__tests__/security/commercial-pr12-source-identity-configuration-readiness.test.ts',
+  'src/__tests__/security/commercial-pr12-source-replay-collector.test.ts',
+  'src/__tests__/security/commercial-pr12-hosted-types-collector.test.ts',
+  'src/__tests__/security/commercial-pr12-advisor-collector.test.ts',
+  'src/__tests__/security/commercial-pr12-representative-fixture-readiness.test.ts',
+  'src/__tests__/security/commercial-pr12-all-role-smoke-readiness.test.ts',
+  'src/__tests__/security/pr12-local-module-test-helpers.ts',
 ];
 
 function fail(message) {
@@ -742,12 +763,13 @@ function verifyApprovalBoundaries() {
   }
   assert(
     sources[2].includes(
-      'phase1_operator_canonical_principal_id: NOT_CAPTURED'
+      'phase1_operator_canonical_principal_id: owner:futoshi-iwasawa'
     ) &&
       sources[2].includes(
         'owner:futoshi-iwasawa is the recorded canonical principal'
-      ),
-    'Phase 1 candidate principal must be documented while final Action-003 role binding remains uncaptured'
+      ) &&
+      sources[2].includes('phase1_final_action_risk_acceptance: NOT_CAPTURED'),
+    'Phase 1 principal or unresolved final Action-003 risk acceptance drift'
   );
   const humanPacket = readRepositoryFile(
     'docs/stabilization/pr12-staging-execution-owner-approval-packet-v0.2-20260719.md'
@@ -1373,15 +1395,38 @@ function verifyProposalContracts() {
       data.patientPiiAllowed === false,
     'representative-data privacy boundary drift'
   );
-  assert(rowTargets.combinedSubtotal === 74, 'fixture row total drift');
+  const derivedRows = requireRecord(data.derivedRows, 'data.derivedRows');
+  assert(
+    rowTargets.combinedSubtotal === 83 &&
+      derivedRows.exactCount === 12 &&
+      derivedRows.snapshotTotal === 95 &&
+      derivedRows.snapshotRelationCount === 19 &&
+      data.fixturePlanSha256 ===
+        'a2446817c50b1d2ada0c4701acedc7abd2e00623c2ba503873f325a78d421028' &&
+      data.fixturePayloadAggregateSha256 ===
+        '0c5c6237faa673171a618b9a815cba41f6ced4e5a8e89814e399f006fa747e39' &&
+      data.actorTopologySha256 ===
+        'beae5bba032aadcb88adacc21146b47c95ce4582407a19e2b68f6891dbba83a3' &&
+      data.runtimeSourceSnapshotSha256 === 'NOT_CAPTURED',
+    'fixture 83+12 row, relation, or plan identity drift'
+  );
   assert(
     representativeness.persistentCapacityRepresentative === false,
     'capacity limitation must remain explicit'
   );
   assert(
-    dataReadiness.postLoadExactRowAndHashValidator === 'NOT_IMPLEMENTED' &&
+    data.implementationStatus === 'IMPLEMENTED_OFFLINE_VERIFIED' &&
+      data.executionStatus === 'NOT_RUN' &&
+      dataReadiness.fixturePlanCompiler === 'IMPLEMENTED_OFFLINE_VERIFIED' &&
+      dataReadiness.strictLoadOperationCompiler ===
+        'IMPLEMENTED_OFFLINE_VERIFIED' &&
+      dataReadiness.postLoadExactRowAndHashValidator ===
+        'IMPLEMENTED_OFFLINE_VERIFIED' &&
+      dataReadiness.payloadIdentityBinding === 'IMPLEMENTED_OFFLINE_VERIFIED' &&
+      dataReadiness.sqlPayloadResolver === 'NOT_IMPLEMENTED' &&
+      dataReadiness.runtimeDatabaseCollector === 'NOT_IMPLEMENTED' &&
       dataReadiness.executionAuthorized === false,
-    'data proposal must remain non-executable'
+    'data readiness must stay offline-only and non-executable'
   );
 
   const dr = readJson(`${prefix}dr-contract.proposed.json`);
@@ -1470,6 +1515,26 @@ function verifyProposalContracts() {
     integration.targetBindingRules,
     'integration.targetBindingRules'
   );
+  const directDatabaseUrlPolicy = requireRecord(
+    integration.directDatabaseUrlPolicy,
+    'integration.directDatabaseUrlPolicy'
+  );
+  const stageRuntimeChannels = requireRecord(
+    integration.stageCommandRuntimeChannels,
+    'integration.stageCommandRuntimeChannels'
+  );
+  const stageDatabaseChild = requireRecord(
+    stageRuntimeChannels.databaseChild,
+    'integration.stageCommandRuntimeChannels.databaseChild'
+  );
+  const stageHostedTypesChild = requireRecord(
+    stageRuntimeChannels.hostedTypesChild,
+    'integration.stageCommandRuntimeChannels.hostedTypesChild'
+  );
+  const stageChildProcess = requireRecord(
+    stageRuntimeChannels.childProcess,
+    'integration.stageCommandRuntimeChannels.childProcess'
+  );
   assert(
     integration.schemaVersion === 1 &&
       integration.mode === 'SANDBOXED' &&
@@ -1478,14 +1543,82 @@ function verifyProposalContracts() {
       integration.channel === 'process_environment' &&
       integration.storageProvider === 'UNASSIGNED' &&
       integration.serverOnly === true &&
+      integration.passwordFreeDirectDatabaseUrlInArgumentAllowed === true &&
+      directDatabaseUrlPolicy.scheme === 'postgresql' &&
+      directDatabaseUrlPolicy.username === 'postgres' &&
+      directDatabaseUrlPolicy.passwordComponentAllowed === false &&
+      directDatabaseUrlPolicy.host ===
+        'db.<approved-project-ref>.supabase.co' &&
+      directDatabaseUrlPolicy.port === 5432 &&
+      directDatabaseUrlPolicy.database === 'postgres' &&
+      directDatabaseUrlPolicy.sslmode === 'verify-full' &&
+      directDatabaseUrlPolicy.sslrootcertMustMatchApprovedCaBundlePathAndSha256 ===
+        true &&
+      directDatabaseUrlPolicy.poolerAllowed === false &&
+      directDatabaseUrlPolicy.ipv4AddonFallbackAllowed === false &&
+      directDatabaseUrlPolicy.tlsWeakeningAllowed === false &&
       sharedCredentialChannel.channel === 'process_environment' &&
       sharedCredentialChannel.persistence === 'process_lifetime_only' &&
       sourceCredentialChannel.targetKind === 'SOURCE' &&
       restoreCredentialChannel.targetKind === 'RESTORE' &&
       commonCredentialIsolationRules.inheritParentEnvironment === false &&
       commonCredentialIsolationRules.ambientGenericFallbackAllowed === false &&
+      commonCredentialIsolationRules.forbiddenLocationsApplyToSecretValuesOnly ===
+        true &&
       commonCredentialIsolationRules.committedFixturePasswordsAllowedOnHosted ===
         false &&
+      commonCredentialIsolationRules.databasePasswordChildVariable ===
+        'PGPASSWORD' &&
+      commonCredentialIsolationRules.databasePasswordMayAppearInUrlOrArgv ===
+        false &&
+      commonCredentialIsolationRules.passwordFreeDirectDatabaseUrlMayAppearInArgv ===
+        true &&
+      commonCredentialIsolationRules.databasePasswordAndManagementTokenChildProcessesMustBeDistinct ===
+        true &&
+      stageRuntimeChannels.authority === 'PR12_STAGE_COMMAND_RUNTIME_ONLY' &&
+      stageRuntimeChannels.implementationStatus ===
+        'IMPLEMENTED_OFFLINE_VERIFIED' &&
+      stageRuntimeChannels.executionStatus === 'NOT_RUN' &&
+      stageRuntimeChannels.executionAuthorized === false &&
+      stageRuntimeChannels.inheritParentEnvironment === false &&
+      stageRuntimeChannels.dotenvAllowed === false &&
+      stageRuntimeChannels.ambientCredentialFallbackAllowed === false &&
+      JSON.stringify(stageDatabaseChild.commandIds) ===
+        JSON.stringify([
+          'PR12-CMD-004A',
+          'PR12-CMD-004',
+          'PR12-CMD-005',
+          'PR12-CMD-006',
+          'PR12-CMD-007',
+          'PR12-CMD-007A',
+          'PR12-CMD-008A',
+          'PR12-CMD-008',
+          'PR12-CMD-009',
+          'PR12-CMD-016',
+        ]) &&
+      JSON.stringify(stageDatabaseChild.exactSecretChildEnvironmentNames) ===
+        JSON.stringify(['PGPASSWORD']) &&
+      stageDatabaseChild.parentCredentialName === 'PR12_SOURCE_DB_PASSWORD' &&
+      stageDatabaseChild.managementTokenPresent === false &&
+      stageDatabaseChild.passwordFreeDirectDatabaseUrlInArguments === true &&
+      stageDatabaseChild.passwordInUrlOrArgumentsAllowed === false &&
+      stageDatabaseChild.tlsMode === 'verify-full' &&
+      stageDatabaseChild.approvedCaBundlePathAndSha256Required === true &&
+      stageDatabaseChild.poolerOrFallbackAllowed === false &&
+      JSON.stringify(stageHostedTypesChild.commandIds) ===
+        JSON.stringify(['PR12-CMD-010']) &&
+      stageHostedTypesChild.parentCredentialName ===
+        'PR12_SUPABASE_ACCESS_TOKEN' &&
+      JSON.stringify(stageHostedTypesChild.exactSecretChildEnvironmentNames) ===
+        JSON.stringify(['SUPABASE_ACCESS_TOKEN']) &&
+      stageHostedTypesChild.databasePasswordPresent === false &&
+      stageHostedTypesChild.committedTypesFileWriteAllowed === false &&
+      stageChildProcess.shell === false &&
+      stageChildProcess.stdin === 'CLOSED' &&
+      stageChildProcess.wrapperRetryCount === 0 &&
+      stageChildProcess.maximumDispatchCountPerCommand === 1 &&
+      stageChildProcess.timeoutOrAmbiguousOutcome ===
+        'UNKNOWN_REMOTE_OUTCOME' &&
       targetModes.source === 'SANDBOXED' &&
       targetModes.restore === 'DISABLED' &&
       sourceStripe.mode === 'TEST_MODE_SANDBOX_ONLY' &&
@@ -1624,12 +1757,34 @@ function verifyProposalContracts() {
     ledger.supabaseCli,
     'ledger.supabaseCli'
   );
+  const ledgerSupabaseGo = requireRecord(
+    ledgerSupabaseCli.adjacentGoExecutable,
+    'ledger.supabaseCli.adjacentGoExecutable'
+  );
+  const ledgerPsql = requireRecord(ledger.psql, 'ledger.psql');
+  const ledgerCaBundle = requireRecord(ledger.caBundle, 'ledger.caBundle');
+  const ledgerExternalWorkdir = requireRecord(
+    ledger.externalRuntimeWorkdir,
+    'ledger.externalRuntimeWorkdir'
+  );
+  const ledgerChildProcess = requireRecord(
+    ledger.childProcessContract,
+    'ledger.childProcessContract'
+  );
+  const ledgerSupabaseHome = requireRecord(
+    ledger.supabaseHome,
+    'ledger.supabaseHome'
+  );
+  const ledgerDockerConfig = requireRecord(
+    ledger.dockerConfig,
+    'ledger.dockerConfig'
+  );
   const commands = Array.isArray(ledger.commands) ? ledger.commands : [];
   assert(
     ledger.status === 'PROPOSED_NOT_EXECUTABLE' &&
       ledger.executionAuthorized === false &&
       targetGuard.status ===
-        'PHASE1_ACTION_003_ENABLEMENT_IMPLEMENTED_LATER_PHASES_NOT_IMPLEMENTED' &&
+        'PHASE1_ACTION_003_AND_SELECTED_READINESS_IMPLEMENTED_REMAINDER_NOT_IMPLEMENTED' &&
       targetGuard.phase1ImplementationPath ===
         'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs' &&
       targetGuard.organizationIdentityCaptureImplementationPath ===
@@ -1638,34 +1793,111 @@ function verifyProposalContracts() {
         true &&
       targetGuard.organizationIdentityCaptureEvidenceLinkageStatus ===
         'IMPLEMENTED_ACTION_003_V5_REQUIRED' &&
+      targetGuard.stageCommandRuntimeImplementationPath ===
+        'scripts/commercial-hardening/pr12-stage-command-runtime.mjs' &&
+      targetGuard.repositoryLinkMetadataAllowed === false &&
+      targetGuard.externalRuntimeMetadataRequired === true &&
+      targetGuard.databaseConnectionMode === 'DIRECT' &&
+      targetGuard.databasePortMustEqual === 5432 &&
+      targetGuard.databaseNameMustEqual === 'postgres' &&
+      targetGuard.databasePasswordInUrlOrArgumentsAllowed === false &&
+      targetGuard.databaseUrlFragmentAllowed === false &&
+      JSON.stringify(targetGuard.databaseUrlExactQueryKeys) ===
+        JSON.stringify(['sslmode', 'sslrootcert']) &&
+      targetGuard.databaseUrlExtraQueryParametersAllowed === false &&
+      targetGuard.databasePasswordChildEnvironmentName === 'PGPASSWORD' &&
+      targetGuard.tlsMode === 'verify-full' &&
+      targetGuard.sslrootcertMustEqualApprovedCaBundlePath === true &&
+      targetGuard.approvedCaBundlePathAndSha256Required === true &&
+      targetGuard.poolerIpv4AddonOrTlsFallbackAllowed === false &&
+      targetGuard.dotenvLoadingAllowed === false &&
+      targetGuard.inheritParentEnvironmentAllowed === false &&
       targetGuard.requiredForEveryRemoteCommand === true &&
       JSON.stringify(targetGuard.prohibitedProjectRefs) ===
-        JSON.stringify(['qnanuoqveidwvacvbhqp']),
+        JSON.stringify(['qnanuoqveidwvacvbhqp']) &&
+      JSON.stringify(targetGuard.prohibitedHosts) ===
+        JSON.stringify(['db.qnanuoqveidwvacvbhqp.supabase.co']) &&
+      JSON.stringify(targetGuard.prohibitedDatabaseSystemIdentifiers) ===
+        JSON.stringify([]) &&
+      targetGuard.prohibitedDatabaseSystemIdentifiersStatus ===
+        'NOT_CAPTURED_BLOCKING' &&
+      targetGuard.allThreeProductionDenylistDimensionsRequiredBeforeRemoteContact ===
+        true,
     'command ledger fail-closed proposal drift'
   );
   assert(
-    ledgerSupabaseCli.path ===
-      'C:\\tmp\\pr12-supabase-cli-2.109.0\\bin\\supabase.exe' &&
+    ledgerSupabaseCli.path === 'NOT_CAPTURED' &&
+      ledgerSupabaseCli.pathSha256 === 'NOT_CAPTURED' &&
+      ledgerSupabaseCli.resolvedPathSha256 === 'NOT_CAPTURED' &&
       ledgerSupabaseCli.version === '2.109.0' &&
       ledgerSupabaseCli.executableSha256 ===
         '903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118' &&
-      ledgerSupabaseCli.officialArchivePath ===
-        'C:\\tmp\\pr12-supabase-cli-2.109.0\\supabase_2.109.0_windows_amd64.zip' &&
+      ledgerSupabaseGo.path === 'NOT_CAPTURED' &&
+      ledgerSupabaseGo.pathSha256 === 'NOT_CAPTURED' &&
+      ledgerSupabaseGo.resolvedPathSha256 === 'NOT_CAPTURED' &&
+      ledgerSupabaseGo.version === '2.109.0' &&
+      ledgerSupabaseGo.executableSha256 ===
+        '59cd06ac674fdf5d6add75206408ada0a24b1dcb796d099c13b1f2aaf3f463f0' &&
+      ledgerSupabaseCli.officialArchivePath === 'NOT_CAPTURED' &&
+      ledgerSupabaseCli.officialArchivePathSha256 === 'NOT_CAPTURED' &&
+      ledgerSupabaseCli.officialArchiveResolvedPathSha256 === 'NOT_CAPTURED' &&
       ledgerSupabaseCli.officialArchiveSha256 ===
-        'd2b687ec3427fe7847cf7a8f603413fa8d4331f6fdbbc825eea6aa34a64d686b',
-    'command ledger Supabase CLI executable/archive identity drift'
+        'd2b687ec3427fe7847cf7a8f603413fa8d4331f6fdbbc825eea6aa34a64d686b' &&
+      ledgerPsql.path === 'NOT_CAPTURED' &&
+      ledgerPsql.pathSha256 === 'NOT_CAPTURED' &&
+      ledgerPsql.resolvedPathSha256 === 'NOT_CAPTURED' &&
+      ledgerPsql.version === '17.9' &&
+      ledgerPsql.executableSha256 ===
+        '6a4b5cd854ee1c0e50646e7612a9e769c9ae86aa97bf94c50342dad058c2b531' &&
+      ledgerCaBundle.path === 'NOT_CAPTURED' &&
+      ledgerCaBundle.pathSha256 === 'NOT_CAPTURED' &&
+      ledgerCaBundle.resolvedPathSha256 === 'NOT_CAPTURED' &&
+      ledgerCaBundle.contentSha256 === 'NOT_CAPTURED' &&
+      ledgerSupabaseHome.path === 'NOT_CAPTURED' &&
+      ledgerSupabaseHome.pathSha256 === 'NOT_CAPTURED' &&
+      ledgerSupabaseHome.resolvedPathSha256 === 'NOT_CAPTURED' &&
+      ledgerDockerConfig.path === 'NOT_CAPTURED' &&
+      ledgerDockerConfig.pathSha256 === 'NOT_CAPTURED' &&
+      ledgerDockerConfig.resolvedPathSha256 === 'NOT_CAPTURED' &&
+      ledger.supabaseNoKeyringChildEnvironmentValue === '1' &&
+      ledger.supabaseHomeAndDockerConfigMustDiffer === true &&
+      ledgerExternalWorkdir.path === 'NOT_CAPTURED' &&
+      ledgerExternalWorkdir.pathSha256 === 'NOT_CAPTURED' &&
+      ledgerExternalWorkdir.resolvedPathSha256 === 'NOT_CAPTURED' &&
+      ledgerExternalWorkdir.copiedFileCount === 65 &&
+      ledgerExternalWorkdir.migrationCount === 61,
+    'command ledger pinned toolchain or external path identity drift'
   );
   assert(
     JSON.stringify(commands.map(command => command.id)) ===
       JSON.stringify(CANONICAL_LEDGER_COMMAND_IDS),
     'command ledger exact canonical order drift'
   );
+  assert(
+    ledger.operatorShell === 'PowerShell_7' &&
+      ledgerChildProcess.shell === false &&
+      ledgerChildProcess.stdin === 'ignore' &&
+      JSON.stringify(ledgerChildProcess.stdio) ===
+        JSON.stringify(['ignore', 'pipe', 'pipe']) &&
+      ledgerChildProcess.environmentBuiltFromZero === true &&
+      ledgerChildProcess.wrapperRetryCount === 0 &&
+      ledgerChildProcess.maximumDispatchCountPerCommand === 1 &&
+      ledgerChildProcess.automaticRetryAllowed === false &&
+      ledgerChildProcess.timeoutOrThrownErrorOutcome ===
+        'UNKNOWN_REMOTE_OUTCOME' &&
+      commands.every(
+        command =>
+          typeof command.implementationStatus === 'string' &&
+          typeof command.executionStatus === 'string' &&
+          typeof command.authorizedNow === 'boolean'
+      ),
+    'command ledger child-process or explicit command-state contract drift'
+  );
   const remoteCommands = commands.filter(command => command.remoteContact);
   assert(remoteCommands.length > 0, 'command ledger has no remote phases');
   const allowedMutationScopes = new Set([
     'CANONICAL_PROBE_TRANSACTION_ONLY',
     'ISOLATED_SCHEMA_REPLAY_ONLY',
-    'LOCAL_LINK_METADATA_ONLY',
     'NONE',
     'RESTORE_PROJECT_CREATION',
     'SANDBOX_BILLING_ONLY',
@@ -1689,13 +1921,76 @@ function verifyProposalContracts() {
     ),
     'command ledger boolean or mutation-scope proposal drift'
   );
+  const offlineImplementedRemoteCommandIds = new Set([
+    'PR12-CMD-004A',
+    'PR12-CMD-004',
+    'PR12-CMD-005',
+    'PR12-CMD-006',
+    'PR12-CMD-007',
+    'PR12-CMD-007A',
+    'PR12-CMD-008A',
+    'PR12-CMD-008',
+    'PR12-CMD-009',
+    'PR12-CMD-010',
+    'PR12-CMD-016',
+  ]);
   assert(
-    remoteCommands.every(
-      command =>
-        command.redactedCommand === 'NOT_IMPLEMENTED' &&
-        command.authorizedNow === false
-    ),
-    'every proposed remote command must remain unimplemented and unauthorized'
+    remoteCommands.every(command => {
+      if (command.authorizedNow !== false) return false;
+      if (offlineImplementedRemoteCommandIds.has(command.id)) {
+        return (
+          command.implementationStatus === 'IMPLEMENTED_OFFLINE_VERIFIED' &&
+          command.executionStatus === 'NOT_RUN' &&
+          command.redactedCommand !== 'NOT_IMPLEMENTED'
+        );
+      }
+      return command.redactedCommand === 'NOT_IMPLEMENTED';
+    }),
+    'remote commands must stay either offline-only NOT_RUN or unimplemented, and all unauthorized'
+  );
+  const cmd003 = commands.find(command => command.id === 'PR12-CMD-003');
+  const cmd013 = commands.find(command => command.id === 'PR12-CMD-013');
+  const cmd016 = commands.find(command => command.id === 'PR12-CMD-016');
+  const cmd013Components = requireRecord(
+    cmd013?.components,
+    'PR12-CMD-013.components'
+  );
+  const allRoleSmoke = requireRecord(
+    cmd013Components.allRoleSmoke,
+    'PR12-CMD-013.components.allRoleSmoke'
+  );
+  const cmd016Components = requireRecord(
+    cmd016?.components,
+    'PR12-CMD-016.components'
+  );
+  const advisorNormalizerAndDiff = requireRecord(
+    cmd016Components.snapshotNormalizerAndDiff,
+    'PR12-CMD-016.components.snapshotNormalizerAndDiff'
+  );
+  assert(
+    cmd003?.remoteContact === false &&
+      cmd003?.mutating === false &&
+      cmd003?.mutationScope === 'NONE' &&
+      cmd003?.redactedCommand ===
+        'LOCAL_IN_PROCESS:buildExternalReplayInputManifest+materializeExternalReplayInputs' &&
+      cmd003?.implementationStatus === 'IMPLEMENTED_OFFLINE_VERIFIED' &&
+      cmd003?.executionStatus === 'NOT_RUN' &&
+      cmd003?.authorizedNow === false &&
+      cmd013?.implementationStatus === 'NOT_IMPLEMENTED' &&
+      cmd013?.executionStatus === 'NOT_RUN' &&
+      allRoleSmoke.implementationStatus === 'IMPLEMENTED_OFFLINE_VERIFIED' &&
+      allRoleSmoke.executionStatus === 'NOT_RUN' &&
+      allRoleSmoke.commGateStatus === 'NOT_RUN' &&
+      allRoleSmoke.remoteContactPerformed === false &&
+      cmd016?.implementationStatus === 'IMPLEMENTED_OFFLINE_VERIFIED' &&
+      cmd016?.executionStatus === 'NOT_RUN' &&
+      cmd016?.authorizedNow === false &&
+      advisorNormalizerAndDiff.implementationStatus ===
+        'IMPLEMENTED_OFFLINE_VERIFIED' &&
+      advisorNormalizerAndDiff.executionStatus === 'NOT_RUN' &&
+      advisorNormalizerAndDiff.remoteContactPerformed === false &&
+      cmd016?.redactedCommand.endsWith('--output-format json'),
+    'local runtime materialization, all-role component, or Advisor readiness drift'
   );
   assert(
     remoteCommands[0]?.id === 'PR12-CMD-004A' &&
@@ -1707,7 +2002,7 @@ function verifyProposalContracts() {
     'six-stage bootstrap, Stage 3/4, or restore-creation stop order drift'
   );
   for (const purpose of [
-    'post-load exact-row and normalized-hash validator',
+    'fixture contract',
     'canonical PR11',
     'Data API and GraphQL',
     'COMM-BILL',
@@ -2636,7 +2931,7 @@ function verifyProposalContracts() {
       sourceBootstrap.authorization.sourceIdentityConnectionAuthorized ===
         false &&
       sourceBootstrap.authorization.sourceIdentityCaptureAuthorized === false &&
-      sourceBootstrap.authorization.sourceLinkAuthorized === false &&
+      sourceBootstrap.authorization.sourceReplayAuthorized === false &&
       sourceBootstrap.authorization.cleanMigrationReplayAuthorized === false &&
       sourceBootstrap.mandatoryStop.automaticContinuationAuthorized === false &&
       JSON.stringify(sourceBootstrap.approvedCommandIds) ===
@@ -2775,6 +3070,7 @@ function verifySchemaAndTemplate() {
     'performance',
     'credentialHandling',
     'sourceStructuredResults',
+    'runtimePathProjection',
   ]) {
     assert(field in schema.properties, `schema missing ${field}`);
     assert(field in template, `template missing ${field}`);
@@ -2787,6 +3083,49 @@ function verifySchemaAndTemplate() {
     JSON.stringify(schema.properties.status.enum) ===
       JSON.stringify(['PASS', 'FAIL', 'NOT_RUN']),
     'top-level schema status must reject PASS_WITH_RISK and NOT_APPLICABLE'
+  );
+  assertExactJson(
+    template.toolVersions,
+    {
+      node: 'NOT_CAPTURED',
+      supabaseCli: '2.109.0',
+      supabaseGo: '2.109.0',
+      psql: 'psql (PostgreSQL) 17.9',
+    },
+    'qualification template tool versions'
+  );
+  assert(
+    template.toolBinaries.supabaseCli.sha256 ===
+      '903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118' &&
+      template.toolBinaries.supabaseGo.sha256 ===
+        '59cd06ac674fdf5d6add75206408ada0a24b1dcb796d099c13b1f2aaf3f463f0' &&
+      template.toolBinaries.psql.sha256 ===
+        '6a4b5cd854ee1c0e50646e7612a9e769c9ae86aa97bf94c50342dad058c2b531',
+    'qualification template exact tool binary pin drift'
+  );
+  assert(
+    template.runtimePathProjection.status === 'NOT_CAPTURED' &&
+      template.runtimePathProjection.rawPathsRetained === false &&
+      template.runtimePathProjection.projectionSha256 === 'NOT_CAPTURED' &&
+      JSON.stringify(
+        Object.keys(template.runtimePathProjection.entries).sort()
+      ) ===
+        JSON.stringify([
+          'caBundlePath',
+          'dockerConfig',
+          'externalWorkdir',
+          'psqlPath',
+          'supabaseGoPath',
+          'supabaseHome',
+          'supabasePath',
+        ]) &&
+      Object.values(template.runtimePathProjection.entries).every(
+        entry =>
+          entry.rawPathRetained === false &&
+          entry.pathSha256 === 'NOT_CAPTURED' &&
+          entry.resolvedPathSha256 === 'NOT_CAPTURED'
+      ),
+    'qualification template runtime path fingerprint projection drift'
   );
   const passConditional = schema.allOf.find(
     value =>
@@ -2852,6 +3191,8 @@ function verifySchemaAndTemplate() {
     'approvalPacketPath',
     'contractPath',
     'credentialHandling',
+    'runtimePathProjection',
+    'supabaseGo',
     'clientResponseExposureAllowed',
     'logExposureAllowed',
     'canonicalObservation',
@@ -2934,23 +3275,104 @@ function verifySchemaAndTemplate() {
     'binding template must not authorize staging'
   );
   assert(
-    binding.toolVersions.supabaseCli === '2.109.0',
-    'binding template Supabase CLI pin drift'
+    binding.toolVersions.supabaseCli === '2.109.0' &&
+      binding.toolVersions.supabaseGo === '2.109.0' &&
+      binding.toolVersions.psql === '17.9',
+    'binding template toolchain version pin drift'
   );
   assert(
-    binding.toolBinaries.supabaseCli.sha256 ===
-      '903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118' &&
+    binding.toolBinaries.supabaseCli.path === 'NOT_CAPTURED' &&
+      binding.toolBinaries.supabaseCli.pathSha256 === 'NOT_CAPTURED' &&
+      binding.toolBinaries.supabaseCli.resolvedPathSha256 === 'NOT_CAPTURED' &&
+      binding.toolBinaries.supabaseCli.sha256 ===
+        '903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118' &&
       binding.toolBinaries.supabaseCli.archiveSha256 ===
         'd2b687ec3427fe7847cf7a8f603413fa8d4331f6fdbbc825eea6aa34a64d686b' &&
       binding.toolBinaries.supabaseCli.archivePath === 'NOT_CAPTURED' &&
-      binding.toolBinaries.supabaseCli.archiveHashCommandId === 'NOT_CAPTURED',
-    'binding template Supabase CLI executable/archive pin drift'
+      binding.toolBinaries.supabaseCli.archivePathSha256 === 'NOT_CAPTURED' &&
+      binding.toolBinaries.supabaseCli.archiveResolvedPathSha256 ===
+        'NOT_CAPTURED' &&
+      binding.toolBinaries.supabaseCli.archiveHashCommandId ===
+        'NOT_CAPTURED' &&
+      binding.toolBinaries.supabaseGo.path === 'NOT_CAPTURED' &&
+      binding.toolBinaries.supabaseGo.pathSha256 === 'NOT_CAPTURED' &&
+      binding.toolBinaries.supabaseGo.resolvedPathSha256 === 'NOT_CAPTURED' &&
+      binding.toolBinaries.supabaseGo.sha256 ===
+        '59cd06ac674fdf5d6add75206408ada0a24b1dcb796d099c13b1f2aaf3f463f0' &&
+      binding.toolBinaries.psql.path === 'NOT_CAPTURED' &&
+      binding.toolBinaries.psql.pathSha256 === 'NOT_CAPTURED' &&
+      binding.toolBinaries.psql.resolvedPathSha256 === 'NOT_CAPTURED' &&
+      binding.toolBinaries.psql.sha256 ===
+        '6a4b5cd854ee1c0e50646e7612a9e769c9ae86aa97bf94c50342dad058c2b531' &&
+      binding.toolBinaries.caBundle.path === 'NOT_CAPTURED' &&
+      binding.toolBinaries.caBundle.contentSha256 === 'NOT_CAPTURED' &&
+      binding.toolBinaries.externalRuntimeWorkdir.path === 'NOT_CAPTURED' &&
+      binding.toolBinaries.externalRuntimeWorkdir.copiedFileCount === 65 &&
+      binding.toolBinaries.externalRuntimeWorkdir.migrationCount === 61 &&
+      binding.toolBinaries.externalRuntimeWorkdir.collectorSqlAssetCount === 3,
+    'binding template exact toolchain or external path pin drift'
   );
   assert(
     binding.toolVersionCommands.node === 'NOT_CAPTURED' &&
       binding.toolVersionCommands.supabaseCli === 'NOT_CAPTURED' &&
+      binding.toolVersionCommands.supabaseGo === 'NOT_CAPTURED' &&
       binding.toolVersionCommands.psql === 'NOT_CAPTURED',
     'binding template tool version command IDs must remain unresolved'
+  );
+  assertExactJson(
+    binding.runtimeReadiness,
+    {
+      moduleContractStatus: 'IMPLEMENTED_OFFLINE_VERIFIED',
+      populatedStagingBindingAdapterStatus: 'NOT_IMPLEMENTED',
+      remoteDispatcherCallSiteStatus: 'NOT_IMPLEMENTED',
+      executionStatus: 'NOT_RUN',
+      executionAuthorized: false,
+      runtimePathProjection: {
+        schemaVersion: 1,
+        status: 'NOT_CAPTURED',
+        entries: {
+          caBundlePath: {
+            pathSha256: 'NOT_CAPTURED',
+            resolvedPathSha256: 'NOT_CAPTURED',
+          },
+          dockerConfig: {
+            pathSha256: 'NOT_CAPTURED',
+            resolvedPathSha256: 'NOT_CAPTURED',
+          },
+          externalWorkdir: {
+            pathSha256: 'NOT_CAPTURED',
+            resolvedPathSha256: 'NOT_CAPTURED',
+          },
+          psqlPath: {
+            pathSha256: 'NOT_CAPTURED',
+            resolvedPathSha256: 'NOT_CAPTURED',
+          },
+          supabaseGoPath: {
+            pathSha256: 'NOT_CAPTURED',
+            resolvedPathSha256: 'NOT_CAPTURED',
+          },
+          supabaseHome: {
+            pathSha256: 'NOT_CAPTURED',
+            resolvedPathSha256: 'NOT_CAPTURED',
+          },
+          supabasePath: {
+            pathSha256: 'NOT_CAPTURED',
+            resolvedPathSha256: 'NOT_CAPTURED',
+          },
+        },
+        exactPathCount: 7,
+        rawPathsRetained: false,
+        projectionSha256: 'NOT_CAPTURED',
+      },
+      productionDenylist: {
+        projectRefs: ['qnanuoqveidwvacvbhqp'],
+        hosts: ['db.qnanuoqveidwvacvbhqp.supabase.co'],
+        databaseSystemIdentifiers: [],
+        databaseSystemIdentifiersStatus: 'NOT_CAPTURED_BLOCKING',
+        allThreeDimensionsRequiredBeforeRemoteContact: true,
+      },
+    },
+    'binding template runtime readiness'
   );
   assert(
     binding.reviewedProposals.integrationCredential.path ===
@@ -3015,6 +3437,8 @@ function verifyRelativeLinks(relativePath) {
 }
 
 function main() {
+  verifyPr12AuthorityArtifactContract(REPO_ROOT);
+  verifyPr12LocalReadinessContracts(REPO_ROOT);
   for (const requiredPath of REQUIRED_ARTIFACTS) {
     assert(
       existsSync(repositoryPath(requiredPath)),

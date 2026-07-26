@@ -23,18 +23,14 @@ const requiredArtifacts = [
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-binding.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v5.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v4.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration-v2.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v4.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v3.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-official-pricing-evidence-v2.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-dpapi-bootstrap-approval-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-windows-dpapi-envelope-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-action-journal.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v5.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v4.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v4.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v3.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-privacy-scan.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-identity-bootstrap-binding.template.json',
@@ -76,8 +72,31 @@ const requiredArtifacts = [
   'scripts/commercial-hardening/verify-pr12-source-project-provisioning-evidence.mjs',
   'scripts/commercial-hardening/verify-pr12-evidence-manifest.mjs',
   'scripts/commercial-hardening/scan-pr12-evidence.mjs',
+  'scripts/commercial-hardening/pr12-authority-artifact-contract.mjs',
+  'scripts/commercial-hardening/pr12-stage-command-runtime.mjs',
+  'scripts/commercial-hardening/pr12-source-identity-configuration-contract.mjs',
+  'scripts/commercial-hardening/pr12-source-replay-catalog-contract.mjs',
+  'scripts/commercial-hardening/pr12-hosted-types-parity.mjs',
+  'scripts/commercial-hardening/pr12-advisor-diff.mjs',
+  'scripts/commercial-hardening/pr12-representative-fixture-contract.mjs',
+  'scripts/commercial-hardening/pr12-representative-fixture-adapter.mjs',
+  'scripts/commercial-hardening/pr12-all-role-smoke-contract.mjs',
+  'scripts/commercial-hardening/pr12-all-role-smoke-adapter.mjs',
+  'scripts/commercial-hardening/pr12-local-readiness-contract.mjs',
+  'scripts/commercial-hardening/sql/pr12-source-clean-replay-precondition.sql',
+  'scripts/commercial-hardening/sql/pr12-post-replay-catalog-capture.sql',
+  'scripts/commercial-hardening/sql/pr12-migration-history-parity.sql',
   'src/__tests__/security/commercial-pr12-evidence-verifier.test.ts',
   'src/__tests__/security/commercial-pr12-source-project-provisioning-contract.test.ts',
+  'src/__tests__/security/commercial-pr12-authority-artifact-contract.test.ts',
+  'src/__tests__/security/commercial-pr12-stage-command-runtime.test.ts',
+  'src/__tests__/security/commercial-pr12-source-identity-configuration-readiness.test.ts',
+  'src/__tests__/security/commercial-pr12-source-replay-collector.test.ts',
+  'src/__tests__/security/commercial-pr12-hosted-types-collector.test.ts',
+  'src/__tests__/security/commercial-pr12-advisor-collector.test.ts',
+  'src/__tests__/security/commercial-pr12-representative-fixture-readiness.test.ts',
+  'src/__tests__/security/commercial-pr12-all-role-smoke-readiness.test.ts',
+  'src/__tests__/security/pr12-local-module-test-helpers.ts',
 ] as const;
 
 const expectedPrimaryExecutionGates = [
@@ -597,6 +616,57 @@ describe('commercial PR-12 qualification preparation contract', () => {
       `${evidencePrefix}staging-execution-binding.template.json`
     );
     const serializedBinding = JSON.stringify(binding);
+    expect(binding.runtimeReadiness).toEqual({
+      moduleContractStatus: 'IMPLEMENTED_OFFLINE_VERIFIED',
+      populatedStagingBindingAdapterStatus: 'NOT_IMPLEMENTED',
+      remoteDispatcherCallSiteStatus: 'NOT_IMPLEMENTED',
+      executionStatus: 'NOT_RUN',
+      executionAuthorized: false,
+      runtimePathProjection: {
+        schemaVersion: 1,
+        status: 'NOT_CAPTURED',
+        entries: {
+          caBundlePath: {
+            pathSha256: 'NOT_CAPTURED',
+            resolvedPathSha256: 'NOT_CAPTURED',
+          },
+          dockerConfig: {
+            pathSha256: 'NOT_CAPTURED',
+            resolvedPathSha256: 'NOT_CAPTURED',
+          },
+          externalWorkdir: {
+            pathSha256: 'NOT_CAPTURED',
+            resolvedPathSha256: 'NOT_CAPTURED',
+          },
+          psqlPath: {
+            pathSha256: 'NOT_CAPTURED',
+            resolvedPathSha256: 'NOT_CAPTURED',
+          },
+          supabaseGoPath: {
+            pathSha256: 'NOT_CAPTURED',
+            resolvedPathSha256: 'NOT_CAPTURED',
+          },
+          supabaseHome: {
+            pathSha256: 'NOT_CAPTURED',
+            resolvedPathSha256: 'NOT_CAPTURED',
+          },
+          supabasePath: {
+            pathSha256: 'NOT_CAPTURED',
+            resolvedPathSha256: 'NOT_CAPTURED',
+          },
+        },
+        exactPathCount: 7,
+        rawPathsRetained: false,
+        projectionSha256: 'NOT_CAPTURED',
+      },
+      productionDenylist: {
+        projectRefs: ['qnanuoqveidwvacvbhqp'],
+        hosts: ['db.qnanuoqveidwvacvbhqp.supabase.co'],
+        databaseSystemIdentifiers: [],
+        databaseSystemIdentifiersStatus: 'NOT_CAPTURED_BLOCKING',
+        allThreeDimensionsRequiredBeforeRemoteContact: true,
+      },
+    });
 
     for (const requiredStageToken of [
       'source_project_provisioning',
@@ -797,10 +867,32 @@ describe('commercial PR-12 qualification preparation contract', () => {
     );
     expect(data).toMatchObject({
       classification: 'SYNTHETIC',
+      implementationStatus: 'IMPLEMENTED_OFFLINE_VERIFIED',
+      executionStatus: 'NOT_RUN',
       productionSnapshotAllowed: false,
       patientPiiAllowed: false,
+      fixturePlanSha256:
+        'a2446817c50b1d2ada0c4701acedc7abd2e00623c2ba503873f325a78d421028',
+      fixturePayloadAggregateSha256:
+        '0c5c6237faa673171a618b9a815cba41f6ced4e5a8e89814e399f006fa747e39',
+      actorTopologySha256:
+        'beae5bba032aadcb88adacc21146b47c95ce4582407a19e2b68f6891dbba83a3',
+      runtimeSourceSnapshotSha256: 'NOT_CAPTURED',
     });
-    expect(rowTargets.combinedSubtotal).toBe(74);
+    expect(rowTargets.combinedSubtotal).toBe(83);
+    expect(data.derivedRows).toMatchObject({
+      exactCount: 12,
+      snapshotTotal: 95,
+      snapshotRelationCount: 19,
+    });
+    expect(data.implementationReadiness).toMatchObject({
+      fixturePlanCompiler: 'IMPLEMENTED_OFFLINE_VERIFIED',
+      strictLoadOperationCompiler: 'IMPLEMENTED_OFFLINE_VERIFIED',
+      postLoadExactRowAndHashValidator: 'IMPLEMENTED_OFFLINE_VERIFIED',
+      sqlPayloadResolver: 'NOT_IMPLEMENTED',
+      runtimeDatabaseCollector: 'NOT_IMPLEMENTED',
+      executionAuthorized: false,
+    });
     expect(representativeness.persistentCapacityRepresentative).toBe(false);
 
     const integration = readJsonRecord(
@@ -952,6 +1044,56 @@ describe('commercial PR-12 qualification preparation contract', () => {
       fingerprintsMustBeComputedFromTheSameRuntimeValues: true,
       emptyCredentialFingerprintAllowed: false,
     });
+    expect(integration.directDatabaseUrlPolicy).toMatchObject({
+      scheme: 'postgresql',
+      username: 'postgres',
+      passwordComponentAllowed: false,
+      host: 'db.<approved-project-ref>.supabase.co',
+      port: 5432,
+      database: 'postgres',
+      sslmode: 'verify-full',
+      sslrootcertMustMatchApprovedCaBundlePathAndSha256: true,
+      poolerAllowed: false,
+      ipv4AddonFallbackAllowed: false,
+      tlsWeakeningAllowed: false,
+    });
+    const stageCommandRuntimeChannels = requireRecord(
+      integration.stageCommandRuntimeChannels,
+      'integration.stageCommandRuntimeChannels'
+    );
+    expect(stageCommandRuntimeChannels).toMatchObject({
+      authority: 'PR12_STAGE_COMMAND_RUNTIME_ONLY',
+      implementationStatus: 'IMPLEMENTED_OFFLINE_VERIFIED',
+      executionStatus: 'NOT_RUN',
+      executionAuthorized: false,
+      inheritParentEnvironment: false,
+      dotenvAllowed: false,
+      ambientCredentialFallbackAllowed: false,
+      databaseChild: {
+        parentCredentialName: 'PR12_SOURCE_DB_PASSWORD',
+        exactSecretChildEnvironmentNames: ['PGPASSWORD'],
+        managementTokenPresent: false,
+        passwordFreeDirectDatabaseUrlInArguments: true,
+        passwordInUrlOrArgumentsAllowed: false,
+        tlsMode: 'verify-full',
+        poolerOrFallbackAllowed: false,
+      },
+      hostedTypesChild: {
+        commandIds: ['PR12-CMD-010'],
+        parentCredentialName: 'PR12_SUPABASE_ACCESS_TOKEN',
+        exactSecretChildEnvironmentNames: ['SUPABASE_ACCESS_TOKEN'],
+        databasePasswordPresent: false,
+        outputLocation: 'REPOSITORY_EXTERNAL_TEMPORARY_PATH',
+        committedTypesFileWriteAllowed: false,
+      },
+      childProcess: {
+        shell: false,
+        stdin: 'CLOSED',
+        wrapperRetryCount: 0,
+        maximumDispatchCountPerCommand: 1,
+        timeoutOrAmbiguousOutcome: 'UNKNOWN_REMOTE_OUTCOME',
+      },
+    });
 
     const ledger = readJsonRecord(
       `${evidencePrefix}staging-command-ledger.proposed.json`
@@ -983,17 +1125,92 @@ describe('commercial PR-12 qualification preparation contract', () => {
     expect(ledger.executionAuthorized).toBe(false);
     expect(targetGuard).toMatchObject({
       status:
-        'PHASE1_ACTION_003_ENABLEMENT_IMPLEMENTED_LATER_PHASES_NOT_IMPLEMENTED',
+        'PHASE1_ACTION_003_AND_SELECTED_READINESS_IMPLEMENTED_REMAINDER_NOT_IMPLEMENTED',
       phase1ImplementationPath:
         'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs',
+      stageCommandRuntimeImplementationPath:
+        'scripts/commercial-hardening/pr12-stage-command-runtime.mjs',
       requiredForEveryRemoteCommand: true,
       prohibitedProjectRefs: ['qnanuoqveidwvacvbhqp'],
+      repositoryLinkMetadataAllowed: false,
+      externalRuntimeMetadataRequired: true,
+      databaseConnectionMode: 'DIRECT',
+      databasePortMustEqual: 5432,
+      databaseNameMustEqual: 'postgres',
+      databasePasswordInUrlOrArgumentsAllowed: false,
+      databaseUrlFragmentAllowed: false,
+      databaseUrlExactQueryKeys: ['sslmode', 'sslrootcert'],
+      databaseUrlExtraQueryParametersAllowed: false,
+      databasePasswordChildEnvironmentName: 'PGPASSWORD',
+      tlsMode: 'verify-full',
+      sslrootcertMustEqualApprovedCaBundlePath: true,
+      poolerIpv4AddonOrTlsFallbackAllowed: false,
+      prohibitedHosts: ['db.qnanuoqveidwvacvbhqp.supabase.co'],
+      prohibitedDatabaseSystemIdentifiers: [],
+      prohibitedDatabaseSystemIdentifiersStatus: 'NOT_CAPTURED_BLOCKING',
+      allThreeProductionDenylistDimensionsRequiredBeforeRemoteContact: true,
+    });
+    expect(ledger.supabaseCli).toMatchObject({
+      path: 'NOT_CAPTURED',
+      pathSha256: 'NOT_CAPTURED',
+      resolvedPathSha256: 'NOT_CAPTURED',
+      version: '2.109.0',
+      executableSha256:
+        '903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118',
+      adjacentGoExecutable: {
+        path: 'NOT_CAPTURED',
+        pathSha256: 'NOT_CAPTURED',
+        resolvedPathSha256: 'NOT_CAPTURED',
+        version: '2.109.0',
+        executableSha256:
+          '59cd06ac674fdf5d6add75206408ada0a24b1dcb796d099c13b1f2aaf3f463f0',
+      },
+    });
+    expect(ledger.psql).toMatchObject({
+      path: 'NOT_CAPTURED',
+      pathSha256: 'NOT_CAPTURED',
+      resolvedPathSha256: 'NOT_CAPTURED',
+      version: '17.9',
+      executableSha256:
+        '6a4b5cd854ee1c0e50646e7612a9e769c9ae86aa97bf94c50342dad058c2b531',
+    });
+    expect(ledger.childProcessContract).toMatchObject({
+      shell: false,
+      stdin: 'ignore',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      environmentBuiltFromZero: true,
+      wrapperRetryCount: 0,
+      maximumDispatchCountPerCommand: 1,
+      automaticRetryAllowed: false,
+      timeoutOrThrownErrorOutcome: 'UNKNOWN_REMOTE_OUTCOME',
+    });
+    expect(ledger.supabaseHome).toMatchObject({
+      path: 'NOT_CAPTURED',
+      pathSha256: 'NOT_CAPTURED',
+      resolvedPathSha256: 'NOT_CAPTURED',
+    });
+    expect(ledger.dockerConfig).toMatchObject({
+      path: 'NOT_CAPTURED',
+      pathSha256: 'NOT_CAPTURED',
+      resolvedPathSha256: 'NOT_CAPTURED',
+    });
+    expect(ledger.externalRuntimeWorkdir).toMatchObject({
+      path: 'NOT_CAPTURED',
+      pathSha256: 'NOT_CAPTURED',
+      resolvedPathSha256: 'NOT_CAPTURED',
+      copiedFileCount: 65,
+      migrationCount: 61,
+      collectorSqlAssetCount: 3,
+      migrationHead: '20260718011731',
+      migrationSetSha256:
+        '82aee8f14e126997b8361837587159a179964c460c0d3d18b975c3af17371c07',
+      inputManifestSha256: 'NOT_CAPTURED',
+      durableProjectionSha256: 'NOT_CAPTURED',
     });
     expect(commands.length).toBe(35);
     const allowedMutationScopes = new Set([
       'CANONICAL_PROBE_TRANSACTION_ONLY',
       'ISOLATED_SCHEMA_REPLAY_ONLY',
-      'LOCAL_LINK_METADATA_ONLY',
       'NONE',
       'RESTORE_PROJECT_CREATION',
       'SANDBOX_BILLING_ONLY',
@@ -1014,6 +1231,9 @@ describe('commercial PR-12 qualification preparation contract', () => {
           typeof entry.remoteContact === 'boolean' &&
           typeof entry.mutating === 'boolean' &&
           typeof entry.mutationScope === 'string' &&
+          typeof entry.implementationStatus === 'string' &&
+          typeof entry.executionStatus === 'string' &&
+          typeof entry.authorizedNow === 'boolean' &&
           allowedMutationScopes.has(entry.mutationScope) &&
           (entry.mutating
             ? entry.mutationScope !== 'NONE'
@@ -1027,13 +1247,89 @@ describe('commercial PR-12 qualification preparation contract', () => {
       )
       .filter(command => command.remoteContact === true);
     expect(remoteCommands.length).toBeGreaterThan(0);
+    const offlineImplementedRemoteCommandIds = new Set([
+      'PR12-CMD-004A',
+      'PR12-CMD-004',
+      'PR12-CMD-005',
+      'PR12-CMD-006',
+      'PR12-CMD-007',
+      'PR12-CMD-007A',
+      'PR12-CMD-008A',
+      'PR12-CMD-008',
+      'PR12-CMD-009',
+      'PR12-CMD-010',
+      'PR12-CMD-016',
+    ]);
     expect(
-      remoteCommands.every(
-        command =>
-          command.redactedCommand === 'NOT_IMPLEMENTED' &&
-          command.authorizedNow === false
-      )
+      remoteCommands.every(command => {
+        if (command.authorizedNow !== false) return false;
+        if (offlineImplementedRemoteCommandIds.has(String(command.id))) {
+          return (
+            command.implementationStatus === 'IMPLEMENTED_OFFLINE_VERIFIED' &&
+            command.executionStatus === 'NOT_RUN' &&
+            command.redactedCommand !== 'NOT_IMPLEMENTED'
+          );
+        }
+        return (
+          command.implementationStatus === 'NOT_IMPLEMENTED' &&
+          command.executionStatus === 'NOT_RUN' &&
+          command.redactedCommand === 'NOT_IMPLEMENTED'
+        );
+      })
     ).toBe(true);
+    const cmd003 = requireRecord(
+      commands.find(
+        command => requireRecord(command, 'command').id === 'PR12-CMD-003'
+      ),
+      'PR12-CMD-003'
+    );
+    expect(cmd003).toMatchObject({
+      remoteContact: false,
+      mutating: false,
+      mutationScope: 'NONE',
+      redactedCommand:
+        'LOCAL_IN_PROCESS:buildExternalReplayInputManifest+materializeExternalReplayInputs',
+      implementationStatus: 'IMPLEMENTED_OFFLINE_VERIFIED',
+      executionStatus: 'NOT_RUN',
+      authorizedNow: false,
+    });
+    const cmd013 = requireRecord(
+      commands.find(
+        command => requireRecord(command, 'command').id === 'PR12-CMD-013'
+      ),
+      'PR12-CMD-013'
+    );
+    expect(cmd013).toMatchObject({
+      implementationStatus: 'NOT_IMPLEMENTED',
+      executionStatus: 'NOT_RUN',
+      authorizedNow: false,
+      components: {
+        allRoleSmoke: {
+          implementationStatus: 'IMPLEMENTED_OFFLINE_VERIFIED',
+          executionStatus: 'NOT_RUN',
+          commGateStatus: 'NOT_RUN',
+          remoteContactPerformed: false,
+        },
+      },
+    });
+    const cmd016 = requireRecord(
+      commands.find(
+        command => requireRecord(command, 'command').id === 'PR12-CMD-016'
+      ),
+      'PR12-CMD-016'
+    );
+    expect(cmd016).toMatchObject({
+      implementationStatus: 'IMPLEMENTED_OFFLINE_VERIFIED',
+      executionStatus: 'NOT_RUN',
+      authorizedNow: false,
+      components: {
+        snapshotNormalizerAndDiff: {
+          implementationStatus: 'IMPLEMENTED_OFFLINE_VERIFIED',
+          executionStatus: 'NOT_RUN',
+          remoteContactPerformed: false,
+        },
+      },
+    });
     const commandIds = commands.map((command, index) =>
       String(requireRecord(command, `ledger.commands[${String(index)}]`).id)
     );
@@ -1577,7 +1873,7 @@ describe('commercial PR-12 qualification preparation contract', () => {
     ).toMatchObject({
       sourceIdentityConnectionAuthorized: false,
       sourceIdentityCaptureAuthorized: false,
-      sourceLinkAuthorized: false,
+      sourceReplayAuthorized: false,
       cleanMigrationReplayAuthorized: false,
     });
     expect(sourceBootstrap.approvedCommandIds).toEqual([
@@ -1775,6 +2071,8 @@ describe('commercial PR-12 qualification preparation contract', () => {
       'credentialHandling',
       'toolVersions',
       'toolBinaries',
+      'runtimePathProjection',
+      'supabaseGo',
       'clientResponseExposureAllowed',
       'logExposureAllowed',
       'startedAt',

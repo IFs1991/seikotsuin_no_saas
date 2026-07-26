@@ -37,7 +37,23 @@ const SUPABASE_CLI_ARCHIVE_SHA256 =
   'd2b687ec3427fe7847cf7a8f603413fa8d4331f6fdbbc825eea6aa34a64d686b';
 const SUPABASE_CLI_EXECUTABLE_SHA256 =
   '903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118';
+const SUPABASE_GO_EXECUTABLE_SHA256 =
+  '59cd06ac674fdf5d6add75206408ada0a24b1dcb796d099c13b1f2aaf3f463f0';
+const PSQL_EXECUTABLE_SHA256 =
+  '6a4b5cd854ee1c0e50646e7612a9e769c9ae86aa97bf94c50342dad058c2b531';
 const PSQL_MAJOR = 17;
+const PINNED_PSQL_VERSION_OUTPUT = 'psql (PostgreSQL) 17.9';
+const PR12_CMD_003_LOCAL_RUNTIME_COMMAND =
+  'LOCAL_IN_PROCESS:buildExternalReplayInputManifest+materializeExternalReplayInputs';
+const RUNTIME_PATH_FINGERPRINT_KEYS = [
+  'caBundlePath',
+  'dockerConfig',
+  'externalWorkdir',
+  'psqlPath',
+  'supabaseGoPath',
+  'supabaseHome',
+  'supabasePath',
+];
 const CANONICAL_LEDGER_COMMAND_IDS = [
   'PR12-CMD-000',
   'PR12-CMD-000A',
@@ -80,6 +96,7 @@ const TOOL_EVIDENCE_COMMAND_IDS = [
   'capture-supabase-version',
   'capture-psql-version',
   'hash-supabase-binary',
+  'hash-supabase-go-binary',
   'hash-supabase-archive',
   'hash-psql-binary',
 ];
@@ -297,10 +314,7 @@ const COMMAND_PHASE_POLICIES = new Map([
   ],
   [
     'staging_identity',
-    {
-      remoteContact: true,
-      mutationScopes: new Set(['NONE', 'LOCAL_LINK_METADATA_ONLY']),
-    },
+    { remoteContact: false, mutationScopes: new Set(['NONE']) },
   ],
   [
     'staging_preflight',
@@ -404,10 +418,7 @@ const COMMAND_PHASE_POLICIES = new Map([
   ],
   [
     'restore_identity',
-    {
-      remoteContact: true,
-      mutationScopes: new Set(['NONE', 'LOCAL_LINK_METADATA_ONLY']),
-    },
+    { remoteContact: true, mutationScopes: new Set(['NONE']) },
   ],
   [
     'post_restore_qualification',
@@ -8207,6 +8218,12 @@ function verifyCommandLedger(manifest, approvedLedger, approvedEnvironment) {
       `${context}.redactedCommand attempts project cleanup or deletion without separate approval`
     );
     assert(
+      !/(?:\bsupabase(?:\.exe)?\s+link\b|(?:^|\s)--linked(?:\s|$))/iu.test(
+        redactedCommand
+      ),
+      'supabase link and --linked are prohibited in the PR12 qualification ledger'
+    );
+    assert(
       typeof approved.remoteContact === 'boolean',
       `${context}.remoteContact must be boolean`
     );
@@ -8214,6 +8231,16 @@ function verifyCommandLedger(manifest, approvedLedger, approvedEnvironment) {
       approved.remoteContact === phasePolicy.remoteContact,
       `${context}.remoteContact is not approved for phase ${phase}`
     );
+    if (id === 'PR12-CMD-003') {
+      assert(
+        redactedCommand === PR12_CMD_003_LOCAL_RUNTIME_COMMAND &&
+          phase === 'staging_identity' &&
+          approved.remoteContact === false &&
+          approved.mutating === false &&
+          mutationScope === 'NONE',
+        'PR12-CMD-003 must use the exact approved local-only external runtime metadata command'
+      );
+    }
     if (approved.remoteContact) {
       assert(
         approved.guardedBy === guardPath,
@@ -8315,6 +8342,98 @@ function verifyCommandLedger(manifest, approvedLedger, approvedEnvironment) {
   };
 }
 
+function verifyRuntimePathProjection(manifest, packet) {
+  const projection = requireRecord(
+    manifest.runtimePathProjection,
+    'runtimePathProjection'
+  );
+  const approvedProjection = requireRecord(
+    packet.runtimePathProjection,
+    'approvalPacket.runtimePathProjection'
+  );
+  assertJsonEquivalent(
+    projection,
+    approvedProjection,
+    'runtimePathProjection approval binding'
+  );
+  assertExactRecordKeys(
+    projection,
+    [
+      'schemaVersion',
+      'status',
+      'entries',
+      'rawPathsRetained',
+      'projectionSha256',
+    ],
+    'runtimePathProjection'
+  );
+  assert(
+    projection.schemaVersion === 1 &&
+      projection.status === 'EXTERNAL_PATH_FINGERPRINTS_CAPTURED' &&
+      projection.rawPathsRetained === false,
+    'runtimePathProjection identity or raw-path boundary drift'
+  );
+  const entries = requireRecord(
+    projection.entries,
+    'runtimePathProjection.entries'
+  );
+  assertExactStringArray(
+    Object.keys(entries).sort(),
+    RUNTIME_PATH_FINGERPRINT_KEYS,
+    'runtimePathProjection.entries'
+  );
+  for (const key of RUNTIME_PATH_FINGERPRINT_KEYS) {
+    const fingerprint = requireRecord(
+      entries[key],
+      `runtimePathProjection.entries.${key}`
+    );
+    assertExactRecordKeys(
+      fingerprint,
+      [
+        'schemaVersion',
+        'canonicalization',
+        'pathSha256',
+        'resolvedPathSha256',
+        'lexicalAndResolvedPathMatch',
+        'rawPathRetained',
+      ],
+      `runtimePathProjection.entries.${key}`
+    );
+    assert(
+      fingerprint.schemaVersion === 1 &&
+        [
+          'win32-lowercase-backslash-absolute-v1',
+          'native-posix-absolute-v1',
+        ].includes(fingerprint.canonicalization) &&
+        typeof fingerprint.lexicalAndResolvedPathMatch === 'boolean' &&
+        fingerprint.rawPathRetained === false,
+      `runtimePathProjection.entries.${key} identity or raw-path boundary drift`
+    );
+    requireSha256(
+      fingerprint.pathSha256,
+      `runtimePathProjection.entries.${key}.pathSha256`
+    );
+    requireSha256(
+      fingerprint.resolvedPathSha256,
+      `runtimePathProjection.entries.${key}.resolvedPathSha256`
+    );
+  }
+  const projectionSha256 = requireSha256(
+    projection.projectionSha256,
+    'runtimePathProjection.projectionSha256'
+  );
+  const material = { ...projection };
+  delete material.projectionSha256;
+  assert(
+    projectionSha256 === sha256Text(JSON.stringify(canonicalizeJson(material))),
+    'runtimePathProjection.projectionSha256 mismatch'
+  );
+  assert(
+    !/[a-z]:[\\/]/iu.test(JSON.stringify(projection)),
+    'runtimePathProjection must not retain a raw local path'
+  );
+}
+
 function verifyApprovedToolVersions(manifest, packet, artifactFiles) {
   const observed = requireRecord(manifest.toolVersions, 'toolVersions');
   const approved = requireRecord(
@@ -8327,6 +8446,11 @@ function verifyApprovedToolVersions(manifest, packet, artifactFiles) {
     observedKeys.length === approvedKeys.length &&
       observedKeys.every((value, index) => value === approvedKeys[index]),
     'toolVersions key set approval mismatch'
+  );
+  assertExactStringArray(
+    observedKeys,
+    ['node', 'psql', 'supabaseCli', 'supabaseGo'],
+    'toolVersions key set'
   );
   for (const tool of observedKeys) {
     const observedVersion = requireConcreteString(
@@ -8351,13 +8475,14 @@ function verifyApprovedToolVersions(manifest, packet, artifactFiles) {
     observed.supabaseCli === '2.109.0',
     'toolVersions.supabaseCli must be 2.109.0'
   );
+  assert(
+    observed.supabaseGo === '2.109.0',
+    'toolVersions.supabaseGo must be 2.109.0'
+  );
   const psqlVersion = requireConcreteString(observed.psql, 'toolVersions.psql');
   assert(
-    new RegExp(
-      `^psql \\(PostgreSQL\\) ${String(PSQL_MAJOR)}(?:\\.\\d+){0,2}(?:\\s.*)?$`,
-      'u'
-    ).test(psqlVersion),
-    `toolVersions.psql must be an exact PostgreSQL ${String(PSQL_MAJOR)} psql --version output`
+    psqlVersion === PINNED_PSQL_VERSION_OUTPUT,
+    'toolVersions.psql must be the pinned psql (PostgreSQL) 17.9 output'
   );
   const executingNodeVersion = `v${process.versions.node}`;
   assert(
@@ -8420,7 +8545,8 @@ function verifyApprovedToolVersions(manifest, packet, artifactFiles) {
     packet.toolBinaries,
     'approvalPacket.toolBinaries'
   );
-  for (const tool of ['supabaseCli', 'psql']) {
+  const binaryPaths = new Map();
+  for (const tool of ['supabaseCli', 'supabaseGo', 'psql']) {
     const binary = requireRecord(binaries[tool], `toolBinaries.${tool}`);
     const approvedBinary = requireRecord(
       approvedBinaries[tool],
@@ -8436,16 +8562,30 @@ function verifyApprovedToolVersions(manifest, packet, artifactFiles) {
       binary.path,
       `toolBinaries.${tool}.path`
     );
+    binaryPaths.set(tool, binaryPath);
     const binarySha = requireSha256(
       binary.sha256,
       `toolBinaries.${tool}.sha256`
     );
-    if (tool === 'supabaseCli') {
-      assert(
-        binarySha === SUPABASE_CLI_EXECUTABLE_SHA256,
-        'toolBinaries.supabaseCli.sha256 does not match the pinned 2.109.0 Windows executable'
-      );
-    }
+    const expectedTool = {
+      supabaseCli: {
+        basename: 'supabase.exe',
+        sha256: SUPABASE_CLI_EXECUTABLE_SHA256,
+      },
+      supabaseGo: {
+        basename: 'supabase-go.exe',
+        sha256: SUPABASE_GO_EXECUTABLE_SHA256,
+      },
+      psql: {
+        basename: 'psql.exe',
+        sha256: PSQL_EXECUTABLE_SHA256,
+      },
+    }[tool];
+    assert(
+      path.win32.basename(binaryPath).toLowerCase() === expectedTool.basename &&
+        binarySha === expectedTool.sha256,
+      `toolBinaries.${tool} does not match the pinned executable name and SHA-256`
+    );
     const hashCommandId = requireConcreteString(
       binary.hashCommandId,
       `toolBinaries.${tool}.hashCommandId`
@@ -8537,6 +8677,18 @@ function verifyApprovedToolVersions(manifest, packet, artifactFiles) {
       );
     }
   }
+  assert(
+    path.win32.dirname(binaryPaths.get('supabaseCli')).toLowerCase() ===
+      path.win32.dirname(binaryPaths.get('supabaseGo')).toLowerCase(),
+    'toolBinaries.supabaseGo must be adjacent to the pinned supabase.exe'
+  );
+}
+
+function rejectUnsupportedSourceProvisioningPromotion(artifact) {
+  assert(
+    !(Number.isInteger(artifact.schemaVersion) && artifact.schemaVersion >= 2),
+    'SOURCE_PROVISIONING_V2_PROMOTION_NOT_IMPLEMENTED'
+  );
 }
 
 function verifySourceProvisioningApproval(
@@ -8555,13 +8707,7 @@ function verifySourceProvisioningApproval(
     bound.absolutePath,
     'sourceProjectProvisioningApproval'
   );
-  assert(
-    !(
-      Number.isInteger(provisioning.schemaVersion) &&
-      provisioning.schemaVersion >= 2
-    ),
-    'SOURCE_PROVISIONING_V2_PROMOTION_NOT_IMPLEMENTED'
-  );
+  rejectUnsupportedSourceProvisioningPromotion(provisioning);
   assert(
     provisioning.schemaVersion === 1 &&
       provisioning.phase === 'SOURCE_PROJECT_PROVISIONING' &&
@@ -8909,6 +9055,7 @@ function verifySourceProvisioningApproval(
     resultBinding.absolutePath,
     'sourceProjectProvisioningResult'
   );
+  rejectUnsupportedSourceProvisioningPromotion(result);
   assert(
     result.schemaVersion === 1 &&
       result.phase === 'SOURCE_PROJECT_PROVISIONING_RESULT' &&
@@ -8941,6 +9088,7 @@ function verifySourceProvisioningApproval(
     providerBinding.absolutePath,
     'sourceProjectProvisioningResult.providerEvidence'
   );
+  rejectUnsupportedSourceProvisioningPromotion(providerExport);
   assertExactRecordKeys(
     providerExport,
     [
@@ -9639,7 +9787,7 @@ function verifyPhasePreExecutionFreeze(
     packet.toolBinaries,
     'approvalPacket.toolBinaries'
   );
-  for (const tool of ['supabaseCli', 'psql']) {
+  for (const tool of ['supabaseCli', 'supabaseGo', 'psql']) {
     const frozen = requireRecord(
       frozenToolBinaries[tool],
       `${context}.toolBinaries.${tool}`
@@ -9726,6 +9874,22 @@ function verifyPhaseCommandLedger(
       `${context}.commands[${String(index)}]`
     );
     const command = manifestSlice[index];
+    if (id === 'PR12-CMD-003') {
+      for (const candidate of [
+        approved.redactedCommand,
+        command.redactedCommand,
+      ]) {
+        assert(
+          typeof candidate === 'string' &&
+            !/(?:\bsupabase\s+link\b|--linked\b)/iu.test(candidate),
+          'supabase link and --linked are prohibited for PR12-CMD-003'
+        );
+        assert(
+          candidate === PR12_CMD_003_LOCAL_RUNTIME_COMMAND,
+          'PR12-CMD-003 must use the exact approved local-only external runtime metadata command'
+        );
+      }
+    }
     for (const field of [
       'id',
       'redactedCommand',
@@ -10465,7 +10629,7 @@ function verifySourceIdentityBootstrap(
   const authorizationKeys = [
     'sourceIdentityConnectionAuthorized',
     'sourceIdentityCaptureAuthorized',
-    'sourceLinkAuthorized',
+    'sourceReplayAuthorized',
     'cleanMigrationReplayAuthorized',
     'representativeSeedAuthorized',
     'fullQualificationAuthorized',
@@ -10528,6 +10692,7 @@ function verifySourceIdentityBootstrap(
     'capture-supabase-version',
     'capture-psql-version',
     'hash-supabase-binary',
+    'hash-supabase-go-binary',
     'hash-supabase-archive',
     'hash-psql-binary',
     'PR12-CMD-000',
@@ -10606,7 +10771,8 @@ function verifySourceIdentityBootstrap(
       commandContract.mutating === false &&
       commandContract.mutationScope === 'NONE' &&
       commandContract.preKnownSystemIdentifierRequired === false &&
-      commandContract.mustCompleteBeforeLinkHistoryAdvisorOrReplay === true &&
+      commandContract.mustCompleteBeforeRuntimeMaterializationHistoryAdvisorOrReplay ===
+        true &&
       commandContract.bootstrapGuardUsesProvisioningResult === true &&
       commandContract.subsequentCommandsMustMatchCapturedSystemIdentifier ===
         true &&
@@ -11629,6 +11795,8 @@ function verifyApprovalBinding(manifest, artifactHashes, artifactFiles) {
     packet.status === 'APPROVED',
     'approval packet status must be APPROVED'
   );
+  verifyRuntimePathProjection(manifest, packet);
+  verifyApprovedToolVersions(manifest, packet, artifactFiles);
   const authorization = requireRecord(
     packet.authorization,
     'approvalPacket.authorization'
@@ -12136,7 +12304,6 @@ function verifyApprovalBinding(manifest, artifactHashes, artifactFiles) {
     'approval lifecycle cleanup owner mismatch'
   );
 
-  verifyApprovedToolVersions(manifest, packet, artifactFiles);
   const commandApproval = verifyCommandLedger(
     manifest,
     approvedBindings.get('commandLedger'),

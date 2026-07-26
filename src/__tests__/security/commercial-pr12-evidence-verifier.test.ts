@@ -32,6 +32,7 @@ type FixtureOptions = {
   approvalAt?: string;
   nodeVersion?: string;
   supabaseCliVersion?: string;
+  supabaseGoVersion?: string;
   psqlVersion?: string;
   credentialOverrides?: Partial<CredentialPolicy>;
   sourceProjectRef?: string;
@@ -69,6 +70,10 @@ const supabaseCliSha256 =
   '903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118';
 const supabaseCliArchiveSha256 =
   'd2b687ec3427fe7847cf7a8f603413fa8d4331f6fdbbc825eea6aa34a64d686b';
+const supabaseGoSha256 =
+  '59cd06ac674fdf5d6add75206408ada0a24b1dcb796d099c13b1f2aaf3f463f0';
+const psqlSha256 =
+  '6a4b5cd854ee1c0e50646e7612a9e769c9ae86aa97bf94c50342dad058c2b531';
 const evidencePath = 'evidence.txt';
 const futureTimestamp = '2999-01-01T00:00:00Z';
 const sourceProvisioningFundedThrough = '2999-01-04T00:00:00Z';
@@ -597,6 +602,38 @@ function canonicalJsonSha256(value: unknown): string {
   return sha256(JSON.stringify(canonicalizeForHash(value)));
 }
 
+function runtimePathFingerprint(label: string) {
+  return {
+    schemaVersion: 1,
+    canonicalization: 'win32-lowercase-backslash-absolute-v1',
+    pathSha256: sha256(`${label}:lexical`),
+    resolvedPathSha256: sha256(`${label}:resolved`),
+    lexicalAndResolvedPathMatch: false,
+    rawPathRetained: false,
+  };
+}
+
+function buildRuntimePathProjection() {
+  const material = {
+    schemaVersion: 1,
+    status: 'EXTERNAL_PATH_FINGERPRINTS_CAPTURED',
+    entries: {
+      caBundlePath: runtimePathFingerprint('caBundlePath'),
+      dockerConfig: runtimePathFingerprint('dockerConfig'),
+      externalWorkdir: runtimePathFingerprint('externalWorkdir'),
+      psqlPath: runtimePathFingerprint('psqlPath'),
+      supabaseGoPath: runtimePathFingerprint('supabaseGoPath'),
+      supabaseHome: runtimePathFingerprint('supabaseHome'),
+      supabasePath: runtimePathFingerprint('supabasePath'),
+    },
+    rawPathsRetained: false,
+  };
+  return {
+    ...material,
+    projectionSha256: canonicalJsonSha256(material),
+  };
+}
+
 function writeArtifact(
   directory: string,
   relativePath: string,
@@ -918,6 +955,21 @@ function rewriteSourceApproval(
     source.approvalPacketPath,
     approval
   );
+}
+
+function readSourceApproval(
+  directory: string,
+  manifest: Record<string, unknown>
+): Record<string, unknown> {
+  const source = requireRecord(manifest.source, 'source');
+  return readBoundJson(
+    directory,
+    {
+      path: source.approvalPacketPath,
+      sha256: source.approvalPacketSha256,
+    },
+    'source approval'
+  ).parsed;
 }
 
 function mutateLegacySourceProvisioningProviderRaw(
@@ -6919,8 +6971,10 @@ function buildPassingFixture(
   const toolVersions = {
     node: options.nodeVersion ?? `v${process.versions.node}`,
     supabaseCli: options.supabaseCliVersion ?? '2.109.0',
-    psql: options.psqlVersion ?? 'psql (PostgreSQL) 17.4',
+    supabaseGo: options.supabaseGoVersion ?? '2.109.0',
+    psql: options.psqlVersion ?? 'psql (PostgreSQL) 17.9',
   };
+  const runtimePathProjection = buildRuntimePathProjection();
   const nodeVersionStdout = add(
     writeArtifact(
       directory,
@@ -6943,10 +6997,10 @@ function buildPassingFixture(
     )
   );
   const supabaseBinaryPath = 'C:\\approved\\supabase.exe';
+  const supabaseGoBinaryPath = 'C:\\approved\\supabase-go.exe';
   const supabaseArchivePath =
     'C:\\approved\\supabase_2.109.0_windows_amd64.zip';
   const psqlBinaryPath = 'C:\\approved\\psql.exe';
-  const psqlBinarySha256 = 'a'.repeat(64);
   const supabaseHashStdout = add(
     writeArtifact(
       directory,
@@ -6961,8 +7015,15 @@ function buildPassingFixture(
       `${supabaseCliArchiveSha256}\n`
     )
   );
+  const supabaseGoHashStdout = add(
+    writeArtifact(
+      directory,
+      'supabase-go-hash.stdout.txt',
+      `${supabaseGoSha256}\n`
+    )
+  );
   const psqlHashStdout = add(
-    writeArtifact(directory, 'psql-hash.stdout.txt', `${psqlBinarySha256}\n`)
+    writeArtifact(directory, 'psql-hash.stdout.txt', `${psqlSha256}\n`)
   );
   const commands = [
     {
@@ -7006,6 +7067,17 @@ function buildPassingFixture(
       exitCode: 0,
       stdoutPath: supabaseHashStdout.path,
       stdoutSha256: supabaseHashStdout.sha256,
+      stderrPath: stderr.path,
+      stderrSha256: stderr.sha256,
+    },
+    {
+      id: 'hash-supabase-go-binary',
+      redactedCommand: `Get-FileHash -Algorithm SHA256 -LiteralPath ${supabaseGoBinaryPath}`,
+      startedAt: sourceBootstrapApprovedAt,
+      endedAt: sourceBootstrapApprovedAt,
+      exitCode: 0,
+      stdoutPath: supabaseGoHashStdout.path,
+      stdoutSha256: supabaseGoHashStdout.sha256,
       stderrPath: stderr.path,
       stderrSha256: stderr.sha256,
     },
@@ -7088,7 +7160,8 @@ function buildPassingFixture(
     },
     {
       id: 'PR12-CMD-003',
-      redactedCommand: 'approved source project link wrapper',
+      redactedCommand:
+        'LOCAL_IN_PROCESS:buildExternalReplayInputManifest+materializeExternalReplayInputs',
       startedAt: sourceReplayApprovedAt,
       endedAt: '1999-12-31T23:59:41Z',
       exitCode: 0,
@@ -7468,9 +7541,9 @@ function buildPassingFixture(
       'PR12-CMD-003',
       {
         phase: 'staging_identity',
-        remoteContact: true,
-        mutating: true,
-        mutationScope: 'LOCAL_LINK_METADATA_ONLY',
+        remoteContact: false,
+        mutating: false,
+        mutationScope: 'NONE',
       },
     ],
     [
@@ -7740,6 +7813,7 @@ function buildPassingFixture(
     'capture-supabase-version',
     'capture-psql-version',
     'hash-supabase-binary',
+    'hash-supabase-go-binary',
     'hash-supabase-archive',
     'hash-psql-binary',
     'PR12-CMD-000',
@@ -9265,7 +9339,11 @@ function buildPassingFixture(
         path: supabaseBinaryPath,
         sha256: supabaseCliSha256,
       },
-      psql: { path: psqlBinaryPath, sha256: psqlBinarySha256 },
+      supabaseGo: {
+        path: supabaseGoBinaryPath,
+        sha256: supabaseGoSha256,
+      },
+      psql: { path: psqlBinaryPath, sha256: psqlSha256 },
     },
   };
   const sourceBootstrapApproval = add(
@@ -9276,7 +9354,7 @@ function buildPassingFixture(
       authorization: {
         sourceIdentityConnectionAuthorized: true,
         sourceIdentityCaptureAuthorized: true,
-        sourceLinkAuthorized: false,
+        sourceReplayAuthorized: false,
         cleanMigrationReplayAuthorized: false,
         representativeSeedAuthorized: false,
         fullQualificationAuthorized: false,
@@ -9310,7 +9388,7 @@ function buildPassingFixture(
         mutating: false,
         mutationScope: 'NONE',
         preKnownSystemIdentifierRequired: false,
-        mustCompleteBeforeLinkHistoryAdvisorOrReplay: true,
+        mustCompleteBeforeRuntimeMaterializationHistoryAdvisorOrReplay: true,
         bootstrapGuardUsesProvisioningResult: true,
         subsequentCommandsMustMatchCapturedSystemIdentifier: true,
         readOnlyPlatformConfigurationCaptureRequired: true,
@@ -9527,12 +9605,18 @@ function buildPassingFixture(
           archiveSha256: supabaseCliArchiveSha256,
           archiveHashCommandId: 'hash-supabase-archive',
         },
+        supabaseGo: {
+          path: supabaseGoBinaryPath,
+          sha256: supabaseGoSha256,
+          hashCommandId: 'hash-supabase-go-binary',
+        },
         psql: {
           path: psqlBinaryPath,
-          sha256: psqlBinarySha256,
+          sha256: psqlSha256,
           hashCommandId: 'hash-psql-binary',
         },
       },
+      runtimePathProjection,
       bindings: {
         securityMatrix: binding(securityContract),
         securityTargetInventory: binding(securityTargetInventory),
@@ -9919,12 +10003,18 @@ function buildPassingFixture(
         archiveSha256: supabaseCliArchiveSha256,
         archiveHashCommandId: 'hash-supabase-archive',
       },
+      supabaseGo: {
+        path: supabaseGoBinaryPath,
+        sha256: supabaseGoSha256,
+        hashCommandId: 'hash-supabase-go-binary',
+      },
       psql: {
         path: psqlBinaryPath,
-        sha256: psqlBinarySha256,
+        sha256: psqlSha256,
         hashCommandId: 'hash-psql-binary',
       },
     },
+    runtimePathProjection,
     timing: {
       startedAt: sourceBootstrapApprovedAt,
       endedAt: qualificationCompletedAt,
@@ -10750,6 +10840,24 @@ describe('commercial PR-12 execution evidence verifier', () => {
     }
   });
 
+  it('rejects an unpinned adjacent supabase-go version even when the packet agrees', () => {
+    const directory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'pr12-supabase-go-version-verifier-')
+    );
+    try {
+      const { manifestPath } = buildPassingFixture(directory, {
+        supabaseGoVersion: '2.109.1',
+      });
+      const result = runVerifier(manifestPath);
+      expect(result.status).toBe(1);
+      expect(result.output).toContain(
+        'toolVersions.supabaseGo must be 2.109.0'
+      );
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it('rejects missing psql version evidence', () => {
     const directory = fs.mkdtempSync(
       path.join(os.tmpdir(), 'pr12-missing-psql-verifier-')
@@ -10784,7 +10892,204 @@ describe('commercial PR-12 execution evidence verifier', () => {
       const result = runVerifier(manifestPath);
       expect(result.status).toBe(1);
       expect(result.output).toContain(
-        'toolVersions.psql must be an exact PostgreSQL 17 psql --version output'
+        'toolVersions.psql must be the pinned psql (PostgreSQL) 17.9 output'
+      );
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    ['supabaseGo', 'b'.repeat(64)],
+    ['psql', 'c'.repeat(64)],
+  ] as const)(
+    'rejects a synchronized non-pinned %s executable hash',
+    (tool, unsafeSha256) => {
+      const directory = fs.mkdtempSync(
+        path.join(os.tmpdir(), `pr12-${tool}-hash-verifier-`)
+      );
+      try {
+        const { manifest } = buildPassingFixture(directory);
+        const approval = readSourceApproval(directory, manifest);
+        requireRecord(
+          requireRecord(approval.toolBinaries, 'approval.toolBinaries')[tool],
+          `approval.toolBinaries.${tool}`
+        ).sha256 = unsafeSha256;
+        requireRecord(
+          requireRecord(manifest.toolBinaries, 'toolBinaries')[tool],
+          `toolBinaries.${tool}`
+        ).sha256 = unsafeSha256;
+        rewriteSourceApproval(directory, manifest, approval);
+        const result = runVerifier(
+          writeManifest(directory, `manifest-${tool}-hash-drift.json`, manifest)
+        );
+        expect(result.status).toBe(1);
+        expect(result.output).toContain(
+          `toolBinaries.${tool} does not match the pinned executable name and SHA-256`
+        );
+      } finally {
+        fs.rmSync(directory, { recursive: true, force: true });
+      }
+    }
+  );
+
+  it.each([
+    ['D:\\separate\\supabase-go.exe', 'adjacent'],
+    ['C:\\approved\\renamed-supabase-go.exe', 'basename'],
+  ] as const)(
+    'rejects a supabase-go path that violates the pinned %s relationship',
+    (unsafePath, label) => {
+      const directory = fs.mkdtempSync(
+        path.join(os.tmpdir(), `pr12-supabase-go-${label}-verifier-`)
+      );
+      try {
+        const { manifest } = buildPassingFixture(directory);
+        const approval = readSourceApproval(directory, manifest);
+        requireRecord(
+          requireRecord(approval.toolBinaries, 'approval.toolBinaries')
+            .supabaseGo,
+          'approval.toolBinaries.supabaseGo'
+        ).path = unsafePath;
+        requireRecord(
+          requireRecord(manifest.toolBinaries, 'toolBinaries').supabaseGo,
+          'toolBinaries.supabaseGo'
+        ).path = unsafePath;
+        const hashCommand = requireArray(manifest.commands, 'manifest.commands')
+          .map((value, index) =>
+            requireRecord(value, `manifest.commands[${String(index)}]`)
+          )
+          .find(value => value.id === 'hash-supabase-go-binary');
+        if (!hashCommand) {
+          throw new Error('hash-supabase-go-binary command missing');
+        }
+        hashCommand.redactedCommand = `Get-FileHash -Algorithm SHA256 -LiteralPath ${unsafePath}`;
+        rewriteSourceApproval(directory, manifest, approval);
+        const result = runVerifier(
+          writeManifest(
+            directory,
+            `manifest-supabase-go-${label}.json`,
+            manifest
+          )
+        );
+        expect(result.status).toBe(1);
+        expect(result.output).toMatch(
+          /toolBinaries\.supabaseGo (?:does not match the pinned executable name and SHA-256|must be adjacent to the pinned supabase\.exe)/u
+        );
+      } finally {
+        fs.rmSync(directory, { recursive: true, force: true });
+      }
+    }
+  );
+
+  const runtimePathProjectionMutations: ReadonlyArray<
+    readonly [string, (projection: Record<string, unknown>) => void, boolean]
+  > = [
+    [
+      'missing required path',
+      projection => {
+        delete requireRecord(
+          projection.entries,
+          'runtimePathProjection.entries'
+        ).caBundlePath;
+      },
+      true,
+    ],
+    [
+      'extra eighth path',
+      projection => {
+        requireRecord(
+          projection.entries,
+          'runtimePathProjection.entries'
+        ).extraPath = runtimePathFingerprint('extraPath');
+      },
+      true,
+    ],
+    [
+      'top-level raw path retention',
+      projection => {
+        projection.rawPathsRetained = true;
+      },
+      true,
+    ],
+    [
+      'entry raw path property',
+      projection => {
+        const entries = requireRecord(
+          projection.entries,
+          'runtimePathProjection.entries'
+        );
+        requireRecord(
+          entries.supabasePath,
+          'runtimePathProjection.entries.supabasePath'
+        ).path = 'C:\\private\\supabase.exe';
+      },
+      true,
+    ],
+    [
+      'projection hash drift',
+      projection => {
+        projection.projectionSha256 = 'f'.repeat(64);
+      },
+      false,
+    ],
+  ];
+
+  it.each(runtimePathProjectionMutations)(
+    'rejects runtime path projection %s',
+    (label, mutate, reseal) => {
+      const directory = fs.mkdtempSync(
+        path.join(
+          os.tmpdir(),
+          `pr12-runtime-path-${label.replaceAll(' ', '-')}-verifier-`
+        )
+      );
+      try {
+        const { manifest } = buildPassingFixture(directory);
+        const approval = readSourceApproval(directory, manifest);
+        const manifestProjection = requireRecord(
+          manifest.runtimePathProjection,
+          'runtimePathProjection'
+        );
+        const approvalProjection = requireRecord(
+          approval.runtimePathProjection,
+          'approval.runtimePathProjection'
+        );
+        for (const projection of [manifestProjection, approvalProjection]) {
+          mutate(projection);
+          if (reseal) {
+            const material = { ...projection };
+            delete material.projectionSha256;
+            projection.projectionSha256 = canonicalJsonSha256(material);
+          }
+        }
+        rewriteSourceApproval(directory, manifest, approval);
+        const result = runVerifier(
+          writeManifest(
+            directory,
+            `manifest-runtime-path-${label.replaceAll(' ', '-')}.json`,
+            manifest
+          )
+        );
+        expect(result.status).toBe(1);
+        expect(result.output).toContain('runtimePathProjection');
+      } finally {
+        fs.rmSync(directory, { recursive: true, force: true });
+      }
+    }
+  );
+
+  it('rejects a valid-looking psql 17.x output that is not the pinned 17.9 release', () => {
+    const directory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'pr12-unpinned-psql-version-verifier-')
+    );
+    try {
+      const { manifestPath } = buildPassingFixture(directory, {
+        psqlVersion: 'psql (PostgreSQL) 17.8',
+      });
+      const result = runVerifier(manifestPath);
+      expect(result.status).toBe(1);
+      expect(result.output).toContain(
+        'toolVersions.psql must be the pinned psql (PostgreSQL) 17.9 output'
       );
     } finally {
       fs.rmSync(directory, { recursive: true, force: true });
@@ -11274,7 +11579,7 @@ describe('commercial PR-12 execution evidence verifier', () => {
         const mismatch = runVerifier(mismatchPath);
         expect(mismatch.status).toBe(1);
         expect(mismatch.output).toMatch(
-          /funded retention\/cleanup decision|pinned 2\.109\.0 Windows executable|official 2\.109\.0 Windows archive|toolBinaries\.supabaseCli approval mismatch/u
+          /funded retention\/cleanup decision|toolBinaries\.supabaseCli does not match the pinned executable name and SHA-256|official 2\.109\.0 Windows archive|toolBinaries\.supabaseCli approval mismatch/u
         );
       } finally {
         fs.rmSync(directory, { recursive: true, force: true });
@@ -13551,6 +13856,86 @@ describe('commercial PR-12 execution evidence verifier', () => {
     }
   });
 
+  it.each([
+    ['supabase link --project-ref synthetic-source-ref', 'supabase-link'],
+    ['supabase migration list --linked', 'linked-flag'],
+    [
+      'approved alternate local source identity metadata builder',
+      'non-canonical',
+    ],
+  ] as const)(
+    'rejects %s in the exact local-only PR12-CMD-003 slot (%s)',
+    (redactedCommand, label) => {
+      const directory = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'pr12-cmd003-local-only-verifier-')
+      );
+      try {
+        const { manifest } = buildPassingFixture(directory);
+        const source = requireRecord(manifest.source, 'source');
+        const approvalArtifact = readBoundJson(
+          directory,
+          {
+            path: source.approvalPacketPath,
+            sha256: source.approvalPacketSha256,
+          },
+          'source approval'
+        );
+        const ledgerBinding = requireRecord(
+          requireRecord(
+            approvalArtifact.parsed.bindings,
+            'source approval bindings'
+          ).commandLedger,
+          'command ledger binding'
+        );
+        const ledgerArtifact = readBoundJson(
+          directory,
+          ledgerBinding,
+          'command ledger'
+        );
+        const approvedCommand = requireRecord(
+          requireArray(
+            ledgerArtifact.parsed.commands,
+            'approved commands'
+          ).find(
+            value =>
+              requireRecord(value, 'approved command').id === 'PR12-CMD-003'
+          ),
+          'approved PR12-CMD-003'
+        );
+        approvedCommand.redactedCommand = redactedCommand;
+        const manifestCommand = requireRecord(
+          requireArray(manifest.commands, 'manifest commands').find(
+            value =>
+              requireRecord(value, 'manifest command').id === 'PR12-CMD-003'
+          ),
+          'manifest PR12-CMD-003'
+        );
+        manifestCommand.redactedCommand = redactedCommand;
+        const ledgerSha256 = rewriteJsonArtifact(
+          directory,
+          manifest,
+          ledgerArtifact.relativePath,
+          ledgerArtifact.parsed
+        );
+        rebindCommandLedgerApprovalChain(
+          directory,
+          manifest,
+          approvalArtifact.parsed,
+          ledgerSha256
+        );
+        const result = runVerifier(
+          writeManifest(directory, `manifest-cmd003-${label}.json`, manifest)
+        );
+        expect(result.status).toBe(1);
+        expect(result.output).toMatch(
+          /PR12-CMD-003 must use the exact approved local-only external runtime metadata command|supabase link and --linked are prohibited/u
+        );
+      } finally {
+        fs.rmSync(directory, { recursive: true, force: true });
+      }
+    }
+  );
+
   it('rejects reordered execution commands even when the ledger and manifest agree', () => {
     const directory = fs.mkdtempSync(
       path.join(os.tmpdir(), 'pr12-command-order-verifier-')
@@ -13976,13 +14361,20 @@ describe('commercial PR-12 execution evidence verifier', () => {
     }
   });
 
-  it.each([2, 3])(
-    'fail-closes schema v%s source provisioning until promotion is implemented',
-    schemaVersion => {
+  it.each(
+    (['binding', 'result', 'providerProjection'] as const).flatMap(
+      artifactKind =>
+        ([2, 3, 4, 5] as const).map(
+          schemaVersion => [artifactKind, schemaVersion] as const
+        )
+    )
+  )(
+    'fail-closes %s schema v%s source provisioning until promotion is implemented',
+    (artifactKind, schemaVersion) => {
       const directory = fs.mkdtempSync(
         path.join(
           os.tmpdir(),
-          `pr12-provisioning-v${String(schemaVersion)}-promotion-verifier-`
+          `pr12-provisioning-${artifactKind}-v${String(schemaVersion)}-promotion-verifier-`
         )
       );
       try {
@@ -14005,18 +14397,56 @@ describe('commercial PR-12 execution evidence verifier', () => {
           provisioningBinding,
           'source provisioning approval'
         );
-        provisioning.schemaVersion = schemaVersion;
-        provisioningBinding.sha256 = rewriteJsonArtifact(
-          directory,
-          manifest,
-          relativePath,
-          provisioning
-        );
+        if (artifactKind === 'binding') {
+          provisioning.schemaVersion = schemaVersion;
+          provisioningBinding.sha256 = rewriteJsonArtifact(
+            directory,
+            manifest,
+            relativePath,
+            provisioning
+          );
+        } else {
+          const resultBinding = requireRecord(
+            approval.sourceProjectProvisioningResult,
+            'source provisioning result binding'
+          );
+          const resultArtifact = readBoundJson(
+            directory,
+            resultBinding,
+            'source provisioning result'
+          );
+          if (artifactKind === 'result') {
+            resultArtifact.parsed.schemaVersion = schemaVersion;
+          } else {
+            const providerBinding = requireRecord(
+              resultArtifact.parsed.providerEvidence,
+              'source provisioning provider binding'
+            );
+            const providerArtifact = readBoundJson(
+              directory,
+              providerBinding,
+              'source provisioning provider projection'
+            );
+            providerArtifact.parsed.schemaVersion = schemaVersion;
+            providerBinding.sha256 = rewriteJsonArtifact(
+              directory,
+              manifest,
+              providerArtifact.relativePath,
+              providerArtifact.parsed
+            );
+          }
+          resultBinding.sha256 = rewriteJsonArtifact(
+            directory,
+            manifest,
+            resultArtifact.relativePath,
+            resultArtifact.parsed
+          );
+        }
         rewriteSourceApproval(directory, manifest, approval);
         const result = runVerifier(
           writeManifest(
             directory,
-            `manifest-v${String(schemaVersion)}-promotion.json`,
+            `manifest-${artifactKind}-v${String(schemaVersion)}-promotion.json`,
             manifest
           )
         );
