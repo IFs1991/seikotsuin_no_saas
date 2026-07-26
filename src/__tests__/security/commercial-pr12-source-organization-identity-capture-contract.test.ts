@@ -83,6 +83,13 @@ function canonicalSha256(value: JsonValue): string {
     .digest('hex');
 }
 
+function pathFingerprintForTest(value: string): string {
+  const resolved = path.resolve(value).replaceAll('\\', '/');
+  const normalized =
+    process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+  return createHash('sha256').update(normalized, 'utf8').digest('hex');
+}
+
 function invokeModule(
   moduleUrl: string,
   method: string,
@@ -775,6 +782,102 @@ function makeSyntheticEvidenceBundle(
     'utf8'
   );
   return directory;
+}
+
+function makeSyntheticTerminalLinkage(): {
+  claimPath: string;
+  claimSha256: string;
+  evidenceDirectory: string;
+  getIntentPath: string;
+  getIntentSha256: string;
+  journalDirectory: string;
+  manifestSha256: string;
+  terminalPath: string;
+  terminalSha256: string;
+} {
+  const evidenceDirectory = makeSyntheticEvidenceBundle();
+  const journalDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'pr12-org-identity-journal-')
+  );
+  const claimFilename =
+    'source-organization-identity-capture-action.claim.json';
+  const claimMetadata = writeCanonicalArtifact(
+    journalDirectory,
+    claimFilename,
+    {
+      actionId: 'PR12-ACTION-002',
+      bindingMaterialSha256: 'b'.repeat(64),
+      claimedAt: '2026-07-25T00:10:00.000Z',
+      payloadSha256: 'c'.repeat(64),
+      state: 'CLAIMED_GET_NOT_SENT',
+    }
+  );
+  const getIntentFilename =
+    'source-organization-identity-capture-get-intent.json';
+  const getIntentMetadata = writeCanonicalArtifact(
+    journalDirectory,
+    getIntentFilename,
+    {
+      actionId: 'PR12-ACTION-002',
+      bindingMaterialSha256: 'b'.repeat(64),
+      payloadSha256: 'c'.repeat(64),
+      getIntentAt: '2026-07-25T00:10:00.000Z',
+      state: 'GET_INTENT_DURABLE',
+      automaticRetryCount: 0,
+      remoteContactCountBeforeGet: 0,
+      claimSha256: claimMetadata.sha256,
+    }
+  );
+  const resultPath = path.join(
+    evidenceDirectory,
+    'organization-identity-capture-result.json'
+  );
+  const result = readJsonObject(resultPath);
+  result.claimSha256 = claimMetadata.sha256;
+  result.getIntentSha256 = getIntentMetadata.sha256;
+  writeCanonicalArtifact(
+    evidenceDirectory,
+    'organization-identity-capture-result.json',
+    result
+  );
+  rewriteSyntheticEvidenceBundle(
+    evidenceDirectory,
+    'PASS',
+    '2026-07-25T00:10:00.000Z'
+  );
+  const manifestSha256 = createHash('sha256')
+    .update(fs.readFileSync(path.join(evidenceDirectory, 'manifest.json')))
+    .digest('hex');
+  const terminalPath = path.join(
+    journalDirectory,
+    'source-organization-identity-capture-terminal-outcome.json'
+  );
+  const terminalContents = `${canonicalJson({
+    actionId: 'PR12-ACTION-002',
+    bindingMaterialSha256: 'b'.repeat(64),
+    requestSha256: 'c'.repeat(64),
+    state: 'TERMINAL_PASS',
+    completedAt: '2026-07-25T00:10:00.000Z',
+    evidenceDirectoryName: path.basename(evidenceDirectory),
+    manifestSha256,
+    remoteContactCount: 1,
+    requestAttemptCount: 1,
+    automaticRetryCount: 0,
+  })}\n`;
+  fs.writeFileSync(terminalPath, terminalContents, 'utf8');
+  return {
+    claimPath: path.join(journalDirectory, claimFilename),
+    claimSha256: claimMetadata.sha256,
+    evidenceDirectory,
+    getIntentPath: path.join(journalDirectory, getIntentFilename),
+    getIntentSha256: getIntentMetadata.sha256,
+    journalDirectory,
+    manifestSha256,
+    terminalPath,
+    terminalSha256: createHash('sha256')
+      .update(terminalContents, 'utf8')
+      .digest('hex'),
+  };
 }
 
 function makeSyntheticPartialEvidenceBundle(): string {
@@ -1794,6 +1897,277 @@ describe('PR12 source Organization identity capture contract', () => {
       ).toBe(false);
     } finally {
       fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('independently binds a PASS terminal journal to the sealed manifest and safe projection', () => {
+    const linkage = makeSyntheticTerminalLinkage();
+    try {
+      const evidenceDirectoryStatus = fs.statSync(linkage.evidenceDirectory, {
+        bigint: true,
+      });
+      const journalDirectoryStatus = fs.statSync(linkage.journalDirectory, {
+        bigint: true,
+      });
+      expect(
+        invokeModule(
+          verifierUrl,
+          'verifyOrganizationIdentityCaptureTerminalLinkage',
+          [linkage.evidenceDirectory, linkage.terminalPath]
+        )
+      ).toMatchObject({
+        ok: true,
+        value: {
+          status: 'PASS',
+          actionId: 'PR12-ACTION-002',
+          terminalState: 'TERMINAL_PASS',
+          sourceGitCommit: 'a'.repeat(40),
+          sourceBindingMaterialSha256: 'b'.repeat(64),
+          sourceRequestSha256: 'c'.repeat(64),
+          evidenceDirectoryName: path.basename(linkage.evidenceDirectory),
+          manifestSha256: linkage.manifestSha256,
+          terminalSha256: linkage.terminalSha256,
+          claimSha256: linkage.claimSha256,
+          getIntentSha256: linkage.getIntentSha256,
+          completedAt: '2026-07-25T00:10:00.000Z',
+          sealedAt: '2026-07-25T00:10:00.000Z',
+          organization: {
+            organizationId: 'org-source-001',
+            organizationName: "IFs1991's Org",
+            organizationSlug: 'kbnsntifrawhimhfjrug',
+            plan: 'PRO',
+          },
+          providerResponseBodySha256: '1'.repeat(64),
+          providerSafeProjectionSha256: canonicalSha256({
+            organizationId: 'org-source-001',
+            organizationName: "IFs1991's Org",
+            organizationSlug: 'kbnsntifrawhimhfjrug',
+            plan: 'PRO',
+          }),
+          providerObservedAt: '2026-07-25T00:10:00.000Z',
+          evidenceDirectoryFingerprint: {
+            pathSha256: pathFingerprintForTest(linkage.evidenceDirectory),
+            resolvedPathSha256: pathFingerprintForTest(
+              fs.realpathSync.native(linkage.evidenceDirectory)
+            ),
+            device: String(evidenceDirectoryStatus.dev),
+            inode: String(evidenceDirectoryStatus.ino),
+            snapshotSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+          },
+          journalDirectoryFingerprint: {
+            pathSha256: pathFingerprintForTest(linkage.journalDirectory),
+            resolvedPathSha256: pathFingerprintForTest(
+              fs.realpathSync.native(linkage.journalDirectory)
+            ),
+            device: String(journalDirectoryStatus.dev),
+            inode: String(journalDirectoryStatus.ino),
+            snapshotSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+          },
+          remoteContactCount: 1,
+          requestAttemptCount: 1,
+          automaticRetryCount: 0,
+        },
+      });
+    } finally {
+      fs.rmSync(linkage.evidenceDirectory, { recursive: true, force: true });
+      fs.rmSync(linkage.journalDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test.each([
+    [
+      'manifest request binding',
+      (linkage: ReturnType<typeof makeSyntheticTerminalLinkage>) => {
+        const manifestPath = path.join(
+          linkage.evidenceDirectory,
+          'manifest.json'
+        );
+        const manifest = readJsonObject(manifestPath);
+        manifest.requestSha256 = 'd'.repeat(64);
+        const metadata = writeCanonicalArtifact(
+          linkage.evidenceDirectory,
+          'manifest.json',
+          manifest
+        );
+        fs.writeFileSync(
+          path.join(linkage.evidenceDirectory, 'manifest.sha256'),
+          `${metadata.sha256}\n`,
+          'utf8'
+        );
+      },
+      'RESULT_EVIDENCE_INVALID',
+    ],
+    [
+      'result request binding',
+      (linkage: ReturnType<typeof makeSyntheticTerminalLinkage>) => {
+        const result = readJsonObject(
+          path.join(
+            linkage.evidenceDirectory,
+            'organization-identity-capture-result.json'
+          )
+        );
+        result.requestSha256 = 'd'.repeat(64);
+        writeCanonicalArtifact(
+          linkage.evidenceDirectory,
+          'organization-identity-capture-result.json',
+          result
+        );
+        rewriteSyntheticEvidenceBundle(
+          linkage.evidenceDirectory,
+          'PASS',
+          '2026-07-25T00:10:00.000Z'
+        );
+      },
+      'RESULT_EVIDENCE_INVALID',
+    ],
+    [
+      'provider observation binding',
+      (linkage: ReturnType<typeof makeSyntheticTerminalLinkage>) => {
+        const provider = readJsonObject(
+          path.join(linkage.evidenceDirectory, 'provider-export.safe.json')
+        );
+        if (!isJsonObject(provider.response)) {
+          throw new Error('synthetic provider response is invalid');
+        }
+        provider.response.bodySha256 = '2'.repeat(64);
+        writeCanonicalArtifact(
+          linkage.evidenceDirectory,
+          'provider-export.safe.json',
+          provider
+        );
+        rewriteSyntheticEvidenceBundle(
+          linkage.evidenceDirectory,
+          'PASS',
+          '2026-07-25T00:10:00.000Z'
+        );
+      },
+      'EVIDENCE_CROSS_BINDING_INVALID',
+    ],
+    [
+      'terminal manifest binding',
+      (linkage: ReturnType<typeof makeSyntheticTerminalLinkage>) => {
+        const terminal = readJsonObject(linkage.terminalPath);
+        terminal.manifestSha256 = '2'.repeat(64);
+        writeCanonicalArtifact(
+          linkage.journalDirectory,
+          path.basename(linkage.terminalPath),
+          terminal
+        );
+      },
+      'IDENTITY_LINKAGE_CROSS_BINDING_INVALID',
+    ],
+  ])(
+    'rejects tampered %s even when the changed JSON remains canonical',
+    (
+      _label,
+      tamper: (
+        linkage: ReturnType<typeof makeSyntheticTerminalLinkage>
+      ) => void,
+      expectedCode
+    ) => {
+      const linkage = makeSyntheticTerminalLinkage();
+      try {
+        tamper(linkage);
+        expect(
+          invokeModule(
+            verifierUrl,
+            'verifyOrganizationIdentityCaptureTerminalLinkage',
+            [linkage.evidenceDirectory, linkage.terminalPath]
+          )
+        ).toEqual({ ok: false, code: expectedCode });
+      } finally {
+        fs.rmSync(linkage.evidenceDirectory, {
+          recursive: true,
+          force: true,
+        });
+        fs.rmSync(linkage.journalDirectory, {
+          recursive: true,
+          force: true,
+        });
+      }
+    }
+  );
+
+  test.each([
+    [
+      'claim payload',
+      (linkage: ReturnType<typeof makeSyntheticTerminalLinkage>) => {
+        const claim = readJsonObject(linkage.claimPath);
+        claim.payloadSha256 = 'd'.repeat(64);
+        writeCanonicalArtifact(
+          linkage.journalDirectory,
+          path.basename(linkage.claimPath),
+          claim
+        );
+      },
+      'IDENTITY_LINKAGE_JOURNAL_CROSS_BINDING_INVALID',
+    ],
+    [
+      'GET intent contact count',
+      (linkage: ReturnType<typeof makeSyntheticTerminalLinkage>) => {
+        const intent = readJsonObject(linkage.getIntentPath);
+        intent.remoteContactCountBeforeGet = 1;
+        writeCanonicalArtifact(
+          linkage.journalDirectory,
+          path.basename(linkage.getIntentPath),
+          intent
+        );
+      },
+      'IDENTITY_LINKAGE_JOURNAL_CROSS_BINDING_INVALID',
+    ],
+  ])(
+    'rejects tampered journal %s',
+    (
+      _label,
+      tamper: (
+        linkage: ReturnType<typeof makeSyntheticTerminalLinkage>
+      ) => void,
+      expectedCode
+    ) => {
+      const linkage = makeSyntheticTerminalLinkage();
+      try {
+        tamper(linkage);
+        expect(
+          invokeModule(
+            verifierUrl,
+            'verifyOrganizationIdentityCaptureTerminalLinkage',
+            [linkage.evidenceDirectory, linkage.terminalPath]
+          )
+        ).toEqual({ ok: false, code: expectedCode });
+      } finally {
+        fs.rmSync(linkage.evidenceDirectory, {
+          recursive: true,
+          force: true,
+        });
+        fs.rmSync(linkage.journalDirectory, {
+          recursive: true,
+          force: true,
+        });
+      }
+    }
+  );
+
+  test('rejects a journal containing anything beyond the exact claim, intent, and terminal set', () => {
+    const linkage = makeSyntheticTerminalLinkage();
+    try {
+      fs.writeFileSync(
+        path.join(linkage.journalDirectory, 'unexpected.json'),
+        '{}\n',
+        'utf8'
+      );
+      expect(
+        invokeModule(
+          verifierUrl,
+          'verifyOrganizationIdentityCaptureTerminalLinkage',
+          [linkage.evidenceDirectory, linkage.terminalPath]
+        )
+      ).toEqual({
+        ok: false,
+        code: 'IDENTITY_LINKAGE_JOURNAL_FILE_SET_INVALID',
+      });
+    } finally {
+      fs.rmSync(linkage.evidenceDirectory, { recursive: true, force: true });
+      fs.rmSync(linkage.journalDirectory, { recursive: true, force: true });
     }
   });
 

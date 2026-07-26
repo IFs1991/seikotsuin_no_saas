@@ -22,14 +22,18 @@ const requiredArtifacts = [
   'docs/stabilization/evidence/commercial-hardening/pr12/qualification-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-binding.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v5.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v4.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v4.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v3.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-official-pricing-evidence-v2.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-dpapi-bootstrap-approval-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-windows-dpapi-envelope-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-action-journal.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v5.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v4.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v4.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v3.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-privacy-scan.template.json',
@@ -959,7 +963,8 @@ describe('commercial PR-12 qualification preparation contract', () => {
       organizationIdentityCaptureImplementationPath:
         'scripts/commercial-hardening/run-pr12-source-organization-identity-capture.mjs',
       organizationIdentityCaptureRequiredBeforeSourceProvisioning: true,
-      organizationIdentityCaptureEvidenceLinkageStatus: 'NOT_IMPLEMENTED',
+      organizationIdentityCaptureEvidenceLinkageStatus:
+        'IMPLEMENTED_ACTION_003_V5_REQUIRED',
     });
     const ledgerProvisioningActions = requireRecord(
       ledger.provisioningActions,
@@ -977,7 +982,8 @@ describe('commercial PR-12 qualification preparation contract', () => {
     expect(ledger.status).toBe('PROPOSED_NOT_EXECUTABLE');
     expect(ledger.executionAuthorized).toBe(false);
     expect(targetGuard).toMatchObject({
-      status: 'PHASE1_IMPLEMENTED_LATER_PHASES_NOT_IMPLEMENTED',
+      status:
+        'PHASE1_ACTION_003_ENABLEMENT_IMPLEMENTED_LATER_PHASES_NOT_IMPLEMENTED',
       phase1ImplementationPath:
         'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs',
       requiredForEveryRemoteCommand: true,
@@ -1101,7 +1107,16 @@ describe('commercial PR-12 qualification preparation contract', () => {
     });
 
     const provisioning = readJsonRecord(
-      `${evidencePrefix}source-project-provisioning-binding-v4.template.json`
+      `${evidencePrefix}source-project-provisioning-binding-v5.template.json`
+    );
+    const provisioningOwnerApproval = readJsonRecord(
+      `${evidencePrefix}source-project-provisioning-owner-approval-v4.template.json`
+    );
+    const provisioningResult = readJsonRecord(
+      `${evidencePrefix}source-project-provisioning-result-v5.template.json`
+    );
+    const provisioningProviderProjection = readJsonRecord(
+      `${evidencePrefix}source-project-provider-safe-projection-v4.template.json`
     );
     const sourceReplay = readJsonRecord(
       `${evidencePrefix}source-replay-catalog-capture-binding.template.json`
@@ -1124,6 +1139,10 @@ describe('commercial PR-12 qualification preparation contract', () => {
     const provisioningAction = requireRecord(
       provisioning.provisioningAction,
       'provisioning.provisioningAction'
+    );
+    const provisioningImplementationContracts = requireRecord(
+      provisioning.implementationContracts,
+      'provisioning.implementationContracts'
     );
     const provisionEnvironment = requireRecord(
       provisioning.environmentProposal,
@@ -1153,7 +1172,7 @@ describe('commercial PR-12 qualification preparation contract', () => {
       requiresSeparateProvisioningBinding: true,
       operatorControlMode: 'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1',
       operatorDisplayName: 'FUTOSHI IWASAWA',
-      operatorCanonicalPrincipalId: 'NOT_CAPTURED',
+      operatorCanonicalPrincipalId: 'owner:futoshi-iwasawa',
       ownerAuthorizationCeilingUsdScaled: 500000,
       moneyScale: 10000,
       authorizedDurationHours: 72,
@@ -1171,7 +1190,14 @@ describe('commercial PR-12 qualification preparation contract', () => {
       scheduledExecutionAt: 'NOT_CAPTURED',
       fundedThrough: 'NOT_CAPTURED',
       organizationIdentityCaptureActionId: 'PR12-ACTION-002',
-      organizationIdentityEvidenceLinkageStatus: 'NOT_IMPLEMENTED',
+      organizationIdentityEvidenceLinkageStatus:
+        'IMPLEMENTED_ACTION_003_V5_REQUIRED',
+      organizationIdentityDuplicateGetStatus:
+        'REMOVED_ACTION_002_EVIDENCE_IS_SOLE_SOURCE',
+      fundedThroughPolicyBindingStatus:
+        'IMPLEMENTED_EXACT_SCHEDULED_PLUS_73_HOURS',
+      fundedThroughPolicyVerifierStatus:
+        'IMPLEMENTED_EXACT_SCHEDULED_PLUS_73_HOURS',
       sameOrganizationException: {
         mode: 'PHASE1_SAME_ORGANIZATION_PRODUCTION_PROJECT_DENY_EXCEPTION_V1',
         productionProjectRef: 'qnanuoqveidwvacvbhqp',
@@ -1181,6 +1207,9 @@ describe('commercial PR-12 qualification preparation contract', () => {
         productionCredentialAccessAuthorized: false,
       },
     });
+    expect(ledgerSourceProjectAction.readOnlySupportingRequests).not.toContain(
+      'GET /v1/organizations/kbnsntifrawhimhfjrug'
+    );
     expect(ledgerOrganizationIdentityAction).toMatchObject({
       actionId: 'PR12-ACTION-002',
       method: 'OWNER_MANAGEMENT_API_GET_ORGANIZATION_IDENTITY',
@@ -1201,22 +1230,47 @@ describe('commercial PR-12 qualification preparation contract', () => {
       durablePreGetState: 'GET_INTENT_DURABLE',
       remoteRecoveryAllowed: false,
       wrapperImplemented: true,
-      wrapperExecuted: false,
+      wrapperExecuted: true,
+      executionStatus: 'PASS',
+      executionOutcome: 'PASS',
       authorizedNow: false,
-      organizationId: 'NOT_CAPTURED',
-      action003IdentityEvidenceLinkageStatus: 'NOT_IMPLEMENTED',
+      organizationId: 'kbnsntifrawhimhfjrug',
+      secretFreeRequestProjectionSha256:
+        '95149b0f64407700298cbe842cbd15780300e9e357dc492f5d4d56e490490a8e',
+      bindingMaterialSha256:
+        '56b07d3eb802d546df25be3b487e32b9c30f0aa7ac1f896bba483cb5e207eb3c',
+      manifestSha256:
+        '66db9ed2b7fdb7573b76e79273c71d95551cdb7385e0ca8ee21724c56399f582',
+      terminalSha256:
+        '3fec7d3156c52e862602e9adb115e460c6959caeba38d5a1b290abe41513782e',
+      terminalState: 'TERMINAL_PASS',
+      remoteContactCount: 1,
+      requestAttemptCount: 1,
+      automaticRetryCount: 0,
+      action003IdentityEvidenceLinkageStatus:
+        'IMPLEMENTED_ACTION_003_V5_REQUIRED',
+      terminalJournalToManifestVerifierStatus: 'IMPLEMENTED_FAIL_CLOSED',
     });
     expect(provisioningAction).toMatchObject({
       actionId: ledgerSourceProjectAction.actionId,
       method: ledgerSourceProjectAction.method,
       httpMethod: ledgerSourceProjectAction.httpMethod,
       endpoint: ledgerSourceProjectAction.endpoint,
+      scheduledExecutionAt: 'NOT_CAPTURED',
       maximumPostAttempts: 1,
       automaticPostRetryAllowed: false,
       providerIdempotencyKeyDocumented: false,
       remoteContact: true,
       mutating: true,
       mutationScope: 'SOURCE_PROJECT_CREATION',
+    });
+    expect(provisioningImplementationContracts).toMatchObject({
+      organizationIdentityContractPath:
+        'scripts/commercial-hardening/pr12-source-organization-identity-capture-contract.mjs',
+      organizationIdentityContractSha256: 'NOT_CAPTURED',
+      organizationIdentityVerifierPath:
+        'scripts/commercial-hardening/verify-pr12-source-organization-identity-capture-evidence.mjs',
+      organizationIdentityVerifierSha256: 'NOT_CAPTURED',
     });
     expect(provisioning.retentionAndCleanupDecision).toMatchObject({
       sourceFundedHours: 72,
@@ -1238,7 +1292,7 @@ describe('commercial PR-12 qualification preparation contract', () => {
       `    endpoint: ${String(provisioningAction.endpoint)}`
     );
     expect(approvalPacket).toContain(
-      '    template: source-project-provisioning-binding-v4.template.json'
+      '    template: source-project-provisioning-binding-v5.template.json'
     );
     expect(approvalPacket).toContain(
       '    official_pricing_evidence_template: source-project-official-pricing-evidence-v2.template.json'
@@ -1358,11 +1412,12 @@ describe('commercial PR-12 qualification preparation contract', () => {
       sha256: 'NOT_CAPTURED',
     });
     expect(provisioning.status).toBe('NOT_RUN');
-    expect(provisioning.schemaVersion).toBe(4);
+    expect(provisioning.schemaVersion).toBe(5);
     expect(provisioning.operatorControl).toMatchObject({
       mode: 'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1',
       principalDisplayName: 'FUTOSHI IWASAWA',
-      principalId: 'NOT_CAPTURED',
+      principalId: 'owner:futoshi-iwasawa',
+      principalIdType: 'OWNER_DECLARED_STABLE_PRINCIPAL_ID',
       identitySeparationAvailable: false,
       independentHumanReviewClaimed: false,
       localPreparationExceptionAuthorized: true,
@@ -1389,16 +1444,16 @@ describe('commercial PR-12 qualification preparation contract', () => {
       },
     });
     expect(provisionEnvironment).toMatchObject({
-      organizationId: 'NOT_CAPTURED',
+      organizationId: 'kbnsntifrawhimhfjrug',
       organizationSlug: 'kbnsntifrawhimhfjrug',
-      prohibitedOrganizationIds: ['NOT_CAPTURED'],
+      prohibitedOrganizationIds: ['kbnsntifrawhimhfjrug'],
       prohibitedOrganizationSlugs: ['kbnsntifrawhimhfjrug'],
     });
     expect(provisioning.sameOrganizationException).toMatchObject({
       mode: 'PHASE1_SAME_ORGANIZATION_PRODUCTION_PROJECT_DENY_EXCEPTION_V1',
       targetOrganizationName: "IFs1991's Org",
       targetOrganizationSlug: 'kbnsntifrawhimhfjrug',
-      productionOrganizationId: 'NOT_CAPTURED',
+      productionOrganizationId: 'kbnsntifrawhimhfjrug',
       productionOrganizationSlug: 'kbnsntifrawhimhfjrug',
       productionProjectName: 'seikotsuin-management',
       productionProjectRef: 'qnanuoqveidwvacvbhqp',
@@ -1409,6 +1464,93 @@ describe('commercial PR-12 qualification preparation contract', () => {
       productionDatabaseContactAuthorized: false,
       productionCredentialAccessAuthorized: false,
     });
+    expect(provisioning.organizationIdentityEvidence).toMatchObject({
+      status: 'PASS',
+      actionId: 'PR12-ACTION-002',
+      terminalState: 'TERMINAL_PASS',
+      sourceGitCommit: '6edd6733756dd73e458cf705675895a5666c76e6',
+      sourceBindingMaterialSha256:
+        '56b07d3eb802d546df25be3b487e32b9c30f0aa7ac1f896bba483cb5e207eb3c',
+      sourceRequestSha256:
+        '95149b0f64407700298cbe842cbd15780300e9e357dc492f5d4d56e490490a8e',
+      manifestSha256:
+        '66db9ed2b7fdb7573b76e79273c71d95551cdb7385e0ca8ee21724c56399f582',
+      terminalSha256:
+        '3fec7d3156c52e862602e9adb115e460c6959caeba38d5a1b290abe41513782e',
+      claimSha256:
+        'ae8dd41f4316317d5d22ecb8e1a3f3dc741f486a64b8128161329b86cc3b15ce',
+      getIntentSha256:
+        '045c663feea7ac2305bec6383fd4a2fe8de11e373b3f925d78154ecad1053bb7',
+      providerObservedAt: '2026-07-26T04:25:22.867Z',
+      remoteContactCount: 1,
+      requestAttemptCount: 1,
+      automaticRetryCount: 0,
+      organization: {
+        organizationId: 'kbnsntifrawhimhfjrug',
+        organizationName: "IFs1991's Org",
+        organizationSlug: 'kbnsntifrawhimhfjrug',
+        plan: 'PRO',
+      },
+    });
+    expect(provisioning.organizationIdentityEvidence).toMatchObject({
+      evidenceDirectoryFingerprint: {
+        pathSha256: 'NOT_CAPTURED',
+        resolvedPathSha256: 'NOT_CAPTURED',
+        device: 'NOT_CAPTURED',
+        inode: 'NOT_CAPTURED',
+        snapshotSha256: 'NOT_CAPTURED',
+      },
+      journalDirectoryFingerprint: {
+        pathSha256: 'NOT_CAPTURED',
+        resolvedPathSha256: 'NOT_CAPTURED',
+        device: 'NOT_CAPTURED',
+        inode: 'NOT_CAPTURED',
+        snapshotSha256: 'NOT_CAPTURED',
+      },
+    });
+    expect(provisioningOwnerApproval).toMatchObject({
+      schemaVersion: 4,
+      decision: 'NOT_CAPTURED',
+      approverPrincipalId: 'owner:futoshi-iwasawa',
+      operatorPrincipalId: 'owner:futoshi-iwasawa',
+      organizationId: 'kbnsntifrawhimhfjrug',
+      organizationIdentityManifestSha256:
+        '66db9ed2b7fdb7573b76e79273c71d95551cdb7385e0ca8ee21724c56399f582',
+      organizationIdentityTerminalSha256:
+        '3fec7d3156c52e862602e9adb115e460c6959caeba38d5a1b290abe41513782e',
+      scheduledExecutionAt: 'NOT_CAPTURED',
+      fundedThrough: 'NOT_CAPTURED',
+      phase2AndLaterAuthorized: false,
+    });
+    expect(provisioningResult).toMatchObject({
+      schemaVersion: 5,
+      status: 'NOT_RUN',
+      organizationIdentityEvidence: {
+        actionId: 'PR12-ACTION-002',
+        terminalState: 'TERMINAL_PASS',
+      },
+      pricingAndFunding: {
+        scheduledExecutionAt: 'NOT_CAPTURED',
+        fundedThrough: 'NOT_CAPTURED',
+      },
+      phase2AndLaterAuthorized: false,
+    });
+    expect(provisioningProviderProjection).toMatchObject({
+      schemaVersion: 4,
+      status: 'NOT_RUN',
+      organizationIdentityEvidence: {
+        actionId: 'PR12-ACTION-002',
+        terminalState: 'TERMINAL_PASS',
+      },
+    });
+    const providerPreflight = requireRecord(
+      provisioningProviderProjection.preflight,
+      'provisioningProviderProjection.preflight'
+    );
+    expect(Object.hasOwn(providerPreflight, 'organization')).toBe(false);
+    expect(
+      Object.hasOwn(providerPreflight, 'organizationResponseBodySha256')
+    ).toBe(false);
     expect(provisioning.initialPlatformPosture).toMatchObject({
       mutationsIncludedInPhase1: false,
       phase2ReadOnlyObservationRequired: true,

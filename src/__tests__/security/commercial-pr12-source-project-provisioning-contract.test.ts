@@ -115,6 +115,47 @@ function makeSyntheticEvidenceBundle(
     region_selection: { code: 'ap-northeast-1', type: 'specific' },
   };
   const payloadSha256 = canonicalSha256(requestProjection);
+  const organizationIdentityEvidence = {
+    status: 'PASS',
+    actionId: 'PR12-ACTION-002',
+    terminalState: 'TERMINAL_PASS',
+    sourceGitCommit: '6edd6733756dd73e458cf705675895a5666c76e6',
+    sourceBindingMaterialSha256: '1'.repeat(64),
+    sourceRequestSha256: '2'.repeat(64),
+    evidenceDirectoryName: 'pr12-action-002-20260722T235500-000Z-synthetic',
+    manifestSha256: '3'.repeat(64),
+    terminalSha256: '4'.repeat(64),
+    claimSha256: '5'.repeat(64),
+    getIntentSha256: '6'.repeat(64),
+    completedAt: '2026-07-22T23:55:00.000Z',
+    sealedAt: '2026-07-22T23:55:00.100Z',
+    organization: {
+      organizationId: 'kbnsntifrawhimhfjrug',
+      organizationName: "IFs1991's Org",
+      organizationSlug: 'kbnsntifrawhimhfjrug',
+      plan: 'PRO',
+    },
+    providerResponseBodySha256: '7'.repeat(64),
+    providerSafeProjectionSha256: '8'.repeat(64),
+    providerObservedAt: '2026-07-22T23:54:59.000Z',
+    remoteContactCount: 1,
+    requestAttemptCount: 1,
+    automaticRetryCount: 0,
+    evidenceDirectoryFingerprint: {
+      pathSha256: '9'.repeat(64),
+      resolvedPathSha256: 'a'.repeat(64),
+      device: '12345',
+      inode: '67890',
+      snapshotSha256: 'b'.repeat(64),
+    },
+    journalDirectoryFingerprint: {
+      pathSha256: 'c'.repeat(64),
+      resolvedPathSha256: 'd'.repeat(64),
+      device: '23456',
+      inode: '78901',
+      snapshotSha256: 'e'.repeat(64),
+    },
+  };
   const page = {
     bodySha256: '1'.repeat(64),
     httpStatus: 200,
@@ -145,7 +186,7 @@ function makeSyntheticEvidenceBundle(
             state: 'POST_INTENT_DURABLE',
             at: '2026-07-23T12:00:10.000Z',
             postIntentSha256,
-            remoteContactCount: 3,
+            remoteContactCount: 2,
             createPostAttemptCount: 0,
           },
           {
@@ -153,7 +194,7 @@ function makeSyntheticEvidenceBundle(
             state: 'RESPONSE_ACCEPTED',
             at: '2026-07-23T12:00:20.000Z',
             projectRef,
-            remoteContactCount: 4,
+            remoteContactCount: 3,
             createPostAttemptCount: 1,
           },
           {
@@ -161,7 +202,7 @@ function makeSyntheticEvidenceBundle(
             state: 'PROVIDER_RECONCILED',
             at: '2026-07-23T12:01:00.000Z',
             projectRef,
-            remoteContactCount: 6,
+            remoteContactCount: 5,
             createPostAttemptCount: 1,
           },
         ],
@@ -170,7 +211,7 @@ function makeSyntheticEvidenceBundle(
     directory,
     'provider-export.safe.json',
     {
-      schemaVersion: 3,
+      schemaVersion: 4,
       exportType: 'SUPABASE_SOURCE_PROJECT_PROVIDER_SAFE_PROJECTION',
       status: 'PASS',
       actionId: 'PR12-ACTION-003',
@@ -182,14 +223,8 @@ function makeSyntheticEvidenceBundle(
         rawWireBodyPersisted: false,
         rawHttpHeadersPersisted: false,
       },
+      organizationIdentityEvidence,
       preflight: {
-        organization: {
-          organizationId: 'org-shared-001',
-          organizationName: "IFs1991's Org",
-          organizationSlug: 'kbnsntifrawhimhfjrug',
-          plan: 'PRO',
-        },
-        organizationResponseBodySha256: '3'.repeat(64),
         region: {
           regionCode: 'ap-northeast-1',
           selectionType: 'specific',
@@ -207,7 +242,7 @@ function makeSyntheticEvidenceBundle(
         httpStatus: 201,
         safeProjection: {
           projectRef,
-          organizationId: 'org-shared-001',
+          organizationId: 'kbnsntifrawhimhfjrug',
           organizationSlug: 'kbnsntifrawhimhfjrug',
           projectName: 'seikotsuin-pr12-isolated-qualification-20260719',
           region: 'ap-northeast-1',
@@ -273,7 +308,7 @@ function makeSyntheticEvidenceBundle(
     directory,
     'provisioning-result.json',
     {
-      schemaVersion: 4,
+      schemaVersion: 5,
       phase: 'SOURCE_PROJECT_PROVISIONING_RESULT',
       resultType: 'SOURCE_PROJECT_PROVISIONING_OPERATION',
       status: 'PASS',
@@ -293,7 +328,7 @@ function makeSyntheticEvidenceBundle(
       independentHumanReviewClaimed: false,
       actionStartedAt: '2026-07-23T12:00:00.000Z',
       actionCompletedAt: '2026-07-23T12:01:00.000Z',
-      remoteContactCount: 6,
+      remoteContactCount: 5,
       createPostAttemptCount: 1,
       automaticRetryCount: 0,
       credentialBrokerInvocationCount: 1,
@@ -305,6 +340,7 @@ function makeSyntheticEvidenceBundle(
       cleanupDeletionAuthorized: false,
       databaseConnectionPerformed: false,
       phase2AndLaterAuthorized: false,
+      organizationIdentityEvidence,
       productionBoundary: {
         exceptionMode:
           'PHASE1_SAME_ORGANIZATION_PRODUCTION_PROJECT_DENY_EXCEPTION_V1',
@@ -317,7 +353,7 @@ function makeSyntheticEvidenceBundle(
         productionCredentialAccessCount: 0,
       },
       createdEnvironment: {
-        organizationId: 'org-shared-001',
+        organizationId: 'kbnsntifrawhimhfjrug',
         organizationSlug: 'kbnsntifrawhimhfjrug',
         organizationPlan: 'PRO',
         projectRef,
@@ -344,7 +380,8 @@ function makeSyntheticEvidenceBundle(
         providerSpendCapEnforced: false,
         fundingSource: 'OWNER_APPROVED_PERSONAL_PAYMENT_METHOD',
         fundingApprovedAmountUsdScaled: 500000,
-        fundedThrough: '2026-07-26T12:05:00.000Z',
+        scheduledExecutionAt: '2026-07-23T11:50:00.000Z',
+        fundedThrough: '2026-07-26T12:50:00.000Z',
       },
       approvalWindow: {
         approvedAt: '2026-07-23T11:35:00.000Z',
@@ -617,7 +654,7 @@ function makeSyntheticRecoveryEvidenceBundle(): string {
         path.join(directory, 'provider-export.safe.json')
       );
       artifact.status = 'UNKNOWN_REMOTE_OUTCOME';
-      artifact.remoteContactCount = 5;
+      artifact.remoteContactCount = 4;
       artifact.createPostAttemptCount = 1;
       artifact.duplicateState = 'NOT_CHECKED';
       artifact.partialFailureState =
@@ -649,7 +686,7 @@ function makeSyntheticRecoveryEvidenceBundle(): string {
           state: 'POST_INTENT_DURABLE',
           at: '2026-07-23T12:00:10.000Z',
           postIntentSha256: 'e'.repeat(64),
-          remoteContactCount: 3,
+          remoteContactCount: 2,
           createPostAttemptCount: 0,
         },
         {
@@ -657,7 +694,7 @@ function makeSyntheticRecoveryEvidenceBundle(): string {
           state: 'READ_ONLY_RECONCILIATION_COMPLETED',
           at: '2026-07-23T12:00:50.000Z',
           reconciliationState: reconciliation.state,
-          remoteContactCount: 5,
+          remoteContactCount: 4,
           createPostAttemptCount: 1,
           automaticRetryCount: 0,
         },
@@ -667,7 +704,7 @@ function makeSyntheticRecoveryEvidenceBundle(): string {
           at: '2026-07-23T12:01:00.000Z',
           reasonCode:
             'PROCESS_INTERRUPTION_AFTER_POST_INTENT_OWNER_DECISION_REQUIRED',
-          remoteContactCount: 5,
+          remoteContactCount: 4,
           createPostAttemptCount: 1,
           automaticRetryCount: 0,
         },
@@ -731,6 +768,7 @@ function makeSyntheticPartialAcceptedEvidenceBundle(): string {
         path.join(directory, 'provider-export.safe.json')
       );
       artifact.status = 'PARTIAL_FAILURE';
+      artifact.remoteContactCount = 4;
       artifact.duplicateState = 'ABSENT_ALL_PAGES';
       artifact.partialFailureState = 'READINESS_DEADLINE_EXCEEDED';
       artifact.readOnlyReconciliation = reconciliation;
@@ -760,7 +798,7 @@ function makeSyntheticPartialAcceptedEvidenceBundle(): string {
           state: 'POST_INTENT_DURABLE',
           at: '2026-07-23T12:00:10.000Z',
           postIntentSha256: 'e'.repeat(64),
-          remoteContactCount: 3,
+          remoteContactCount: 2,
           createPostAttemptCount: 0,
         },
         {
@@ -768,7 +806,7 @@ function makeSyntheticPartialAcceptedEvidenceBundle(): string {
           state: 'RESPONSE_ACCEPTED',
           at: '2026-07-23T12:00:20.000Z',
           projectRef: 'abcdefghijklmnopqrst',
-          remoteContactCount: 4,
+          remoteContactCount: 3,
           createPostAttemptCount: 1,
         },
         {
@@ -776,7 +814,7 @@ function makeSyntheticPartialAcceptedEvidenceBundle(): string {
           state: 'READ_ONLY_RECONCILIATION_COMPLETED',
           at: '2026-07-23T12:00:50.000Z',
           reconciliationState: reconciliation.state,
-          remoteContactCount: 6,
+          remoteContactCount: 4,
           createPostAttemptCount: 1,
           automaticRetryCount: 0,
         },
@@ -785,7 +823,7 @@ function makeSyntheticPartialAcceptedEvidenceBundle(): string {
           state: 'PARTIAL_FAILURE',
           at: '2026-07-23T12:01:00.000Z',
           reasonCode: 'READINESS_DEADLINE_EXCEEDED',
-          remoteContactCount: 6,
+          remoteContactCount: 4,
           createPostAttemptCount: 1,
           automaticRetryCount: 0,
         },
@@ -810,7 +848,7 @@ function makeSyntheticPostPreflightAbortEvidenceBundle(): string {
           state: 'PRECHECK_ABORTED',
           at: '2026-07-23T12:01:00.000Z',
           reasonCode: 'REQUEST_PAYLOAD_HASH_MISMATCH',
-          remoteContactCount: 3,
+          remoteContactCount: 2,
           createPostAttemptCount: 0,
           automaticRetryCount: 0,
         },
@@ -836,7 +874,7 @@ function makeSyntheticPostPreflightAbortEvidenceBundle(): string {
         path.join(directory, 'provider-export.safe.json')
       );
       artifact.status = 'PRECHECK_ABORTED';
-      artifact.remoteContactCount = 3;
+      artifact.remoteContactCount = 2;
       artifact.createPostAttemptCount = 0;
       artifact.duplicateState = 'ABSENT_ALL_PAGES';
       artifact.partialFailureState = 'REQUEST_PAYLOAD_HASH_MISMATCH';
@@ -1330,8 +1368,51 @@ function makeValidFixture() {
     },
   };
 
+  const organizationIdentityEvidence = {
+    status: 'PASS',
+    actionId: 'PR12-ACTION-002',
+    terminalState: 'TERMINAL_PASS',
+    sourceGitCommit: '6edd6733756dd73e458cf705675895a5666c76e6',
+    sourceBindingMaterialSha256: '2'.repeat(64),
+    sourceRequestSha256: '3'.repeat(64),
+    evidenceDirectoryName:
+      'source-organization-identity-capture-20260722T235500000Z',
+    manifestSha256: '4'.repeat(64),
+    terminalSha256: '5'.repeat(64),
+    claimSha256: '6'.repeat(64),
+    getIntentSha256: '7'.repeat(64),
+    completedAt: '2026-07-22T23:55:00.000Z',
+    sealedAt: '2026-07-22T23:55:00.100Z',
+    organization: {
+      organizationId: 'org-shared-001',
+      organizationName: "IFs1991's Org",
+      organizationSlug: 'kbnsntifrawhimhfjrug',
+      plan: 'PRO',
+    },
+    providerResponseBodySha256: '8'.repeat(64),
+    providerSafeProjectionSha256: '9'.repeat(64),
+    providerObservedAt: '2026-07-22T23:54:59.000Z',
+    remoteContactCount: 1,
+    requestAttemptCount: 1,
+    automaticRetryCount: 0,
+    evidenceDirectoryFingerprint: {
+      pathSha256: 'a'.repeat(64),
+      resolvedPathSha256: 'b'.repeat(64),
+      device: '12345',
+      inode: '67890',
+      snapshotSha256: 'c'.repeat(64),
+    },
+    journalDirectoryFingerprint: {
+      pathSha256: 'd'.repeat(64),
+      resolvedPathSha256: 'e'.repeat(64),
+      device: '23456',
+      inode: '78901',
+      snapshotSha256: 'f'.repeat(64),
+    },
+  };
+
   const binding = {
-    schemaVersion: 4,
+    schemaVersion: 5,
     phase: 'SOURCE_PROJECT_PROVISIONING',
     status: 'APPROVED',
     authorization: {
@@ -1362,7 +1443,9 @@ function makeValidFixture() {
       readinessObservationMaximumSeconds: 900,
       readinessPollIntervalSeconds: 10,
       providerCreatedAtMaximumClockSkewSeconds: 300,
+      scheduledExecutionAt: '2026-07-23T00:15:00.000Z',
     },
+    organizationIdentityEvidence,
     target: {
       gitCommit: 'a'.repeat(40),
       baseCommit: '4475e1c641c2ff18f66021ee65cfecfceaa6b7ab',
@@ -1379,6 +1462,12 @@ function makeValidFixture() {
       wrapperPath:
         'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs',
       wrapperSha256: '5'.repeat(64),
+      organizationIdentityContractPath:
+        'scripts/commercial-hardening/pr12-source-organization-identity-capture-contract.mjs',
+      organizationIdentityContractSha256: 'a'.repeat(64),
+      organizationIdentityVerifierPath:
+        'scripts/commercial-hardening/verify-pr12-source-organization-identity-capture-evidence.mjs',
+      organizationIdentityVerifierSha256: 'b'.repeat(64),
     },
     credentialControls: {
       provisioningCredentialConfiguration: {
@@ -1473,7 +1562,7 @@ function makeValidFixture() {
       disposition:
         'DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION',
       sourceFundedHours: 72,
-      fundedThrough: '2026-07-27T00:30:00.000Z',
+      fundedThrough: '2026-07-26T01:15:00.000Z',
       fundingCeilingUsdScaled: 500000,
       fundingApprovedAmountUsdScaled: 500000,
       fundingSource: 'OWNER_APPROVED_PERSONAL_PAYMENT_METHOD',
@@ -1594,7 +1683,7 @@ function makeValidFixture() {
     canonicalSha256(approvalMaterial);
 
   const approvalEvidence = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     recordType: 'PR12_SOURCE_PROJECT_PROVISIONING_OWNER_APPROVAL',
     decision: 'APPROVED',
     attestationStatus: 'VERIFIED',
@@ -1632,6 +1721,16 @@ function makeValidFixture() {
     tier: 'LARGE',
     ownerAuthorizationCeilingUsdScaled: 500000,
     authorizedDurationHours: 72,
+    scheduledExecutionAt: '2026-07-23T00:15:00.000Z',
+    fundedThrough: '2026-07-26T01:15:00.000Z',
+    organizationIdentityManifestSha256:
+      organizationIdentityEvidence.manifestSha256,
+    organizationIdentityTerminalSha256:
+      organizationIdentityEvidence.terminalSha256,
+    organizationIdentitySourceBindingMaterialSha256:
+      organizationIdentityEvidence.sourceBindingMaterialSha256,
+    organizationIdentitySourceRequestSha256:
+      organizationIdentityEvidence.sourceRequestSha256,
     approvedAt: '2026-07-23T00:00:00.000Z',
     operatorReconfirmedAt: '2026-07-23T00:05:00.000Z',
     expiresAt: '2026-07-23T00:30:00.000Z',
@@ -1716,11 +1815,15 @@ function makeValidFixture() {
     governanceSha256: '3'.repeat(64),
     contractSha256: '4'.repeat(64),
     wrapperSha256: '5'.repeat(64),
+    organizationIdentityContractSha256: 'a'.repeat(64),
+    organizationIdentityVerifierSha256: 'b'.repeat(64),
     credentialConfigurationSha256: '6'.repeat(64),
     approvalEvidenceSha256: '8'.repeat(64),
     pricingEvidenceSha256: '7'.repeat(64),
     approvalEvidence,
     pricingEvidence,
+    organizationIdentityEvidence,
+    organizationIdentitySourceGitCommitIsAncestor: true,
     ambientCredentialNames: [],
     priorActionState: null,
     approvalStage: 'PRE_CLAIM',
@@ -1757,6 +1860,61 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     ]);
     expect(result.ok).toBe(true);
   });
+
+  test('rejects approval without a sealed ACTION-002 terminal-to-manifest linkage', () => {
+    const fixture = makeValidFixture();
+    Reflect.deleteProperty(fixture.context, 'organizationIdentityEvidence');
+    expectRejected(
+      'validateOfflineApproval',
+      [fixture.binding, fixture.credentialConfiguration, fixture.context],
+      'ORGANIZATION_IDENTITY_EVIDENCE_NOT_BOUND'
+    );
+  });
+
+  test('rejects ACTION-002 linkage drift and a non-ancestor source commit', () => {
+    const drifted = makeValidFixture();
+    drifted.context.organizationIdentityEvidence = {
+      ...drifted.context.organizationIdentityEvidence,
+      manifestSha256: '0'.repeat(64),
+    };
+    expectRejected(
+      'validateOfflineApproval',
+      [drifted.binding, drifted.credentialConfiguration, drifted.context],
+      'ORGANIZATION_IDENTITY_EVIDENCE_NOT_BOUND'
+    );
+
+    const nonAncestor = makeValidFixture();
+    nonAncestor.context.organizationIdentitySourceGitCommitIsAncestor = false;
+    expectRejected(
+      'validateOfflineApproval',
+      [
+        nonAncestor.binding,
+        nonAncestor.credentialConfiguration,
+        nonAncestor.context,
+      ],
+      'ORGANIZATION_IDENTITY_EVIDENCE_NOT_BOUND'
+    );
+  });
+
+  test.each(['2026-07-26T01:14:59.999Z', '2026-07-26T01:15:00.001Z'])(
+    'requires fundedThrough to equal scheduledExecutionAt plus exactly 73 hours (%s)',
+    fundedThrough => {
+      const fixture = makeValidFixture();
+      fixture.binding.retentionAndCleanupDecision.fundedThrough = fundedThrough;
+      const approvalMaterial = Object.fromEntries(
+        Object.entries(fixture.binding).filter(([key]) => key !== 'approval')
+      ) as JsonObject;
+      fixture.binding.approval.approvedBindingMaterialSha256 =
+        canonicalSha256(approvalMaterial);
+      fixture.approvalEvidence.bindingMaterialSha256 =
+        fixture.binding.approval.approvedBindingMaterialSha256;
+      expectRejected(
+        'validateOfflineApproval',
+        [fixture.binding, fixture.credentialConfiguration, fixture.context],
+        'FUNDING_SCHEDULE_MISMATCH'
+      );
+    }
+  );
 
   test.each([
     [
@@ -2235,6 +2393,16 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     ).toEqual({ ok: false, code: 'CREDENTIAL_VALUES_MISWIRED' });
   });
 
+  test('rejects an unapproved ACTION-002 linkage verifier implementation', () => {
+    const fixture = makeValidFixture();
+    fixture.context.organizationIdentityVerifierSha256 = 'c'.repeat(64);
+    expectRejected(
+      'validateOfflineApproval',
+      [fixture.binding, fixture.credentialConfiguration, fixture.context],
+      'IMPLEMENTATION_HASH_MISMATCH'
+    );
+  });
+
   test.each([
     'SUPABASE_PROJECT_REF',
     'SUPABASE_AUTH_TOKEN',
@@ -2448,6 +2616,26 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     expect(wrapperSource).toContain(
       'requireNoReparseDirectoryComponents(directory, code)'
     );
+    const prePostRevalidationStart = wrapperSource.indexOf(
+      'function revalidateImmediatelyBeforePost('
+    );
+    const prePostRevalidationEnd = wrapperSource.indexOf(
+      '\nfunction validatePostIntentImmediatelyBeforeFetch',
+      prePostRevalidationStart
+    );
+    const prePostRevalidationSource = wrapperSource.slice(
+      prePostRevalidationStart,
+      prePostRevalidationEnd
+    );
+    expect(prePostRevalidationSource).toContain(
+      'organizationIdentityTerminal: readFileSnapshot('
+    );
+    expect(prePostRevalidationSource).toContain(
+      'currentSnapshots.organizationIdentityTerminal.sha256'
+    );
+    expect(prePostRevalidationSource).toContain(
+      'currentSnapshots.organizationIdentityTerminal.identity'
+    );
   });
 
   test('parses the bootstrap approval template before stopping as unauthorized', () => {
@@ -2529,7 +2717,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         '--binding',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-binding-v4.template.json'
+          'source-project-provisioning-binding-v5.template.json'
         ),
         '--credential-config',
         path.join(
@@ -2539,12 +2727,19 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         '--approval-evidence',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-owner-approval-v3.template.json'
+          'source-project-provisioning-owner-approval-v4.template.json'
         ),
         '--pricing-evidence',
         path.join(
           phase1EvidenceRoot,
           'source-project-official-pricing-evidence-v2.template.json'
+        ),
+        '--organization-identity-evidence-directory',
+        phase1EvidenceRoot,
+        '--organization-identity-terminal',
+        path.join(
+          phase1EvidenceRoot,
+          'source-organization-identity-capture-action-journal.template.json'
         ),
         '--journal-directory',
         journalDirectory,
@@ -2580,11 +2775,22 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     fs.mkdirSync(implementationDirectory);
     fs.mkdirSync(journalDirectory);
     fs.mkdirSync(evidenceParent);
+    const approvedBindingPath = path.join(
+      temporaryRoot,
+      'approved-binding.json'
+    );
+    fs.writeFileSync(
+      approvedBindingPath,
+      `${JSON.stringify(canonicalize(makeValidFixture().binding))}\n`,
+      'utf8'
+    );
     const implementationFilenames = [
       'run-pr12-source-project-provisioning.mjs',
       'pr12-source-project-provisioning-contract.mjs',
       'pr12-windows-dpapi-credential-channel.mjs',
       'verify-pr12-source-project-provisioning-evidence.mjs',
+      'pr12-source-organization-identity-capture-contract.mjs',
+      'verify-pr12-source-organization-identity-capture-evidence.mjs',
     ];
     try {
       for (const filename of implementationFilenames) {
@@ -2602,10 +2808,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
           ),
           '--offline-verify',
           '--binding',
-          path.join(
-            phase1EvidenceRoot,
-            'source-project-provisioning-binding-v4.template.json'
-          ),
+          approvedBindingPath,
           '--credential-config',
           path.join(
             phase1EvidenceRoot,
@@ -2614,12 +2817,19 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
           '--approval-evidence',
           path.join(
             phase1EvidenceRoot,
-            'source-project-provisioning-owner-approval-v3.template.json'
+            'source-project-provisioning-owner-approval-v4.template.json'
           ),
           '--pricing-evidence',
           path.join(
             phase1EvidenceRoot,
             'source-project-official-pricing-evidence-v2.template.json'
+          ),
+          '--organization-identity-evidence-directory',
+          phase1EvidenceRoot,
+          '--organization-identity-terminal',
+          path.join(
+            phase1EvidenceRoot,
+            'source-organization-identity-capture-action-journal.template.json'
           ),
           '--journal-directory',
           journalDirectory,
@@ -2652,16 +2862,22 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     const evidenceParent = fs.mkdtempSync(
       path.join(os.tmpdir(), 'pr12-source-provisioning-absolute-output-')
     );
+    const approvedBindingPath = path.join(
+      evidenceParent,
+      'approved-binding.json'
+    );
+    fs.writeFileSync(
+      approvedBindingPath,
+      `${JSON.stringify(canonicalize(makeValidFixture().binding))}\n`,
+      'utf8'
+    );
     const child = spawnSync(
       process.execPath,
       [
         provisioningWrapperPath,
         '--offline-verify',
         '--binding',
-        path.join(
-          phase1EvidenceRoot,
-          'source-project-provisioning-binding-v4.template.json'
-        ),
+        approvedBindingPath,
         '--credential-config',
         path.join(
           phase1EvidenceRoot,
@@ -2670,12 +2886,19 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         '--approval-evidence',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-owner-approval-v3.template.json'
+          'source-project-provisioning-owner-approval-v4.template.json'
         ),
         '--pricing-evidence',
         path.join(
           phase1EvidenceRoot,
           'source-project-official-pricing-evidence-v2.template.json'
+        ),
+        '--organization-identity-evidence-directory',
+        phase1EvidenceRoot,
+        '--organization-identity-terminal',
+        path.join(
+          phase1EvidenceRoot,
+          'source-organization-identity-capture-action-journal.template.json'
         ),
         '--journal-directory',
         '.',
@@ -2697,7 +2920,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     expect(child.status).toBe(1);
     expect(child.stdout).toBe('');
     expect(child.stderr).toContain('ACTION_JOURNAL_DIRECTORY_INVALID');
-    expect(fs.readdirSync(evidenceParent)).toEqual([]);
+    expect(fs.readdirSync(evidenceParent)).toEqual(['approved-binding.json']);
   });
 
   test('rejects a junction ancestor in a runtime output path before approval parsing', () => {
@@ -2706,6 +2929,12 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     );
     const repositoryLink = path.join(linkRoot, 'repository-link');
     fs.symlinkSync(repoRoot, repositoryLink, 'junction');
+    const approvedBindingPath = path.join(linkRoot, 'approved-binding.json');
+    fs.writeFileSync(
+      approvedBindingPath,
+      `${JSON.stringify(canonicalize(makeValidFixture().binding))}\n`,
+      'utf8'
+    );
     const evidenceParent = fs.mkdtempSync(
       path.join(os.tmpdir(), 'pr12-source-provisioning-junction-output-')
     );
@@ -2715,10 +2944,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         provisioningWrapperPath,
         '--offline-verify',
         '--binding',
-        path.join(
-          phase1EvidenceRoot,
-          'source-project-provisioning-binding-v4.template.json'
-        ),
+        approvedBindingPath,
         '--credential-config',
         path.join(
           phase1EvidenceRoot,
@@ -2727,13 +2953,17 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         '--approval-evidence',
         path.join(
           phase1EvidenceRoot,
-          'source-project-provisioning-owner-approval-v3.template.json'
+          'source-project-provisioning-owner-approval-v4.template.json'
         ),
         '--pricing-evidence',
         path.join(
           phase1EvidenceRoot,
           'source-project-official-pricing-evidence-v2.template.json'
         ),
+        '--organization-identity-evidence-directory',
+        linkRoot,
+        '--organization-identity-terminal',
+        approvedBindingPath,
         '--journal-directory',
         path.join(repositoryLink, 'docs'),
         '--evidence-parent',
@@ -2920,6 +3150,12 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
 
   test('allows only the fixed Management API routes and denies every production target', () => {
     const fixture = makeValidFixture();
+    const contractSource = fs.readFileSync(contractPath, 'utf8');
+    const wrapperSource = fs.readFileSync(provisioningWrapperPath, 'utf8');
+    expect(contractSource).not.toContain(
+      'organizationResponseToSafeProjection'
+    );
+    expect(wrapperSource).not.toContain('organizationResponseToSafeProjection');
     const invokeGuard = (
       url: string,
       method: 'GET' | 'POST',
@@ -2932,8 +3168,8 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       invokeGuard(
         'https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug',
         'GET'
-      ).value
-    ).toBe('TARGET_ORGANIZATION_ENTITLEMENT');
+      )
+    ).toEqual({ ok: false, code: 'OUTBOUND_ROUTE_NOT_ALLOWED' });
     expect(
       invokeGuard(
         'https://api.supabase.com/v1/projects/available-regions?organization_slug=kbnsntifrawhimhfjrug&desired_instance_size=large',
@@ -3415,7 +3651,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         postIntentAt: '2026-07-23T12:00:01.000Z',
         state: 'POST_INTENT_DURABLE',
         automaticRetryCount: 0,
-        remoteContactCountBeforePost: 3,
+        remoteContactCountBeforePost: 2,
       }
     );
     expect(
@@ -3509,6 +3745,8 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       identitySeparationAvailable: false,
       independentHumanReviewClaimed: false,
       recoveryOwner: fixture.binding.duplicateAndFailurePolicy.recoveryOwner,
+      organizationIdentityEvidence:
+        fixture.binding.organizationIdentityEvidence,
       actionStartedAt,
       createPostAttemptCount: 1,
       pricingAndFunding: {
@@ -3530,6 +3768,8 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         fundingApprovedAmountUsdScaled:
           fixture.binding.retentionAndCleanupDecision
             .fundingApprovedAmountUsdScaled,
+        scheduledExecutionAt:
+          fixture.binding.provisioningAction.scheduledExecutionAt,
         fundedThrough:
           fixture.binding.retentionAndCleanupDecision.fundedThrough,
       },
@@ -3567,7 +3807,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       claimSha256,
       postIntent: {
         state: 'POST_INTENT_DURABLE',
-        remoteContactCountBeforePost: 3,
+        remoteContactCountBeforePost: 2,
       },
       postIntentSha256,
     };
@@ -3732,6 +3972,42 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     expect(rejected.status).toBe(1);
     expect(rejected.stderr).toContain('ARTIFACT_HASH_OR_SIZE_MISMATCH');
   });
+
+  test('rejects a sealed schedule that precedes operator reconfirmation', () => {
+    const directory = makeSyntheticEvidenceBundle(false);
+    rewriteEvidenceArtifactAndReseal(
+      directory,
+      'provisioning-result.json',
+      artifact => {
+        const pricing = artifact.pricingAndFunding as JsonObject;
+        pricing.scheduledExecutionAt = '2026-07-23T11:39:59.999Z';
+        pricing.fundedThrough = '2026-07-26T12:39:59.999Z';
+      }
+    );
+
+    const rejected = runEvidenceVerifier(directory);
+    expect(rejected.status).toBe(1);
+    expect(rejected.stderr).toContain('PROVISIONING_RESULT_INVALID');
+  });
+
+  test.each(['2026-07-26T12:49:59.999Z', '2026-07-26T12:50:00.001Z'])(
+    'rejects a resealed fundedThrough value outside exact scheduledExecutionAt plus 73 hours (%s)',
+    fundedThrough => {
+      const directory = makeSyntheticEvidenceBundle(false);
+      rewriteEvidenceArtifactAndReseal(
+        directory,
+        'provisioning-result.json',
+        artifact => {
+          const pricing = artifact.pricingAndFunding as JsonObject;
+          pricing.fundedThrough = fundedThrough;
+        }
+      );
+
+      const rejected = runEvidenceVerifier(directory);
+      expect(rejected.status).toBe(1);
+      expect(rejected.stderr).toContain('PROVISIONING_RESULT_INVALID');
+    }
+  );
 
   test('accepts a hash-consistent preflight body abort with zero POST attempts', () => {
     const directory = makeSyntheticEvidenceBundle(false);
@@ -3908,7 +4184,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
           httpStatus: 201,
           safeProjection: {
             projectRef: 'abcdefghijklmnopqrst',
-            organizationId: 'org-shared-001',
+            organizationId: 'kbnsntifrawhimhfjrug',
             organizationSlug: 'kbnsntifrawhimhfjrug',
             projectName: 'seikotsuin-pr12-isolated-qualification-20260719',
             region: 'ap-northeast-1',
@@ -3938,7 +4214,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
             state: 'RESPONSE_ACCEPTED',
             at: '2026-07-23T12:00:20.000Z',
             projectRef: 'abcdefghijklmnopqrst',
-            remoteContactCount: 4,
+            remoteContactCount: 3,
             createPostAttemptCount: 1,
           });
           for (let index = 3; index < events.length; index += 1) {
@@ -3977,14 +4253,14 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       artifact => {
         const events = artifact.events as JsonValue[];
         const finalEvent = events[1] as JsonObject;
-        finalEvent.remoteContactCount = 2;
+        finalEvent.remoteContactCount = 3;
       }
     );
     rewriteEvidenceArtifactAndReseal(
       directory,
       'provisioning-result.json',
       artifact => {
-        artifact.remoteContactCount = 2;
+        artifact.remoteContactCount = 3;
       }
     );
     const rejected = runEvidenceVerifier(directory);

@@ -193,6 +193,92 @@ function validateProductionBoundary(value, code) {
   return boundary;
 }
 
+function validateOrganizationIdentityEvidence(value, code) {
+  const evidence = requireExactKeys(
+    value,
+    [
+      'status',
+      'actionId',
+      'terminalState',
+      'sourceGitCommit',
+      'sourceBindingMaterialSha256',
+      'sourceRequestSha256',
+      'evidenceDirectoryName',
+      'manifestSha256',
+      'terminalSha256',
+      'claimSha256',
+      'getIntentSha256',
+      'completedAt',
+      'sealedAt',
+      'organization',
+      'providerResponseBodySha256',
+      'providerSafeProjectionSha256',
+      'providerObservedAt',
+      'remoteContactCount',
+      'requestAttemptCount',
+      'automaticRetryCount',
+      'evidenceDirectoryFingerprint',
+      'journalDirectoryFingerprint',
+    ],
+    code
+  );
+  const organization = requireExactKeys(
+    evidence.organization,
+    ['organizationId', 'organizationName', 'organizationSlug', 'plan'],
+    code
+  );
+  for (const hash of [
+    evidence.sourceBindingMaterialSha256,
+    evidence.sourceRequestSha256,
+    evidence.manifestSha256,
+    evidence.terminalSha256,
+    evidence.claimSha256,
+    evidence.getIntentSha256,
+    evidence.providerResponseBodySha256,
+    evidence.providerSafeProjectionSha256,
+  ]) {
+    requireSha256(hash, code);
+  }
+  for (const fingerprintInput of [
+    evidence.evidenceDirectoryFingerprint,
+    evidence.journalDirectoryFingerprint,
+  ]) {
+    const fingerprint = requireExactKeys(
+      fingerprintInput,
+      ['pathSha256', 'resolvedPathSha256', 'device', 'inode', 'snapshotSha256'],
+      code
+    );
+    requireSha256(fingerprint.pathSha256, code);
+    requireSha256(fingerprint.resolvedPathSha256, code);
+    requireSha256(fingerprint.snapshotSha256, code);
+    requireString(fingerprint.device, code);
+    requireString(fingerprint.inode, code);
+  }
+  const completedAt = Date.parse(requireTimestamp(evidence.completedAt, code));
+  const sealedAt = Date.parse(requireTimestamp(evidence.sealedAt, code));
+  const providerObservedAt = Date.parse(
+    requireTimestamp(evidence.providerObservedAt, code)
+  );
+  requireCondition(
+    evidence.status === 'PASS' &&
+      evidence.actionId === 'PR12-ACTION-002' &&
+      evidence.terminalState === 'TERMINAL_PASS' &&
+      GIT_SHA_PATTERN.test(evidence.sourceGitCommit) &&
+      /^[A-Za-z0-9._-]+$/.test(evidence.evidenceDirectoryName) &&
+      organization.organizationId === TARGET_ORGANIZATION_SLUG &&
+      organization.organizationName === TARGET_ORGANIZATION_NAME &&
+      organization.organizationSlug === TARGET_ORGANIZATION_SLUG &&
+      organization.plan === 'PRO' &&
+      evidence.remoteContactCount === 1 &&
+      evidence.requestAttemptCount === 1 &&
+      evidence.automaticRetryCount === 0 &&
+      providerObservedAt <= completedAt &&
+      completedAt <= sealedAt,
+    code
+  );
+  return evidence;
+}
+
 function validateProjectListPages(value, code = 'PROVIDER_PREFLIGHT_INVALID') {
   requireCondition(Array.isArray(value) && value.length > 0, code);
   let expectedOffset = 0;
@@ -441,7 +527,7 @@ function validateActionEvents(eventsArtifact, outcome, result, provider) {
   const preflightRemoteContactCount =
     provider.preflight === null
       ? null
-      : 2 + provider.preflight.projectListPages.length;
+      : 1 + provider.preflight.projectListPages.length;
   for (const [index, item] of artifact.events.entries()) {
     const event = requireRecord(item, 'ACTION_EVENTS_INVALID');
     const state = requireString(event.state, 'ACTION_EVENTS_INVALID');
@@ -511,7 +597,7 @@ function validateActionEvents(eventsArtifact, outcome, result, provider) {
           result.journalEvidence.postIntentSha256 &&
           (preflightRemoteContactCount === null
             ? outcome === 'UNKNOWN_REMOTE_OUTCOME' &&
-              event.remoteContactCount >= 3
+              event.remoteContactCount >= 2
             : event.remoteContactCount === preflightRemoteContactCount) &&
           event.createPostAttemptCount === 0 &&
           at < Date.parse(result.approvalWindow.expiresAt),
@@ -723,6 +809,7 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
       'cleanupDeletionAuthorized',
       'databaseConnectionPerformed',
       'phase2AndLaterAuthorized',
+      'organizationIdentityEvidence',
       'productionBoundary',
       'createdEnvironment',
       'providerEvidence',
@@ -734,7 +821,7 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
     'PROVISIONING_RESULT_INVALID'
   );
   requireCondition(
-    result.schemaVersion === 4 &&
+    result.schemaVersion === 5 &&
       result.phase === 'SOURCE_PROJECT_PROVISIONING_RESULT' &&
       result.resultType === 'SOURCE_PROJECT_PROVISIONING_OPERATION' &&
       result.status === manifest.status &&
@@ -754,6 +841,10 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
   );
   validateProductionBoundary(
     result.productionBoundary,
+    'PROVISIONING_RESULT_INVALID'
+  );
+  const organizationIdentityEvidence = validateOrganizationIdentityEvidence(
+    result.organizationIdentityEvidence,
     'PROVISIONING_RESULT_INVALID'
   );
   requireCanonicalOwnerId(result.operator, 'PROVISIONING_RESULT_INVALID');
@@ -842,6 +933,7 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
       'providerSpendCapEnforced',
       'fundingSource',
       'fundingApprovedAmountUsdScaled',
+      'scheduledExecutionAt',
       'fundedThrough',
     ],
     'PROVISIONING_RESULT_INVALID'
@@ -882,9 +974,20 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
   const fundedThrough = Date.parse(
     requireTimestamp(pricing.fundedThrough, 'PROVISIONING_RESULT_INVALID')
   );
+  const scheduledExecutionAt = Date.parse(
+    requireTimestamp(
+      pricing.scheduledExecutionAt,
+      'PROVISIONING_RESULT_INVALID'
+    )
+  );
   requireCondition(
     pricingFreshThrough >= expiresAt &&
       pricingFreshThrough >= startedAt &&
+      operatorReconfirmedAt <= scheduledExecutionAt &&
+      scheduledExecutionAt < expiresAt &&
+      scheduledExecutionAt <= startedAt &&
+      organizationIdentityEvidence.sealedAt <= result.actionStartedAt &&
+      fundedThrough === scheduledExecutionAt + 73 * 60 * 60 * 1000 &&
       fundedThrough >= expiresAt + 72 * 60 * 60 * 1000,
     'PROVISIONING_RESULT_INVALID'
   );
@@ -1009,6 +1112,7 @@ function validateProviderExport(providerInput, manifest, result) {
       'status',
       'actionId',
       'request',
+      'organizationIdentityEvidence',
       'preflight',
       'createResponse',
       'readinessObservation',
@@ -1022,7 +1126,7 @@ function validateProviderExport(providerInput, manifest, result) {
     'PROVIDER_EXPORT_INVALID'
   );
   requireCondition(
-    provider.schemaVersion === 3 &&
+    provider.schemaVersion === 4 &&
       provider.exportType ===
         'SUPABASE_SOURCE_PROJECT_PROVIDER_SAFE_PROJECTION' &&
       provider.status === manifest.status &&
@@ -1039,6 +1143,15 @@ function validateProviderExport(providerInput, manifest, result) {
   requireCondition(
     canonicalJson(providerProductionBoundary) ===
       canonicalJson(result.productionBoundary),
+    'EVIDENCE_CROSS_ARTIFACT_MISMATCH'
+  );
+  const organizationIdentityEvidence = validateOrganizationIdentityEvidence(
+    provider.organizationIdentityEvidence,
+    'PROVIDER_EXPORT_INVALID'
+  );
+  requireCondition(
+    canonicalJson(organizationIdentityEvidence) ===
+      canonicalJson(result.organizationIdentityEvidence),
     'EVIDENCE_CROSS_ARTIFACT_MISMATCH'
   );
   const actionStartedAt = Date.parse(result.actionStartedAt);
@@ -1094,8 +1207,6 @@ function validateProviderExport(providerInput, manifest, result) {
     preflight = requireExactKeys(
       provider.preflight,
       [
-        'organization',
-        'organizationResponseBodySha256',
         'region',
         'regionResponseBodySha256',
         'projectListPages',
@@ -1104,11 +1215,6 @@ function validateProviderExport(providerInput, manifest, result) {
         'protectedProductionProjectCount',
         'observedAt',
       ],
-      'PROVIDER_PREFLIGHT_INVALID'
-    );
-    const organization = requireExactKeys(
-      preflight.organization,
-      ['organizationId', 'organizationName', 'organizationSlug', 'plan'],
       'PROVIDER_PREFLIGHT_INVALID'
     );
     const region = requireExactKeys(
@@ -1125,21 +1231,12 @@ function validateProviderExport(providerInput, manifest, result) {
       'PROVIDER_PREFLIGHT_INVALID'
     );
     requireCondition(
-      organization.plan === 'PRO' &&
-        organization.organizationName === TARGET_ORGANIZATION_NAME &&
-        requireString(organization.organizationId, 'PROVIDER_PREFLIGHT_INVALID')
-          .length > 0 &&
-        organization.organizationSlug === projection.organization_slug &&
-        region.regionCode === 'ap-northeast-1' &&
+      region.regionCode === 'ap-northeast-1' &&
         region.selectionType === 'specific' &&
         requireString(region.provider, 'PROVIDER_PREFLIGHT_INVALID').length >
           0 &&
         requireString(region.capacityStatus, 'PROVIDER_PREFLIGHT_INVALID')
           .length > 0 &&
-        requireSha256(
-          preflight.organizationResponseBodySha256,
-          'PROVIDER_PREFLIGHT_INVALID'
-        ).length === 64 &&
         requireSha256(
           preflight.regionResponseBodySha256,
           'PROVIDER_PREFLIGHT_INVALID'
@@ -1208,7 +1305,8 @@ function validateProviderExport(providerInput, manifest, result) {
           .length === 64 &&
         PROJECT_REF_PATTERN.test(created.projectRef) &&
         created.projectRef !== PRODUCTION_PROJECT_REF &&
-        created.organizationId === preflight.organization.organizationId &&
+        created.organizationId ===
+          organizationIdentityEvidence.organization.organizationId &&
         created.organizationSlug === projection.organization_slug &&
         created.projectName === projection.name &&
         created.region === 'ap-northeast-1' &&
@@ -1345,7 +1443,7 @@ function validateProviderExport(providerInput, manifest, result) {
             preflight !== null &&
             PROJECT_REF_PATTERN.test(projected.projectRef) &&
             projected.organizationId ===
-              preflight.organization.organizationId &&
+              organizationIdentityEvidence.organization.organizationId &&
             projected.organizationSlug === projection.organization_slug &&
             projected.projectName === projection.name &&
             projected.region === 'ap-northeast-1' &&

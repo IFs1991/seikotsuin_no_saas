@@ -101,14 +101,18 @@ const REQUIRED_ARTIFACTS = [
   'docs/stabilization/evidence/commercial-hardening/pr12/qualification-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-binding.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v5.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v4.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v4.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v3.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-official-pricing-evidence-v2.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-dpapi-bootstrap-approval-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-windows-dpapi-envelope-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-action-journal.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v5.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v4.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v4.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v3.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-privacy-scan.template.json',
@@ -736,6 +740,15 @@ function verifyApprovalBoundaries() {
       `approval boundary missing: ${required}`
     );
   }
+  assert(
+    sources[2].includes(
+      'phase1_operator_canonical_principal_id: NOT_CAPTURED'
+    ) &&
+      sources[2].includes(
+        'owner:futoshi-iwasawa is the recorded canonical principal'
+      ),
+    'Phase 1 candidate principal must be documented while final Action-003 role binding remains uncaptured'
+  );
   const humanPacket = readRepositoryFile(
     'docs/stabilization/pr12-staging-execution-owner-approval-packet-v0.2-20260719.md'
   );
@@ -1616,7 +1629,7 @@ function verifyProposalContracts() {
     ledger.status === 'PROPOSED_NOT_EXECUTABLE' &&
       ledger.executionAuthorized === false &&
       targetGuard.status ===
-        'PHASE1_IMPLEMENTED_LATER_PHASES_NOT_IMPLEMENTED' &&
+        'PHASE1_ACTION_003_ENABLEMENT_IMPLEMENTED_LATER_PHASES_NOT_IMPLEMENTED' &&
       targetGuard.phase1ImplementationPath ===
         'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs' &&
       targetGuard.organizationIdentityCaptureImplementationPath ===
@@ -1624,7 +1637,7 @@ function verifyProposalContracts() {
       targetGuard.organizationIdentityCaptureRequiredBeforeSourceProvisioning ===
         true &&
       targetGuard.organizationIdentityCaptureEvidenceLinkageStatus ===
-        'NOT_IMPLEMENTED' &&
+        'IMPLEMENTED_ACTION_003_V5_REQUIRED' &&
       targetGuard.requiredForEveryRemoteCommand === true &&
       JSON.stringify(targetGuard.prohibitedProjectRefs) ===
         JSON.stringify(['qnanuoqveidwvacvbhqp']),
@@ -1708,13 +1721,13 @@ function verifyProposalContracts() {
   }
 
   const provisioning = readJson(
-    `${prefix}source-project-provisioning-binding-v4.template.json`
+    `${prefix}source-project-provisioning-binding-v5.template.json`
   );
   const provisioningCredential = readJson(
     `${prefix}source-project-provisioning-credential-configuration-v2.template.json`
   );
   const provisioningOwnerApproval = readJson(
-    `${prefix}source-project-provisioning-owner-approval-v3.template.json`
+    `${prefix}source-project-provisioning-owner-approval-v4.template.json`
   );
   const provisioningPricing = readJson(
     `${prefix}source-project-official-pricing-evidence-v2.template.json`
@@ -1726,10 +1739,10 @@ function verifyProposalContracts() {
     `${prefix}source-project-provisioning-action-journal.template.json`
   );
   const provisioningResult = readJson(
-    `${prefix}source-project-provisioning-result-v4.template.json`
+    `${prefix}source-project-provisioning-result-v5.template.json`
   );
   const provisioningProviderExport = readJson(
-    `${prefix}source-project-provider-safe-projection-v3.template.json`
+    `${prefix}source-project-provider-safe-projection-v4.template.json`
   );
   const provisioningEvidenceManifest = readJson(
     `${prefix}source-project-provisioning-evidence-manifest.template.json`
@@ -1881,10 +1894,28 @@ function verifyProposalContracts() {
       ledgerOrganizationIdentityAction.tokenOnlyDpapiRetrievalRequired ===
         true &&
       ledgerOrganizationIdentityAction.wrapperImplemented === true &&
-      ledgerOrganizationIdentityAction.wrapperExecuted === false &&
+      ledgerOrganizationIdentityAction.wrapperExecuted === true &&
+      ledgerOrganizationIdentityAction.executionStatus === 'PASS' &&
+      ledgerOrganizationIdentityAction.executionOutcome === 'PASS' &&
       ledgerOrganizationIdentityAction.authorizedNow === false &&
+      ledgerOrganizationIdentityAction.organizationId ===
+        'kbnsntifrawhimhfjrug' &&
+      ledgerOrganizationIdentityAction.secretFreeRequestProjectionSha256 ===
+        '95149b0f64407700298cbe842cbd15780300e9e357dc492f5d4d56e490490a8e' &&
+      ledgerOrganizationIdentityAction.bindingMaterialSha256 ===
+        '56b07d3eb802d546df25be3b487e32b9c30f0aa7ac1f896bba483cb5e207eb3c' &&
+      ledgerOrganizationIdentityAction.manifestSha256 ===
+        '66db9ed2b7fdb7573b76e79273c71d95551cdb7385e0ca8ee21724c56399f582' &&
+      ledgerOrganizationIdentityAction.terminalSha256 ===
+        '3fec7d3156c52e862602e9adb115e460c6959caeba38d5a1b290abe41513782e' &&
+      ledgerOrganizationIdentityAction.terminalState === 'TERMINAL_PASS' &&
+      ledgerOrganizationIdentityAction.remoteContactCount === 1 &&
+      ledgerOrganizationIdentityAction.requestAttemptCount === 1 &&
+      ledgerOrganizationIdentityAction.automaticRetryCount === 0 &&
       ledgerOrganizationIdentityAction.action003IdentityEvidenceLinkageStatus ===
-        'NOT_IMPLEMENTED' &&
+        'IMPLEMENTED_ACTION_003_V5_REQUIRED' &&
+      ledgerOrganizationIdentityAction.terminalJournalToManifestVerifierStatus ===
+        'IMPLEMENTED_FAIL_CLOSED' &&
       normalizedApproval.includes('  source_organization_identity_capture:') &&
       normalizedApproval.includes('    action_id: PR12-ACTION-002') &&
       normalizedApproval.includes(
@@ -1897,7 +1928,12 @@ function verifyProposalContracts() {
         '    database_password_retrieval_allowed: false'
       ) &&
       normalizedApproval.includes(
-        '    action_003_identity_evidence_linkage_status: NOT_IMPLEMENTED'
+        '    action_003_identity_evidence_linkage_status: IMPLEMENTED_ACTION_003_V5_REQUIRED'
+      ) &&
+      normalizedApproval.includes('    wrapper_executed: true') &&
+      normalizedApproval.includes('    execution_status: PASS') &&
+      normalizedApproval.includes(
+        '    manifest_sha256: 66db9ed2b7fdb7573b76e79273c71d95551cdb7385e0ca8ee21724c56399f582'
       ),
     'Organization identity capture action is not cross-bound across packet, ledger, and template'
   );
@@ -1949,6 +1985,18 @@ function verifyProposalContracts() {
     provisioning.provisioningAction,
     'provisioning.provisioningAction'
   );
+  const provisioningImplementationContracts = requireRecord(
+    provisioning.implementationContracts,
+    'provisioning.implementationContracts'
+  );
+  const organizationIdentityEvidence = requireRecord(
+    provisioning.organizationIdentityEvidence,
+    'provisioning.organizationIdentityEvidence'
+  );
+  const organizationIdentityEvidenceOrganization = requireRecord(
+    organizationIdentityEvidence.organization,
+    'provisioning.organizationIdentityEvidence.organization'
+  );
   assert(
     ledgerSourceProjectAction.actionId === provisioningAction.actionId &&
       ledgerSourceProjectAction.method === provisioningAction.method &&
@@ -1965,6 +2013,12 @@ function verifyProposalContracts() {
         .productionProjectSpecificManagementApiContactAuthorized === false &&
       ledgerSourceProjectAction.existingOrganizationPlanRequired === 'PRO' &&
       ledgerSourceProjectAction.organizationPlanChangeIncluded === false &&
+      ledgerSourceProjectAction.organizationId === 'kbnsntifrawhimhfjrug' &&
+      !ledgerSourceProjectAction.readOnlySupportingRequests.includes(
+        'GET /v1/organizations/kbnsntifrawhimhfjrug'
+      ) &&
+      ledgerSourceProjectAction.organizationIdentityDuplicateGetStatus ===
+        'REMOVED_ACTION_002_EVIDENCE_IS_SOLE_SOURCE' &&
       ledgerSourceProjectAction.regionSelection.code ===
         provisionEnvironment.region &&
       ledgerSourceProjectAction.desiredInstanceSize === 'large' &&
@@ -2012,17 +2066,20 @@ function verifyProposalContracts() {
       ) &&
       normalizedApproval.includes('    automatic_reseal_allowed: false') &&
       normalizedApproval.includes(
-        '    template: source-project-provisioning-binding-v4.template.json'
+        '    template: source-project-provisioning-binding-v5.template.json'
       ) &&
-      normalizedApproval.includes('    phase_local_contract_version: 4') &&
+      normalizedApproval.includes('    phase_local_contract_version: 5') &&
       normalizedApproval.includes(
-        '    result_template: source-project-provisioning-result-v4.template.json'
+        '    result_template: source-project-provisioning-result-v5.template.json'
+      ) &&
+      normalizedApproval.includes(
+        '    provider_safe_projection_template: source-project-provider-safe-projection-v4.template.json'
       ) &&
       normalizedApproval.includes(
         '    credential_configuration_template: source-project-provisioning-credential-configuration-v2.template.json'
       ) &&
       normalizedApproval.includes(
-        '    owner_approval_template: source-project-provisioning-owner-approval-v3.template.json'
+        '    owner_approval_template: source-project-provisioning-owner-approval-v4.template.json'
       ) &&
       normalizedApproval.includes(
         '    official_pricing_evidence_template: source-project-official-pricing-evidence-v2.template.json'
@@ -2034,11 +2091,11 @@ function verifyProposalContracts() {
       sourceAuthorization.isolatedStagingConnectionAuthorized === false &&
       sourceAuthorization.isolatedStagingExecutionAuthorized === false &&
       provisioning.status === 'NOT_RUN' &&
-      provisioning.schemaVersion === 4 &&
-      provisionEnvironment.organizationId === 'NOT_CAPTURED' &&
+      provisioning.schemaVersion === 5 &&
+      provisionEnvironment.organizationId === 'kbnsntifrawhimhfjrug' &&
       provisionEnvironment.organizationSlug === 'kbnsntifrawhimhfjrug' &&
       JSON.stringify(provisionEnvironment.prohibitedOrganizationIds) ===
-        JSON.stringify(['NOT_CAPTURED']) &&
+        JSON.stringify(['kbnsntifrawhimhfjrug']) &&
       JSON.stringify(provisionEnvironment.prohibitedOrganizationSlugs) ===
         JSON.stringify(['kbnsntifrawhimhfjrug']) &&
       provisioning.approvedRequest.projection.organization_slug ===
@@ -2050,7 +2107,7 @@ function verifyProposalContracts() {
       provisioning.sameOrganizationException.targetOrganizationSlug ===
         'kbnsntifrawhimhfjrug' &&
       provisioning.sameOrganizationException.productionOrganizationId ===
-        'NOT_CAPTURED' &&
+        'kbnsntifrawhimhfjrug' &&
       provisioning.sameOrganizationException.productionOrganizationSlug ===
         'kbnsntifrawhimhfjrug' &&
       provisioning.sameOrganizationException.productionProjectRef ===
@@ -2074,6 +2131,47 @@ function verifyProposalContracts() {
       provisioning.approvedRequest.projection.desired_instance_size ===
         'large' &&
       provisioning.approvedRequest.sha256 === 'NOT_CAPTURED' &&
+      provisioningImplementationContracts.organizationIdentityContractPath ===
+        'scripts/commercial-hardening/pr12-source-organization-identity-capture-contract.mjs' &&
+      provisioningImplementationContracts.organizationIdentityContractSha256 ===
+        'NOT_CAPTURED' &&
+      provisioningImplementationContracts.organizationIdentityVerifierPath ===
+        'scripts/commercial-hardening/verify-pr12-source-organization-identity-capture-evidence.mjs' &&
+      provisioningImplementationContracts.organizationIdentityVerifierSha256 ===
+        'NOT_CAPTURED' &&
+      provisioningAction.scheduledExecutionAt === 'NOT_CAPTURED' &&
+      organizationIdentityEvidence.status === 'PASS' &&
+      organizationIdentityEvidence.actionId === 'PR12-ACTION-002' &&
+      organizationIdentityEvidence.terminalState === 'TERMINAL_PASS' &&
+      organizationIdentityEvidence.sourceGitCommit ===
+        '6edd6733756dd73e458cf705675895a5666c76e6' &&
+      organizationIdentityEvidence.sourceBindingMaterialSha256 ===
+        '56b07d3eb802d546df25be3b487e32b9c30f0aa7ac1f896bba483cb5e207eb3c' &&
+      organizationIdentityEvidence.sourceRequestSha256 ===
+        '95149b0f64407700298cbe842cbd15780300e9e357dc492f5d4d56e490490a8e' &&
+      organizationIdentityEvidence.manifestSha256 ===
+        '66db9ed2b7fdb7573b76e79273c71d95551cdb7385e0ca8ee21724c56399f582' &&
+      organizationIdentityEvidence.terminalSha256 ===
+        '3fec7d3156c52e862602e9adb115e460c6959caeba38d5a1b290abe41513782e' &&
+      organizationIdentityEvidenceOrganization.organizationId ===
+        'kbnsntifrawhimhfjrug' &&
+      organizationIdentityEvidenceOrganization.organizationName ===
+        "IFs1991's Org" &&
+      organizationIdentityEvidenceOrganization.organizationSlug ===
+        'kbnsntifrawhimhfjrug' &&
+      organizationIdentityEvidenceOrganization.plan === 'PRO' &&
+      Object.values(
+        requireRecord(
+          organizationIdentityEvidence.evidenceDirectoryFingerprint,
+          'provisioning.organizationIdentityEvidence.evidenceDirectoryFingerprint'
+        )
+      ).every(value => value === 'NOT_CAPTURED') &&
+      Object.values(
+        requireRecord(
+          organizationIdentityEvidence.journalDirectoryFingerprint,
+          'provisioning.organizationIdentityEvidence.journalDirectoryFingerprint'
+        )
+      ).every(value => value === 'NOT_CAPTURED') &&
       provisioning.duplicateAndFailurePolicy
         .atomicLocalClaimRequiredBeforeCredentialRetrieval === true &&
       provisioning.duplicateAndFailurePolicy
@@ -2100,7 +2198,9 @@ function verifyProposalContracts() {
       provisioning.operatorControl.mode ===
         'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1' &&
       provisioning.operatorControl.principalDisplayName === 'FUTOSHI IWASAWA' &&
-      provisioning.operatorControl.principalId === 'NOT_CAPTURED' &&
+      provisioning.operatorControl.principalId === 'owner:futoshi-iwasawa' &&
+      provisioning.operatorControl.principalIdType ===
+        'OWNER_DECLARED_STABLE_PRINCIPAL_ID' &&
       provisioning.operatorControl.identitySeparationAvailable === false &&
       provisioning.operatorControl.independentHumanReviewClaimed === false &&
       provisioning.operatorControl.localPreparationExceptionAuthorized ===
@@ -2132,7 +2232,7 @@ function verifyProposalContracts() {
       ledgerSourceProjectAction.operatorDisplayName ===
         provisioning.operatorControl.principalDisplayName &&
       ledgerSourceProjectAction.operatorCanonicalPrincipalId ===
-        'NOT_CAPTURED' &&
+        'owner:futoshi-iwasawa' &&
       ledgerSourceProjectAction.ownerAuthorizationCeilingUsdScaled === 500000 &&
       ledgerSourceProjectAction.moneyScale === 10000 &&
       ledgerSourceProjectAction.authorizedDurationHours === 72 &&
@@ -2154,11 +2254,11 @@ function verifyProposalContracts() {
       ledgerSourceProjectAction.organizationIdentityCaptureActionId ===
         'PR12-ACTION-002' &&
       ledgerSourceProjectAction.organizationIdentityEvidenceLinkageStatus ===
-        'NOT_IMPLEMENTED' &&
+        'IMPLEMENTED_ACTION_003_V5_REQUIRED' &&
       ledgerSourceProjectAction.fundedThroughPolicyBindingStatus ===
-        'NOT_IMPLEMENTED' &&
+        'IMPLEMENTED_EXACT_SCHEDULED_PLUS_73_HOURS' &&
       ledgerSourceProjectAction.fundedThroughPolicyVerifierStatus ===
-        'NOT_IMPLEMENTED' &&
+        'IMPLEMENTED_EXACT_SCHEDULED_PLUS_73_HOURS' &&
       ledgerSourceProjectAction.actionApprovable === false &&
       normalizedApproval.includes(
         '  phase1_source_project_owner_authorization_ceiling_usd: 50'
@@ -2216,10 +2316,13 @@ function verifyProposalContracts() {
         '  phase1_funding_source: "FUTOSHI IWASAWAが管理するIFs1991\'s Org登録済み支払方法"'
       ) &&
       normalizedApproval.includes(
-        '  source_funded_through_policy_binding_status: NOT_IMPLEMENTED'
+        '  source_funded_through_policy_binding_status: IMPLEMENTED_EXACT_SCHEDULED_PLUS_73_HOURS'
       ) &&
       normalizedApproval.includes(
-        '  source_funded_through_policy_verifier_status: NOT_IMPLEMENTED'
+        '  source_funded_through_policy_verifier_status: IMPLEMENTED_EXACT_SCHEDULED_PLUS_73_HOURS'
+      ) &&
+      normalizedApproval.includes(
+        '  pr12_action_003_duplicate_organization_get_status: REMOVED_ACTION_002_EVIDENCE_IS_SOLE_SOURCE'
       ) &&
       normalizedApproval.includes('  pr12_action_003_approvable: false'),
     'source provisioning phase boundary drift'
@@ -2265,7 +2368,7 @@ function verifyProposalContracts() {
       'PR12_SOURCE_PROJECT_PROVISIONING_OWNER_APPROVAL' &&
       provisioningOwnerApproval.decision === 'NOT_CAPTURED' &&
       provisioningOwnerApproval.actionId === 'PR12-ACTION-003' &&
-      provisioningOwnerApproval.schemaVersion === 3 &&
+      provisioningOwnerApproval.schemaVersion === 4 &&
       provisioningOwnerApproval.operatorControlMode ===
         'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1' &&
       provisioningOwnerApproval.soleOperatorRiskAccepted === false &&
@@ -2274,6 +2377,17 @@ function verifyProposalContracts() {
       provisioningOwnerApproval.productionProjectRef ===
         'qnanuoqveidwvacvbhqp' &&
       provisioningOwnerApproval.organizationSlug === 'kbnsntifrawhimhfjrug' &&
+      provisioningOwnerApproval.organizationId === 'kbnsntifrawhimhfjrug' &&
+      provisioningOwnerApproval.organizationIdentityManifestSha256 ===
+        organizationIdentityEvidence.manifestSha256 &&
+      provisioningOwnerApproval.organizationIdentityTerminalSha256 ===
+        organizationIdentityEvidence.terminalSha256 &&
+      provisioningOwnerApproval.organizationIdentitySourceBindingMaterialSha256 ===
+        organizationIdentityEvidence.sourceBindingMaterialSha256 &&
+      provisioningOwnerApproval.organizationIdentitySourceRequestSha256 ===
+        organizationIdentityEvidence.sourceRequestSha256 &&
+      provisioningOwnerApproval.scheduledExecutionAt === 'NOT_CAPTURED' &&
+      provisioningOwnerApproval.fundedThrough === 'NOT_CAPTURED' &&
       provisioningOwnerApproval.phase2AndLaterAuthorized === false &&
       provisioningOwnerApproval.cleanupDeletionAuthorized === false &&
       provisioningPricing.recordType ===
@@ -2310,7 +2424,7 @@ function verifyProposalContracts() {
       provisioningJournal.automaticResealAllowed === false &&
       provisioningJournal.automaticCleanupAuthorized === false &&
       provisioningJournal.destructiveRecoveryAuthorized === false &&
-      provisioningResult.schemaVersion === 4 &&
+      provisioningResult.schemaVersion === 5 &&
       provisioningResult.status === 'NOT_RUN' &&
       provisioningResult.createPostAttemptCount === 0 &&
       provisioningResult.automaticRetryCount === 0 &&
@@ -2321,17 +2435,33 @@ function verifyProposalContracts() {
       provisioningResult.pricingAndFunding
         .ownerAuthorizationCeilingUsdScaled === 500000 &&
       provisioningResult.pricingAndFunding.providerSpendCapEnforced === false &&
+      provisioningResult.pricingAndFunding.scheduledExecutionAt ===
+        'NOT_CAPTURED' &&
+      provisioningResult.pricingAndFunding.fundedThrough === 'NOT_CAPTURED' &&
+      requireRecord(
+        provisioningResult.organizationIdentityEvidence,
+        'provisioningResult.organizationIdentityEvidence'
+      ).manifestSha256 === organizationIdentityEvidence.manifestSha256 &&
       provisioningResult.readOnlyReconciliation === null &&
       provisioningResult.databaseConnectionPerformed === false &&
       provisioningResult.phase2AndLaterAuthorized === false,
     'Phase 1 journal or result contract drift'
   );
   assert(
-    provisioningProviderExport.schemaVersion === 3 &&
+    provisioningProviderExport.schemaVersion === 4 &&
       provisioningProviderExport.exportType ===
         'SUPABASE_SOURCE_PROJECT_PROVIDER_SAFE_PROJECTION' &&
       provisioningProviderExport.request.rawWireBodyPersisted === false &&
       provisioningProviderExport.request.rawHttpHeadersPersisted === false &&
+      !Object.hasOwn(provisioningProviderExport.preflight, 'organization') &&
+      !Object.hasOwn(
+        provisioningProviderExport.preflight,
+        'organizationResponseBodySha256'
+      ) &&
+      requireRecord(
+        provisioningProviderExport.organizationIdentityEvidence,
+        'provisioningProviderExport.organizationIdentityEvidence'
+      ).terminalSha256 === organizationIdentityEvidence.terminalSha256 &&
       provisioningProviderExport.computeObservation.variantId === 'ci_large' &&
       provisioningProviderExport.reconciliation === null &&
       provisioningProviderExport.productionBoundary
@@ -2905,7 +3035,7 @@ function main() {
     verifyRelativeLinks(document);
   }
   console.log(
-    'PR12 preparation static contract: PASS (Phase 1 wrapper remains unapproved/unrun; 54 COMM gates remain NOT_RUN; staging is not authorized).'
+    'PR12 preparation static contract: PASS (PR12-ACTION-002 PASS is linked; Action-003 v5 enablement is implemented but remains unapproved/unrun; 54 COMM gates remain NOT_RUN; staging is not authorized).'
   );
 }
 

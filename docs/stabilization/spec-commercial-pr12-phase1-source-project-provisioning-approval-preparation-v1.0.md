@@ -1,6 +1,6 @@
 # PR12 Phase 1 source project provisioning approval preparation v1.0
 
-Status: **LOCAL PREPARATION ONLY / PHASE 1 ACTION NOT APPROVED / CREDENTIAL BOOTSTRAP NOT RUN / REMOTE NOT RUN / COMMERCIAL NO_GO**
+Status: **ACTION-002 PASS / ACTION-003 LOCAL ENABLEMENT IMPLEMENTED / ACTION-003 NOT APPROVED OR RUN / STAGING NOT RUN / COMMERCIAL NO_GO**
 
 Date: 2026-07-23 JST
 
@@ -9,6 +9,8 @@ Revision: 2026-07-24 JST — owner-authorized local preparation for the sole-ope
 Revision: 2026-07-25 JST — owner-authorized local preparation for a same-Organization exception fixed to target slug `kbnsntifrawhimhfjrug` and production ref `qnanuoqveidwvacvbhqp`. Only production-ref recognition during mandatory organization-wide duplicate enumeration is permitted; production-project-specific Management API, data-plane, database, and credential contact remains forbidden. This revision is not approval of `PR12-ACTION-003`.
 
 Revision: 2026-07-25 JST — owner-authorized local implementation of the dedicated, read-only `PR12-ACTION-002` Organization identity capture contract. The implementation permits only one future `GET https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug`, uses DPAPI token-only retrieval, and has no redirect, retry, query, project route, production contact, database-password, recovery-GET, or project-creation path. This revision does not authorize that GET, credential bootstrap execution, or `PR12-ACTION-003`.
+
+Revision: 2026-07-26 JST — the separately approved `PR12-ACTION-002` completed `PASS` at head `6edd6733756dd73e458cf705675895a5666c76e6` with one GET attempt, zero retry, and zero production contact, capturing Organization ID/slug `kbnsntifrawhimhfjrug` and plan `PRO`. Action-003 local enablement now verifies the sealed manifest and terminal journal, removes the duplicate Organization entitlement GET, and enforces exact canonical `fundedThrough = scheduledExecutionAt + 73 hours`. This revision does not authorize `PR12-ACTION-003`, credential retrieval/decryption, project creation, production contact, cleanup/deletion, or Phase 2+.
 
 ## 1. Purpose and authority
 
@@ -54,7 +56,7 @@ The only future mutating action eligible for separate approval is:
 | Endpoint                            | `https://api.supabase.com/v1/projects`            |
 | Mutation                            | create one new isolated source project            |
 | Fixed name                          | `seikotsuin-pr12-isolated-qualification-20260719` |
-| Organization                        | exact ID and slug: `NOT_CAPTURED`                 |
+| Organization                        | exact ID and slug: `kbnsntifrawhimhfjrug`         |
 | Required existing organization plan | Pro; plan purchase/change is not included         |
 | Region selection                    | `specific` / `ap-northeast-1` (Tokyo)             |
 | Desired instance size               | `large`                                           |
@@ -69,7 +71,7 @@ The secret-free approval projection is:
   "db_pass": "RUNTIME_SECRET_NOT_IN_EVIDENCE",
   "desired_instance_size": "large",
   "name": "seikotsuin-pr12-isolated-qualification-20260719",
-  "organization_slug": "NOT_CAPTURED",
+  "organization_slug": "kbnsntifrawhimhfjrug",
   "region_selection": {
     "code": "ap-northeast-1",
     "type": "specific"
@@ -81,11 +83,12 @@ The final approval binds the canonical SHA-256 of that exact projection. The wir
 
 Supporting remote reads are part of the same action envelope but are not additional mutations:
 
-1. `GET /v1/organizations/{approved-slug}` to confirm the exact organization identity and existing Pro plan;
-2. `GET /v1/projects/available-regions?organization_slug=...&desired_instance_size=large` to confirm Tokyo availability;
-3. every page of `GET /v1/organizations/{approved-slug}/projects?offset=...&limit=100&sort=name_asc` before POST to reject the fixed-name duplicate;
-4. the same paginated read after POST for bounded readiness/identity observation; and
-5. `GET /v1/projects/{created-ref}/billing/addons` to project `selected_addons[].variant.id === "ci_large"`.
+1. `GET /v1/projects/available-regions?organization_slug=...&desired_instance_size=large` to confirm Tokyo availability;
+2. every page of `GET /v1/organizations/{approved-slug}/projects?offset=...&limit=100&sort=name_asc` before POST to reject the fixed-name duplicate;
+3. the same paginated read after POST for bounded readiness/identity observation; and
+4. `GET /v1/projects/{created-ref}/billing/addons` to project `selected_addons[].variant.id === "ci_large"`.
+
+The Organization identity and Pro-plan source is exclusively the hash-bound, locally reverified `PR12-ACTION-002` sealed evidence and terminal journal. Action-003 does not repeat `GET /v1/organizations/{approved-slug}`; the outbound allowlist rejects that route for Action-003.
 
 No Dashboard session, database endpoint, project API, Auth endpoint, Data API, GraphQL endpoint, Storage endpoint, Realtime endpoint, CLI link, or migration endpoint belongs to Phase 1.
 
@@ -93,26 +96,26 @@ No Dashboard session, database endpoint, project API, Auth endpoint, Data API, G
 
 `PR12-ACTION-002` is reserved for a narrower, non-mutating prerequisite to the provisioning decision:
 
-| Field                    | Bound value                                                                        |
-| ------------------------ | ---------------------------------------------------------------------------------- |
-| Action ID                | `PR12-ACTION-002`                                                                  |
-| Method                   | exactly one `GET` attempt                                                          |
-| Endpoint                 | `https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug`                   |
-| Query / body / redirect  | forbidden                                                                          |
-| Automatic retry/recovery | forbidden                                                                          |
-| Credential retrieval     | Management API token only through owner-approved Windows DPAPI; DB password denied |
-| Expected identity        | name `IFs1991's Org`, slug `kbnsntifrawhimhfjrug`, plan `pro`                      |
-| Production contact       | zero; project enumeration and every project-specific path are forbidden            |
-| Side effect              | one provider access-log/read observation plus local claim/journal/evidence files   |
-| Current state            | local implementation only; remote GET `NOT_RUN` and not approved by this revision  |
+| Field                    | Bound value                                                                            |
+| ------------------------ | -------------------------------------------------------------------------------------- |
+| Action ID                | `PR12-ACTION-002`                                                                      |
+| Method                   | exactly one `GET` attempt                                                              |
+| Endpoint                 | `https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug`                       |
+| Query / body / redirect  | forbidden                                                                              |
+| Automatic retry/recovery | forbidden                                                                              |
+| Credential retrieval     | Management API token only through owner-approved Windows DPAPI; DB password denied     |
+| Expected identity        | name `IFs1991's Org`, slug `kbnsntifrawhimhfjrug`, plan `pro`                          |
+| Production contact       | zero; project enumeration and every project-specific path are forbidden                |
+| Side effect              | one provider access-log/read observation plus local claim/journal/evidence files       |
+| Current state            | separately approved execution completed `PASS`; one GET, zero retry/production contact |
 
 The binding fixes the final Git SHA, governance hash, six direct implementation/dependency hashes (including the shared provisioning contract), credential-configuration hash, exact request-projection hash, directory identities, sole-operator principal, cooling-off reconfirmation, and a maximum 30-minute approval window. The wrapper requires its lexical and resolved location to equal the canonical Git top-level, keeps journal/evidence trees outside that repository, and accepts only Node 24 with empty `process.execArgv`, checked before claim and again immediately before fetch. It requires an exclusive `CLAIMED_GET_NOT_SENT` record before token retrieval and a flushed/read-back `GET_INTENT_DURABLE` record before the one fetch. Either record consumes the action identity; there is no retry or remote reconciliation mode. An expired approval, changed input, dirty head, ambient credential or transport override, duplicate claim, DPAPI resource drift, unexpected response field/type/identity/plan, non-JSON or oversized body, duplicate JSON member, raw or parsed production identifier, or evidence-secret hit stops fail-closed. The outbound guard compares the raw URL byte-for-byte with the fixed endpoint before parsing, so normalized aliases such as explicit port, userinfo, or host-case variations are rejected.
 
 Only these provider response fields are accepted in memory: `id`, `name`, `plan`, `opt_in_tags`, and `allowed_release_channels`. A bounded strict parser rejects duplicate members at every JSON object depth and scans decoded raw text for the production ref/origin before `JSON.parse`; parsed-value production denial remains a second check. Evidence retains only `{ organizationId, organizationName, organizationSlug, plan }` plus the raw response-body SHA-256, status, timestamps, counters, runtime Node version/zero exec-argument count, and production-zero assertions. Raw response bodies, headers, the bearer token, the production ref/origin, and the database password are never evidence.
 
-The six-file sealed evidence set is `action-events.json`, `organization-identity-capture-result.json`, `privacy-scan.json`, `provider-export.safe.json`, `manifest.json`, and `manifest.sha256`. The result explicitly records the operator, approver, lack of identity separation/independent review, accepted sole-operator and same-user-DPAPI risks, approval/reconfirmation/expiry timestamps, broker mode/count, token-only versus database-password retrieval booleans, Node runtime, and one-attempt/zero-retry counters. It is written to a fresh partial directory, statically and runtime-secret scanned, hash-verified, atomically renamed, and then referenced by a terminal journal. Any failure after dispatch is `UNKNOWN_REMOTE_OUTCOME` with a verifier-accepted post-contact event; zero-contact failures are `PARTIAL_FAILURE`. Both are terminal owner-decision states and neither authorizes another GET. The standalone verifier cross-binds cooling/window limits, actor identity, event monotonicity, intent presence, response observation, completion, privacy scan, and manifest seal chronology. Independent terminal-journal-to-manifest verification for downstream Action-003 consumption remains `NOT_IMPLEMENTED`, so the current sealed bundle alone cannot satisfy Action-003 linkage.
+The six-file sealed evidence set is `action-events.json`, `organization-identity-capture-result.json`, `privacy-scan.json`, `provider-export.safe.json`, `manifest.json`, and `manifest.sha256`. The completed PASS binds head `6edd6733756dd73e458cf705675895a5666c76e6`, request SHA `95149b0f64407700298cbe842cbd15780300e9e357dc492f5d4d56e490490a8e`, binding-material SHA `56b07d3eb802d546df25be3b487e32b9c30f0aa7ac1f896bba483cb5e207eb3c`, manifest SHA `66db9ed2b7fdb7573b76e79273c71d95551cdb7385e0ca8ee21724c56399f582`, and terminal SHA `3fec7d3156c52e862602e9adb115e460c6959caeba38d5a1b290abe41513782e`. Action-003 v5 independently verifies the terminal-to-manifest linkage, sealed bytes, chronology, exact Organization projection, one-attempt/zero-retry counts, zero production contact, and raw-path-free directory snapshots before its own credential retrieval or remote contact.
 
-The existing `PR12-ACTION-003` implementation is not retrospectively approved or rewritten by this prerequisite. Binding the captured Organization ID and terminal journal into the final provisioning contract, deciding whether its existing entitlement GET is removed or independently justified without violating the one-capture policy, and binding/verifying exact `fundedThrough = scheduledExecutionAt + 73 hours` all remain `NOT_IMPLEMENTED`. Until all linkage is implemented, tested, independently reviewed, and separately approved, `PR12-ACTION-003` is not approvable.
+`PR12-ACTION-003` is not retrospectively approved by the completed prerequisite. Its v5 local enablement consumes Action-002 as the sole Organization identity/plan source, removes the duplicate entitlement GET, and implements exact canonical `fundedThrough = scheduledExecutionAt + 73 hours` validation across binding, owner approval, result, and evidence verification. Action-003 remains non-approvable until repository-external evidence/journal inputs and fingerprints, exact schedule/funding timestamps, all other final hashes/credential/cleanup inputs, and a new explicit Action-003 approval are populated.
 
 ## 4. Current provider contract basis
 
@@ -154,7 +157,7 @@ If the post-creation defaults differ from the expected posture, the action stops
 - canonical UTC owner-attestation timestamps, an unexpired window, and explicit action/head/payload/material bindings;
 - exact shared target/production organization allow-binding, including target name `IFs1991's Org`, slug `kbnsntifrawhimhfjrug`, and one still-unresolved organization ID that must be identical on both sides;
 - the fixed production name `seikotsuin-management`, ref `qnanuoqveidwvacvbhqp`, origin `https://qnanuoqveidwvacvbhqp.supabase.co`, and explicit same-Organization exception;
-- a central outbound-request guard that allows only the exact HTTPS Management API host, method, path, and query shapes needed for organization entitlement, Tokyo/Large availability, all-page organization duplicate enumeration, one create POST, and the accepted newly-created ref's compute add-on observation;
+- a central outbound-request guard that allows only the exact HTTPS Management API host, method, path, and query shapes needed for Tokyo/Large availability, all-page organization duplicate enumeration, one create POST, and the accepted newly-created ref's compute add-on observation; the Organization entitlement route is explicitly absent and rejected;
 - rejection before remote contact of the production ref in a path/query (including encoded forms), the production origin/host, every unlisted route, extra/duplicate query, wrong method, redirect, port, userinfo, or unbound project-specific ref;
 - current Pro entitlement expectation, the literal `seikotsuin-pr12-isolated-qualification-20260719` name, Tokyo, and Large;
 - the frozen production ref `qnanuoqveidwvacvbhqp` in the denylist;
@@ -175,7 +178,7 @@ If the post-creation defaults differ from the expected posture, the action stops
 
 Populated DPAPI envelopes live in one owner-controlled Windows directory outside the repository and temporary directories. The configuration binds the exact CurrentUser SID hash, machine-name hash, provider-root lexical and resolved path SHA-256 values, filesystem device/inode identity, `pwsh.exe` path/version/SHA-256, broker/bootstrap SHA-256, role-separated entropy context, envelope filenames/SHA-256 values, protected ACL, and no-reparse/no-overwrite policy. Bootstrap, Node channel, broker, and wrapper reject a reparse point in any provider-root, journal, or evidence path component. They re-resolve the relevant paths and reject provider-root identity drift or equality/containment with the resolved repository, Windows temporary, journal, or evidence trees before claim, decrypt, or remote contact. CurrentUser protects data at rest but does not isolate it from malware or privileged code running as the same account; JavaScript and .NET strings cannot be guaranteed to be zeroized. These residual risks require final owner acceptance.
 
-Credential bootstrap is a separate local sensitive action governed by the [bootstrap approval template](evidence/commercial-hardening/pr12/source-project-dpapi-bootstrap-approval-v1.template.json). Its local interactive bootstrap scope is separately owner-authorized, but execution remains `NOT_RUN`; the concrete approval instance, configuration, SID/machine/root bindings, and populated envelopes remain `NOT_CAPTURED`. The bootstrap script uses `CreateNew`, hidden input, DPAPI CurrentUser, role-separated entropy, owner-plus-SYSTEM ACLs, flush/readback, and mutable-buffer clearing; it never overwrites an envelope.
+Credential bootstrap is a separate local sensitive action governed by the [bootstrap approval template](evidence/commercial-hardening/pr12/source-project-dpapi-bootstrap-approval-v1.template.json). The Management-token envelope was bootstrapped and used only for the separately approved Action-002 token role. Action-003 still requires its separately populated, hash-bound two-role configuration and database-password envelope; this enablement cycle did not read, decrypt, create, or overwrite either credential. The bootstrap script uses `CreateNew`, hidden input, DPAPI CurrentUser, role-separated entropy, owner-plus-SYSTEM ACLs, flush/readback, and mutable-buffer clearing; it never overwrites an envelope.
 
 The Node wrapper validates approval and creates/readbacks the durable claim before invoking the exact hash-bound broker once. It sends bounded canonical JSON over captured stdin. That claim-bound request includes the approved bootstrap-script SHA-256, provider resolved-root SHA-256, and journal/evidence lexical path fingerprints; the broker requires the envelope bootstrap provenance to equal the bound current bootstrap hash. The broker independently validates the claim, expiry, hashes, SID/machine, root/envelope identities, resolved path boundaries, and ACLs, then returns a bounded binary frame only over captured stdout. The Node parent never relays or persists that frame or broker stderr and clears mutable buffers. Execute mode asks for both values; recovery asks for the Management token only and never opens the password envelope. Broker failure consumes the action claim and permits no automatic retry or remote contact.
 
@@ -199,7 +202,7 @@ The stable journal blocks reuse even when POST was not sent, including a local b
 
 ## 9. Evidence contract
 
-The Phase 1 runtime contract uses the explicitly versioned [binding v4](evidence/commercial-hardening/pr12/source-project-provisioning-binding-v4.template.json), [credential configuration v2](evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration-v2.template.json), [owner approval v3](evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v3.template.json), [official pricing evidence v2](evidence/commercial-hardening/pr12/source-project-official-pricing-evidence-v2.template.json), [result v4](evidence/commercial-hardening/pr12/source-project-provisioning-result-v4.template.json), and [provider safe projection v3](evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v3.template.json). V3 and earlier binding/result/provider/approval files remain historical or superseded inputs; they are not silently redefined and are not accepted by the current runtime contract. Promotion from every Phase 1-local schema version 2 or later into the existing full commercial-manifest verifier is `NOT_IMPLEMENTED`; a Phase 1-local PASS never implies a COMM PASS. Raw provider bodies must not be retained or reconstructed to bridge the schemas. A separately reviewed, hash-bound v4 promotion verifier is required before any Phase 1 evidence may support commercial qualification.
+The Phase 1 runtime contract uses the explicitly versioned [binding v5](evidence/commercial-hardening/pr12/source-project-provisioning-binding-v5.template.json), [credential configuration v2](evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration-v2.template.json), [owner approval v4](evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v4.template.json), [official pricing evidence v2](evidence/commercial-hardening/pr12/source-project-official-pricing-evidence-v2.template.json), [result v5](evidence/commercial-hardening/pr12/source-project-provisioning-result-v5.template.json), and [provider safe projection v4](evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v4.template.json). V4 and earlier binding/result/provider/approval files remain historical or superseded inputs; they are not silently redefined and are not accepted by the current runtime contract. Promotion from every Phase 1-local schema version 2 or later into the existing full commercial-manifest verifier is `NOT_IMPLEMENTED`; a Phase 1-local PASS never implies a COMM PASS. Raw provider bodies must not be retained or reconstructed to bridge the schemas. A separately reviewed, hash-bound v5 promotion verifier is required before any Phase 1 evidence may support commercial qualification.
 
 The wrapper creates a new evidence directory and persists only:
 
@@ -230,7 +233,7 @@ Current public list-price inputs are:
 - unallocated authorization headroom for known/unknown tax or other incremental charges: `390776` USD×10^-4 (`$39.0776`); and
 - owner-governance authorization ceiling and required approved funding: `500000` USD×10^-4 (`$50.0000`).
 
-Those inputs are not an actual quote, tax estimate, or provider-enforced cap. The `$39.0776` is authorization headroom, not an assertion that unknown charges equal zero. The owner reported that the shared organization is Pro, its payment method is active, and Spend Cap is enabled, but those facts have not been authenticated or provider-captured by this local-only work and Spend Cap does not enforce Compute. The owner has named the funding source as `FUTOSHI IWASAWAが管理するIFs1991's Org登録済み支払方法`, approved `$50.00`, and fixed the policy to fund through 73 hours after the scheduled `PR12-ACTION-003` execution time. The actual scheduled-execution timestamp and resulting canonical UTC `fundedThrough` remain `NOT_CAPTURED`; no charge was incurred by this preparation. The action remains blocked until all three official source captures are fresh and unchanged, known incremental charges fit within headroom, the exact timestamps prove the approved 73-hour policy, and the owner explicitly acknowledges that delayed deletion or other organization usage can exceed this local governance boundary.
+Those inputs are not an actual quote, tax estimate, or provider-enforced cap. The `$39.0776` is authorization headroom, not an assertion that unknown charges equal zero. `PR12-ACTION-002` authenticated and provider-captured that the shared Organization plan is `PRO`. The payment method being active and Spend Cap being enabled remain owner-reported rather than provider-captured by this work, and Spend Cap does not enforce Compute. The owner has named the funding source as `FUTOSHI IWASAWAが管理するIFs1991's Org登録済み支払方法`, approved `$50.00`, and fixed the policy to fund through 73 hours after the scheduled `PR12-ACTION-003` execution time. The actual scheduled-execution timestamp and resulting canonical UTC `fundedThrough` remain `NOT_CAPTURED`; no charge was incurred by this preparation. The action remains blocked until all three official source captures are fresh and unchanged, known incremental charges fit within headroom, the exact timestamps prove the approved 73-hour policy, and the owner explicitly acknowledges that delayed deletion or other organization usage can exceed this local governance boundary.
 
 The project deadline is exactly `min(provider created_at + 72h, fundedThrough)`. The deletion-approval request deadline must remain in the future, be no later than 72 hours from every validation immediately preceding execution, and precede `fundedThrough`; sealed PASS evidence also requires it to be no later than the actual project deadline. Paid projects cannot be treated as pausable. Automatic deletion is forbidden. Deletion is permanent and requires separate approval. The cleanup owner, deletion-approval requester/deadline, billing escalation owner, and funded-extension owner must be named before provisioning.
 
@@ -239,16 +242,16 @@ The project deadline is exactly `min(provider created_at + 72h, fundedThrough)`.
 The following must remain unresolved rather than inferred:
 
 - final PR head SHA and the final governance/contract/wrapper/config/evidence hashes;
-- the shared target/production organization ID; the name `IFs1991's Org` and slug `kbnsntifrawhimhfjrug` are fixed, but the ID remains `NOT_CAPTURED`;
+- populated repository-external Action-002 evidence-directory and terminal-journal inputs plus their raw-path-free fingerprints; the captured target/production Organization ID, name, slug, and Pro plan are fixed;
 - final revalidation of the fixed production name/ref/origin and acknowledgment that organization-wide enumeration necessarily observes its ref while persisting no production metadata;
-- provider-authenticated confirmation of the existing Pro entitlement and fixed project name;
+- Action-003 project-list preflight confirmation that the fixed project name is absent before create; the existing `PRO` plan is already bound to the sealed Action-002 evidence and must not trigger another Organization GET;
 - fresh official-source byte artifacts/hashes, their retrieval timestamps, known incremental charges within the `$39.0776` headroom, and acknowledgment that tax/other charges are not quoted;
 - canonical UTC scheduled execution time and derived `fundedThrough`; the funding source, approved amount `$50.00`, and `scheduled PR12-ACTION-003 + 73 hours` policy are captured;
-- the `NOT_IMPLEMENTED` exact scheduled+73-hour Action-003 binding/verifier and Action-002 terminal-journal/evidence linkage; Action-003 remains non-approvable;
-- the stable lowercase principal ID and ID type for `FUTOSHI IWASAWA`; Phase 1 commercial approver, provisioning/Supabase operator, cleanup/recovery owner, deletion requester, billing/funded-extension owner, and evidence custodian all consolidate to that principal under the explicit exception;
+- the exact scheduled/funded timestamps themselves; exact scheduled+73-hour and Action-002 terminal-journal/evidence linkage verification are implemented, but Action-003 remains non-approvable while required populated values are absent;
+- final binding of stable lowercase principal `owner:futoshi-iwasawa` and type `OWNER_DECLARED_STABLE_PRINCIPAL_ID` to every consolidated Action-003 owner field; Phase 1 commercial approver, provisioning/Supabase operator, cleanup/recovery owner, deletion requester, billing/funded-extension owner, and evidence custodian consolidate to that principal under the explicit exception;
 - final sole-operator self-approval risk acceptance, no-independent-review acknowledgment, same-Organization IAM/billing/control-plane blast-radius acceptance, organization-list production-ref observation acceptance, production direct-contact prohibition acknowledgment, five-minute reconfirmation, and provider-spend-cap limitation acknowledgment;
 - fine-grained Management token type/permissions; DPAPI configuration ID; current SID/machine; provider-root lexical/resolved fingerprints and device/inode identity; journal/evidence resolved identities; PowerShell/script/envelope hashes; and ACL evidence;
-- completion evidence for the separately owner-authorized but still `NOT_RUN` real-credential bootstrap; populated encrypted envelopes and both fixed handle fingerprints;
+- completion evidence for the Action-003 two-role credential configuration and database-password envelope; the Action-002 Management-token bootstrap/use does not complete this requirement;
 - stable journal and evidence-parent directory fingerprints;
 - request timeout, readiness observation limit, polling interval, and acceptance of the fixed 300-second provider/local timestamp skew bound; and
 - final action approval/reconfirmation timestamps and expiry.
@@ -257,7 +260,7 @@ Later-phase owners may remain `UNASSIGNED`; they do not become Phase 1 authority
 
 ## 12. Exact future command boundary
 
-The dedicated read-only identity action, only after a new populated binding and owner approval match the final hashes and expiry, would be:
+The dedicated read-only identity action was executed once under its separately approved populated binding. Its historical command shape was:
 
 ```powershell
 fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-organization-identity-capture.mjs `
@@ -269,17 +272,19 @@ fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-organizati
   --evidence-parent <owner-controlled-absolute-directory>
 ```
 
-That command is documented only. It was not executed, and this revision does not approve it.
+That command completed PASS once. It must not be rerun; Action-003 consumes the sealed result locally and has no Organization entitlement GET route.
 
-After the sealed `PR12-ACTION-002` evidence has been verified and its integration into provisioning is implemented, all remaining blockers are filled, and another separate owner approval record matches the then-final hashes, the provisioning operator may use:
+After the sealed `PR12-ACTION-002` evidence and terminal are supplied to the v5 local verifier, all remaining blockers are filled, and another separate owner approval record matches the then-final hashes, the provisioning operator may use:
 
 ```powershell
 fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs `
   --execute-authorized-action PR12-ACTION-003 `
-  --binding <approved-binding.json> `
+  --binding <approved-binding-v5.json> `
   --credential-config <approved-credential-config.json> `
-  --approval-evidence <owner-approval.json> `
+  --approval-evidence <owner-approval-v4.json> `
   --pricing-evidence <official-pricing-evidence.json> `
+  --organization-identity-evidence-directory <sealed-action-002-evidence-directory> `
+  --organization-identity-terminal <action-002-terminal-journal.json> `
   --journal-directory <owner-controlled-absolute-directory> `
   --evidence-parent <owner-controlled-absolute-directory>
 ```

@@ -41,6 +41,10 @@ const CONTRACT_RELATIVE_PATH =
   'scripts/commercial-hardening/pr12-source-project-provisioning-contract.mjs';
 const WRAPPER_RELATIVE_PATH =
   'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs';
+const ORGANIZATION_IDENTITY_CONTRACT_RELATIVE_PATH =
+  'scripts/commercial-hardening/pr12-source-organization-identity-capture-contract.mjs';
+const ORGANIZATION_IDENTITY_VERIFIER_RELATIVE_PATH =
+  'scripts/commercial-hardening/verify-pr12-source-organization-identity-capture-evidence.mjs';
 
 export const GENERIC_CREDENTIAL_NAMES = Object.freeze([
   'PR12_SUPABASE_ACCESS_TOKEN',
@@ -474,13 +478,6 @@ export function assertAllowedManagementApiRequest(requestInput) {
     'OUTBOUND_URL_INVALID'
   );
 
-  if (
-    method === 'GET' &&
-    url.pathname === `/v1/organizations/${TARGET_ORGANIZATION_SLUG}` &&
-    url.search === ''
-  ) {
-    return 'TARGET_ORGANIZATION_ENTITLEMENT';
-  }
   if (method === 'GET' && url.pathname === '/v1/projects/available-regions') {
     requireExactSearchParameters(url, {
       organization_slug: TARGET_ORGANIZATION_SLUG,
@@ -640,6 +637,7 @@ function validateBindingShape(binding) {
       'status',
       'authorization',
       'provisioningAction',
+      'organizationIdentityEvidence',
       'target',
       'governanceProposal',
       'implementationContracts',
@@ -690,7 +688,50 @@ function validateBindingShape(binding) {
     'readinessObservationMaximumSeconds',
     'readinessPollIntervalSeconds',
     'providerCreatedAtMaximumClockSkewSeconds',
+    'scheduledExecutionAt',
   ]);
+  exact(binding.organizationIdentityEvidence, [
+    'status',
+    'actionId',
+    'terminalState',
+    'sourceGitCommit',
+    'sourceBindingMaterialSha256',
+    'sourceRequestSha256',
+    'evidenceDirectoryName',
+    'manifestSha256',
+    'terminalSha256',
+    'claimSha256',
+    'getIntentSha256',
+    'completedAt',
+    'sealedAt',
+    'organization',
+    'providerResponseBodySha256',
+    'providerSafeProjectionSha256',
+    'providerObservedAt',
+    'remoteContactCount',
+    'requestAttemptCount',
+    'automaticRetryCount',
+    'evidenceDirectoryFingerprint',
+    'journalDirectoryFingerprint',
+  ]);
+  exact(binding.organizationIdentityEvidence.organization, [
+    'organizationId',
+    'organizationName',
+    'organizationSlug',
+    'plan',
+  ]);
+  for (const fingerprint of [
+    binding.organizationIdentityEvidence.evidenceDirectoryFingerprint,
+    binding.organizationIdentityEvidence.journalDirectoryFingerprint,
+  ]) {
+    exact(fingerprint, [
+      'pathSha256',
+      'resolvedPathSha256',
+      'device',
+      'inode',
+      'snapshotSha256',
+    ]);
+  }
   exact(binding.target, ['gitCommit', 'baseCommit', 'cleanWorktreeRequired']);
   exact(binding.governanceProposal, ['path', 'sha256']);
   exact(binding.implementationContracts, [
@@ -698,6 +739,10 @@ function validateBindingShape(binding) {
     'contractSha256',
     'wrapperPath',
     'wrapperSha256',
+    'organizationIdentityContractPath',
+    'organizationIdentityContractSha256',
+    'organizationIdentityVerifierPath',
+    'organizationIdentityVerifierSha256',
   ]);
   exact(binding.credentialControls, [
     'provisioningCredentialConfiguration',
@@ -1364,7 +1409,7 @@ function validateAuthorization(binding) {
 }
 
 function validateApprovalStatus(binding) {
-  requireCondition(binding.schemaVersion === 4, 'BINDING_SCHEMA_INVALID');
+  requireCondition(binding.schemaVersion === 5, 'BINDING_SCHEMA_INVALID');
   requireCondition(
     binding.phase === 'SOURCE_PROJECT_PROVISIONING' &&
       binding.status === 'APPROVED',
@@ -1384,6 +1429,7 @@ function validateAction(binding) {
     binding.provisioningAction,
     'PROVISIONING_ACTION_INVALID'
   );
+  parseTimestamp(action.scheduledExecutionAt, 'PROVISIONING_ACTION_INVALID');
   requireCondition(
     action.actionId === ACTION_ID &&
       action.resultType === 'SOURCE_PROJECT_PROVISIONING_OPERATION' &&
@@ -1410,6 +1456,131 @@ function validateAction(binding) {
         PROVIDER_CREATED_AT_MAXIMUM_CLOCK_SKEW_SECONDS,
     'PROVISIONING_ACTION_INVALID'
   );
+}
+
+function validateOrganizationIdentityEvidence(binding, context) {
+  const evidence = requireRecord(
+    binding.organizationIdentityEvidence,
+    'ORGANIZATION_IDENTITY_EVIDENCE_NOT_BOUND'
+  );
+  const trustedEvidence = requireRecord(
+    context.organizationIdentityEvidence,
+    'ORGANIZATION_IDENTITY_EVIDENCE_NOT_BOUND'
+  );
+  requireCondition(
+    canonicalJson(evidence) === canonicalJson(trustedEvidence) &&
+      context.organizationIdentitySourceGitCommitIsAncestor === true,
+    'ORGANIZATION_IDENTITY_EVIDENCE_NOT_BOUND'
+  );
+
+  const organization = requireRecord(
+    evidence.organization,
+    'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+  );
+  const environment = requireRecord(
+    binding.environmentProposal,
+    'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+  );
+  requireCondition(
+    evidence.status === 'PASS' &&
+      evidence.actionId === 'PR12-ACTION-002' &&
+      evidence.terminalState === 'TERMINAL_PASS' &&
+      requireGitSha(
+        evidence.sourceGitCommit,
+        'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+      ) === evidence.sourceGitCommit &&
+      requireSha256(
+        evidence.sourceBindingMaterialSha256,
+        'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+      ) === evidence.sourceBindingMaterialSha256 &&
+      requireSha256(
+        evidence.sourceRequestSha256,
+        'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+      ) === evidence.sourceRequestSha256 &&
+      requireSha256(
+        evidence.manifestSha256,
+        'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+      ) === evidence.manifestSha256 &&
+      requireSha256(
+        evidence.terminalSha256,
+        'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+      ) === evidence.terminalSha256 &&
+      requireSha256(
+        evidence.claimSha256,
+        'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+      ) === evidence.claimSha256 &&
+      requireSha256(
+        evidence.getIntentSha256,
+        'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+      ) === evidence.getIntentSha256 &&
+      requireSha256(
+        evidence.providerResponseBodySha256,
+        'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+      ) === evidence.providerResponseBodySha256 &&
+      requireSha256(
+        evidence.providerSafeProjectionSha256,
+        'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+      ) === evidence.providerSafeProjectionSha256 &&
+      /^[A-Za-z0-9._-]+$/.test(
+        requireConcreteString(
+          evidence.evidenceDirectoryName,
+          'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+        )
+      ) &&
+      organization.organizationId === environment.organizationId &&
+      organization.organizationName === TARGET_ORGANIZATION_NAME &&
+      organization.organizationSlug === environment.organizationSlug &&
+      organization.plan === 'PRO' &&
+      evidence.remoteContactCount === 1 &&
+      evidence.requestAttemptCount === 1 &&
+      evidence.automaticRetryCount === 0,
+    'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+  );
+
+  for (const fingerprintInput of [
+    evidence.evidenceDirectoryFingerprint,
+    evidence.journalDirectoryFingerprint,
+  ]) {
+    const fingerprint = requireRecord(
+      fingerprintInput,
+      'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+    );
+    for (const key of ['pathSha256', 'resolvedPathSha256', 'snapshotSha256']) {
+      requireSha256(fingerprint[key], 'ORGANIZATION_IDENTITY_EVIDENCE_INVALID');
+    }
+    requireConcreteString(
+      fingerprint.device,
+      'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+    );
+    requireConcreteString(
+      fingerprint.inode,
+      'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+    );
+  }
+
+  const completedAt = parseTimestamp(
+    evidence.completedAt,
+    'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+  );
+  const sealedAt = parseTimestamp(
+    evidence.sealedAt,
+    'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+  );
+  const providerObservedAt = parseTimestamp(
+    evidence.providerObservedAt,
+    'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+  );
+  requireCondition(
+    providerObservedAt <= completedAt &&
+      completedAt <= sealedAt &&
+      sealedAt <=
+        parseTimestamp(
+          binding.approval.approvedAt,
+          'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+        ),
+    'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+  );
+  assertSecretFreeEvidence(evidence, []);
 }
 
 function validateTargetAndDenylist(binding) {
@@ -1626,6 +1797,10 @@ function validateCostFundingAndChronology(binding, context) {
     'APPROVAL_INVALID'
   );
   const expiresAt = parseTimestamp(approval.expiresAt, 'APPROVAL_INVALID');
+  const scheduledExecutionAt = parseTimestamp(
+    binding.provisioningAction.scheduledExecutionAt,
+    'PROVISIONING_ACTION_INVALID'
+  );
   const now = parseTimestamp(context.now, 'CURRENT_TIME_INVALID');
   const operatorControl = requireRecord(
     binding.operatorControl,
@@ -1633,6 +1808,8 @@ function validateCostFundingAndChronology(binding, context) {
   );
   requireCondition(
     approvedAt < operatorReconfirmedAt &&
+      operatorReconfirmedAt <= scheduledExecutionAt &&
+      scheduledExecutionAt < expiresAt &&
       operatorReconfirmedAt < expiresAt &&
       operatorReconfirmedAt - approvedAt >=
         operatorControl.minimumCoolingOffSeconds * 1000 &&
@@ -1744,6 +1921,10 @@ function validateCostFundingAndChronology(binding, context) {
       fundingCeiling === ceiling &&
       fundedThrough >= expiresAt + 72 * 60 * 60 * 1000,
     'FUNDING_NOT_CAPTURED'
+  );
+  requireCondition(
+    fundedThrough === scheduledExecutionAt + 73 * 60 * 60 * 1000,
+    'FUNDING_SCHEDULE_MISMATCH'
   );
   const deletionApprovalRequestDeadline = parseTimestamp(
     cleanup.deletionApprovalRequestDeadline,
@@ -2060,6 +2241,12 @@ function validateApprovalEvidence(
       'tier',
       'ownerAuthorizationCeilingUsdScaled',
       'authorizedDurationHours',
+      'scheduledExecutionAt',
+      'fundedThrough',
+      'organizationIdentityManifestSha256',
+      'organizationIdentityTerminalSha256',
+      'organizationIdentitySourceBindingMaterialSha256',
+      'organizationIdentitySourceRequestSha256',
       'approvedAt',
       'operatorReconfirmedAt',
       'expiresAt',
@@ -2072,7 +2259,7 @@ function validateApprovalEvidence(
   const approval = binding.approval;
   const environment = binding.environmentProposal;
   requireCondition(
-    evidence.schemaVersion === 3 &&
+    evidence.schemaVersion === 4 &&
       evidence.recordType ===
         'PR12_SOURCE_PROJECT_PROVISIONING_OWNER_APPROVAL' &&
       evidence.decision === 'APPROVED' &&
@@ -2117,6 +2304,18 @@ function validateApprovalEvidence(
       evidence.ownerAuthorizationCeilingUsdScaled ===
         OWNER_AUTHORIZATION_CEILING_USD_SCALED &&
       evidence.authorizedDurationHours === 72 &&
+      evidence.scheduledExecutionAt ===
+        binding.provisioningAction.scheduledExecutionAt &&
+      evidence.fundedThrough ===
+        binding.retentionAndCleanupDecision.fundedThrough &&
+      evidence.organizationIdentityManifestSha256 ===
+        binding.organizationIdentityEvidence.manifestSha256 &&
+      evidence.organizationIdentityTerminalSha256 ===
+        binding.organizationIdentityEvidence.terminalSha256 &&
+      evidence.organizationIdentitySourceBindingMaterialSha256 ===
+        binding.organizationIdentityEvidence.sourceBindingMaterialSha256 &&
+      evidence.organizationIdentitySourceRequestSha256 ===
+        binding.organizationIdentityEvidence.sourceRequestSha256 &&
       evidence.approvedAt === approval.approvedAt &&
       evidence.operatorReconfirmedAt === approval.operatorReconfirmedAt &&
       evidence.expiresAt === approval.expiresAt &&
@@ -2182,6 +2381,7 @@ export function validateOfflineApproval(
   );
 
   validateTargetAndDenylist(binding);
+  validateOrganizationIdentityEvidence(binding, context);
   validateInitialPosture(binding);
   validateOwnersAndCleanup(binding);
   validateCostFundingAndChronology(binding, context);
@@ -2285,13 +2485,33 @@ export function validateOfflineApproval(
   requireCondition(
     contracts.contractPath === CONTRACT_RELATIVE_PATH &&
       contracts.wrapperPath === WRAPPER_RELATIVE_PATH &&
+      contracts.organizationIdentityContractPath ===
+        ORGANIZATION_IDENTITY_CONTRACT_RELATIVE_PATH &&
+      contracts.organizationIdentityVerifierPath ===
+        ORGANIZATION_IDENTITY_VERIFIER_RELATIVE_PATH &&
       requireSha256(
         contracts.contractSha256,
         'IMPLEMENTATION_HASH_MISMATCH'
       ) ===
         requireSha256(context.contractSha256, 'IMPLEMENTATION_HASH_MISMATCH') &&
       requireSha256(contracts.wrapperSha256, 'IMPLEMENTATION_HASH_MISMATCH') ===
-        requireSha256(context.wrapperSha256, 'IMPLEMENTATION_HASH_MISMATCH'),
+        requireSha256(context.wrapperSha256, 'IMPLEMENTATION_HASH_MISMATCH') &&
+      requireSha256(
+        contracts.organizationIdentityContractSha256,
+        'IMPLEMENTATION_HASH_MISMATCH'
+      ) ===
+        requireSha256(
+          context.organizationIdentityContractSha256,
+          'IMPLEMENTATION_HASH_MISMATCH'
+        ) &&
+      requireSha256(
+        contracts.organizationIdentityVerifierSha256,
+        'IMPLEMENTATION_HASH_MISMATCH'
+      ) ===
+        requireSha256(
+          context.organizationIdentityVerifierSha256,
+          'IMPLEMENTATION_HASH_MISMATCH'
+        ),
     'IMPLEMENTATION_HASH_MISMATCH'
   );
   const credentialControls = requireRecord(
@@ -2358,6 +2578,7 @@ export function validateOfflineApproval(
       implementationContracts: binding.implementationContracts,
       lifecycle: binding.lifecycle,
       operatorControl: binding.operatorControl,
+      organizationIdentityEvidence: binding.organizationIdentityEvidence,
       phase1Owners: {
         commercialReleaseOwner: binding.owners.commercialReleaseOwner,
         provisioningOperator: binding.owners.provisioningOperator,
@@ -2381,6 +2602,8 @@ export function validateOfflineApproval(
     region: binding.environmentProposal.region,
     tier: binding.environmentProposal.databaseTier,
     approvalExpiresAt: approval.expiresAt,
+    scheduledExecutionAt: binding.provisioningAction.scheduledExecutionAt,
+    organizationIdentityEvidence: binding.organizationIdentityEvidence,
     remoteContactPerformed: false,
     credentialReadPerformed: false,
   };
@@ -2614,40 +2837,6 @@ export function organizationProjectPageToSafeProjection(
     protectedProductionProjectCount: projects.filter(
       project => project.protectedProductionProject === true
     ).length,
-  };
-}
-
-export function organizationResponseToSafeProjection(
-  responseInput,
-  bindingInput
-) {
-  const response = assertExactKeys(
-    responseInput,
-    ['id', 'name', 'plan', 'opt_in_tags', 'allowed_release_channels'],
-    'PROVIDER_RESPONSE_UNEXPECTED_FIELD'
-  );
-  const binding = requireRecord(bindingInput, 'BINDING_INVALID');
-  const environment = requireRecord(
-    binding.environmentProposal,
-    'ENVIRONMENT_PROPOSAL_INVALID'
-  );
-  requireCondition(
-    response.id === environment.organizationId &&
-      response.name === TARGET_ORGANIZATION_NAME &&
-      response.plan === 'pro' &&
-      Array.isArray(response.opt_in_tags) &&
-      response.opt_in_tags.every(value => typeof value === 'string') &&
-      Array.isArray(response.allowed_release_channels) &&
-      response.allowed_release_channels.every(
-        value => typeof value === 'string'
-      ),
-    'ORGANIZATION_ENTITLEMENT_MISMATCH'
-  );
-  return {
-    organizationId: response.id,
-    organizationName: response.name,
-    organizationSlug: environment.organizationSlug,
-    plan: 'PRO',
   };
 }
 

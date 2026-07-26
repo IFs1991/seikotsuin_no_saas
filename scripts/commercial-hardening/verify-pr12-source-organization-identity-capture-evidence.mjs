@@ -6,6 +6,7 @@ import {
   lstatSync,
   openSync,
   readFileSync,
+  realpathSync,
   readdirSync,
   statSync,
 } from 'node:fs';
@@ -14,7 +15,10 @@ import { fileURLToPath } from 'node:url';
 
 import {
   ORGANIZATION_IDENTITY_CAPTURE_ACTION_ID,
+  ORGANIZATION_IDENTITY_CAPTURE_CLAIM_FILE,
   ORGANIZATION_IDENTITY_CAPTURE_ENDPOINT,
+  ORGANIZATION_IDENTITY_CAPTURE_INTENT_FILE,
+  ORGANIZATION_IDENTITY_CAPTURE_TERMINAL_FILE,
   OrganizationIdentityCaptureContractError,
   assertOrganizationIdentityCaptureEvidenceSecretFree,
 } from './pr12-source-organization-identity-capture-contract.mjs';
@@ -105,6 +109,50 @@ function requireTimestamp(value, code) {
 }
 
 function stableRead(pathname, maximumBytes = 1_048_576) {
+  return stableReadSnapshot(pathname, maximumBytes).bytes;
+}
+
+function normalizedFingerprintPath(value) {
+  const normalized = path.resolve(value).replaceAll('\\', '/');
+  return process.platform === 'win32' ? normalized.toLowerCase() : normalized;
+}
+
+function pathFingerprint(value) {
+  return sha256Text(normalizedFingerprintPath(value));
+}
+
+function stableDirectoryIdentity(directoryInput, code) {
+  try {
+    const directory = path.resolve(directoryInput);
+    requireCondition(
+      existsSync(directory) && !lstatSync(directory).isSymbolicLink(),
+      code
+    );
+    const before = statSync(directory, { bigint: true });
+    const resolvedPath = realpathSync.native(directory);
+    const after = statSync(directory, { bigint: true });
+    requireCondition(
+      before.isDirectory() &&
+        after.isDirectory() &&
+        before.dev === after.dev &&
+        before.ino === after.ino &&
+        normalizedFingerprintPath(directory) ===
+          normalizedFingerprintPath(resolvedPath),
+      code
+    );
+    return {
+      pathSha256: pathFingerprint(directory),
+      resolvedPathSha256: pathFingerprint(resolvedPath),
+      device: String(after.dev),
+      inode: String(after.ino),
+    };
+  } catch (error) {
+    if (error instanceof OrganizationIdentityCaptureEvidenceError) throw error;
+    fail(code);
+  }
+}
+
+function stableReadSnapshot(pathname, maximumBytes = 1_048_576) {
   let descriptor;
   try {
     requireCondition(
@@ -113,8 +161,12 @@ function stableRead(pathname, maximumBytes = 1_048_576) {
     );
     descriptor = openSync(pathname, 'r');
     const before = fstatSync(descriptor);
+    const resolvedPath = realpathSync.native(pathname);
     requireCondition(
-      before.isFile() && before.size <= maximumBytes,
+      before.isFile() &&
+        before.size <= maximumBytes &&
+        normalizedFingerprintPath(pathname) ===
+          normalizedFingerprintPath(resolvedPath),
       'EVIDENCE_FILE_INVALID'
     );
     const bytes = readFileSync(descriptor);
@@ -132,10 +184,45 @@ function stableRead(pathname, maximumBytes = 1_048_576) {
         bytes.length === after.size,
       'EVIDENCE_FILE_CHANGED'
     );
-    return bytes;
+    return {
+      bytes,
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+      identity: {
+        pathSha256: pathFingerprint(pathname),
+        resolvedPathSha256: pathFingerprint(resolvedPath),
+        device: String(after.dev),
+        inode: String(after.ino),
+        size: after.size,
+        modifiedAtMilliseconds: after.mtimeMs,
+      },
+    };
   } finally {
     if (descriptor !== undefined) closeSync(descriptor);
   }
+}
+
+function assertStableReadSnapshot(pathname, expected, maximumBytes) {
+  const current = stableReadSnapshot(pathname, maximumBytes);
+  requireCondition(
+    current.sha256 === expected.sha256 &&
+      canonicalJson(current.identity) === canonicalJson(expected.identity),
+    'IDENTITY_LINKAGE_SNAPSHOT_CHANGED'
+  );
+}
+
+function directorySnapshotSha256(directoryIdentity, snapshotsByName) {
+  return sha256Text(
+    canonicalJson({
+      directoryIdentity,
+      files: Object.keys(snapshotsByName)
+        .sort()
+        .map(filename => ({
+          filename,
+          sha256: snapshotsByName[filename].sha256,
+          identity: snapshotsByName[filename].identity,
+        })),
+    })
+  );
 }
 
 function parseCanonicalJson(bytes, code) {
@@ -813,6 +900,325 @@ export function verifyOrganizationIdentityCaptureEvidenceDirectory(
     remoteContactCount: result.contact.remoteContactCount,
     requestAttemptCount: result.contact.requestAttemptCount,
     automaticRetryCount: result.contact.automaticRetryCount,
+  };
+}
+
+export function verifyOrganizationIdentityCaptureTerminalLinkage(
+  directoryInput,
+  terminalPathInput
+) {
+  const directory = path.resolve(
+    requireString(directoryInput, 'IDENTITY_LINKAGE_INPUT_INVALID')
+  );
+  const terminalPath = path.resolve(
+    requireString(terminalPathInput, 'IDENTITY_LINKAGE_INPUT_INVALID')
+  );
+  const journalDirectory = path.dirname(terminalPath);
+  requireCondition(
+    path.basename(terminalPath) === ORGANIZATION_IDENTITY_CAPTURE_TERMINAL_FILE,
+    'IDENTITY_LINKAGE_TERMINAL_PATH_INVALID'
+  );
+  const evidenceDirectoryIdentityBefore = stableDirectoryIdentity(
+    directory,
+    'IDENTITY_LINKAGE_EVIDENCE_DIRECTORY_INVALID'
+  );
+  const journalDirectoryIdentityBefore = stableDirectoryIdentity(
+    journalDirectory,
+    'IDENTITY_LINKAGE_JOURNAL_DIRECTORY_INVALID'
+  );
+  requireCondition(
+    canonicalJson(readdirSync(journalDirectory).sort()) ===
+      canonicalJson(
+        [
+          ORGANIZATION_IDENTITY_CAPTURE_CLAIM_FILE,
+          ORGANIZATION_IDENTITY_CAPTURE_INTENT_FILE,
+          ORGANIZATION_IDENTITY_CAPTURE_TERMINAL_FILE,
+        ].sort()
+      ),
+    'IDENTITY_LINKAGE_JOURNAL_FILE_SET_INVALID'
+  );
+  const verifiedBefore =
+    verifyOrganizationIdentityCaptureEvidenceDirectory(directory);
+  requireCondition(
+    verifiedBefore.actionOutcome === 'PASS' &&
+      verifiedBefore.remoteContactCount === 1 &&
+      verifiedBefore.requestAttemptCount === 1 &&
+      verifiedBefore.automaticRetryCount === 0,
+    'IDENTITY_LINKAGE_OUTCOME_INVALID'
+  );
+
+  const evidenceSnapshots = Object.fromEntries(
+    REQUIRED_FILES.map(filename => [
+      filename,
+      stableReadSnapshot(path.join(directory, filename)),
+    ])
+  );
+  const journalSnapshots = Object.fromEntries(
+    [
+      ORGANIZATION_IDENTITY_CAPTURE_CLAIM_FILE,
+      ORGANIZATION_IDENTITY_CAPTURE_INTENT_FILE,
+      ORGANIZATION_IDENTITY_CAPTURE_TERMINAL_FILE,
+    ].map(filename => [
+      filename,
+      stableReadSnapshot(path.join(journalDirectory, filename), 16_384),
+    ])
+  );
+  const manifestBytes = evidenceSnapshots['manifest.json'].bytes;
+  const resultBytes =
+    evidenceSnapshots['organization-identity-capture-result.json'].bytes;
+  const providerBytes = evidenceSnapshots['provider-export.safe.json'].bytes;
+  const eventsBytes = evidenceSnapshots['action-events.json'].bytes;
+  const claimBytes =
+    journalSnapshots[ORGANIZATION_IDENTITY_CAPTURE_CLAIM_FILE].bytes;
+  const intentBytes =
+    journalSnapshots[ORGANIZATION_IDENTITY_CAPTURE_INTENT_FILE].bytes;
+  const terminalBytes =
+    journalSnapshots[ORGANIZATION_IDENTITY_CAPTURE_TERMINAL_FILE].bytes;
+  const manifest = parseCanonicalJson(
+    manifestBytes,
+    'IDENTITY_LINKAGE_MANIFEST_INVALID'
+  );
+  const result = parseCanonicalJson(
+    resultBytes,
+    'IDENTITY_LINKAGE_RESULT_INVALID'
+  );
+  const provider = parseCanonicalJson(
+    providerBytes,
+    'IDENTITY_LINKAGE_PROVIDER_INVALID'
+  );
+  const events = parseCanonicalJson(
+    eventsBytes,
+    'IDENTITY_LINKAGE_EVENTS_INVALID'
+  );
+  const claim = exactKeys(
+    parseCanonicalJson(claimBytes, 'IDENTITY_LINKAGE_CLAIM_INVALID'),
+    [
+      'actionId',
+      'bindingMaterialSha256',
+      'claimedAt',
+      'payloadSha256',
+      'state',
+    ],
+    'IDENTITY_LINKAGE_CLAIM_INVALID'
+  );
+  const intent = exactKeys(
+    parseCanonicalJson(intentBytes, 'IDENTITY_LINKAGE_INTENT_INVALID'),
+    [
+      'actionId',
+      'automaticRetryCount',
+      'bindingMaterialSha256',
+      'claimSha256',
+      'getIntentAt',
+      'payloadSha256',
+      'remoteContactCountBeforeGet',
+      'state',
+    ],
+    'IDENTITY_LINKAGE_INTENT_INVALID'
+  );
+  const terminal = exactKeys(
+    parseCanonicalJson(terminalBytes, 'IDENTITY_LINKAGE_TERMINAL_INVALID'),
+    [
+      'actionId',
+      'bindingMaterialSha256',
+      'requestSha256',
+      'state',
+      'completedAt',
+      'evidenceDirectoryName',
+      'manifestSha256',
+      'remoteContactCount',
+      'requestAttemptCount',
+      'automaticRetryCount',
+    ],
+    'IDENTITY_LINKAGE_TERMINAL_INVALID'
+  );
+  const manifestSha256 = evidenceSnapshots['manifest.json'].sha256;
+  const terminalSha256 =
+    journalSnapshots[ORGANIZATION_IDENTITY_CAPTURE_TERMINAL_FILE].sha256;
+  const claimSha256 =
+    journalSnapshots[ORGANIZATION_IDENTITY_CAPTURE_CLAIM_FILE].sha256;
+  const getIntentSha256 =
+    journalSnapshots[ORGANIZATION_IDENTITY_CAPTURE_INTENT_FILE].sha256;
+  const evidenceDirectoryName = path.basename(directory);
+  const metadataByPath = new Map(
+    manifest.artifacts.map(entry => [entry.path, entry])
+  );
+  requireCondition(
+    JSON_ARTIFACTS.every(filename => {
+      const metadata = metadataByPath.get(filename);
+      const snapshot = evidenceSnapshots[filename];
+      return (
+        isRecord(metadata) &&
+        metadata.bytes === snapshot.bytes.length &&
+        metadata.sha256 === snapshot.sha256
+      );
+    }) &&
+      new TextDecoder('utf-8', { fatal: true }).decode(
+        evidenceSnapshots['manifest.sha256'].bytes
+      ) === `${manifestSha256}\n`,
+    'IDENTITY_LINKAGE_SEALED_ARTIFACT_INVALID'
+  );
+  requireCondition(
+    claim.actionId === ORGANIZATION_IDENTITY_CAPTURE_ACTION_ID &&
+      claim.state === 'CLAIMED_GET_NOT_SENT' &&
+      claim.bindingMaterialSha256 === manifest.bindingMaterialSha256 &&
+      claim.bindingMaterialSha256 === result.bindingMaterialSha256 &&
+      claim.payloadSha256 === manifest.requestSha256 &&
+      claim.payloadSha256 === result.requestSha256 &&
+      claim.claimedAt === result.startedAt &&
+      intent.actionId === ORGANIZATION_IDENTITY_CAPTURE_ACTION_ID &&
+      intent.state === 'GET_INTENT_DURABLE' &&
+      intent.bindingMaterialSha256 === claim.bindingMaterialSha256 &&
+      intent.bindingMaterialSha256 === manifest.bindingMaterialSha256 &&
+      intent.bindingMaterialSha256 === result.bindingMaterialSha256 &&
+      intent.payloadSha256 === claim.payloadSha256 &&
+      intent.payloadSha256 === manifest.requestSha256 &&
+      intent.payloadSha256 === result.requestSha256 &&
+      intent.claimSha256 === claimSha256 &&
+      result.claimSha256 === claimSha256 &&
+      result.getIntentSha256 === getIntentSha256 &&
+      intent.automaticRetryCount === 0 &&
+      intent.remoteContactCountBeforeGet === 0 &&
+      Array.isArray(events.events) &&
+      events.events.length === 4 &&
+      events.events[0].at === claim.claimedAt &&
+      events.events[1].at === intent.getIntentAt,
+    'IDENTITY_LINKAGE_JOURNAL_CROSS_BINDING_INVALID'
+  );
+  requireCondition(
+    terminal.actionId === ORGANIZATION_IDENTITY_CAPTURE_ACTION_ID &&
+      terminal.state === 'TERMINAL_PASS' &&
+      terminal.bindingMaterialSha256 === manifest.bindingMaterialSha256 &&
+      terminal.bindingMaterialSha256 === result.bindingMaterialSha256 &&
+      terminal.requestSha256 === manifest.requestSha256 &&
+      terminal.requestSha256 === result.requestSha256 &&
+      terminal.completedAt === result.completedAt &&
+      terminal.evidenceDirectoryName === evidenceDirectoryName &&
+      terminal.manifestSha256 === manifestSha256 &&
+      terminal.manifestSha256 === verifiedBefore.manifestSha256 &&
+      terminal.remoteContactCount === verifiedBefore.remoteContactCount &&
+      terminal.requestAttemptCount === verifiedBefore.requestAttemptCount &&
+      terminal.automaticRetryCount === verifiedBefore.automaticRetryCount &&
+      result.status === 'PASS' &&
+      provider.status === 'PASS' &&
+      result.providerObservation.bodySha256 === provider.response.bodySha256 &&
+      result.providerObservation.safeProjectionSha256 ===
+        provider.response.safeProjectionSha256 &&
+      result.providerObservation.observedAt === provider.response.observedAt &&
+      canonicalJson(result.organization) ===
+        canonicalJson(provider.response.safeProjection),
+    'IDENTITY_LINKAGE_CROSS_BINDING_INVALID'
+  );
+  requireTimestamp(claim.claimedAt, 'IDENTITY_LINKAGE_CLAIM_INVALID');
+  requireTimestamp(intent.getIntentAt, 'IDENTITY_LINKAGE_INTENT_INVALID');
+  requireTimestamp(terminal.completedAt, 'IDENTITY_LINKAGE_TERMINAL_INVALID');
+  requireCondition(
+    Date.parse(claim.claimedAt) <= Date.parse(intent.getIntentAt) &&
+      Date.parse(intent.getIntentAt) <=
+        Date.parse(provider.response.observedAt) &&
+      Date.parse(provider.response.observedAt) <=
+        Date.parse(result.completedAt) &&
+      Date.parse(result.completedAt) <= Date.parse(manifest.sealedAt) &&
+      Date.parse(intent.getIntentAt) <
+        Date.parse(result.approvalWindow.expiresAt),
+    'IDENTITY_LINKAGE_CHRONOLOGY_INVALID'
+  );
+  for (const value of [
+    claim.bindingMaterialSha256,
+    claim.payloadSha256,
+    intent.bindingMaterialSha256,
+    intent.payloadSha256,
+    intent.claimSha256,
+  ]) {
+    requireSha256(value, 'IDENTITY_LINKAGE_JOURNAL_HASH_INVALID');
+  }
+  requireSha256(
+    terminal.bindingMaterialSha256,
+    'IDENTITY_LINKAGE_TERMINAL_INVALID'
+  );
+  requireSha256(terminal.requestSha256, 'IDENTITY_LINKAGE_TERMINAL_INVALID');
+  requireSha256(terminal.manifestSha256, 'IDENTITY_LINKAGE_TERMINAL_INVALID');
+  for (const document of [claim, intent, terminal]) {
+    assertOrganizationIdentityCaptureEvidenceSecretFree(document, []);
+  }
+
+  const verifiedAfter =
+    verifyOrganizationIdentityCaptureEvidenceDirectory(directory);
+  requireCondition(
+    canonicalJson(verifiedAfter) === canonicalJson(verifiedBefore) &&
+      verifiedAfter.manifestSha256 === manifestSha256,
+    'IDENTITY_LINKAGE_SNAPSHOT_CHANGED'
+  );
+  for (const [filename, snapshot] of Object.entries(evidenceSnapshots)) {
+    assertStableReadSnapshot(path.join(directory, filename), snapshot);
+  }
+  for (const [filename, snapshot] of Object.entries(journalSnapshots)) {
+    assertStableReadSnapshot(
+      path.join(journalDirectory, filename),
+      snapshot,
+      16_384
+    );
+  }
+  const evidenceDirectoryIdentityAfter = stableDirectoryIdentity(
+    directory,
+    'IDENTITY_LINKAGE_EVIDENCE_DIRECTORY_INVALID'
+  );
+  const journalDirectoryIdentityAfter = stableDirectoryIdentity(
+    journalDirectory,
+    'IDENTITY_LINKAGE_JOURNAL_DIRECTORY_INVALID'
+  );
+  requireCondition(
+    canonicalJson(evidenceDirectoryIdentityAfter) ===
+      canonicalJson(evidenceDirectoryIdentityBefore) &&
+      canonicalJson(journalDirectoryIdentityAfter) ===
+        canonicalJson(journalDirectoryIdentityBefore) &&
+      canonicalJson(readdirSync(journalDirectory).sort()) ===
+        canonicalJson(
+          [
+            ORGANIZATION_IDENTITY_CAPTURE_CLAIM_FILE,
+            ORGANIZATION_IDENTITY_CAPTURE_INTENT_FILE,
+            ORGANIZATION_IDENTITY_CAPTURE_TERMINAL_FILE,
+          ].sort()
+        ),
+    'IDENTITY_LINKAGE_SNAPSHOT_CHANGED'
+  );
+  const evidenceDirectoryFingerprint = {
+    ...evidenceDirectoryIdentityAfter,
+    snapshotSha256: directorySnapshotSha256(
+      evidenceDirectoryIdentityAfter,
+      evidenceSnapshots
+    ),
+  };
+  const journalDirectoryFingerprint = {
+    ...journalDirectoryIdentityAfter,
+    snapshotSha256: directorySnapshotSha256(
+      journalDirectoryIdentityAfter,
+      journalSnapshots
+    ),
+  };
+
+  return {
+    status: 'PASS',
+    actionId: ORGANIZATION_IDENTITY_CAPTURE_ACTION_ID,
+    terminalState: terminal.state,
+    sourceGitCommit: manifest.gitCommit,
+    sourceBindingMaterialSha256: manifest.bindingMaterialSha256,
+    sourceRequestSha256: manifest.requestSha256,
+    evidenceDirectoryName,
+    manifestSha256,
+    terminalSha256,
+    claimSha256,
+    getIntentSha256,
+    completedAt: result.completedAt,
+    sealedAt: manifest.sealedAt,
+    organization: result.organization,
+    providerResponseBodySha256: provider.response.bodySha256,
+    providerSafeProjectionSha256: provider.response.safeProjectionSha256,
+    providerObservedAt: provider.response.observedAt,
+    evidenceDirectoryFingerprint,
+    journalDirectoryFingerprint,
+    remoteContactCount: verifiedBefore.remoteContactCount,
+    requestAttemptCount: verifiedBefore.requestAttemptCount,
+    automaticRetryCount: verifiedBefore.automaticRetryCount,
   };
 }
 

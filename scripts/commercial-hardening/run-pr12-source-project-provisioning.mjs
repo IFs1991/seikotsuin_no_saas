@@ -36,7 +36,6 @@ import {
   isForbiddenAmbientCredentialName,
   isJsonMediaType,
   organizationProjectPageToSafeProjection,
-  organizationResponseToSafeProjection,
   projectCreateResponseToSafeProjection,
   sha256Canonical,
   sha256Text,
@@ -50,6 +49,10 @@ import {
   validateDpapiCredentialResources,
   windowsPathFingerprint,
 } from './pr12-windows-dpapi-credential-channel.mjs';
+import {
+  OrganizationIdentityCaptureEvidenceError,
+  verifyOrganizationIdentityCaptureTerminalLinkage,
+} from './verify-pr12-source-organization-identity-capture-evidence.mjs';
 import { verifyProvisioningEvidenceDirectory } from './verify-pr12-source-project-provisioning-evidence.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
@@ -62,6 +65,18 @@ const credentialChannelPath = fileURLToPath(
 const evidenceVerifierPath = fileURLToPath(
   new URL(
     './verify-pr12-source-project-provisioning-evidence.mjs',
+    import.meta.url
+  )
+);
+const organizationIdentityContractPath = fileURLToPath(
+  new URL(
+    './pr12-source-organization-identity-capture-contract.mjs',
+    import.meta.url
+  )
+);
+const organizationIdentityVerifierPath = fileURLToPath(
+  new URL(
+    './verify-pr12-source-organization-identity-capture-evidence.mjs',
     import.meta.url
   )
 );
@@ -89,6 +104,18 @@ const EXECUTING_IMPLEMENTATION_FILES = [
     relativePath:
       'scripts/commercial-hardening/verify-pr12-source-project-provisioning-evidence.mjs',
     actualPath: evidenceVerifierPath,
+  },
+  {
+    key: 'organizationIdentityContract',
+    relativePath:
+      'scripts/commercial-hardening/pr12-source-organization-identity-capture-contract.mjs',
+    actualPath: organizationIdentityContractPath,
+  },
+  {
+    key: 'organizationIdentityVerifier',
+    relativePath:
+      'scripts/commercial-hardening/verify-pr12-source-organization-identity-capture-evidence.mjs',
+    actualPath: organizationIdentityVerifierPath,
   },
 ];
 const CLAIM_FILE = 'source-project-provisioning-action.claim.json';
@@ -136,7 +163,8 @@ function safeErrorCode(error) {
   if (
     error instanceof SafeExecutionError ||
     error instanceof ProvisioningContractError ||
-    error instanceof DpapiCredentialChannelError
+    error instanceof DpapiCredentialChannelError ||
+    error instanceof OrganizationIdentityCaptureEvidenceError
   ) {
     return error.code;
   }
@@ -176,6 +204,8 @@ Offline validation only (no credential value read, no network, no journal claim)
     --credential-config <approved-credential-config.json> \`
     --approval-evidence <owner-approval.json> \`
     --pricing-evidence <official-pricing-evidence.json> \`
+    --organization-identity-evidence-directory <sealed-action-002-directory> \`
+    --organization-identity-terminal <action-002-terminal-outcome.json> \`
     --journal-directory <owner-controlled-absolute-directory> \`
     --evidence-parent <owner-controlled-absolute-directory>
 
@@ -186,6 +216,8 @@ Future execution after separate explicit approval only:
     --credential-config <approved-credential-config.json> \`
     --approval-evidence <owner-approval.json> \`
     --pricing-evidence <official-pricing-evidence.json> \`
+    --organization-identity-evidence-directory <sealed-action-002-directory> \`
+    --organization-identity-terminal <action-002-terminal-outcome.json> \`
     --journal-directory <owner-controlled-absolute-directory> \`
     --evidence-parent <owner-controlled-absolute-directory>
 
@@ -196,6 +228,8 @@ Read-only recovery after a durable POST intent and process interruption only:
     --credential-config <approved-credential-config.json> \`
     --approval-evidence <owner-approval.json> \`
     --pricing-evidence <official-pricing-evidence.json> \`
+    --organization-identity-evidence-directory <sealed-action-002-directory> \`
+    --organization-identity-terminal <action-002-terminal-outcome.json> \`
     --journal-directory <owner-controlled-absolute-directory> \`
     --evidence-parent <owner-controlled-absolute-directory>
 
@@ -212,6 +246,8 @@ function parseArguments(argv) {
     '--credential-config',
     '--approval-evidence',
     '--pricing-evidence',
+    '--organization-identity-evidence-directory',
+    '--organization-identity-terminal',
     '--journal-directory',
     '--evidence-parent',
   ]);
@@ -250,6 +286,8 @@ function parseArguments(argv) {
     '--credential-config',
     '--approval-evidence',
     '--pricing-evidence',
+    '--organization-identity-evidence-directory',
+    '--organization-identity-terminal',
     '--journal-directory',
     '--evidence-parent',
   ]) {
@@ -508,6 +546,30 @@ function runGit(args, code) {
   return result.stdout.trim();
 }
 
+function isGitAncestor(ancestor, descendant) {
+  const safeDirectory = path.resolve(process.cwd()).replaceAll('\\', '/');
+  const result = spawnSync(
+    'git',
+    [
+      '-c',
+      `safe.directory=${safeDirectory}`,
+      'merge-base',
+      '--is-ancestor',
+      ancestor,
+      descendant,
+    ],
+    {
+      cwd: process.cwd(),
+      env: cleanGitEnvironment(),
+      encoding: 'utf8',
+      windowsHide: true,
+    }
+  );
+  if (result.status === 0) return true;
+  if (result.status === 1) return false;
+  fail('GIT_ANCESTRY_UNAVAILABLE');
+}
+
 function inspectPriorActionState(journalDirectory) {
   const entries = readdirSync(journalDirectory);
   const allowedEntries = new Set([CLAIM_FILE, DISPATCH_FILE, OUTCOME_FILE]);
@@ -691,7 +753,7 @@ export function readAndValidateJournalState(
       postIntent.record.state !== 'POST_INTENT_DURABLE' ||
       postIntent.record.automaticRetryCount !== 0 ||
       !Number.isInteger(postIntent.record.remoteContactCountBeforePost) ||
-      postIntent.record.remoteContactCountBeforePost < 3 ||
+      postIntent.record.remoteContactCountBeforePost < 2 ||
       !isCanonicalTimestamp(postIntent.record.postIntentAt) ||
       Date.parse(postIntent.record.postIntentAt) <
         Date.parse(claim.record.claimedAt)
@@ -854,6 +916,12 @@ function buildOfflineInputs(args) {
     args['--binding'],
     'BINDING_FILE_INVALID'
   );
+  const bindingSnapshot = readFileSnapshot(bindingPath, 'BINDING_FILE_INVALID');
+  const binding = parseJsonSnapshot(bindingSnapshot, 'BINDING_FILE_INVALID');
+  assertSourceProjectProvisioningAuthorized(binding);
+  if (binding.governanceProposal?.path !== GOVERNANCE_RELATIVE_PATH) {
+    fail('GOVERNANCE_PATH_INVALID');
+  }
   const credentialPath = resolveJsonInput(
     args['--credential-config'],
     'CREDENTIAL_CONFIGURATION_FILE_INVALID'
@@ -865,6 +933,23 @@ function buildOfflineInputs(args) {
   const pricingPath = resolveJsonInput(
     args['--pricing-evidence'],
     'PRICING_EVIDENCE_FILE_INVALID'
+  );
+  if (
+    !path.isAbsolute(args['--organization-identity-evidence-directory']) ||
+    !path.isAbsolute(args['--organization-identity-terminal'])
+  ) {
+    fail('ORGANIZATION_IDENTITY_EVIDENCE_PATH_INVALID');
+  }
+  const organizationIdentityEvidenceDirectory = resolveExistingDirectory(
+    args['--organization-identity-evidence-directory'],
+    'ORGANIZATION_IDENTITY_EVIDENCE_DIRECTORY_INVALID'
+  );
+  const organizationIdentityTerminalPath = resolveJsonInput(
+    args['--organization-identity-terminal'],
+    'ORGANIZATION_IDENTITY_TERMINAL_INVALID'
+  );
+  const organizationIdentityJournalDirectory = path.dirname(
+    organizationIdentityTerminalPath
   );
   const journalDirectory = resolveExistingDirectory(
     args['--journal-directory'],
@@ -884,7 +969,12 @@ function buildOfflineInputs(args) {
       normalizedRepositoryRoot,
       'EXECUTING_IMPLEMENTATION_ROOT_MISMATCH'
     );
-  for (const directory of [journalDirectory, evidenceParent]) {
+  for (const directory of [
+    journalDirectory,
+    evidenceParent,
+    organizationIdentityEvidenceDirectory,
+    organizationIdentityJournalDirectory,
+  ]) {
     const relative = path.relative(normalizedRepositoryRoot, directory);
     if (
       relative === '' ||
@@ -901,6 +991,14 @@ function buildOfflineInputs(args) {
     evidenceParent,
     'EVIDENCE_DIRECTORY_INVALID'
   );
+  const organizationIdentityEvidenceDirectoryIdentity = directoryIdentity(
+    organizationIdentityEvidenceDirectory,
+    'ORGANIZATION_IDENTITY_EVIDENCE_DIRECTORY_INVALID'
+  );
+  const organizationIdentityJournalDirectoryIdentity = directoryIdentity(
+    organizationIdentityJournalDirectory,
+    'ORGANIZATION_IDENTITY_TERMINAL_INVALID'
+  );
   const normalizedRepositoryRealPath = realpathSync
     .native(normalizedRepositoryRoot)
     .replaceAll('\\', '/')
@@ -908,6 +1006,8 @@ function buildOfflineInputs(args) {
   for (const identity of [
     journalDirectoryIdentity,
     evidenceParentDirectoryIdentity,
+    organizationIdentityEvidenceDirectoryIdentity,
+    organizationIdentityJournalDirectoryIdentity,
   ]) {
     const relative = path.relative(
       normalizedRepositoryRealPath,
@@ -920,13 +1020,18 @@ function buildOfflineInputs(args) {
       fail('RUNTIME_OUTPUT_DIRECTORY_INSIDE_REPOSITORY');
     }
   }
+  const directoryIdentities = [
+    journalDirectoryIdentity,
+    evidenceParentDirectoryIdentity,
+    organizationIdentityEvidenceDirectoryIdentity,
+    organizationIdentityJournalDirectoryIdentity,
+  ];
   if (
-    canonicalJson(journalDirectoryIdentity) ===
-    canonicalJson(evidenceParentDirectoryIdentity)
+    new Set(directoryIdentities.map(identity => canonicalJson(identity)))
+      .size !== directoryIdentities.length
   ) {
     fail('RUNTIME_OUTPUT_DIRECTORIES_MUST_DIFFER');
   }
-  const bindingSnapshot = readFileSnapshot(bindingPath, 'BINDING_FILE_INVALID');
   const credentialSnapshot = readFileSnapshot(
     credentialPath,
     'CREDENTIAL_CONFIGURATION_FILE_INVALID'
@@ -939,11 +1044,22 @@ function buildOfflineInputs(args) {
     pricingPath,
     'PRICING_EVIDENCE_FILE_INVALID'
   );
-  const binding = parseJsonSnapshot(bindingSnapshot, 'BINDING_FILE_INVALID');
-  assertSourceProjectProvisioningAuthorized(binding);
-  if (binding.governanceProposal?.path !== GOVERNANCE_RELATIVE_PATH) {
-    fail('GOVERNANCE_PATH_INVALID');
+  const organizationIdentityTerminalSnapshot = readFileSnapshot(
+    organizationIdentityTerminalPath,
+    'ORGANIZATION_IDENTITY_TERMINAL_INVALID'
+  );
+  const organizationIdentityVerified =
+    verifyOrganizationIdentityCaptureTerminalLinkage(
+      organizationIdentityEvidenceDirectory,
+      organizationIdentityTerminalPath
+    );
+  if (
+    organizationIdentityVerified.terminalSha256 !==
+    organizationIdentityTerminalSnapshot.sha256
+  ) {
+    fail('ORGANIZATION_IDENTITY_TERMINAL_CHANGED');
   }
+  const organizationIdentityEvidence = organizationIdentityVerified;
   const credentialConfiguration = parseJsonSnapshot(
     credentialSnapshot,
     'CREDENTIAL_CONFIGURATION_FILE_INVALID'
@@ -977,11 +1093,20 @@ function buildOfflineInputs(args) {
     ),
     contractSha256: executingImplementationSnapshots.contract.sha256,
     wrapperSha256: executingImplementationSnapshots.wrapper.sha256,
+    organizationIdentityContractSha256:
+      executingImplementationSnapshots.organizationIdentityContract.sha256,
+    organizationIdentityVerifierSha256:
+      executingImplementationSnapshots.organizationIdentityVerifier.sha256,
     credentialConfigurationSha256: credentialSnapshot.sha256,
     approvalEvidenceSha256: approvalSnapshot.sha256,
     pricingEvidenceSha256: pricingSnapshot.sha256,
     approvalEvidence,
     pricingEvidence,
+    organizationIdentityEvidence,
+    organizationIdentitySourceGitCommitIsAncestor: isGitAncestor(
+      organizationIdentityEvidence.sourceGitCommit,
+      currentHead
+    ),
     ambientCredentialNames: ambientCredentialNames(),
     priorActionState: inspectPriorActionState(journalDirectory),
     approvalStage: 'PRE_CLAIM',
@@ -999,6 +1124,9 @@ function buildOfflineInputs(args) {
     credentialPath,
     evidenceParent,
     journalDirectory,
+    organizationIdentityEvidenceDirectory,
+    organizationIdentityJournalDirectory,
+    organizationIdentityTerminalPath,
     pricingPath,
     repositoryRoot: normalizedRepositoryRoot,
     immutableInputHashes: {
@@ -1006,17 +1134,61 @@ function buildOfflineInputs(args) {
       credentialConfiguration: context.credentialConfigurationSha256,
       approvalEvidence: context.approvalEvidenceSha256,
       pricingEvidence: context.pricingEvidenceSha256,
+      organizationIdentityTerminal: organizationIdentityTerminalSnapshot.sha256,
     },
     immutableInputIdentities: {
       binding: bindingSnapshot.identity,
       credentialConfiguration: credentialSnapshot.identity,
       approvalEvidence: approvalSnapshot.identity,
       pricingEvidence: pricingSnapshot.identity,
+      organizationIdentityTerminal:
+        organizationIdentityTerminalSnapshot.identity,
     },
     journalDirectoryIdentity,
     evidenceParentDirectoryIdentity,
+    organizationIdentityEvidenceDirectoryIdentity,
+    organizationIdentityJournalDirectoryIdentity,
     executingImplementationSnapshots,
   };
+}
+
+function revalidateOrganizationIdentityEvidence(inputs) {
+  requireSameDirectoryIdentity(
+    inputs.organizationIdentityEvidenceDirectory,
+    inputs.organizationIdentityEvidenceDirectoryIdentity,
+    'ORGANIZATION_IDENTITY_EVIDENCE_CHANGED'
+  );
+  requireSameDirectoryIdentity(
+    inputs.organizationIdentityJournalDirectory,
+    inputs.organizationIdentityJournalDirectoryIdentity,
+    'ORGANIZATION_IDENTITY_EVIDENCE_CHANGED'
+  );
+  const terminalSnapshot = readFileSnapshot(
+    inputs.organizationIdentityTerminalPath,
+    'ORGANIZATION_IDENTITY_TERMINAL_INVALID'
+  );
+  if (
+    terminalSnapshot.sha256 !==
+      inputs.immutableInputHashes.organizationIdentityTerminal ||
+    canonicalJson(terminalSnapshot.identity) !==
+      canonicalJson(
+        inputs.immutableInputIdentities.organizationIdentityTerminal
+      )
+  ) {
+    fail('ORGANIZATION_IDENTITY_EVIDENCE_CHANGED');
+  }
+  const verified = verifyOrganizationIdentityCaptureTerminalLinkage(
+    inputs.organizationIdentityEvidenceDirectory,
+    inputs.organizationIdentityTerminalPath
+  );
+  const current = verified;
+  if (
+    canonicalJson(current) !==
+    canonicalJson(inputs.context.organizationIdentityEvidence)
+  ) {
+    fail('ORGANIZATION_IDENTITY_EVIDENCE_CHANGED');
+  }
+  return current;
 }
 
 function prepareValidatedLocalResources(inputs) {
@@ -1024,6 +1196,7 @@ function prepareValidatedLocalResources(inputs) {
     inputs,
     'EXECUTING_IMPLEMENTATION_CHANGED'
   );
+  revalidateOrganizationIdentityEvidence(inputs);
   inputs.pricingSourceArtifacts = snapshotOfficialPricingSources(inputs);
   inputs.dpapiResources = validateDpapiCredentialResources(
     inputs.credentialConfiguration,
@@ -1034,6 +1207,21 @@ function prepareValidatedLocalResources(inputs) {
     inputs.journalDirectoryIdentity,
     inputs.evidenceParentDirectoryIdentity
   );
+  assertDpapiDirectoryIsolation(
+    inputs.dpapiResources.providerRootIdentity,
+    inputs.organizationIdentityEvidenceDirectoryIdentity,
+    inputs.organizationIdentityJournalDirectoryIdentity
+  );
+  assertDpapiDirectoryIsolation(
+    inputs.journalDirectoryIdentity,
+    inputs.organizationIdentityEvidenceDirectoryIdentity,
+    inputs.organizationIdentityJournalDirectoryIdentity
+  );
+  assertDpapiDirectoryIsolation(
+    inputs.evidenceParentDirectoryIdentity,
+    inputs.organizationIdentityEvidenceDirectoryIdentity,
+    inputs.organizationIdentityJournalDirectoryIdentity
+  );
   return inputs;
 }
 
@@ -1042,6 +1230,7 @@ function revalidatePreparedLocalResources(inputs) {
     inputs,
     'EXECUTING_IMPLEMENTATION_CHANGED'
   );
+  revalidateOrganizationIdentityEvidence(inputs);
   revalidateOfficialPricingSources(inputs);
   inputs.dpapiResources = revalidateDpapiCredentialResources(
     inputs.credentialConfiguration,
@@ -1052,6 +1241,21 @@ function revalidatePreparedLocalResources(inputs) {
     inputs.dpapiResources.providerRootIdentity,
     inputs.journalDirectoryIdentity,
     inputs.evidenceParentDirectoryIdentity
+  );
+  assertDpapiDirectoryIsolation(
+    inputs.dpapiResources.providerRootIdentity,
+    inputs.organizationIdentityEvidenceDirectoryIdentity,
+    inputs.organizationIdentityJournalDirectoryIdentity
+  );
+  assertDpapiDirectoryIsolation(
+    inputs.journalDirectoryIdentity,
+    inputs.organizationIdentityEvidenceDirectoryIdentity,
+    inputs.organizationIdentityJournalDirectoryIdentity
+  );
+  assertDpapiDirectoryIsolation(
+    inputs.evidenceParentDirectoryIdentity,
+    inputs.organizationIdentityEvidenceDirectoryIdentity,
+    inputs.organizationIdentityJournalDirectoryIdentity
   );
 }
 
@@ -1097,18 +1301,26 @@ function revalidateImmediatelyBeforePost(
       inputs.pricingPath,
       'PRICING_EVIDENCE_FILE_INVALID'
     ),
+    organizationIdentityTerminal: readFileSnapshot(
+      inputs.organizationIdentityTerminalPath,
+      'ORGANIZATION_IDENTITY_TERMINAL_INVALID'
+    ),
   };
   const currentHashes = {
     binding: currentSnapshots.binding.sha256,
     credentialConfiguration: currentSnapshots.credentialConfiguration.sha256,
     approvalEvidence: currentSnapshots.approvalEvidence.sha256,
     pricingEvidence: currentSnapshots.pricingEvidence.sha256,
+    organizationIdentityTerminal:
+      currentSnapshots.organizationIdentityTerminal.sha256,
   };
   const currentIdentities = {
     binding: currentSnapshots.binding.identity,
     credentialConfiguration: currentSnapshots.credentialConfiguration.identity,
     approvalEvidence: currentSnapshots.approvalEvidence.identity,
     pricingEvidence: currentSnapshots.pricingEvidence.identity,
+    organizationIdentityTerminal:
+      currentSnapshots.organizationIdentityTerminal.identity,
   };
   if (
     canonicalJson(currentHashes) !==
@@ -1142,6 +1354,14 @@ function revalidateImmediatelyBeforePost(
       ),
       contractSha256: currentImplementationSnapshots.contract.sha256,
       wrapperSha256: currentImplementationSnapshots.wrapper.sha256,
+      organizationIdentityContractSha256:
+        currentImplementationSnapshots.organizationIdentityContract.sha256,
+      organizationIdentityVerifierSha256:
+        currentImplementationSnapshots.organizationIdentityVerifier.sha256,
+      organizationIdentitySourceGitCommitIsAncestor: isGitAncestor(
+        inputs.context.organizationIdentityEvidence.sourceGitCommit,
+        currentHead
+      ),
       ambientCredentialNames: ambientCredentialNames(),
       priorActionState: inspectPriorActionState(inputs.journalDirectory),
       approvalStage: 'POST_CLAIM',
@@ -1792,7 +2012,7 @@ function sealEvidence({
 
 function makeBaseResult(binding, validation, startedAt, claimSha256) {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     phase: 'SOURCE_PROJECT_PROVISIONING_RESULT',
     resultType: 'SOURCE_PROJECT_PROVISIONING_OPERATION',
     status: 'NOT_RUN',
@@ -1820,6 +2040,7 @@ function makeBaseResult(binding, validation, startedAt, claimSha256) {
     cleanupDeletionAuthorized: false,
     databaseConnectionPerformed: false,
     phase2AndLaterAuthorized: false,
+    organizationIdentityEvidence: binding.organizationIdentityEvidence,
     productionBoundary: {
       exceptionMode: binding.sameOrganizationException.mode,
       targetOrganizationSlug:
@@ -1848,6 +2069,7 @@ function makeBaseResult(binding, validation, startedAt, claimSha256) {
       fundingSource: binding.retentionAndCleanupDecision.fundingSource,
       fundingApprovedAmountUsdScaled:
         binding.retentionAndCleanupDecision.fundingApprovedAmountUsdScaled,
+      scheduledExecutionAt: binding.provisioningAction.scheduledExecutionAt,
       fundedThrough: binding.retentionAndCleanupDecision.fundedThrough,
     },
     approvalWindow: {
@@ -1915,6 +2137,11 @@ async function executeProvisioning(inputs, validation) {
     inputs,
     'EXECUTING_IMPLEMENTATION_CHANGED'
   );
+  if (
+    Date.now() < Date.parse(binding.provisioningAction.scheduledExecutionAt)
+  ) {
+    fail('SCHEDULED_EXECUTION_NOT_REACHED');
+  }
   const startedAt = new Date().toISOString();
   const claim = {
     actionId: ACTION_ID,
@@ -1942,7 +2169,7 @@ async function executeProvisioning(inputs, validation) {
     claimResult.claimSha256
   );
   const providerExport = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     exportType: 'SUPABASE_SOURCE_PROJECT_PROVIDER_SAFE_PROJECTION',
     status: 'NOT_RUN',
     actionId: ACTION_ID,
@@ -1954,6 +2181,7 @@ async function executeProvisioning(inputs, validation) {
       rawWireBodyPersisted: false,
       rawHttpHeadersPersisted: false,
     },
+    organizationIdentityEvidence: binding.organizationIdentityEvidence,
     preflight: null,
     createResponse: null,
     readinessObservation: null,
@@ -2016,20 +2244,6 @@ async function executeProvisioning(inputs, validation) {
     );
     const timeout = binding.provisioningAction.requestTimeoutMilliseconds;
     const organizationSlug = binding.environmentProposal.organizationSlug;
-    const organization = await fetchReadOnlyProjection({
-      url: new URL(
-        `/v1/organizations/${encodeURIComponent(organizationSlug)}`,
-        'https://api.supabase.com'
-      ),
-      accessToken,
-      timeoutMilliseconds: timeout,
-      approvalExpiresAt: binding.approval.expiresAt,
-      onRemoteContact: () => {
-        remoteContactCount += 1;
-      },
-      projector: body => organizationResponseToSafeProjection(body, binding),
-      binding,
-    });
     const regionsUrl = new URL(
       '/v1/projects/available-regions',
       'https://api.supabase.com'
@@ -2061,8 +2275,6 @@ async function executeProvisioning(inputs, validation) {
         ? 'ABSENT_ALL_PAGES'
         : 'DUPLICATE_FOUND';
     providerExport.preflight = {
-      organization: organization.projection,
-      organizationResponseBodySha256: organization.bodySha256,
       region: region.projection,
       regionResponseBodySha256: region.bodySha256,
       projectListPages: projectPreflight.pages,
@@ -2549,6 +2761,7 @@ export function validateLocalCompletionJournalBinding(
     fundingSource: binding.retentionAndCleanupDecision?.fundingSource,
     fundingApprovedAmountUsdScaled:
       binding.retentionAndCleanupDecision?.fundingApprovedAmountUsdScaled,
+    scheduledExecutionAt: binding.provisioningAction?.scheduledExecutionAt,
     fundedThrough: binding.retentionAndCleanupDecision?.fundedThrough,
   };
   const expectedApprovalWindow = {
@@ -2581,6 +2794,8 @@ export function validateLocalCompletionJournalBinding(
     result.identitySeparationAvailable !== false ||
     result.independentHumanReviewClaimed !== false ||
     result.recoveryOwner !== binding.duplicateAndFailurePolicy?.recoveryOwner ||
+    canonicalJson(result.organizationIdentityEvidence) !==
+      canonicalJson(binding.organizationIdentityEvidence) ||
     canonicalJson(result.pricingAndFunding) !==
       canonicalJson(expectedPricingAndFunding) ||
     canonicalJson(result.approvalWindow) !==
@@ -2751,7 +2966,7 @@ async function executeReadOnlyRecovery(inputs, validation, journalState) {
   result.createPostAttemptCount = 1;
   result.journalEvidence.postIntentSha256 = journalState.postIntentSha256;
   const providerExport = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     exportType: 'SUPABASE_SOURCE_PROJECT_PROVIDER_SAFE_PROJECTION',
     status: 'UNKNOWN_REMOTE_OUTCOME',
     actionId: ACTION_ID,
@@ -2763,6 +2978,7 @@ async function executeReadOnlyRecovery(inputs, validation, journalState) {
       rawWireBodyPersisted: false,
       rawHttpHeadersPersisted: false,
     },
+    organizationIdentityEvidence: inputs.binding.organizationIdentityEvidence,
     preflight: null,
     createResponse: null,
     readinessObservation: null,
