@@ -14,6 +14,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -21,17 +22,20 @@ import {
   ACTION_ID,
   CREATE_ENDPOINT,
   MAX_PROVIDER_BODY_BYTES,
+  OFFICIAL_PRICING_SOURCES,
   ProvisioningContractError,
   addonResponseToSafeProjection,
   assertAllowedManagementApiRequest,
   assertProviderBodyEnvelope,
   assertSecretFreeEvidence,
-  assertSourceProjectProvisioningAuthorized,
+  assertSourceProjectProvisioningCandidate,
   availableRegionsToSafeProjection,
   buildBindingMaterial,
   buildSecretFreeRequestProjection,
   canonicalJson,
   claimActionJournal,
+  derivePricingExecutionFreshThrough,
+  hasAsciiControlCharacter,
   journalDirectoryFingerprint,
   isForbiddenAmbientCredentialName,
   isJsonMediaType,
@@ -49,6 +53,7 @@ import {
   validateDpapiCredentialResources,
   windowsPathFingerprint,
 } from './pr12-windows-dpapi-credential-channel.mjs';
+import { inspectOwnerPrivatePathAcl } from './pr12-action003-approval-receipt-contract.mjs';
 import {
   OrganizationIdentityCaptureEvidenceError,
   verifyOrganizationIdentityCaptureTerminalLinkage,
@@ -61,6 +66,12 @@ const contractPath = fileURLToPath(
 );
 const credentialChannelPath = fileURLToPath(
   new URL('./pr12-windows-dpapi-credential-channel.mjs', import.meta.url)
+);
+const approvalReceiptContractPath = fileURLToPath(
+  new URL('./pr12-action003-approval-receipt-contract.mjs', import.meta.url)
+);
+const ownerPrivateAclHelperPath = fileURLToPath(
+  new URL('./pr12-windows-owner-private-acl.ps1', import.meta.url)
 );
 const evidenceVerifierPath = fileURLToPath(
   new URL(
@@ -80,6 +91,20 @@ const organizationIdentityVerifierPath = fileURLToPath(
     import.meta.url
   )
 );
+const CANDIDATE_BINDING_FILENAME =
+  'source-project-provisioning-binding-v5.json';
+const CANDIDATE_CREDENTIAL_FILENAME =
+  'source-project-provisioning-credential-configuration-v2.json';
+const CANDIDATE_OWNER_APPROVAL_FILENAME =
+  'source-project-provisioning-owner-approval-v4.json';
+const INITIAL_APPROVAL_RECEIPT_FILENAME =
+  'source-project-provisioning-initial-approval-receipt-v1.json';
+const FINAL_APPROVAL_RECEIPT_FILENAME =
+  'source-project-provisioning-final-approval-receipt-v1.json';
+const INITIAL_APPROVAL_RECEIPT_DIRECTORY =
+  'source-project-provisioning-initial-approval-receipt-v1';
+const FINAL_APPROVAL_RECEIPT_DIRECTORY =
+  'source-project-provisioning-final-approval-receipt-v1';
 const EXECUTING_IMPLEMENTATION_FILES = [
   {
     key: 'wrapper',
@@ -98,6 +123,18 @@ const EXECUTING_IMPLEMENTATION_FILES = [
     relativePath:
       'scripts/commercial-hardening/pr12-windows-dpapi-credential-channel.mjs',
     actualPath: credentialChannelPath,
+  },
+  {
+    key: 'approvalReceiptContract',
+    relativePath:
+      'scripts/commercial-hardening/pr12-action003-approval-receipt-contract.mjs',
+    actualPath: approvalReceiptContractPath,
+  },
+  {
+    key: 'ownerPrivateAclHelper',
+    relativePath:
+      'scripts/commercial-hardening/pr12-windows-owner-private-acl.ps1',
+    actualPath: ownerPrivateAclHelperPath,
   },
   {
     key: 'evidenceVerifier',
@@ -195,14 +232,18 @@ function safeErrorState(error, postAttemptCount, createResponseAccepted) {
 function printHelp() {
   process.stdout.write(`PR12 Phase 1 source project provisioning wrapper
 
-This wrapper is fail-closed. It performs no action unless an approved, current,
-hash-bound Phase 1 binding passes offline validation.
+This wrapper is fail-closed. It performs no action unless the current,
+hash-bound Phase 1 candidate tuple and separate final approval receipt pass
+offline validation.
 
 Offline validation only (no credential value read, no network, no journal claim):
   node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs --offline-verify \`
-    --binding <approved-binding.json> \`
-    --credential-config <approved-credential-config.json> \`
-    --approval-evidence <owner-approval.json> \`
+    --binding <candidate-binding.json> \`
+    --credential-config <candidate-credential-config.json> \`
+    --approval-evidence <owner-approval-candidate.json> \`
+    --initial-approval-receipt <initial-approval-receipt.json> \`
+    --final-approval-receipt <final-approval-receipt.json> \`
+    --owner-private-approval-root <owner-private-absolute-directory> \`
     --pricing-evidence <official-pricing-evidence.json> \`
     --organization-identity-evidence-directory <sealed-action-002-directory> \`
     --organization-identity-terminal <action-002-terminal-outcome.json> \`
@@ -212,9 +253,12 @@ Offline validation only (no credential value read, no network, no journal claim)
 Future execution after separate explicit approval only:
   node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs \`
     --execute-authorized-action PR12-ACTION-003 \`
-    --binding <approved-binding.json> \`
-    --credential-config <approved-credential-config.json> \`
-    --approval-evidence <owner-approval.json> \`
+    --binding <candidate-binding.json> \`
+    --credential-config <candidate-credential-config.json> \`
+    --approval-evidence <owner-approval-candidate.json> \`
+    --initial-approval-receipt <initial-approval-receipt.json> \`
+    --final-approval-receipt <final-approval-receipt.json> \`
+    --owner-private-approval-root <owner-private-absolute-directory> \`
     --pricing-evidence <official-pricing-evidence.json> \`
     --organization-identity-evidence-directory <sealed-action-002-directory> \`
     --organization-identity-terminal <action-002-terminal-outcome.json> \`
@@ -224,9 +268,12 @@ Future execution after separate explicit approval only:
 Read-only recovery after a durable POST intent and process interruption only:
   node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs \`
     --reconcile-dispatched-action PR12-ACTION-003 \`
-    --binding <approved-binding.json> \`
-    --credential-config <approved-credential-config.json> \`
-    --approval-evidence <owner-approval.json> \`
+    --binding <candidate-binding.json> \`
+    --credential-config <candidate-credential-config.json> \`
+    --approval-evidence <owner-approval-candidate.json> \`
+    --initial-approval-receipt <initial-approval-receipt.json> \`
+    --final-approval-receipt <final-approval-receipt.json> \`
+    --owner-private-approval-root <owner-private-absolute-directory> \`
     --pricing-evidence <official-pricing-evidence.json> \`
     --organization-identity-evidence-directory <sealed-action-002-directory> \`
     --organization-identity-terminal <action-002-terminal-outcome.json> \`
@@ -245,6 +292,9 @@ function parseArguments(argv) {
     '--binding',
     '--credential-config',
     '--approval-evidence',
+    '--initial-approval-receipt',
+    '--final-approval-receipt',
+    '--owner-private-approval-root',
     '--pricing-evidence',
     '--organization-identity-evidence-directory',
     '--organization-identity-terminal',
@@ -285,6 +335,9 @@ function parseArguments(argv) {
     '--binding',
     '--credential-config',
     '--approval-evidence',
+    '--initial-approval-receipt',
+    '--final-approval-receipt',
+    '--owner-private-approval-root',
     '--pricing-evidence',
     '--organization-identity-evidence-directory',
     '--organization-identity-terminal',
@@ -336,6 +389,9 @@ function readFileSnapshot(pathname, code) {
   let descriptor;
   try {
     if (lstatSync(pathname).isSymbolicLink()) fail(code);
+    const resolvedBefore = normalizedFilesystemPath(
+      realpathSync.native(pathname)
+    );
     descriptor = openSync(pathname, 'r');
     const before = fstatSync(descriptor);
     if (!before.isFile()) fail(code);
@@ -351,10 +407,14 @@ function readFileSnapshot(pathname, code) {
       fail(code);
     }
     const pathStatus = statSync(pathname);
+    const resolvedAfter = normalizedFilesystemPath(
+      realpathSync.native(pathname)
+    );
     if (
       !pathStatus.isFile() ||
       String(pathStatus.dev) !== String(after.dev) ||
-      String(pathStatus.ino) !== String(after.ino)
+      String(pathStatus.ino) !== String(after.ino) ||
+      resolvedAfter !== resolvedBefore
     ) {
       fail(code);
     }
@@ -450,38 +510,92 @@ function sha256File(pathname) {
   return createHash('sha256').update(readFileSync(pathname)).digest('hex');
 }
 
-function snapshotOfficialPricingSources(inputs) {
+export function snapshotOfficialPricingSources(inputs) {
   const sources = inputs.context.pricingEvidence?.officialSources;
-  if (!Array.isArray(sources) || sources.length !== 3) {
+  if (
+    !Array.isArray(sources) ||
+    sources.length !== OFFICIAL_PRICING_SOURCES.length
+  ) {
     fail('PRICING_SOURCE_ARTIFACT_INVALID');
   }
   const evidenceDirectory = path.dirname(inputs.pricingPath);
+  requireNoReparseDirectoryComponents(
+    evidenceDirectory,
+    'PRICING_SOURCE_ARTIFACT_INVALID'
+  );
+  const resolvedEvidenceDirectory = realpathSync.native(evidenceDirectory);
+  const resolvedRepositoryRoot = realpathSync.native(inputs.repositoryRoot);
   const snapshots = {};
-  for (const source of sources) {
+  const relativePaths = new Set();
+  const resolvedPaths = new Set();
+  const filesystemIdentities = new Set();
+  const contentHashes = new Set();
+  for (const [index, source] of sources.entries()) {
+    const expectedSource = OFFICIAL_PRICING_SOURCES[index];
+    const sourceKeys = isRecord(source) ? Object.keys(source).sort() : [];
     if (
       !isRecord(source) ||
-      typeof source.sourceId !== 'string' ||
+      canonicalJson(sourceKeys) !==
+        canonicalJson(
+          [
+            'sourceId',
+            'url',
+            'retrievedAt',
+            'artifactPath',
+            'artifactSha256',
+          ].sort()
+        ) ||
+      source.sourceId !== expectedSource.sourceId ||
+      source.url !== expectedSource.url ||
+      typeof source.retrievedAt !== 'string' ||
       typeof source.artifactPath !== 'string' ||
       typeof source.artifactSha256 !== 'string' ||
+      !/^[a-f0-9]{64}$/u.test(source.artifactSha256) ||
       path.isAbsolute(source.artifactPath) ||
       source.artifactPath.includes('\\') ||
-      source.artifactPath.split('/').includes('..')
+      source.artifactPath.includes(':') ||
+      hasAsciiControlCharacter(source.artifactPath) ||
+      source.artifactPath
+        .split('/')
+        .some(
+          component =>
+            component.length === 0 || component === '.' || component === '..'
+        )
     ) {
       fail('PRICING_SOURCE_ARTIFACT_INVALID');
     }
     const artifactPath = path.resolve(evidenceDirectory, source.artifactPath);
+    requireNoReparseDirectoryComponents(
+      path.dirname(artifactPath),
+      'PRICING_SOURCE_ARTIFACT_INVALID'
+    );
+    const resolvedArtifactPath = realpathSync.native(artifactPath);
     const relativeToEvidence = path.relative(evidenceDirectory, artifactPath);
+    const resolvedRelativeToEvidence = path.relative(
+      resolvedEvidenceDirectory,
+      resolvedArtifactPath
+    );
     const relativeToRepository = path.relative(
       inputs.repositoryRoot,
       artifactPath
+    );
+    const resolvedRelativeToRepository = path.relative(
+      resolvedRepositoryRoot,
+      resolvedArtifactPath
     );
     if (
       relativeToEvidence === '' ||
       relativeToEvidence.startsWith('..') ||
       path.isAbsolute(relativeToEvidence) ||
+      resolvedRelativeToEvidence === '' ||
+      resolvedRelativeToEvidence.startsWith('..') ||
+      path.isAbsolute(resolvedRelativeToEvidence) ||
       relativeToRepository === '' ||
       (!relativeToRepository.startsWith('..') &&
-        !path.isAbsolute(relativeToRepository))
+        !path.isAbsolute(relativeToRepository)) ||
+      resolvedRelativeToRepository === '' ||
+      (!resolvedRelativeToRepository.startsWith('..') &&
+        !path.isAbsolute(resolvedRelativeToRepository))
     ) {
       fail('PRICING_SOURCE_ARTIFACT_INVALID');
     }
@@ -492,13 +606,29 @@ function snapshotOfficialPricingSources(inputs) {
     if (snapshot.sha256 !== source.artifactSha256) {
       fail('PRICING_SOURCE_ARTIFACT_HASH_MISMATCH');
     }
+    const normalizedRelativePath = source.artifactPath.toLowerCase();
+    const normalizedResolvedPath =
+      normalizedFilesystemPath(resolvedArtifactPath);
+    const filesystemIdentity = `${snapshot.identity.device}:${snapshot.identity.inode}`;
+    for (const [set, value] of [
+      [relativePaths, normalizedRelativePath],
+      [resolvedPaths, normalizedResolvedPath],
+      [filesystemIdentities, filesystemIdentity],
+      [contentHashes, snapshot.sha256],
+    ]) {
+      if (set.has(value)) {
+        fail('PRICING_SOURCE_ARTIFACT_IDENTITY_DUPLICATE');
+      }
+      set.add(value);
+    }
     snapshots[source.sourceId] = {
       path: artifactPath,
+      resolvedPath: resolvedArtifactPath,
       sha256: snapshot.sha256,
       identity: snapshot.identity,
     };
   }
-  if (Object.keys(snapshots).length !== 3) {
+  if (Object.keys(snapshots).length !== OFFICIAL_PRICING_SOURCES.length) {
     fail('PRICING_SOURCE_ARTIFACT_INVALID');
   }
   return snapshots;
@@ -637,6 +767,295 @@ function requireSameDirectoryIdentity(directory, expected, code) {
   }
 }
 
+function isPathWithinOrEqual(parent, candidate) {
+  const relative = path.relative(parent, candidate);
+  return (
+    relative === '' ||
+    (!relative.startsWith('..') && !path.isAbsolute(relative))
+  );
+}
+
+function requireExactDirectoryEntries(directory, expectedEntries, code) {
+  let before;
+  let after;
+  let entries;
+  try {
+    before = statSync(directory);
+    entries = readdirSync(directory).sort();
+    after = statSync(directory);
+  } catch {
+    fail(code);
+  }
+  if (
+    !before.isDirectory() ||
+    !after.isDirectory() ||
+    before.dev !== after.dev ||
+    before.ino !== after.ino ||
+    before.mtimeMs !== after.mtimeMs ||
+    canonicalJson(entries) !== canonicalJson([...expectedEntries].sort())
+  ) {
+    fail(code);
+  }
+  return entries;
+}
+
+function captureApprovalInputTopology({
+  ownerPrivateApprovalRoot,
+  repositoryRoot,
+  bindingPath,
+  credentialPath,
+  approvalPath,
+  initialApprovalReceiptPath,
+  finalApprovalReceiptPath,
+  allowTemporaryRootForTest = false,
+}) {
+  if (
+    allowTemporaryRootForTest === true &&
+    !(
+      process.env.NODE_ENV === 'test' &&
+      typeof process.env.JEST_WORKER_ID === 'string' &&
+      /^\d+$/u.test(process.env.JEST_WORKER_ID)
+    )
+  ) {
+    fail('TEST_APPROVAL_TOPOLOGY_OVERRIDE_FORBIDDEN');
+  }
+  const root = path.resolve(ownerPrivateApprovalRoot);
+  const candidateDirectory = path.dirname(bindingPath);
+  const initialReceiptDirectory = path.dirname(initialApprovalReceiptPath);
+  const finalReceiptDirectory = path.dirname(finalApprovalReceiptPath);
+  if (
+    path.basename(bindingPath) !== CANDIDATE_BINDING_FILENAME ||
+    path.basename(credentialPath) !== CANDIDATE_CREDENTIAL_FILENAME ||
+    path.basename(approvalPath) !== CANDIDATE_OWNER_APPROVAL_FILENAME ||
+    path.basename(initialApprovalReceiptPath) !==
+      INITIAL_APPROVAL_RECEIPT_FILENAME ||
+    path.basename(finalApprovalReceiptPath) !==
+      FINAL_APPROVAL_RECEIPT_FILENAME ||
+    path.basename(initialReceiptDirectory) !==
+      INITIAL_APPROVAL_RECEIPT_DIRECTORY ||
+    path.basename(finalReceiptDirectory) !== FINAL_APPROVAL_RECEIPT_DIRECTORY ||
+    path.dirname(credentialPath) !== candidateDirectory ||
+    path.dirname(approvalPath) !== candidateDirectory ||
+    path.dirname(candidateDirectory) !== root ||
+    path.dirname(initialReceiptDirectory) !== root ||
+    path.dirname(finalReceiptDirectory) !== root ||
+    new Set([
+      normalizedFilesystemPath(candidateDirectory),
+      normalizedFilesystemPath(initialReceiptDirectory),
+      normalizedFilesystemPath(finalReceiptDirectory),
+    ]).size !== 3
+  ) {
+    fail('APPROVAL_INPUT_TOPOLOGY_INVALID');
+  }
+  for (const directory of [
+    root,
+    candidateDirectory,
+    initialReceiptDirectory,
+    finalReceiptDirectory,
+  ]) {
+    requireNoReparseDirectoryComponents(
+      directory,
+      'APPROVAL_INPUT_TOPOLOGY_INVALID'
+    );
+  }
+  requireExactDirectoryEntries(
+    candidateDirectory,
+    [
+      CANDIDATE_BINDING_FILENAME,
+      CANDIDATE_CREDENTIAL_FILENAME,
+      CANDIDATE_OWNER_APPROVAL_FILENAME,
+    ],
+    'APPROVAL_CANDIDATE_FILE_SET_INVALID'
+  );
+  requireExactDirectoryEntries(
+    initialReceiptDirectory,
+    [INITIAL_APPROVAL_RECEIPT_FILENAME],
+    'INITIAL_APPROVAL_RECEIPT_FILE_SET_INVALID'
+  );
+  requireExactDirectoryEntries(
+    finalReceiptDirectory,
+    [FINAL_APPROVAL_RECEIPT_FILENAME],
+    'FINAL_APPROVAL_RECEIPT_FILE_SET_INVALID'
+  );
+  const rootIdentity = directoryIdentity(
+    root,
+    'OWNER_PRIVATE_APPROVAL_ROOT_INVALID'
+  );
+  const candidateDirectoryIdentity = directoryIdentity(
+    candidateDirectory,
+    'APPROVAL_INPUT_TOPOLOGY_INVALID'
+  );
+  const initialReceiptDirectoryIdentity = directoryIdentity(
+    initialReceiptDirectory,
+    'APPROVAL_INPUT_TOPOLOGY_INVALID'
+  );
+  const finalReceiptDirectoryIdentity = directoryIdentity(
+    finalReceiptDirectory,
+    'APPROVAL_INPUT_TOPOLOGY_INVALID'
+  );
+  const resolvedRoot = rootIdentity.realPath;
+  for (const directoryIdentityValue of [
+    candidateDirectoryIdentity,
+    initialReceiptDirectoryIdentity,
+    finalReceiptDirectoryIdentity,
+  ]) {
+    if (path.dirname(directoryIdentityValue.realPath) !== resolvedRoot) {
+      fail('APPROVAL_INPUT_TOPOLOGY_INVALID');
+    }
+  }
+  const repositoryRealPath = normalizedFilesystemPath(
+    realpathSync.native(repositoryRoot)
+  );
+  if (
+    isPathWithinOrEqual(repositoryRoot, root) ||
+    isPathWithinOrEqual(repositoryRealPath, resolvedRoot)
+  ) {
+    fail('OWNER_PRIVATE_APPROVAL_ROOT_INSIDE_REPOSITORY');
+  }
+  if (!allowTemporaryRootForTest) {
+    const temporaryRoots = new Set(
+      [os.tmpdir(), process.env.TEMP, process.env.TMP]
+        .filter(value => typeof value === 'string' && value.length > 0)
+        .map(value => normalizedFilesystemPath(value))
+    );
+    for (const temporaryRoot of temporaryRoots) {
+      if (
+        isPathWithinOrEqual(temporaryRoot, root) ||
+        isPathWithinOrEqual(temporaryRoot, resolvedRoot)
+      ) {
+        fail('OWNER_PRIVATE_APPROVAL_ROOT_INSIDE_TEMPORARY_ROOT');
+      }
+    }
+  }
+  const fileProofs = Object.fromEntries(
+    [
+      ['binding', bindingPath],
+      ['credentialConfiguration', credentialPath],
+      ['ownerApproval', approvalPath],
+      ['initialApprovalReceipt', initialApprovalReceiptPath],
+      ['finalApprovalReceipt', finalApprovalReceiptPath],
+    ].map(([key, pathname]) => {
+      const snapshot = readFileSnapshot(
+        pathname,
+        'APPROVAL_INPUT_TOPOLOGY_INVALID'
+      );
+      return [
+        key,
+        {
+          pathname: normalizedFilesystemPath(pathname),
+          resolvedPath: normalizedFilesystemPath(realpathSync.native(pathname)),
+          sha256: snapshot.sha256,
+          identity: snapshot.identity,
+        },
+      ];
+    })
+  );
+  if (
+    new Set(
+      Object.values(fileProofs).map(
+        proof => `${proof.identity.device}:${proof.identity.inode}`
+      )
+    ).size !== 5
+  ) {
+    fail('APPROVAL_INPUT_FILE_IDENTITY_COLLISION');
+  }
+  const aclProofs = Object.fromEntries(
+    [
+      ['ownerPrivateApprovalRoot', root, 'DIRECTORY'],
+      ['candidateDirectory', candidateDirectory, 'DIRECTORY'],
+      ['binding', bindingPath, 'FILE'],
+      ['credentialConfiguration', credentialPath, 'FILE'],
+      ['ownerApproval', approvalPath, 'FILE'],
+      ['initialReceiptDirectory', initialReceiptDirectory, 'DIRECTORY'],
+      ['initialApprovalReceipt', initialApprovalReceiptPath, 'FILE'],
+      ['finalReceiptDirectory', finalReceiptDirectory, 'DIRECTORY'],
+      ['finalApprovalReceipt', finalApprovalReceiptPath, 'FILE'],
+    ].map(([key, targetPath, kind]) => [
+      key,
+      inspectOwnerPrivatePathAcl({
+        ownerPrivateRoot: root,
+        targetPath,
+        kind,
+      }),
+    ])
+  );
+  return {
+    ownerPrivateApprovalRoot: rootIdentity,
+    candidateDirectory: candidateDirectoryIdentity,
+    initialReceiptDirectory: initialReceiptDirectoryIdentity,
+    finalReceiptDirectory: finalReceiptDirectoryIdentity,
+    candidateEntries: [
+      CANDIDATE_BINDING_FILENAME,
+      CANDIDATE_CREDENTIAL_FILENAME,
+      CANDIDATE_OWNER_APPROVAL_FILENAME,
+    ].sort(),
+    initialReceiptEntries: [INITIAL_APPROVAL_RECEIPT_FILENAME],
+    finalReceiptEntries: [FINAL_APPROVAL_RECEIPT_FILENAME],
+    files: fileProofs,
+    aclProofs,
+  };
+}
+
+function revalidateApprovalInputTopology(
+  inputs,
+  code = 'APPROVAL_INPUT_TOPOLOGY_CHANGED'
+) {
+  const current = captureApprovalInputTopology({
+    ownerPrivateApprovalRoot: inputs.ownerPrivateApprovalRoot,
+    repositoryRoot: inputs.repositoryRoot,
+    bindingPath: inputs.bindingPath,
+    credentialPath: inputs.credentialPath,
+    approvalPath: inputs.approvalPath,
+    initialApprovalReceiptPath: inputs.initialApprovalReceiptPath,
+    finalApprovalReceiptPath: inputs.finalApprovalReceiptPath,
+  });
+  if (canonicalJson(current) !== canonicalJson(inputs.approvalInputTopology)) {
+    fail(code);
+  }
+  return current;
+}
+
+function directoryFingerprintFromIdentity(directory, identity, snapshotSha256) {
+  return {
+    pathSha256: windowsPathFingerprint(directory),
+    resolvedPathSha256: sha256Text(identity.realPath),
+    device: identity.device,
+    inode: identity.inode,
+    snapshotSha256,
+  };
+}
+
+function emptyDirectoryFingerprint(directory, identity, code) {
+  const before = statSync(directory);
+  const entries = readdirSync(directory);
+  const after = statSync(directory);
+  if (
+    !before.isDirectory() ||
+    !after.isDirectory() ||
+    before.dev !== after.dev ||
+    before.ino !== after.ino ||
+    before.mtimeMs !== after.mtimeMs ||
+    entries.length !== 0
+  ) {
+    fail(code);
+  }
+  return directoryFingerprintFromIdentity(
+    directory,
+    identity,
+    sha256Text(canonicalJson([]))
+  );
+}
+
+function externalFileIdentity(pathname, snapshot) {
+  const resolved = realpathSync.native(pathname);
+  return {
+    pathSha256: windowsPathFingerprint(pathname),
+    resolvedPathSha256: windowsPathFingerprint(resolved),
+    ...snapshot.identity,
+    contentSha256: snapshot.sha256,
+  };
+}
+
 function requireExactJournalRecord({
   directory,
   expectedEntries,
@@ -692,11 +1111,13 @@ function readCanonicalJournalRecord(directory, filename, expectedKeys, code) {
 export function readAndValidateJournalState(
   journalDirectory,
   expectedBindingMaterialSha256,
-  expectedPayloadSha256
+  expectedPayloadSha256,
+  expectedFinalApprovalReceiptSha256
 ) {
   if (
     !/^[a-f0-9]{64}$/.test(expectedBindingMaterialSha256) ||
-    !/^[a-f0-9]{64}$/.test(expectedPayloadSha256)
+    !/^[a-f0-9]{64}$/.test(expectedPayloadSha256) ||
+    !/^[a-f0-9]{64}$/.test(expectedFinalApprovalReceiptSha256)
   ) {
     fail('ACTION_JOURNAL_BINDING_INVALID');
   }
@@ -715,6 +1136,7 @@ export function readAndValidateJournalState(
       'actionId',
       'bindingMaterialSha256',
       'payloadSha256',
+      'finalApprovalReceiptSha256',
       'claimedAt',
       'state',
     ],
@@ -724,6 +1146,8 @@ export function readAndValidateJournalState(
     claim.record.actionId !== ACTION_ID ||
     claim.record.bindingMaterialSha256 !== expectedBindingMaterialSha256 ||
     claim.record.payloadSha256 !== expectedPayloadSha256 ||
+    claim.record.finalApprovalReceiptSha256 !==
+      expectedFinalApprovalReceiptSha256 ||
     claim.record.state !== 'CLAIMED_POST_NOT_SENT' ||
     !isCanonicalTimestamp(claim.record.claimedAt)
   ) {
@@ -738,6 +1162,7 @@ export function readAndValidateJournalState(
         'actionId',
         'bindingMaterialSha256',
         'payloadSha256',
+        'finalApprovalReceiptSha256',
         'postIntentAt',
         'state',
         'automaticRetryCount',
@@ -750,6 +1175,8 @@ export function readAndValidateJournalState(
       postIntent.record.bindingMaterialSha256 !==
         expectedBindingMaterialSha256 ||
       postIntent.record.payloadSha256 !== expectedPayloadSha256 ||
+      postIntent.record.finalApprovalReceiptSha256 !==
+        expectedFinalApprovalReceiptSha256 ||
       postIntent.record.state !== 'POST_INTENT_DURABLE' ||
       postIntent.record.automaticRetryCount !== 0 ||
       !Number.isInteger(postIntent.record.remoteContactCountBeforePost) ||
@@ -769,6 +1196,7 @@ export function readAndValidateJournalState(
         'actionId',
         'bindingMaterialSha256',
         'payloadSha256',
+        'finalApprovalReceiptSha256',
         'state',
         'reasonCode',
         'completedAt',
@@ -804,6 +1232,8 @@ export function readAndValidateJournalState(
       terminal.record.actionId !== ACTION_ID ||
       terminal.record.bindingMaterialSha256 !== expectedBindingMaterialSha256 ||
       terminal.record.payloadSha256 !== expectedPayloadSha256 ||
+      terminal.record.finalApprovalReceiptSha256 !==
+        expectedFinalApprovalReceiptSha256 ||
       !allowedTerminalStates.has(terminal.record.state) ||
       !isCanonicalTimestamp(terminal.record.completedAt) ||
       Date.parse(terminal.record.completedAt) <
@@ -918,7 +1348,7 @@ function buildOfflineInputs(args) {
   );
   const bindingSnapshot = readFileSnapshot(bindingPath, 'BINDING_FILE_INVALID');
   const binding = parseJsonSnapshot(bindingSnapshot, 'BINDING_FILE_INVALID');
-  assertSourceProjectProvisioningAuthorized(binding);
+  assertSourceProjectProvisioningCandidate(binding);
   if (binding.governanceProposal?.path !== GOVERNANCE_RELATIVE_PATH) {
     fail('GOVERNANCE_PATH_INVALID');
   }
@@ -929,6 +1359,14 @@ function buildOfflineInputs(args) {
   const approvalPath = resolveJsonInput(
     args['--approval-evidence'],
     'APPROVAL_EVIDENCE_FILE_INVALID'
+  );
+  const initialApprovalReceiptPath = resolveJsonInput(
+    args['--initial-approval-receipt'],
+    'INITIAL_APPROVAL_RECEIPT_FILE_INVALID'
+  );
+  const finalApprovalReceiptPath = resolveJsonInput(
+    args['--final-approval-receipt'],
+    'FINAL_APPROVAL_RECEIPT_FILE_INVALID'
   );
   const pricingPath = resolveJsonInput(
     args['--pricing-evidence'],
@@ -959,6 +1397,10 @@ function buildOfflineInputs(args) {
     args['--evidence-parent'],
     'EVIDENCE_DIRECTORY_INVALID'
   );
+  const ownerPrivateApprovalRoot = resolveExistingDirectory(
+    args['--owner-private-approval-root'],
+    'OWNER_PRIVATE_APPROVAL_ROOT_INVALID'
+  );
   const repositoryRoot = runGit(
     ['rev-parse', '--show-toplevel'],
     'GIT_ROOT_INVALID'
@@ -974,6 +1416,7 @@ function buildOfflineInputs(args) {
     evidenceParent,
     organizationIdentityEvidenceDirectory,
     organizationIdentityJournalDirectory,
+    ownerPrivateApprovalRoot,
   ]) {
     const relative = path.relative(normalizedRepositoryRoot, directory);
     if (
@@ -999,6 +1442,10 @@ function buildOfflineInputs(args) {
     organizationIdentityJournalDirectory,
     'ORGANIZATION_IDENTITY_TERMINAL_INVALID'
   );
+  const ownerPrivateApprovalRootIdentity = directoryIdentity(
+    ownerPrivateApprovalRoot,
+    'OWNER_PRIVATE_APPROVAL_ROOT_INVALID'
+  );
   const normalizedRepositoryRealPath = realpathSync
     .native(normalizedRepositoryRoot)
     .replaceAll('\\', '/')
@@ -1008,6 +1455,7 @@ function buildOfflineInputs(args) {
     evidenceParentDirectoryIdentity,
     organizationIdentityEvidenceDirectoryIdentity,
     organizationIdentityJournalDirectoryIdentity,
+    ownerPrivateApprovalRootIdentity,
   ]) {
     const relative = path.relative(
       normalizedRepositoryRealPath,
@@ -1025,6 +1473,7 @@ function buildOfflineInputs(args) {
     evidenceParentDirectoryIdentity,
     organizationIdentityEvidenceDirectoryIdentity,
     organizationIdentityJournalDirectoryIdentity,
+    ownerPrivateApprovalRootIdentity,
   ];
   if (
     new Set(directoryIdentities.map(identity => canonicalJson(identity)))
@@ -1032,6 +1481,31 @@ function buildOfflineInputs(args) {
   ) {
     fail('RUNTIME_OUTPUT_DIRECTORIES_MUST_DIFFER');
   }
+  const recoveryMode = args['--reconcile-dispatched-action'] === ACTION_ID;
+  const actionJournalDirectoryFingerprint = recoveryMode
+    ? directoryFingerprintFromIdentity(
+        journalDirectory,
+        journalDirectoryIdentity,
+        binding.duplicateAndFailurePolicy?.actionJournalDirectoryFingerprint
+          ?.snapshotSha256
+      )
+    : emptyDirectoryFingerprint(
+        journalDirectory,
+        journalDirectoryIdentity,
+        'ACTION_JOURNAL_DIRECTORY_NOT_EMPTY'
+      );
+  const evidenceParentDirectoryFingerprint = recoveryMode
+    ? directoryFingerprintFromIdentity(
+        evidenceParent,
+        evidenceParentDirectoryIdentity,
+        binding.evidenceContract?.evidenceParentDirectoryFingerprint
+          ?.snapshotSha256
+      )
+    : emptyDirectoryFingerprint(
+        evidenceParent,
+        evidenceParentDirectoryIdentity,
+        'EVIDENCE_DIRECTORY_NOT_EMPTY'
+      );
   const credentialSnapshot = readFileSnapshot(
     credentialPath,
     'CREDENTIAL_CONFIGURATION_FILE_INVALID'
@@ -1039,6 +1513,14 @@ function buildOfflineInputs(args) {
   const approvalSnapshot = readFileSnapshot(
     approvalPath,
     'APPROVAL_EVIDENCE_FILE_INVALID'
+  );
+  const initialApprovalReceiptSnapshot = readFileSnapshot(
+    initialApprovalReceiptPath,
+    'INITIAL_APPROVAL_RECEIPT_FILE_INVALID'
+  );
+  const finalApprovalReceiptSnapshot = readFileSnapshot(
+    finalApprovalReceiptPath,
+    'FINAL_APPROVAL_RECEIPT_FILE_INVALID'
   );
   const pricingSnapshot = readFileSnapshot(
     pricingPath,
@@ -1067,6 +1549,14 @@ function buildOfflineInputs(args) {
   const approvalEvidence = parseJsonSnapshot(
     approvalSnapshot,
     'APPROVAL_EVIDENCE_FILE_INVALID'
+  );
+  const initialApprovalReceipt = parseJsonSnapshot(
+    initialApprovalReceiptSnapshot,
+    'INITIAL_APPROVAL_RECEIPT_FILE_INVALID'
+  );
+  const finalApprovalReceipt = parseJsonSnapshot(
+    finalApprovalReceiptSnapshot,
+    'FINAL_APPROVAL_RECEIPT_FILE_INVALID'
   );
   const pricingEvidence = parseJsonSnapshot(
     pricingSnapshot,
@@ -1099,8 +1589,13 @@ function buildOfflineInputs(args) {
       executingImplementationSnapshots.organizationIdentityVerifier.sha256,
     credentialConfigurationSha256: credentialSnapshot.sha256,
     approvalEvidenceSha256: approvalSnapshot.sha256,
+    bindingSha256: bindingSnapshot.sha256,
+    initialApprovalReceiptSha256: initialApprovalReceiptSnapshot.sha256,
+    finalApprovalReceiptSha256: finalApprovalReceiptSnapshot.sha256,
     pricingEvidenceSha256: pricingSnapshot.sha256,
     approvalEvidence,
+    initialApprovalReceipt,
+    finalApprovalReceipt,
     pricingEvidence,
     organizationIdentityEvidence,
     organizationIdentitySourceGitCommitIsAncestor: isGitAncestor(
@@ -1112,11 +1607,45 @@ function buildOfflineInputs(args) {
     approvalStage: 'PRE_CLAIM',
     actionJournalDirectoryPathSha256:
       journalDirectoryFingerprint(journalDirectory),
+    actionJournalDirectoryFingerprint,
     evidenceParentDirectoryPathSha256:
       journalDirectoryFingerprint(evidenceParent),
+    evidenceParentDirectoryFingerprint,
+    credentialConfigurationSourceIdentity: externalFileIdentity(
+      credentialPath,
+      credentialSnapshot
+    ),
+    pricingEvidenceSourceIdentity: externalFileIdentity(
+      pricingPath,
+      pricingSnapshot
+    ),
   };
+  const approvalInputTopology = captureApprovalInputTopology({
+    ownerPrivateApprovalRoot,
+    repositoryRoot: normalizedRepositoryRoot,
+    bindingPath,
+    credentialPath,
+    approvalPath,
+    initialApprovalReceiptPath,
+    finalApprovalReceiptPath,
+  });
+  if (
+    approvalInputTopology.files.binding.sha256 !== bindingSnapshot.sha256 ||
+    approvalInputTopology.files.credentialConfiguration.sha256 !==
+      credentialSnapshot.sha256 ||
+    approvalInputTopology.files.ownerApproval.sha256 !==
+      approvalSnapshot.sha256 ||
+    approvalInputTopology.files.initialApprovalReceipt.sha256 !==
+      initialApprovalReceiptSnapshot.sha256 ||
+    approvalInputTopology.files.finalApprovalReceipt.sha256 !==
+      finalApprovalReceiptSnapshot.sha256
+  ) {
+    fail('APPROVAL_INPUT_TOPOLOGY_CHANGED');
+  }
   return {
     approvalPath,
+    initialApprovalReceiptPath,
+    finalApprovalReceiptPath,
     binding,
     bindingPath,
     context,
@@ -1127,12 +1656,15 @@ function buildOfflineInputs(args) {
     organizationIdentityEvidenceDirectory,
     organizationIdentityJournalDirectory,
     organizationIdentityTerminalPath,
+    ownerPrivateApprovalRoot,
     pricingPath,
     repositoryRoot: normalizedRepositoryRoot,
     immutableInputHashes: {
       binding: bindingSnapshot.sha256,
       credentialConfiguration: context.credentialConfigurationSha256,
       approvalEvidence: context.approvalEvidenceSha256,
+      initialApprovalReceipt: context.initialApprovalReceiptSha256,
+      finalApprovalReceipt: context.finalApprovalReceiptSha256,
       pricingEvidence: context.pricingEvidenceSha256,
       organizationIdentityTerminal: organizationIdentityTerminalSnapshot.sha256,
     },
@@ -1140,6 +1672,8 @@ function buildOfflineInputs(args) {
       binding: bindingSnapshot.identity,
       credentialConfiguration: credentialSnapshot.identity,
       approvalEvidence: approvalSnapshot.identity,
+      initialApprovalReceipt: initialApprovalReceiptSnapshot.identity,
+      finalApprovalReceipt: finalApprovalReceiptSnapshot.identity,
       pricingEvidence: pricingSnapshot.identity,
       organizationIdentityTerminal:
         organizationIdentityTerminalSnapshot.identity,
@@ -1148,6 +1682,8 @@ function buildOfflineInputs(args) {
     evidenceParentDirectoryIdentity,
     organizationIdentityEvidenceDirectoryIdentity,
     organizationIdentityJournalDirectoryIdentity,
+    ownerPrivateApprovalRootIdentity,
+    approvalInputTopology,
     executingImplementationSnapshots,
   };
 }
@@ -1196,6 +1732,12 @@ function prepareValidatedLocalResources(inputs) {
     inputs,
     'EXECUTING_IMPLEMENTATION_CHANGED'
   );
+  requireSameDirectoryIdentity(
+    inputs.ownerPrivateApprovalRoot,
+    inputs.ownerPrivateApprovalRootIdentity,
+    'OWNER_PRIVATE_APPROVAL_ROOT_CHANGED'
+  );
+  revalidateApprovalInputTopology(inputs);
   revalidateOrganizationIdentityEvidence(inputs);
   inputs.pricingSourceArtifacts = snapshotOfficialPricingSources(inputs);
   inputs.dpapiResources = validateDpapiCredentialResources(
@@ -1226,10 +1768,27 @@ function prepareValidatedLocalResources(inputs) {
 }
 
 function revalidatePreparedLocalResources(inputs) {
-  requireSameExecutingImplementationSnapshots(
-    inputs,
-    'EXECUTING_IMPLEMENTATION_CHANGED'
+  const currentImplementationSnapshots =
+    requireSameExecutingImplementationSnapshots(
+      inputs,
+      'EXECUTING_IMPLEMENTATION_CHANGED'
+    );
+  requireSameDirectoryIdentity(
+    inputs.journalDirectory,
+    inputs.journalDirectoryIdentity,
+    'ACTION_JOURNAL_DIRECTORY_CHANGED'
   );
+  requireSameDirectoryIdentity(
+    inputs.evidenceParent,
+    inputs.evidenceParentDirectoryIdentity,
+    'EVIDENCE_DIRECTORY_CHANGED'
+  );
+  requireSameDirectoryIdentity(
+    inputs.ownerPrivateApprovalRoot,
+    inputs.ownerPrivateApprovalRootIdentity,
+    'OWNER_PRIVATE_APPROVAL_ROOT_CHANGED'
+  );
+  revalidateApprovalInputTopology(inputs);
   revalidateOrganizationIdentityEvidence(inputs);
   revalidateOfficialPricingSources(inputs);
   inputs.dpapiResources = revalidateDpapiCredentialResources(
@@ -1256,6 +1815,121 @@ function revalidatePreparedLocalResources(inputs) {
     inputs.evidenceParentDirectoryIdentity,
     inputs.organizationIdentityEvidenceDirectoryIdentity,
     inputs.organizationIdentityJournalDirectoryIdentity
+  );
+  return currentImplementationSnapshots;
+}
+
+function revalidateImmutableApprovalInputs(
+  inputs,
+  code = 'APPROVAL_INPUT_CHANGED_BEFORE_REMOTE_CONTACT'
+) {
+  const currentSnapshots = {
+    binding: readFileSnapshot(inputs.bindingPath, 'BINDING_FILE_INVALID'),
+    credentialConfiguration: readFileSnapshot(
+      inputs.credentialPath,
+      'CREDENTIAL_CONFIGURATION_FILE_INVALID'
+    ),
+    approvalEvidence: readFileSnapshot(
+      inputs.approvalPath,
+      'APPROVAL_EVIDENCE_FILE_INVALID'
+    ),
+    initialApprovalReceipt: readFileSnapshot(
+      inputs.initialApprovalReceiptPath,
+      'INITIAL_APPROVAL_RECEIPT_FILE_INVALID'
+    ),
+    finalApprovalReceipt: readFileSnapshot(
+      inputs.finalApprovalReceiptPath,
+      'FINAL_APPROVAL_RECEIPT_FILE_INVALID'
+    ),
+    pricingEvidence: readFileSnapshot(
+      inputs.pricingPath,
+      'PRICING_EVIDENCE_FILE_INVALID'
+    ),
+    organizationIdentityTerminal: readFileSnapshot(
+      inputs.organizationIdentityTerminalPath,
+      'ORGANIZATION_IDENTITY_TERMINAL_INVALID'
+    ),
+  };
+  const currentHashes = {
+    binding: currentSnapshots.binding.sha256,
+    credentialConfiguration: currentSnapshots.credentialConfiguration.sha256,
+    approvalEvidence: currentSnapshots.approvalEvidence.sha256,
+    initialApprovalReceipt: currentSnapshots.initialApprovalReceipt.sha256,
+    finalApprovalReceipt: currentSnapshots.finalApprovalReceipt.sha256,
+    pricingEvidence: currentSnapshots.pricingEvidence.sha256,
+    organizationIdentityTerminal:
+      currentSnapshots.organizationIdentityTerminal.sha256,
+  };
+  const currentIdentities = {
+    binding: currentSnapshots.binding.identity,
+    credentialConfiguration: currentSnapshots.credentialConfiguration.identity,
+    approvalEvidence: currentSnapshots.approvalEvidence.identity,
+    initialApprovalReceipt: currentSnapshots.initialApprovalReceipt.identity,
+    finalApprovalReceipt: currentSnapshots.finalApprovalReceipt.identity,
+    pricingEvidence: currentSnapshots.pricingEvidence.identity,
+    organizationIdentityTerminal:
+      currentSnapshots.organizationIdentityTerminal.identity,
+  };
+  if (
+    canonicalJson(currentHashes) !==
+      canonicalJson(inputs.immutableInputHashes) ||
+    canonicalJson(currentIdentities) !==
+      canonicalJson(inputs.immutableInputIdentities)
+  ) {
+    fail(code);
+  }
+  return true;
+}
+
+function revalidateExecutionStateBeforeRemoteContact(inputs) {
+  revalidateImmutableApprovalInputs(inputs);
+  const currentImplementationSnapshots =
+    revalidatePreparedLocalResources(inputs);
+  const currentHead = runGit(['rev-parse', 'HEAD'], 'GIT_HEAD_UNAVAILABLE');
+  const currentBaseCommit = runGit(
+    ['merge-base', 'HEAD', 'origin/main'],
+    'GIT_BASE_UNAVAILABLE'
+  );
+  const worktreeStatus = runGit(
+    ['status', '--porcelain=v1', '--untracked-files=all'],
+    'GIT_STATUS_UNAVAILABLE'
+  );
+  const priorActionState = inspectPriorActionState(inputs.journalDirectory);
+  const approvalStage =
+    priorActionState === 'CLAIMED_POST_NOT_SENT'
+      ? 'POST_CLAIM'
+      : priorActionState === 'POST_INTENT_DURABLE_OUTCOME_UNRESOLVED'
+        ? 'RECOVERY'
+        : null;
+  if (approvalStage === null) {
+    fail('ACTION_JOURNAL_STATE_INVALID');
+  }
+  return validateOfflineApproval(
+    inputs.binding,
+    inputs.credentialConfiguration,
+    {
+      ...inputs.context,
+      now: new Date().toISOString(),
+      currentHead,
+      currentBaseCommit,
+      worktreeClean: worktreeStatus.length === 0,
+      governanceSha256: sha256File(
+        path.resolve(inputs.repositoryRoot, GOVERNANCE_RELATIVE_PATH)
+      ),
+      contractSha256: currentImplementationSnapshots.contract.sha256,
+      wrapperSha256: currentImplementationSnapshots.wrapper.sha256,
+      organizationIdentityContractSha256:
+        currentImplementationSnapshots.organizationIdentityContract.sha256,
+      organizationIdentityVerifierSha256:
+        currentImplementationSnapshots.organizationIdentityVerifier.sha256,
+      organizationIdentitySourceGitCommitIsAncestor: isGitAncestor(
+        inputs.context.organizationIdentityEvidence.sourceGitCommit,
+        currentHead
+      ),
+      ambientCredentialNames: ambientCredentialNames(),
+      priorActionState,
+      approvalStage,
+    }
   );
 }
 
@@ -1287,49 +1961,10 @@ function revalidateImmediatelyBeforePost(
     expectedSha256: expectedClaimSha256,
     code: 'ACTION_JOURNAL_CLAIM_CHANGED',
   });
-  const currentSnapshots = {
-    binding: readFileSnapshot(inputs.bindingPath, 'BINDING_FILE_INVALID'),
-    credentialConfiguration: readFileSnapshot(
-      inputs.credentialPath,
-      'CREDENTIAL_CONFIGURATION_FILE_INVALID'
-    ),
-    approvalEvidence: readFileSnapshot(
-      inputs.approvalPath,
-      'APPROVAL_EVIDENCE_FILE_INVALID'
-    ),
-    pricingEvidence: readFileSnapshot(
-      inputs.pricingPath,
-      'PRICING_EVIDENCE_FILE_INVALID'
-    ),
-    organizationIdentityTerminal: readFileSnapshot(
-      inputs.organizationIdentityTerminalPath,
-      'ORGANIZATION_IDENTITY_TERMINAL_INVALID'
-    ),
-  };
-  const currentHashes = {
-    binding: currentSnapshots.binding.sha256,
-    credentialConfiguration: currentSnapshots.credentialConfiguration.sha256,
-    approvalEvidence: currentSnapshots.approvalEvidence.sha256,
-    pricingEvidence: currentSnapshots.pricingEvidence.sha256,
-    organizationIdentityTerminal:
-      currentSnapshots.organizationIdentityTerminal.sha256,
-  };
-  const currentIdentities = {
-    binding: currentSnapshots.binding.identity,
-    credentialConfiguration: currentSnapshots.credentialConfiguration.identity,
-    approvalEvidence: currentSnapshots.approvalEvidence.identity,
-    pricingEvidence: currentSnapshots.pricingEvidence.identity,
-    organizationIdentityTerminal:
-      currentSnapshots.organizationIdentityTerminal.identity,
-  };
-  if (
-    canonicalJson(currentHashes) !==
-      canonicalJson(inputs.immutableInputHashes) ||
-    canonicalJson(currentIdentities) !==
-      canonicalJson(inputs.immutableInputIdentities)
-  ) {
-    fail('APPROVAL_INPUT_CHANGED_BEFORE_POST');
-  }
+  revalidateImmutableApprovalInputs(
+    inputs,
+    'APPROVAL_INPUT_CHANGED_BEFORE_POST'
+  );
   revalidatePreparedLocalResources(inputs);
   const currentHead = runGit(['rev-parse', 'HEAD'], 'GIT_HEAD_UNAVAILABLE');
   const currentBaseCommit = runGit(
@@ -1396,6 +2031,7 @@ function validatePostIntentImmediatelyBeforeFetch({
   expectedIntent,
   expectedIntentSha256,
 }) {
+  revalidateExecutionStateBeforeRemoteContact(inputs);
   requireSameDirectoryIdentity(
     inputs.journalDirectory,
     inputs.journalDirectoryIdentity,
@@ -1417,6 +2053,7 @@ function validatePostIntentImmediatelyBeforeFetch({
     expectedSha256: expectedIntentSha256,
     code: 'ACTION_JOURNAL_POST_INTENT_CHANGED',
   });
+  revalidateOfficialPricingSources(inputs);
   if (Date.now() >= Date.parse(inputs.binding.approval.expiresAt)) {
     fail('APPROVAL_EXPIRED_BEFORE_POST');
   }
@@ -1571,26 +2208,35 @@ async function providerFetch(
   accessToken,
   timeoutMilliseconds,
   approvalExpiresAt,
-  onRemoteContact = () => undefined,
+  onRemoteContact,
   pricingFreshThrough = null,
   binding,
-  createdProjectRef = null
+  createdProjectRef = null,
+  beforeRemoteContact
 ) {
+  if (
+    typeof beforeRemoteContact !== 'function' ||
+    typeof onRemoteContact !== 'function'
+  ) {
+    fail('REMOTE_CONTACT_GUARD_REQUIRED');
+  }
   assertAllowedManagementApiRequest({
     url,
     method: options.method,
     binding,
     createdProjectRef,
   });
+  beforeRemoteContact();
+  const remoteContactAt = new Date().toISOString();
   assertRemoteContactWithinApproval(
     approvalExpiresAt,
-    new Date().toISOString(),
+    remoteContactAt,
     options.method === 'POST' ? timeoutMilliseconds : 0
   );
   if (options.method === 'POST') {
     assertMutationPricingCurrent(
       pricingFreshThrough,
-      new Date().toISOString(),
+      remoteContactAt,
       timeoutMilliseconds
     );
   }
@@ -1616,6 +2262,7 @@ async function fetchReadOnlyProjection({
   timeoutMilliseconds,
   approvalExpiresAt,
   onRemoteContact,
+  beforeRemoteContact,
   projector,
   binding,
   createdProjectRef = null,
@@ -1631,7 +2278,8 @@ async function fetchReadOnlyProjection({
       onRemoteContact,
       null,
       binding,
-      createdProjectRef
+      createdProjectRef,
+      beforeRemoteContact
     );
   } catch (error) {
     if (error instanceof SafeExecutionError) throw error;
@@ -1699,8 +2347,15 @@ async function listAllOrganizationProjects(
   binding,
   accessToken,
   timeoutMilliseconds,
-  onRemoteContact = () => undefined
+  onRemoteContact,
+  beforeRemoteContact
 ) {
+  if (
+    typeof beforeRemoteContact !== 'function' ||
+    typeof onRemoteContact !== 'function'
+  ) {
+    fail('REMOTE_CONTACT_GUARD_REQUIRED');
+  }
   const organizationSlug = binding.environmentProposal.organizationSlug;
   const pages = [];
   const targetMatches = [];
@@ -1724,6 +2379,7 @@ async function listAllOrganizationProjects(
       timeoutMilliseconds,
       approvalExpiresAt: binding.approval.expiresAt,
       onRemoteContact,
+      beforeRemoteContact,
       projector: body => organizationProjectPageToSafeProjection(body, binding),
       binding,
     });
@@ -1777,6 +2433,7 @@ async function reconcileAfterPostAttempt({
   binding,
   expectedProjectRef,
   onRemoteContact,
+  beforeRemoteContact,
   timeoutMilliseconds,
 }) {
   const observedAt = new Date().toISOString();
@@ -1785,7 +2442,8 @@ async function reconcileAfterPostAttempt({
       binding,
       accessToken,
       timeoutMilliseconds,
-      onRemoteContact
+      onRemoteContact,
+      beforeRemoteContact
     );
     const matches = observation.targetMatches;
     let state = 'PROJECT_NOT_OBSERVED_OWNER_DECISION_REQUIRED';
@@ -1964,6 +2622,8 @@ function sealEvidence({
       gitCommit: binding.target.gitCommit,
       bindingMaterialSha256: binding.approval.approvedBindingMaterialSha256,
       payloadSha256: binding.approvedRequest.sha256,
+      finalApprovalReceiptSha256:
+        result.approvalWindow.finalApprovalReceiptSha256,
       fundingSource: binding.retentionAndCleanupDecision.fundingSource,
       artifacts: artifactMetadata,
       artifactCount: artifactMetadata.length,
@@ -2074,9 +2734,10 @@ function makeBaseResult(binding, validation, startedAt, claimSha256) {
     },
     approvalWindow: {
       approvedAt: binding.approval.approvedAt,
-      operatorReconfirmedAt: binding.approval.operatorReconfirmedAt,
+      operatorReconfirmedAt: validation.operatorReconfirmedAt,
       expiresAt: binding.approval.expiresAt,
       approvalEvidenceSha256: binding.approval.evidenceSha256,
+      finalApprovalReceiptSha256: validation.finalApprovalReceiptSha256,
     },
     cleanupBoundary: {
       disposition: binding.retentionAndCleanupDecision.disposition,
@@ -2116,6 +2777,7 @@ function makeTerminalRecord({
     actionId: ACTION_ID,
     bindingMaterialSha256: validation.bindingMaterialSha256,
     payloadSha256: validation.payloadSha256,
+    finalApprovalReceiptSha256: validation.finalApprovalReceiptSha256,
     state,
     reasonCode,
     completedAt,
@@ -2147,6 +2809,7 @@ async function executeProvisioning(inputs, validation) {
     actionId: ACTION_ID,
     bindingMaterialSha256: validation.bindingMaterialSha256,
     payloadSha256: validation.payloadSha256,
+    finalApprovalReceiptSha256: validation.finalApprovalReceiptSha256,
     claimedAt: startedAt,
     state: 'CLAIMED_POST_NOT_SENT',
   };
@@ -2211,6 +2874,12 @@ async function executeProvisioning(inputs, validation) {
   let readOnlyReconciliation = null;
   let evidenceSealAttempted = false;
   let sealedEvidence = null;
+  const revalidateBeforeRemoteContact = () => {
+    revalidateExecutionStateBeforeRemoteContact(inputs);
+  };
+  const registerRemoteContact = () => {
+    remoteContactCount += 1;
+  };
   try {
     evidence = makeEvidenceDirectory(
       evidenceParent,
@@ -2255,9 +2924,8 @@ async function executeProvisioning(inputs, validation) {
       accessToken,
       timeoutMilliseconds: timeout,
       approvalExpiresAt: binding.approval.expiresAt,
-      onRemoteContact: () => {
-        remoteContactCount += 1;
-      },
+      onRemoteContact: registerRemoteContact,
+      beforeRemoteContact: revalidateBeforeRemoteContact,
       projector: body => availableRegionsToSafeProjection(body, binding),
       binding,
     });
@@ -2265,9 +2933,8 @@ async function executeProvisioning(inputs, validation) {
       binding,
       accessToken,
       timeout,
-      () => {
-        remoteContactCount += 1;
-      }
+      registerRemoteContact,
+      revalidateBeforeRemoteContact
     );
     result.remoteContactCount = remoteContactCount;
     result.duplicateState =
@@ -2301,6 +2968,7 @@ async function executeProvisioning(inputs, validation) {
       actionId: ACTION_ID,
       bindingMaterialSha256: validation.bindingMaterialSha256,
       payloadSha256: validation.payloadSha256,
+      finalApprovalReceiptSha256: validation.finalApprovalReceiptSha256,
       postIntentAt,
       state: 'POST_INTENT_DURABLE',
       automaticRetryCount: 0,
@@ -2349,9 +3017,10 @@ async function executeProvisioning(inputs, validation) {
           remoteContactCount += 1;
           result.remoteContactCount = remoteContactCount;
         },
-        binding.cost.pricingEvidence.freshThrough,
+        derivePricingExecutionFreshThrough(inputs.context.pricingEvidence),
         binding,
-        null
+        null,
+        revalidateBeforeRemoteContact
       );
     } catch (error) {
       if (error instanceof SafeExecutionError) throw error;
@@ -2394,9 +3063,8 @@ async function executeProvisioning(inputs, validation) {
         binding,
         accessToken,
         timeout,
-        () => {
-          remoteContactCount += 1;
-        }
+        registerRemoteContact,
+        revalidateBeforeRemoteContact
       );
       result.remoteContactCount = remoteContactCount;
       readinessPolls.push({
@@ -2454,9 +3122,8 @@ async function executeProvisioning(inputs, validation) {
       accessToken,
       timeoutMilliseconds: timeout,
       approvalExpiresAt: binding.approval.expiresAt,
-      onRemoteContact: () => {
-        remoteContactCount += 1;
-      },
+      onRemoteContact: registerRemoteContact,
+      beforeRemoteContact: revalidateBeforeRemoteContact,
       projector: body =>
         addonResponseToSafeProjection(body, createProjection.projectRef),
       binding,
@@ -2584,9 +3251,8 @@ async function executeProvisioning(inputs, validation) {
         accessToken,
         binding,
         expectedProjectRef: createProjection?.projectRef ?? null,
-        onRemoteContact: () => {
-          remoteContactCount += 1;
-        },
+        onRemoteContact: registerRemoteContact,
+        beforeRemoteContact: revalidateBeforeRemoteContact,
         timeoutMilliseconds:
           binding.provisioningAction.requestTimeoutMilliseconds,
       });
@@ -2716,13 +3382,15 @@ export function validateLocalCompletionJournalBinding(
   result,
   verified,
   journalState,
-  binding
+  binding,
+  finalApprovalReceipt
 ) {
   if (
     !isRecord(result) ||
     !isRecord(verified) ||
     !isRecord(journalState) ||
-    !isRecord(binding)
+    !isRecord(binding) ||
+    !isRecord(finalApprovalReceipt)
   ) {
     fail('SEALED_EVIDENCE_JOURNAL_BINDING_MISMATCH');
   }
@@ -2766,9 +3434,10 @@ export function validateLocalCompletionJournalBinding(
   };
   const expectedApprovalWindow = {
     approvedAt: binding.approval?.approvedAt,
-    operatorReconfirmedAt: binding.approval?.operatorReconfirmedAt,
+    operatorReconfirmedAt: finalApprovalReceipt.acceptedAt,
     expiresAt: binding.approval?.expiresAt,
     approvalEvidenceSha256: binding.approval?.evidenceSha256,
+    finalApprovalReceiptSha256: journalState.claim?.finalApprovalReceiptSha256,
   };
   const expectedCleanupBoundary = {
     disposition: binding.retentionAndCleanupDecision?.disposition,
@@ -2803,6 +3472,8 @@ export function validateLocalCompletionJournalBinding(
     canonicalJson(result.cleanupBoundary) !==
       canonicalJson(expectedCleanupBoundary) ||
     resultJournal?.claimSha256 !== journalState.claimSha256 ||
+    result.approvalWindow?.finalApprovalReceiptSha256 !==
+      journalState.claim?.finalApprovalReceiptSha256 ||
     result.actionStartedAt !== journalState.claim?.claimedAt ||
     resultJournal?.actionJournalDirectoryPathSha256 !==
       binding.duplicateAndFailurePolicy?.actionJournalDirectoryPathSha256 ||
@@ -2877,7 +3548,9 @@ function completeTerminalFromExistingEvidence(inputs, journalState) {
       inputs.binding.approval?.approvedBindingMaterialSha256 ||
     payloadSha256 !== journalState.claim.payloadSha256 ||
     payloadSha256 !== inputs.binding.approvedRequest?.sha256 ||
-    payloadSha256 !== inputs.binding.approval?.approvedPayloadSha256
+    payloadSha256 !== inputs.binding.approval?.approvedPayloadSha256 ||
+    journalState.claim.finalApprovalReceiptSha256 !==
+      inputs.context.finalApprovalReceiptSha256
   ) {
     fail('LOCAL_COMPLETION_BINDING_MISMATCH');
   }
@@ -2892,6 +3565,8 @@ function completeTerminalFromExistingEvidence(inputs, journalState) {
     verified.bindingMaterialSha256 !==
       journalState.claim.bindingMaterialSha256 ||
     verified.payloadSha256 !== journalState.claim.payloadSha256 ||
+    verified.finalApprovalReceiptSha256 !==
+      journalState.claim.finalApprovalReceiptSha256 ||
     verified.gitCommit !== inputs.binding.target?.gitCommit
   ) {
     fail('SEALED_EVIDENCE_JOURNAL_BINDING_MISMATCH');
@@ -2905,7 +3580,8 @@ function completeTerminalFromExistingEvidence(inputs, journalState) {
     result,
     verified,
     journalState,
-    inputs.binding
+    inputs.binding,
+    inputs.context.finalApprovalReceipt
   );
   writeJournalEvent(
     inputs.journalDirectory,
@@ -2914,6 +3590,8 @@ function completeTerminalFromExistingEvidence(inputs, journalState) {
       validation: {
         bindingMaterialSha256: journalState.claim.bindingMaterialSha256,
         payloadSha256: journalState.claim.payloadSha256,
+        finalApprovalReceiptSha256:
+          journalState.claim.finalApprovalReceiptSha256,
       },
       state:
         verified.outcome === 'PASS' ? 'PASS_EVIDENCE_SEALED' : verified.outcome,
@@ -3002,6 +3680,12 @@ async function executeReadOnlyRecovery(inputs, validation, journalState) {
   };
   let remoteContactCount =
     journalState.postIntent.remoteContactCountBeforePost + 1;
+  const revalidateBeforeRecoveryRemoteContact = () => {
+    revalidateExecutionStateBeforeRemoteContact(inputs);
+  };
+  const registerRecoveryRemoteContact = () => {
+    remoteContactCount += 1;
+  };
   const events = [
     {
       sequence: 1,
@@ -3023,6 +3707,7 @@ async function executeReadOnlyRecovery(inputs, validation, journalState) {
   let reconciliation;
   let sealedEvidence = null;
   try {
+    revalidateImmutableApprovalInputs(inputs);
     revalidatePreparedLocalResources(inputs);
     result.credentialBrokerInvocationCount = 1;
     result.credentialBrokerMode = 'RECOVERY';
@@ -3053,9 +3738,8 @@ async function executeReadOnlyRecovery(inputs, validation, journalState) {
       accessToken,
       binding: inputs.binding,
       expectedProjectRef: null,
-      onRemoteContact: () => {
-        remoteContactCount += 1;
-      },
+      onRemoteContact: registerRecoveryRemoteContact,
+      beforeRemoteContact: revalidateBeforeRecoveryRemoteContact,
       timeoutMilliseconds:
         inputs.binding.provisioningAction.requestTimeoutMilliseconds,
     });
@@ -3185,7 +3869,8 @@ async function main() {
       const journalState = readAndValidateJournalState(
         inputs.journalDirectory,
         inputs.binding.approval?.approvedBindingMaterialSha256,
-        inputs.binding.approvedRequest?.sha256
+        inputs.binding.approvedRequest?.sha256,
+        inputs.context.finalApprovalReceiptSha256
       );
       if (journalState.state === 'TERMINAL_OUTCOME_RECORDED') {
         fail('ACTION_ALREADY_TERMINAL');

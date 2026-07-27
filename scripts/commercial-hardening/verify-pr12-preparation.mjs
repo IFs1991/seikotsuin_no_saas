@@ -106,6 +106,8 @@ const REQUIRED_ARTIFACTS = [
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v5.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration-v2.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v4.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-initial-approval-receipt-v1.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-final-approval-receipt-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-official-pricing-evidence-v2.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-dpapi-bootstrap-approval-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-windows-dpapi-envelope-v1.template.json',
@@ -156,6 +158,11 @@ const REQUIRED_ARTIFACTS = [
   'scripts/commercial-hardening/pr12-windows-dpapi-credential-channel.mjs',
   'scripts/commercial-hardening/pr12-windows-dpapi-credential-broker.ps1',
   'scripts/commercial-hardening/initialize-pr12-windows-dpapi-credentials.ps1',
+  'scripts/commercial-hardening/build-pr12-action003-approval-packet.mjs',
+  'scripts/commercial-hardening/prepare-pr12-action003-approval-packet.mjs',
+  'scripts/commercial-hardening/pr12-action003-approval-receipt-contract.mjs',
+  'scripts/commercial-hardening/pr12-windows-owner-private-acl.ps1',
+  'scripts/commercial-hardening/record-pr12-action003-final-approval-receipt.mjs',
   'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs',
   'scripts/commercial-hardening/verify-pr12-source-project-provisioning-evidence.mjs',
   'scripts/commercial-hardening/pr12-source-organization-identity-capture-contract.mjs',
@@ -177,6 +184,8 @@ const REQUIRED_ARTIFACTS = [
   'scripts/commercial-hardening/sql/pr12-post-replay-catalog-capture.sql',
   'scripts/commercial-hardening/sql/pr12-migration-history-parity.sql',
   'src/__tests__/security/commercial-pr12-qualification-preparation-contract.test.ts',
+  'src/__tests__/security/commercial-pr12-action003-approval-builder.test.ts',
+  'src/__tests__/security/commercial-pr12-action003-approval-preflight.test.ts',
   'src/__tests__/security/commercial-pr12-source-project-provisioning-contract.test.ts',
   'src/__tests__/security/commercial-pr12-source-organization-identity-capture-contract.test.ts',
   'src/__tests__/security/commercial-pr12-evidence-verifier.test.ts',
@@ -821,6 +830,9 @@ function verifyProposalContracts() {
   }
   assert(
     approval.includes('first_and_only_remote_command_id: PR12-CMD-004A') &&
+      normalizedApproval.includes(
+        'dpapi_bootstrap_authorized_roles:\n      - DATABASE_PASSWORD'
+      ) &&
       approval.includes(
         'source_identity_and_configuration_bootstrap_authorized: false'
       ) &&
@@ -2024,6 +2036,12 @@ function verifyProposalContracts() {
   const provisioningOwnerApproval = readJson(
     `${prefix}source-project-provisioning-owner-approval-v4.template.json`
   );
+  const provisioningInitialApprovalReceipt = readJson(
+    `${prefix}source-project-provisioning-initial-approval-receipt-v1.template.json`
+  );
+  const provisioningFinalApprovalReceipt = readJson(
+    `${prefix}source-project-provisioning-final-approval-receipt-v1.template.json`
+  );
   const provisioningPricing = readJson(
     `${prefix}source-project-official-pricing-evidence-v2.template.json`
   );
@@ -2377,7 +2395,62 @@ function verifyProposalContracts() {
         '    owner_approval_template: source-project-provisioning-owner-approval-v4.template.json'
       ) &&
       normalizedApproval.includes(
+        '    initial_approval_receipt_template: source-project-provisioning-initial-approval-receipt-v1.template.json'
+      ) &&
+      normalizedApproval.includes(
+        '    final_approval_receipt_template: source-project-provisioning-final-approval-receipt-v1.template.json'
+      ) &&
+      normalizedApproval.includes('    candidate_binding_path: NOT_CAPTURED') &&
+      normalizedApproval.includes(
+        '    candidate_binding_sha256: NOT_CAPTURED'
+      ) &&
+      normalizedApproval.includes(
+        '    initial_approval_receipt_path: NOT_CAPTURED'
+      ) &&
+      normalizedApproval.includes(
+        '    initial_approval_receipt_sha256: NOT_CAPTURED'
+      ) &&
+      normalizedApproval.includes(
+        '    final_approval_receipt_path: NOT_CAPTURED'
+      ) &&
+      normalizedApproval.includes(
+        '    final_approval_receipt_sha256: NOT_CAPTURED'
+      ) &&
+      normalizedApproval.includes(
         '    official_pricing_evidence_template: source-project-official-pricing-evidence-v2.template.json'
+      ) &&
+      ledgerSourceProjectAction.wrapper.includes(
+        '--binding <candidate-binding-v5.json>'
+      ) &&
+      ledgerSourceProjectAction.wrapper.includes(
+        '--credential-config <candidate-dpapi-credential-config-v2.json>'
+      ) &&
+      ledgerSourceProjectAction.wrapper.includes(
+        '--approval-evidence <owner-approval-candidate-v4.json>'
+      ) &&
+      ledgerSourceProjectAction.wrapper.includes(
+        '--initial-approval-receipt <initial-approval-receipt-v1.json>'
+      ) &&
+      ledgerSourceProjectAction.wrapper.includes(
+        '--final-approval-receipt <final-approval-receipt-v1.json>'
+      ) &&
+      ledgerSourceProjectAction.wrapper.includes(
+        '--owner-private-approval-root <owner-private-approval-root>'
+      ) &&
+      ledgerSourceProjectAction.reconciliationOnlyWrapper.includes(
+        '--initial-approval-receipt <initial-approval-receipt-v1.json>'
+      ) &&
+      ledgerSourceProjectAction.reconciliationOnlyWrapper.includes(
+        '--final-approval-receipt <final-approval-receipt-v1.json>'
+      ) &&
+      ledgerSourceProjectAction.reconciliationOnlyWrapper.includes(
+        '--owner-private-approval-root <owner-private-approval-root>'
+      ) &&
+      !ledgerSourceProjectAction.wrapper.includes(
+        '<approved-binding-v5.json>'
+      ) &&
+      !ledgerSourceProjectAction.reconciliationOnlyWrapper.includes(
+        '<approved-binding-v5.json>'
       ),
     'source project provisioning action is not cross-bound across packet, ledger, and binding'
   );
@@ -2511,11 +2584,18 @@ function verifyProposalContracts() {
         .sharedOrganizationIamBillingControlPlaneRiskAccepted === false &&
       provisioning.approval.productionDirectContactProhibitionAcknowledged ===
         false &&
+      provisioning.approval.unknownChargesAcknowledged === false &&
+      provisioning.provisioningAction.requestTimeoutMilliseconds === 30000 &&
+      provisioning.provisioningAction.readinessObservationMaximumSeconds ===
+        900 &&
+      provisioning.provisioningAction.readinessPollIntervalSeconds === 15 &&
       provisioning.cost.organizationCurrentPlan === 'PRO' &&
       provisioning.cost.moneyScale === 10000 &&
       provisioning.cost.computeRateUsdScaledPerProjectHour === 1517 &&
       provisioning.cost.sourceMaximumComputeUsdScaled === 109224 &&
       provisioning.cost.unallocatedAuthorizationHeadroomUsdScaled === 390776 &&
+      provisioning.cost.knownAdditionalChargesUsdScaled === 0 &&
+      provisioning.cost.unknownChargesAcknowledged === false &&
       provisioning.cost.ownerAuthorizationCeilingUsdScaled === 500000 &&
       provisioning.cost.providerSpendCapEnforced === false &&
       provisioning.retentionAndCleanupDecision
@@ -2624,6 +2704,18 @@ function verifyProposalContracts() {
       normalizedApproval.includes('  pr12_action_003_approvable: false'),
     'source provisioning phase boundary drift'
   );
+  const canonicalManagementAccessTokenHandle =
+    provisioningCredential.secrets.managementAccessToken.opaqueHandle;
+  assert(
+    typeof canonicalManagementAccessTokenHandle === 'string' &&
+      normalizedApproval.includes(
+        `    management_token_role:\n      opaque_handle: ${canonicalManagementAccessTokenHandle}\n      envelope_path_sha256:`
+      ) &&
+      !normalizedApproval.includes(
+        'windows-dpapi-cu://pr12-source-project/management-token/v1'
+      ),
+    'Phase 1 approval packet management access token handle must match credential configuration v2'
+  );
   assert(
     provisioningCredential.resultType ===
       'SOURCE_PROJECT_PROVISIONING_CREDENTIAL_CONFIGURATION' &&
@@ -2673,6 +2765,7 @@ function verifyProposalContracts() {
         false &&
       provisioningOwnerApproval.sameOrganizationExceptionRiskAccepted ===
         false &&
+      provisioningOwnerApproval.unknownChargesAcknowledged === false &&
       provisioningOwnerApproval.productionProjectRef ===
         'qnanuoqveidwvacvbhqp' &&
       provisioningOwnerApproval.organizationSlug === 'kbnsntifrawhimhfjrug' &&
@@ -2701,6 +2794,8 @@ function verifyProposalContracts() {
         false &&
       provisioningPricing.rawOfficialSourceArtifactsPersistedInRepository ===
         false &&
+      JSON.stringify(provisioningBootstrapApproval.authorizedRoles) ===
+        JSON.stringify(['DATABASE_PASSWORD']) &&
       provisioningBootstrapApproval.realSecretInteractiveReadAuthorized ===
         false &&
       provisioningBootstrapApproval.envelopeCreationAuthorized === false &&
@@ -2709,7 +2804,84 @@ function verifyProposalContracts() {
     'Phase 1 owner approval, pricing, or DPAPI bootstrap contract drift'
   );
   assert(
+    provisioningInitialApprovalReceipt.schemaVersion === 1 &&
+      provisioningInitialApprovalReceipt.recordType ===
+        'PR12_SOURCE_PROJECT_PROVISIONING_INITIAL_APPROVAL_RECEIPT' &&
+      provisioningInitialApprovalReceipt.decision === 'NOT_CAPTURED' &&
+      provisioningInitialApprovalReceipt.attestationStatus === 'NOT_CAPTURED' &&
+      provisioningInitialApprovalReceipt.attestationMethod ===
+        'SOLE_OPERATOR_EXPLICIT_INITIAL_APPROVAL' &&
+      provisioningInitialApprovalReceipt.actionId === 'PR12-ACTION-003' &&
+      provisioningInitialApprovalReceipt.approvedByPrincipalId ===
+        'owner:futoshi-iwasawa' &&
+      provisioningInitialApprovalReceipt.approvedByDisplayName ===
+        'FUTOSHI IWASAWA' &&
+      provisioningInitialApprovalReceipt.acceptedAt === 'NOT_CAPTURED' &&
+      provisioningInitialApprovalReceipt.approvalPurpose ===
+        'ACTION003_PACKET_PREPARATION_ONLY' &&
+      provisioningInitialApprovalReceipt.unknownChargesAcknowledged === false &&
+      provisioningInitialApprovalReceipt.action003PacketPreparationAuthorized ===
+        false &&
+      provisioningInitialApprovalReceipt.databasePasswordBootstrapAuthorized ===
+        false &&
+      provisioningInitialApprovalReceipt.sourceProjectProvisioningAuthorized ===
+        false &&
+      provisioningInitialApprovalReceipt.productionContactAuthorized ===
+        false &&
+      provisioningInitialApprovalReceipt.phase2AndLaterAuthorized === false &&
+      provisioningInitialApprovalReceipt.cleanupDeletionAuthorized === false,
+    'Phase 1 initial approval receipt template drift'
+  );
+  assert(
+    provisioningFinalApprovalReceipt.schemaVersion === 1 &&
+      provisioningFinalApprovalReceipt.recordType ===
+        'PR12_SOURCE_PROJECT_PROVISIONING_FINAL_APPROVAL_RECEIPT' &&
+      provisioningFinalApprovalReceipt.decision === 'NOT_CAPTURED' &&
+      provisioningFinalApprovalReceipt.attestationStatus === 'NOT_CAPTURED' &&
+      provisioningFinalApprovalReceipt.attestationMethod ===
+        'SOLE_OPERATOR_EXPLICIT_FINAL_HASH_RECONFIRMATION' &&
+      provisioningFinalApprovalReceipt.actionId === 'PR12-ACTION-003' &&
+      provisioningFinalApprovalReceipt.approvedByPrincipalId ===
+        'owner:futoshi-iwasawa' &&
+      provisioningFinalApprovalReceipt.approvedByDisplayName ===
+        'FUTOSHI IWASAWA' &&
+      provisioningFinalApprovalReceipt.acceptedAt === 'NOT_CAPTURED' &&
+      provisioningFinalApprovalReceipt.expiresAt === 'NOT_CAPTURED' &&
+      provisioningFinalApprovalReceipt.initialApprovalReceiptSha256 ===
+        'NOT_CAPTURED' &&
+      provisioningFinalApprovalReceipt.bindingSha256 === 'NOT_CAPTURED' &&
+      provisioningFinalApprovalReceipt.bindingMaterialSha256 ===
+        'NOT_CAPTURED' &&
+      provisioningFinalApprovalReceipt.payloadSha256 === 'NOT_CAPTURED' &&
+      provisioningFinalApprovalReceipt.credentialConfigurationSha256 ===
+        'NOT_CAPTURED' &&
+      provisioningFinalApprovalReceipt.pricingEvidenceSha256 ===
+        'NOT_CAPTURED' &&
+      provisioningFinalApprovalReceipt.ownerApprovalSha256 === 'NOT_CAPTURED' &&
+      provisioningFinalApprovalReceipt.soleOperatorRiskAccepted === false &&
+      provisioningFinalApprovalReceipt.sameUserDpapiCredentialExposureRiskAccepted ===
+        false &&
+      provisioningFinalApprovalReceipt.providerSpendCapLimitationAcknowledged ===
+        false &&
+      provisioningFinalApprovalReceipt.sameOrganizationExceptionRiskAccepted ===
+        false &&
+      provisioningFinalApprovalReceipt.organizationListProductionRefObservationAccepted ===
+        false &&
+      provisioningFinalApprovalReceipt.sharedOrganizationIamBillingControlPlaneRiskAccepted ===
+        false &&
+      provisioningFinalApprovalReceipt.productionDirectContactProhibitionAcknowledged ===
+        false &&
+      provisioningFinalApprovalReceipt.unknownChargesAcknowledged === false &&
+      provisioningFinalApprovalReceipt.sourceProjectProvisioningAuthorized ===
+        false &&
+      provisioningFinalApprovalReceipt.productionContactAuthorized === false &&
+      provisioningFinalApprovalReceipt.phase2AndLaterAuthorized === false &&
+      provisioningFinalApprovalReceipt.cleanupDeletionAuthorized === false,
+    'Phase 1 final approval receipt template drift'
+  );
+  assert(
     provisioningJournal.actionId === 'PR12-ACTION-003' &&
+      provisioningJournal.finalApprovalReceiptSha256 === 'NOT_CAPTURED' &&
       provisioningJournal.post.attemptCount === 0 &&
       provisioningJournal.post.automaticRetryCount === 0 &&
       provisioningJournal.readOnlyReconciliation.state === 'NOT_RUN' &&
@@ -2737,6 +2909,8 @@ function verifyProposalContracts() {
       provisioningResult.pricingAndFunding.scheduledExecutionAt ===
         'NOT_CAPTURED' &&
       provisioningResult.pricingAndFunding.fundedThrough === 'NOT_CAPTURED' &&
+      provisioningResult.approvalWindow.finalApprovalReceiptSha256 ===
+        'NOT_CAPTURED' &&
       requireRecord(
         provisioningResult.organizationIdentityEvidence,
         'provisioningResult.organizationIdentityEvidence'
@@ -2770,6 +2944,8 @@ function verifyProposalContracts() {
       provisioningProviderExport.rawProviderBodiesPersisted === false &&
       provisioningEvidenceManifest.manifestType ===
         'PR12_PHASE1_SOURCE_PROJECT_PROVISIONING_EVIDENCE' &&
+      provisioningEvidenceManifest.finalApprovalReceiptSha256 ===
+        'NOT_CAPTURED' &&
       provisioningEvidenceManifest.rawProviderBodiesPersisted === false &&
       provisioningPrivacyScan.scanType ===
         'PR12_PHASE1_EVIDENCE_PRIVACY_AND_SECRET_SCAN' &&
@@ -2785,6 +2961,189 @@ function verifyProposalContracts() {
   const provisioningWrapper = readRepositoryFile(
     'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs'
   );
+  const action003ApprovalBuilder = readRepositoryFile(
+    'scripts/commercial-hardening/build-pr12-action003-approval-packet.mjs'
+  );
+  for (const requiredBuilderBoundary of [
+    'buildAction003ApprovalArtifacts',
+    'initializeAction003ApprovalOutputCreateNew',
+    'completeAction003ApprovalOutputCreateNew',
+    'verifyAction003ApprovalOutput',
+    'verifyExistingAction003ApprovalOutput',
+    'buildBindingMaterial',
+    'buildSecretFreeRequestProjection',
+    'validateInitialAction003ApprovalReceipt',
+    'validateOfflineApprovalCandidate',
+    'PENDING_FINAL_APPROVAL',
+    'initialApprovalReceiptSha256',
+    'sourceProjectProvisioningAuthorized: false',
+    'source-project-provisioning-binding-v5.json',
+    'source-project-provisioning-credential-configuration-v2.json',
+    'source-project-provisioning-owner-approval-v4.json',
+    "flag: 'wx'",
+    'remoteContactPerformed: false',
+    'credentialReadPerformed: false',
+    'AMBIENT_CREDENTIAL_FORBIDDEN',
+    'ACTION002_SEALED_EVIDENCE_MISMATCH',
+  ]) {
+    assert(
+      action003ApprovalBuilder.includes(requiredBuilderBoundary),
+      `Action-003 approval builder boundary missing: ${requiredBuilderBoundary}`
+    );
+  }
+  assert(
+    !/\bfetch\s*\(/u.test(action003ApprovalBuilder) &&
+      !action003ApprovalBuilder.includes('retrieveClaimBoundCredentials') &&
+      !action003ApprovalBuilder.includes('buildCredentialBrokerRequest'),
+    'Action-003 approval builder must remain local-only and credential-free'
+  );
+  const action003ApprovalPreflight = readRepositoryFile(
+    'scripts/commercial-hardening/prepare-pr12-action003-approval-packet.mjs'
+  );
+  for (const requiredPreflightBoundary of [
+    'verifyOrganizationIdentityCaptureTerminalLinkage',
+    'validateDpapiCredentialResources',
+    'revalidateDpapiCredentialResources',
+    'includeDatabasePassword: true',
+    'inspectAction003GitState',
+    'organizationIdentitySourceGitCommitIsAncestor',
+    'PRICING_SOURCE_ARTIFACT_HASH_MISMATCH',
+    'INPUT_DESCRIPTOR_NOT_CANONICAL',
+    'TEST_RUNTIME_OVERRIDE_FORBIDDEN',
+    'AMBIENT_CREDENTIAL_FORBIDDEN',
+    'BUILT_AT_CLOCK_MISMATCH',
+    'SCHEDULED_EXECUTION_TIME_MISSED',
+    'validateInitialAction003ApprovalReceipt',
+    'initialApprovalReceiptPath',
+    'assertWindowsAclBoundaries',
+    'protectWindowsOutputAcl',
+    'ACL_BOUNDARY_INVALID',
+    'initializeAction003ApprovalOutputCreateNew',
+    'completeAction003ApprovalOutputCreateNew',
+    'verifyAction003ApprovalOutput',
+    'verifyExistingAction003ApprovalOutput',
+    'revalidateAction003ApprovalPacket',
+    'PREFLIGHT_MODE_REVALIDATE',
+    'EXISTING_OUTPUT_REVALIDATION_FAILED',
+    'VALIDATED_NOT_WRITTEN',
+    'validateAction003ApprovalPreflightForTest',
+    'credentialPlaintextReadPerformed: false',
+    'shell: false',
+  ]) {
+    assert(
+      action003ApprovalPreflight.includes(requiredPreflightBoundary),
+      `Action-003 approval preflight boundary missing: ${requiredPreflightBoundary}`
+    );
+  }
+  assert(
+    !/\bfetch\s*\(/u.test(action003ApprovalPreflight) &&
+      !action003ApprovalPreflight.includes('retrieveClaimBoundCredentials') &&
+      !action003ApprovalPreflight.includes('buildCredentialBrokerRequest') &&
+      !action003ApprovalPreflight.includes('--execute-authorized-action'),
+    'Action-003 approval preflight must remain local-only and credential-free'
+  );
+  assert(
+    !action003ApprovalPreflight.includes(
+      'export function prepareAction003ApprovalPacketWithRuntime'
+    ) &&
+      action003ApprovalPreflight.indexOf("status: 'VALIDATED_NOT_WRITTEN'") <
+        action003ApprovalPreflight.indexOf('runtime.initializeOutput('),
+    'Action-003 test runtime seam must remain structurally read-only'
+  );
+  const action003ApprovalReceiptContract = readRepositoryFile(
+    'scripts/commercial-hardening/pr12-action003-approval-receipt-contract.mjs'
+  );
+  for (const requiredReceiptBoundary of [
+    'requireOwnerPrivateBoundary',
+    'inspectOwnerPrivatePathAcl',
+    'validateInitialAction003ApprovalReceipt',
+    'validateFinalAction003ApprovalReceipt',
+    'recordInitialAction003ApprovalReceiptCreateNew',
+    'recordFinalAction003ApprovalReceiptCreateNew',
+    'verifyInitialAction003ApprovalReceiptStable',
+    'verifyFinalAction003ApprovalReceiptStable',
+    'OWNER_PRIVATE_BOUNDARY_INVALID',
+    'OWNER_PRIVATE_ROOT_ACL_INVALID',
+    'OWNER_PRIVATE_TARGET_ACL_INVALID',
+    'allPathComponentsNonReparse: true',
+    'outsideWindowsTempRoots: true',
+    'databasePasswordBootstrapAuthorized',
+    'sourceProjectProvisioningAuthorized',
+    "openSync(filename, 'wx'",
+    'remoteContactPerformed: false',
+    'credentialReadPerformed: false',
+  ]) {
+    assert(
+      action003ApprovalReceiptContract.includes(requiredReceiptBoundary),
+      `Action-003 approval receipt boundary missing: ${requiredReceiptBoundary}`
+    );
+  }
+  assert(
+    !/\bfetch\s*\(/u.test(action003ApprovalReceiptContract) &&
+      !action003ApprovalReceiptContract.includes(
+        'retrieveClaimBoundCredentials'
+      ),
+    'Action-003 approval receipt contract must remain local-only and credential-free'
+  );
+  const action003ApprovalReceiptRecorder = readRepositoryFile(
+    'scripts/commercial-hardening/record-pr12-action003-final-approval-receipt.mjs'
+  );
+  for (const requiredRecorderBoundary of [
+    'RECORD_PR12_ACTION003_FINAL_APPROVAL_RECEIPT_LOCAL_ONLY',
+    'recordAction003InitialApprovalReceipt',
+    'recordAction003FinalApprovalReceipt',
+    'inspectOwnerPrivatePathAcl',
+    'validateOfflineApprovalCandidate',
+    'validateOfflineApproval',
+    'APPROVAL_INPUT_IDENTITY_OR_CONTENT_CHANGED',
+    'REPOSITORY_STATE_CHANGED',
+    'AMBIENT_CREDENTIAL_FORBIDDEN',
+    '--record-initial',
+    '--owner-private-root',
+    '--candidate-directory',
+    '--preflight-descriptor',
+    '--initial-approval-receipt',
+    '--pricing-evidence',
+    '--populated-final-approval-receipt',
+    'remoteContactPerformed: false',
+    'credentialPlaintextReadPerformed: false',
+    'revalidateAction003ApprovalPacket',
+    'ACTION003_EXTERNAL_STATE_CHANGED',
+  ]) {
+    assert(
+      action003ApprovalReceiptRecorder.includes(requiredRecorderBoundary),
+      `Action-003 approval receipt recorder boundary missing: ${requiredRecorderBoundary}`
+    );
+  }
+  assert(
+    !/\bfetch\s*\(/u.test(action003ApprovalReceiptRecorder) &&
+      !action003ApprovalReceiptRecorder.includes(
+        'retrieveClaimBoundCredentials'
+      ) &&
+      !action003ApprovalReceiptRecorder.includes(
+        '--execute-authorized-action'
+      ) &&
+      !action003ApprovalReceiptRecorder.includes('https://api.supabase.com'),
+    'Action-003 approval receipt recorder must remain local-only and credential-free'
+  );
+  const ownerPrivateAclHelper = readRepositoryFile(
+    'scripts/commercial-hardening/pr12-windows-owner-private-acl.ps1'
+  );
+  for (const requiredAclBoundary of [
+    "ValidateSet('PROTECT_AND_CAPTURE', 'CAPTURE')",
+    "ValidateSet('FILE', 'DIRECTORY')",
+    'FileAttributes]::ReparsePoint',
+    'SetAccessRuleProtection($true, $false)',
+    "'S-1-5-18'",
+    'ACCESS_RULE_COUNT_INVALID',
+    'ACCESS_RULE_SID_SET_INVALID',
+    'WINDOWS_CURRENT_USER_AND_SYSTEM_FULL_CONTROL_V1',
+  ]) {
+    assert(
+      ownerPrivateAclHelper.includes(requiredAclBoundary),
+      `Action-003 owner-private ACL helper boundary missing: ${requiredAclBoundary}`
+    );
+  }
   const organizationIdentityContract = readRepositoryFile(
     'scripts/commercial-hardening/pr12-source-organization-identity-capture-contract.mjs'
   );
@@ -2867,6 +3226,20 @@ function verifyProposalContracts() {
       `Phase 1 ambient transport/debug denial missing: ${forbiddenTransportName}`
     );
   }
+  for (const requiredApprovalBoundary of [
+    'PHASE1_OWNER_PRINCIPAL_ID',
+    'validateOfflineApprovalCandidate',
+    'validateFinalApprovalReceipt',
+    'FINAL_APPROVAL_RECEIPT_INVALID',
+    'SCHEDULED_EXECUTION_TIME_INVALID',
+    'APPROVAL_EXPIRY_TIME_INVALID',
+    'finalApprovalReceiptSha256',
+  ]) {
+    assert(
+      provisioningContract.includes(requiredApprovalBoundary),
+      `Phase 1 final approval contract boundary missing: ${requiredApprovalBoundary}`
+    );
+  }
   const postCallCount = (
     provisioningWrapper.match(/\{\s*method:\s*'POST',\s*body:/g) ?? []
   ).length;
@@ -2893,6 +3266,22 @@ function verifyProposalContracts() {
     providerFetchStart,
     providerFetchEnd
   );
+  const remoteRevalidationStart = provisioningWrapper.indexOf(
+    'function revalidateExecutionStateBeforeRemoteContact('
+  );
+  const remoteRevalidationEnd = provisioningWrapper.indexOf(
+    '\nfunction revalidateImmediatelyBeforePost',
+    remoteRevalidationStart
+  );
+  const remoteRevalidationSource = provisioningWrapper.slice(
+    remoteRevalidationStart,
+    remoteRevalidationEnd
+  );
+  const guardedExecutionCallCount = (
+    provisioningWrapper.match(
+      /beforeRemoteContact: revalidateBeforeRemoteContact/g
+    ) ?? []
+  ).length;
   assert(
     !recoverySource.includes('providerFetch(') &&
       !recoverySource.includes("{ method: 'POST'") &&
@@ -2901,13 +3290,47 @@ function verifyProposalContracts() {
       provisioningWrapper.includes('flush: true') &&
       provisioningWrapper.includes('renameSync(directory, finalDirectory)') &&
       provisioningWrapper.includes('function readFileSnapshot(') &&
+      provisioningWrapper.includes(
+        'function revalidateImmutableApprovalInputs('
+      ) &&
+      provisioningWrapper.includes('finalApprovalReceipt: readFileSnapshot(') &&
+      provisioningWrapper.includes('--final-approval-receipt') &&
+      provisioningWrapper.includes('finalApprovalReceiptSha256') &&
+      provisioningWrapper.includes('inspectOwnerPrivatePathAcl({') &&
+      provisioningWrapper.includes('approvalReceiptContractPath') &&
+      provisioningWrapper.includes('ownerPrivateAclHelperPath') &&
       provisioningWrapper.includes('assertRemoteContactWithinApproval(') &&
       provisioningWrapper.includes('assertMutationPricingCurrent(') &&
+      !provisioningWrapper.includes('onRemoteContact = () => undefined') &&
+      !provisioningWrapper.includes('beforeRemoteContact = () => undefined') &&
+      providerFetchSource.includes("fail('REMOTE_CONTACT_GUARD_REQUIRED')") &&
       providerFetchSource.indexOf('assertAllowedManagementApiRequest({') >= 0 &&
       providerFetchSource.indexOf('assertAllowedManagementApiRequest({') <
+        providerFetchSource.indexOf('beforeRemoteContact();') &&
+      providerFetchSource.indexOf('beforeRemoteContact();') <
+        providerFetchSource.indexOf('assertRemoteContactWithinApproval(') &&
+      providerFetchSource.indexOf('assertRemoteContactWithinApproval(') <
         providerFetchSource.indexOf('onRemoteContact();') &&
       providerFetchSource.indexOf('onRemoteContact();') <
         providerFetchSource.indexOf('return fetch(url,') &&
+      remoteRevalidationStart >= 0 &&
+      remoteRevalidationEnd > remoteRevalidationStart &&
+      remoteRevalidationSource.includes(
+        'revalidateImmutableApprovalInputs(inputs)'
+      ) &&
+      remoteRevalidationSource.includes(
+        'revalidatePreparedLocalResources(inputs)'
+      ) &&
+      /runGit\(\s*\['rev-parse', 'HEAD'\]/.test(remoteRevalidationSource) &&
+      /runGit\(\s*\['merge-base', 'HEAD', 'origin\/main'\]/.test(
+        remoteRevalidationSource
+      ) &&
+      remoteRevalidationSource.includes('ambientCredentialNames()') &&
+      remoteRevalidationSource.includes('validateOfflineApproval(') &&
+      guardedExecutionCallCount === 3 &&
+      provisioningWrapper.includes(
+        'beforeRemoteContact: revalidateBeforeRecoveryRemoteContact'
+      ) &&
       provisioningWrapper.includes('completeTerminalFromExistingEvidence') &&
       provisioningWrapper.includes('retainEvidenceAfterSealFailure(') &&
       provisioningWrapper.includes(
@@ -2919,6 +3342,7 @@ function verifyProposalContracts() {
       provisioningWrapper.includes('verified.trustedResult') &&
       provisioningWrapper.includes('verified.trustedProvider') &&
       provisioningEvidenceVerifier.includes('function readFileSnapshot(') &&
+      provisioningEvidenceVerifier.includes('finalApprovalReceiptSha256') &&
       provisioningEvidenceVerifier.includes('trustedResult:') &&
       provisioningEvidenceVerifier.includes('trustedProvider:') &&
       provisioningWrapper.includes(

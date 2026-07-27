@@ -105,7 +105,7 @@ integration_and_credential_contract:
     dotenv_or_ambient_credential_fallback_allowed: false
 command_ledger:
   path: staging-command-ledger.proposed.json
-  sha256: 5816d16a619eacac12c1dfefb1556bf2bcbc11a7c12bbf232f5ee03e535a8225
+  sha256: 81a17643bcb071d444eecaf1c9bc9335b6350ce755680c2f2360e6fa25ebf913
   status: PROPOSED_NOT_EXECUTABLE
 local_readiness:
   status: IMPLEMENTED_OFFLINE_VERIFIED

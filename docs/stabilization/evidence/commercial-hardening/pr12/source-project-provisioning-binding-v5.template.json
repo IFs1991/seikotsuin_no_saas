@@ -27,9 +27,9 @@
     "mutating": true,
     "mutationScope": "SOURCE_PROJECT_CREATION",
     "databaseConnectionAuthorized": false,
-    "requestTimeoutMilliseconds": "NOT_CAPTURED",
-    "readinessObservationMaximumSeconds": "NOT_CAPTURED",
-    "readinessPollIntervalSeconds": "NOT_CAPTURED",
+    "requestTimeoutMilliseconds": 30000,
+    "readinessObservationMaximumSeconds": 900,
+    "readinessPollIntervalSeconds": 15,
     "providerCreatedAtMaximumClockSkewSeconds": 300
   },
   "target": {
@@ -54,7 +54,16 @@
   "credentialControls": {
     "provisioningCredentialConfiguration": {
       "path": "source-project-provisioning-credential-configuration-v2.json",
-      "sha256": "NOT_CAPTURED"
+      "sha256": "NOT_CAPTURED",
+      "sourceIdentity": {
+        "pathSha256": "NOT_CAPTURED",
+        "resolvedPathSha256": "NOT_CAPTURED",
+        "device": "NOT_CAPTURED",
+        "inode": "NOT_CAPTURED",
+        "size": "NOT_CAPTURED",
+        "modifiedAtMilliseconds": "NOT_CAPTURED",
+        "contentSha256": "NOT_CAPTURED"
+      }
     },
     "requiredProviderId": "WINDOWS_DPAPI_CURRENT_USER_V1",
     "requiredRetrievalChannel": "CLAIM_BOUND_CAPTURED_STDOUT_BINARY_V1",
@@ -173,6 +182,13 @@
     "credentialBrokerFailureConsumesActionIdentity": true,
     "credentialBrokerAutomaticRetryAllowed": false,
     "actionJournalDirectoryPathSha256": "NOT_CAPTURED",
+    "actionJournalDirectoryFingerprint": {
+      "pathSha256": "NOT_CAPTURED",
+      "resolvedPathSha256": "NOT_CAPTURED",
+      "device": "NOT_CAPTURED",
+      "inode": "NOT_CAPTURED",
+      "snapshotSha256": "NOT_CAPTURED"
+    },
     "organizationProjectListAllPagesRequiredBeforePost": true,
     "fixedNameDuplicateAction": "ABORT_POST_NOT_SENT",
     "unknownRemoteOutcomeAction": "NO_RETRY_READ_ONLY_RECONCILIATION_AND_OWNER_DECISION",
@@ -214,7 +230,7 @@
     "computeCreditAppliedUsdScaled": 0,
     "taxAndOtherChargesQuoted": false,
     "unallocatedAuthorizationHeadroomUsdScaled": 390776,
-    "knownAdditionalChargesUsdScaled": "NOT_CAPTURED",
+    "knownAdditionalChargesUsdScaled": 0,
     "unknownChargesAcknowledged": false,
     "ownerAuthorizationCeilingUsdScaled": 500000,
     "providerSpendCapEnforced": false,
@@ -222,7 +238,16 @@
     "pricingEvidence": {
       "artifactPath": "NOT_CAPTURED",
       "artifactSha256": "NOT_CAPTURED",
-      "freshThrough": "NOT_CAPTURED"
+      "freshThrough": "NOT_CAPTURED",
+      "sourceIdentity": {
+        "pathSha256": "NOT_CAPTURED",
+        "resolvedPathSha256": "NOT_CAPTURED",
+        "device": "NOT_CAPTURED",
+        "inode": "NOT_CAPTURED",
+        "size": "NOT_CAPTURED",
+        "modifiedAtMilliseconds": "NOT_CAPTURED",
+        "contentSha256": "NOT_CAPTURED"
+      }
     }
   },
   "approval": {
@@ -232,6 +257,7 @@
     "approvedAt": "NOT_CAPTURED",
     "operatorReconfirmedAt": "NOT_CAPTURED",
     "expiresAt": "NOT_CAPTURED",
+    "initialApprovalReceiptSha256": "NOT_CAPTURED",
     "soleOperatorRiskAccepted": false,
     "sameUserDpapiCredentialExposureRiskAccepted": false,
     "providerSpendCapLimitationAcknowledged": false,
@@ -239,6 +265,7 @@
     "organizationListProductionRefObservationAccepted": false,
     "sharedOrganizationIamBillingControlPlaneRiskAccepted": false,
     "productionDirectContactProhibitionAcknowledged": false,
+    "unknownChargesAcknowledged": false,
     "evidencePath": "NOT_CAPTURED",
     "evidenceSha256": "NOT_CAPTURED",
     "approvedActionId": "PR12-ACTION-003",
@@ -292,6 +319,13 @@
   },
   "evidenceContract": {
     "evidenceParentDirectoryPathSha256": "NOT_CAPTURED",
+    "evidenceParentDirectoryFingerprint": {
+      "pathSha256": "NOT_CAPTURED",
+      "resolvedPathSha256": "NOT_CAPTURED",
+      "device": "NOT_CAPTURED",
+      "inode": "NOT_CAPTURED",
+      "snapshotSha256": "NOT_CAPTURED"
+    },
     "secretFreeProjectionOnly": true,
     "rawHttpHeadersPersisted": false,
     "rawProviderBodiesPersisted": false,

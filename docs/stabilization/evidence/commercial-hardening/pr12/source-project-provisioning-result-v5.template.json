@@ -98,7 +98,8 @@
     "approvedAt": "NOT_CAPTURED",
     "operatorReconfirmedAt": "NOT_CAPTURED",
     "expiresAt": "NOT_CAPTURED",
-    "approvalEvidenceSha256": "NOT_CAPTURED"
+    "approvalEvidenceSha256": "NOT_CAPTURED",
+    "finalApprovalReceiptSha256": "NOT_CAPTURED"
   },
   "cleanupBoundary": {
     "disposition": "DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION",

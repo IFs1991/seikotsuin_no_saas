@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import {
   existsSync,
   lstatSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   statSync,
@@ -294,6 +295,126 @@ function envelopePath(providerRoot, envelopeFilename) {
   return path.win32.join(providerRoot, envelopeFilename);
 }
 
+function requireProviderRootSnapshotEntry(entry) {
+  requireCondition(
+    isRecord(entry) &&
+      canonicalJson(Object.keys(entry).sort()) ===
+        canonicalJson(
+          [
+            'envelopeFilename',
+            'pathSha256',
+            'resolvedPathSha256',
+            'device',
+            'inode',
+            'size',
+            'modifiedAtMilliseconds',
+            'contentSha256',
+          ].sort()
+        ) &&
+      /^[a-f0-9]{64}\.dpapi\.json$/u.test(entry.envelopeFilename) &&
+      SHA256_PATTERN.test(entry.pathSha256) &&
+      SHA256_PATTERN.test(entry.resolvedPathSha256) &&
+      /^\d+$/u.test(entry.device) &&
+      /^\d+$/u.test(entry.inode) &&
+      Number.isSafeInteger(entry.size) &&
+      entry.size >= 0 &&
+      typeof entry.modifiedAtMilliseconds === 'number' &&
+      Number.isFinite(entry.modifiedAtMilliseconds) &&
+      entry.modifiedAtMilliseconds >= 0 &&
+      SHA256_PATTERN.test(entry.contentSha256),
+    'DPAPI_PROVIDER_ROOT_SNAPSHOT_BINDING_INVALID'
+  );
+  return entry;
+}
+
+function listProviderRootEntries(providerRoot) {
+  try {
+    return readdirSync(providerRoot, { withFileTypes: true })
+      .map(entry => entry.name)
+      .sort();
+  } catch {
+    fail('DPAPI_PROVIDER_ROOT_ENTRY_SET_MISMATCH');
+  }
+}
+
+export function inspectDpapiProviderRootSnapshot(
+  providerRoot,
+  expectedEntriesInput
+) {
+  requireCondition(
+    process.platform === 'win32',
+    'DPAPI_WINDOWS_PLATFORM_REQUIRED'
+  );
+  const beforeRootIdentity = requireStableDirectory(
+    providerRoot,
+    'DPAPI_PROVIDER_ROOT_INVALID'
+  );
+  requireCondition(
+    Array.isArray(expectedEntriesInput) && expectedEntriesInput.length === 2,
+    'DPAPI_PROVIDER_ROOT_SNAPSHOT_BINDING_INVALID'
+  );
+  const expectedEntries = expectedEntriesInput
+    .map(requireProviderRootSnapshotEntry)
+    .toSorted((left, right) =>
+      left.envelopeFilename.localeCompare(right.envelopeFilename, 'en-US')
+    );
+  const expectedFilenames = expectedEntries.map(
+    entry => entry.envelopeFilename
+  );
+  requireCondition(
+    new Set(expectedFilenames).size === 2,
+    'DPAPI_PROVIDER_ROOT_SNAPSHOT_BINDING_INVALID'
+  );
+  const beforeFilenames = listProviderRootEntries(providerRoot);
+  requireCondition(
+    canonicalJson(beforeFilenames) === canonicalJson(expectedFilenames),
+    'DPAPI_PROVIDER_ROOT_ENTRY_SET_MISMATCH'
+  );
+  const entries = expectedFilenames.map(envelopeFilename => {
+    const filename = envelopePath(providerRoot, envelopeFilename);
+    const fileSnapshot = stableFileSnapshot(
+      filename,
+      'DPAPI_PROVIDER_ROOT_ENTRY_INVALID'
+    );
+    const resolvedFilename = normalizedWindowsPath(
+      realpathSync.native(filename)
+    );
+    return {
+      envelopeFilename,
+      pathSha256: windowsPathFingerprint(filename),
+      resolvedPathSha256: sha256Text(resolvedFilename),
+      ...fileSnapshot.identity,
+      contentSha256: fileSnapshot.sha256,
+    };
+  });
+  const afterFilenames = listProviderRootEntries(providerRoot);
+  const afterRootIdentity = requireStableDirectory(
+    providerRoot,
+    'DPAPI_PROVIDER_ROOT_INVALID'
+  );
+  requireCondition(
+    canonicalJson(afterFilenames) === canonicalJson(expectedFilenames),
+    'DPAPI_PROVIDER_ROOT_ENTRY_SET_MISMATCH'
+  );
+  requireCondition(
+    canonicalJson(afterRootIdentity) === canonicalJson(beforeRootIdentity),
+    'DPAPI_PROVIDER_ROOT_CHANGED'
+  );
+  requireCondition(
+    canonicalJson(entries) === canonicalJson(expectedEntries),
+    'DPAPI_PROVIDER_ROOT_SNAPSHOT_MISMATCH'
+  );
+  const snapshotMaterial = {
+    schemaVersion: 1,
+    entries,
+  };
+  return {
+    ...snapshotMaterial,
+    entryCount: entries.length,
+    snapshotSha256: sha256Text(canonicalJson(snapshotMaterial)),
+  };
+}
+
 function validateRoleConfiguration(entry, role) {
   requireCondition(
     isRecord(entry) && entry.role === role,
@@ -306,6 +427,37 @@ function validateRoleConfiguration(entry, role) {
       SHA256_PATTERN.test(entry.envelopeSha256) &&
       entry.envelopeFilename === `${entry.opaqueHandleSha256}.dpapi.json`,
     'DPAPI_ENVELOPE_BINDING_INVALID'
+  );
+}
+
+function validateEnvelopeIdentity(entry, filename, snapshot) {
+  const identity = entry.envelopeIdentity;
+  requireCondition(
+    isRecord(identity) &&
+      canonicalJson(Object.keys(identity).sort()) ===
+        canonicalJson(
+          [
+            'pathSha256',
+            'resolvedPathSha256',
+            'device',
+            'inode',
+            'size',
+            'modifiedAtMilliseconds',
+            'contentSha256',
+          ].sort()
+        ),
+    'DPAPI_ENVELOPE_IDENTITY_INVALID'
+  );
+  const resolvedFilename = normalizedWindowsPath(realpathSync.native(filename));
+  const expected = {
+    pathSha256: windowsPathFingerprint(filename),
+    resolvedPathSha256: sha256Text(resolvedFilename),
+    ...snapshot.identity,
+    contentSha256: snapshot.sha256,
+  };
+  requireCondition(
+    canonicalJson(identity) === canonicalJson(expected),
+    'DPAPI_ENVELOPE_IDENTITY_MISMATCH'
   );
 }
 
@@ -466,8 +618,14 @@ export function validateDpapiCredentialResources(
       secrets.managementAccessToken.envelopeSha256,
     'DPAPI_ENVELOPE_HASH_MISMATCH'
   );
+  validateEnvelopeIdentity(
+    secrets.managementAccessToken,
+    tokenPath,
+    tokenEnvelopeSnapshot
+  );
   let passwordPath;
   let passwordEnvelopeSnapshot;
+  let providerRootSnapshot;
   if (includeDatabasePassword) {
     passwordPath = envelopePath(
       provider.providerRoot,
@@ -482,9 +640,42 @@ export function validateDpapiCredentialResources(
         secrets.databasePassword.envelopeSha256,
       'DPAPI_ENVELOPE_HASH_MISMATCH'
     );
+    validateEnvelopeIdentity(
+      secrets.databasePassword,
+      passwordPath,
+      passwordEnvelopeSnapshot
+    );
+    for (const values of [
+      [
+        secrets.managementAccessToken.envelopeIdentity.pathSha256,
+        secrets.databasePassword.envelopeIdentity.pathSha256,
+      ],
+      [
+        secrets.managementAccessToken.envelopeIdentity.resolvedPathSha256,
+        secrets.databasePassword.envelopeIdentity.resolvedPathSha256,
+      ],
+      [
+        `${tokenEnvelopeSnapshot.identity.device}:${tokenEnvelopeSnapshot.identity.inode}`,
+        `${passwordEnvelopeSnapshot.identity.device}:${passwordEnvelopeSnapshot.identity.inode}`,
+      ],
+      [tokenEnvelopeSnapshot.sha256, passwordEnvelopeSnapshot.sha256],
+    ]) {
+      requireCondition(
+        new Set(values).size === 2,
+        'DPAPI_ENVELOPE_IDENTITY_NOT_DISTINCT'
+      );
+    }
+    providerRootSnapshot = inspectDpapiProviderRootSnapshot(
+      provider.providerRoot,
+      [secrets.managementAccessToken, secrets.databasePassword].map(entry => ({
+        envelopeFilename: entry.envelopeFilename,
+        ...entry.envelopeIdentity,
+      }))
+    );
   }
   return {
     providerRootIdentity,
+    providerRootSnapshot,
     powershellPath,
     powershellSnapshot,
     brokerPath,
@@ -514,6 +705,13 @@ export function revalidateDpapiCredentialResources(
       canonicalJson(expected.providerRootIdentity),
     'DPAPI_PROVIDER_ROOT_CHANGED'
   );
+  if (options.includeDatabasePassword !== false) {
+    requireCondition(
+      canonicalJson(current.providerRootSnapshot) ===
+        canonicalJson(expected.providerRootSnapshot),
+      'DPAPI_PROVIDER_ROOT_CHANGED'
+    );
+  }
   const snapshotKeys = [
     'powershellSnapshot',
     'brokerSnapshot',

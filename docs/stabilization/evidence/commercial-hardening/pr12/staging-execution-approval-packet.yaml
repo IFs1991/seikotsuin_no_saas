@@ -87,9 +87,13 @@ authorization_phases:
     provider_safe_projection_template: source-project-provider-safe-projection-v4.template.json
     credential_configuration_template: source-project-provisioning-credential-configuration-v2.template.json
     owner_approval_template: source-project-provisioning-owner-approval-v4.template.json
+    initial_approval_receipt_template: source-project-provisioning-initial-approval-receipt-v1.template.json
+    final_approval_receipt_template: source-project-provisioning-final-approval-receipt-v1.template.json
     official_pricing_evidence_template: source-project-official-pricing-evidence-v2.template.json
     dpapi_envelope_template: source-project-windows-dpapi-envelope-v1.template.json
     dpapi_bootstrap_approval_template: source-project-dpapi-bootstrap-approval-v1.template.json
+    dpapi_bootstrap_authorized_roles:
+      - DATABASE_PASSWORD
     action_journal_template: source-project-provisioning-action-journal.template.json
     evidence_manifest_template: source-project-provisioning-evidence-manifest.template.json
     action_id: PR12-ACTION-003
@@ -161,8 +165,12 @@ authorization_phases:
       raw_provider_body_persistence_allowed: false
       phase1_local_pass_implies_comm_pass: false
       blocker: SOURCE_PROVISIONING_V2_PROMOTION_NOT_IMPLEMENTED
-    approved_binding_path: NOT_CAPTURED
-    approved_binding_sha256: NOT_CAPTURED
+    candidate_binding_path: NOT_CAPTURED
+    candidate_binding_sha256: NOT_CAPTURED
+    initial_approval_receipt_path: NOT_CAPTURED
+    initial_approval_receipt_sha256: NOT_CAPTURED
+    final_approval_receipt_path: NOT_CAPTURED
+    final_approval_receipt_sha256: NOT_CAPTURED
     authorized: false
     expiry: NOT_CAPTURED
   source_identity_and_configuration_bootstrap:
@@ -804,7 +812,7 @@ credentials:
     same_windows_user_and_machine_boundary_required: true
     same_user_dpapi_risk_acceptance: NOT_CAPTURED
     management_token_role:
-      opaque_handle: windows-dpapi-cu://pr12-source-project/management-token/v1
+      opaque_handle: windows-dpapi-cu://pr12-source-project/management-access-token/v1
       envelope_path_sha256: NOT_CAPTURED
       envelope_resolved_path_sha256: NOT_CAPTURED
       envelope_content_sha256: NOT_CAPTURED
@@ -988,7 +996,7 @@ cli:
     - gen_types
     - status
   command_ledger_path: staging-command-ledger.proposed.json
-  command_ledger_sha256: 5816d16a619eacac12c1dfefb1556bf2bcbc11a7c12bbf232f5ee03e535a8225
+  command_ledger_sha256: 81a17643bcb071d444eecaf1c9bc9335b6350ce755680c2f2360e6fa25ebf913
   exact_commands: PROPOSED_NOT_EXECUTABLE
   exact_commands_blocker: Phase 1 and selected runtime/replay/fixture/types/Advisor/all-role readiness are implemented offline, but all remote execution remains NOT_RUN and unauthorized. External path/CA fingerprints, runtime target identity, credentials, fresh target catalog/classification approval, canonical PR11 and hosted SLO runners, full security/Data API/GraphQL/COMM/backup/restore/side-effect collectors, and later owner decisions remain blockers.
   executable_command_metadata_required:
@@ -1204,6 +1212,8 @@ approval_checklist:
   source_project_provisioning_binding: NOT_CAPTURED
   source_project_provisioning_credential_configuration: NOT_CAPTURED
   source_project_provisioning_owner_approval: NOT_CAPTURED
+  source_project_provisioning_initial_approval_receipt: NOT_CAPTURED
+  source_project_provisioning_final_approval_receipt: NOT_CAPTURED
   source_project_official_pricing_evidence: NOT_CAPTURED
   source_project_official_pricing_source_artifacts: NOT_CAPTURED
   source_project_dpapi_envelopes: NOT_CAPTURED

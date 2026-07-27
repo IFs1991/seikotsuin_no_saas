@@ -128,7 +128,8 @@ function requireCanonicalOwnerId(value, code) {
   const ownerId = requireString(value, code);
   requireCondition(
     ownerId === ownerId.toLowerCase() &&
-      /^[a-z0-9][a-z0-9._@+:-]*$/.test(ownerId),
+      /^[a-z0-9][a-z0-9._@+:-]*$/.test(ownerId) &&
+      ownerId === 'owner:futoshi-iwasawa',
     code
   );
   return ownerId;
@@ -896,6 +897,7 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
       'operatorReconfirmedAt',
       'expiresAt',
       'approvalEvidenceSha256',
+      'finalApprovalReceiptSha256',
     ],
     'PROVISIONING_RESULT_INVALID'
   );
@@ -912,6 +914,13 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
     )
   );
   requireSha256(approval.approvalEvidenceSha256, 'PROVISIONING_RESULT_INVALID');
+  requireCondition(
+    requireSha256(
+      approval.finalApprovalReceiptSha256,
+      'PROVISIONING_RESULT_INVALID'
+    ) === manifest.finalApprovalReceiptSha256,
+    'PROVISIONING_RESULT_INVALID'
+  );
   requireCondition(
     approvedAt < operatorReconfirmedAt &&
       operatorReconfirmedAt - approvedAt >= 300_000 &&
@@ -1699,6 +1708,7 @@ export function verifyProvisioningEvidenceDirectory(
       'gitCommit',
       'bindingMaterialSha256',
       'payloadSha256',
+      'finalApprovalReceiptSha256',
       'fundingSource',
       'artifacts',
       'artifactCount',
@@ -1720,6 +1730,8 @@ export function verifyProvisioningEvidenceDirectory(
       SHA256_PATTERN.test(manifest.bindingMaterialSha256) &&
       typeof manifest.payloadSha256 === 'string' &&
       SHA256_PATTERN.test(manifest.payloadSha256) &&
+      typeof manifest.finalApprovalReceiptSha256 === 'string' &&
+      SHA256_PATTERN.test(manifest.finalApprovalReceiptSha256) &&
       /^[A-Z][A-Z0-9_:-]{7,127}$/.test(
         requireString(manifest.fundingSource, 'MANIFEST_INVALID')
       ) &&
@@ -1929,6 +1941,7 @@ export function verifyProvisioningEvidenceDirectory(
     gitCommit: manifest.gitCommit,
     bindingMaterialSha256: manifest.bindingMaterialSha256,
     payloadSha256: manifest.payloadSha256,
+    finalApprovalReceiptSha256: manifest.finalApprovalReceiptSha256,
     manifestSha256,
     artifactCount: manifest.artifactCount,
     secretBearingEvidenceFound: false,
