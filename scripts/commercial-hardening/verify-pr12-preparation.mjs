@@ -3029,6 +3029,8 @@ function verifyProposalContracts() {
     'validateAction003ApprovalPreflightForTest',
     'credentialPlaintextReadPerformed: false',
     'shell: false',
+    'OWNER_PRIVATE_ACL_HELPER_PATH',
+    "'-File'",
   ]) {
     assert(
       action003ApprovalPreflight.includes(requiredPreflightBoundary),
@@ -3039,7 +3041,8 @@ function verifyProposalContracts() {
     !/\bfetch\s*\(/u.test(action003ApprovalPreflight) &&
       !action003ApprovalPreflight.includes('retrieveClaimBoundCredentials') &&
       !action003ApprovalPreflight.includes('buildCredentialBrokerRequest') &&
-      !action003ApprovalPreflight.includes('--execute-authorized-action'),
+      !action003ApprovalPreflight.includes('--execute-authorized-action') &&
+      !action003ApprovalPreflight.includes("'-Command'"),
     'Action-003 approval preflight must remain local-only and credential-free'
   );
   assert(

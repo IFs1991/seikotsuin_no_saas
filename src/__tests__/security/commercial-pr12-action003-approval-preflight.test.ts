@@ -723,9 +723,16 @@ describe('PR12 ACTION-003 operational approval preflight', () => {
     ).toBe(10);
   });
 
-  test('captures a content-bound ACL proof through the real Windows runtime', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pr12-acl-proof-'));
-    cleanupDirectories.push(root);
+  test('captures a content-bound ACL proof for opaque paths through the real Windows runtime', () => {
+    const cleanupRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'pr12-acl-proof-')
+    );
+    cleanupDirectories.push(cleanupRoot);
+    const root = path.join(
+      cleanupRoot,
+      'owner path;Write-Output PR12_PATH_INJECTION_CANARY'
+    );
+    fs.mkdirSync(root);
     const filename = path.join(root, 'bound-input.json');
     writeCanonicalJson(filename, { safe: true });
     const credentialConfiguration = {
@@ -852,6 +859,9 @@ describe('PR12 ACTION-003 operational approval preflight', () => {
     expect(source).not.toContain('performProvisioningRequest');
     expect(source).not.toContain('shell: true');
     expect(source).toContain('shell: false');
+    expect(source).not.toContain("'-Command'");
+    expect(source).toContain("'-File'");
+    expect(source).toContain('pr12-windows-owner-private-acl.ps1');
     expect(source).toContain('includeDatabasePassword: true');
     expect(source).toContain('assertWindowsAclBoundaries');
     expect(source).toContain('protectWindowsOutputAcl');

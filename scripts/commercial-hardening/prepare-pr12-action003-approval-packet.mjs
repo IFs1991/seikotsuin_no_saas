@@ -69,6 +69,15 @@ const TRACKED_BINDING_TEMPLATE =
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v5.template.json';
 const TRACKED_OWNER_APPROVAL_TEMPLATE =
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v4.template.json';
+const OWNER_PRIVATE_ACL_HELPER_RELATIVE_PATH =
+  'scripts/commercial-hardening/pr12-windows-owner-private-acl.ps1';
+const OWNER_PRIVATE_ACL_HELPER_PATH = path.join(
+  MODULE_REPOSITORY_ROOT,
+  OWNER_PRIVATE_ACL_HELPER_RELATIVE_PATH
+);
+const OWNER_PRIVATE_ACL_POLICY_ID =
+  'WINDOWS_CURRENT_USER_AND_SYSTEM_FULL_CONTROL_V1';
+const WINDOWS_SYSTEM_SID = 'S-1-5-18';
 const HASH_BOUND_TRACKED_FILES = Object.freeze({
   governanceSha256:
     'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml',
@@ -86,6 +95,7 @@ const TRACKED_RUNTIME_INPUTS = Object.freeze([
   TRACKED_OWNER_APPROVAL_TEMPLATE,
   ...Object.values(HASH_BOUND_TRACKED_FILES),
   'scripts/commercial-hardening/build-pr12-action003-approval-packet.mjs',
+  OWNER_PRIVATE_ACL_HELPER_RELATIVE_PATH,
   'scripts/commercial-hardening/pr12-windows-dpapi-credential-channel.mjs',
   'scripts/commercial-hardening/prepare-pr12-action003-approval-packet.mjs',
 ]);
@@ -309,6 +319,110 @@ export function requireAclBoundaryPathCount(pathnames, minimumPathCount = 10) {
   return pathnames.length;
 }
 
+function requireAclPathKind(pathname, code) {
+  let status;
+  try {
+    requireNoReparsePathComponents(pathname, code);
+    status = lstatSync(pathname);
+  } catch (error) {
+    if (error instanceof Action003ApprovalPreflightError) throw error;
+    fail(code);
+  }
+  requireCondition(!status.isSymbolicLink(), code);
+  if (status.isDirectory()) return 'DIRECTORY';
+  if (status.isFile()) return 'FILE';
+  fail(code);
+}
+
+function runWindowsAclHelper(powershellExecutablePath, pathname, mode, code) {
+  const kind = requireAclPathKind(pathname, code);
+  const result = spawnSync(
+    powershellExecutablePath,
+    [
+      '-NoLogo',
+      '-NoProfile',
+      '-NonInteractive',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-File',
+      OWNER_PRIVATE_ACL_HELPER_PATH,
+      '-Mode',
+      mode,
+      '-Kind',
+      kind,
+      '-LiteralPath',
+      pathname,
+    ],
+    {
+      encoding: 'utf8',
+      env: minimalGitEnvironment(),
+      maxBuffer: 64 * 1024,
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 30_000,
+      windowsHide: true,
+    }
+  );
+  requireCondition(
+    result.error === undefined &&
+      result.signal === null &&
+      result.status === 0 &&
+      result.stdout.trim().length > 0 &&
+      result.stderr.length === 0,
+    code
+  );
+  let captured;
+  try {
+    captured = JSON.parse(result.stdout.trim());
+  } catch {
+    fail(code);
+  }
+  const proof = requireExactKeys(
+    captured,
+    [
+      'schemaVersion',
+      'aclPolicyId',
+      'kind',
+      'ownerSid',
+      'currentUserSid',
+      'systemSid',
+      'accessRulesProtected',
+      'accessRuleCount',
+      'allowedSids',
+      'sddl',
+    ],
+    code
+  );
+  requireCondition(
+    proof.schemaVersion === 1 &&
+      proof.aclPolicyId === OWNER_PRIVATE_ACL_POLICY_ID &&
+      proof.kind === kind &&
+      typeof proof.ownerSid === 'string' &&
+      proof.ownerSid.length > 0 &&
+      proof.ownerSid === proof.currentUserSid &&
+      proof.ownerSid !== WINDOWS_SYSTEM_SID &&
+      proof.systemSid === WINDOWS_SYSTEM_SID &&
+      proof.accessRulesProtected === true &&
+      proof.accessRuleCount === 2 &&
+      Array.isArray(proof.allowedSids) &&
+      proof.allowedSids.length === 2 &&
+      new Set(proof.allowedSids).size === 2 &&
+      proof.allowedSids.every(value => typeof value === 'string') &&
+      proof.allowedSids.includes(proof.currentUserSid) &&
+      proof.allowedSids.includes(WINDOWS_SYSTEM_SID) &&
+      typeof proof.sddl === 'string' &&
+      proof.sddl.length > 0,
+    code
+  );
+  return {
+    pathname,
+    kind,
+    ownerSid: proof.ownerSid,
+    allowedSids: proof.allowedSids,
+    sddl: proof.sddl,
+  };
+}
+
 export function assertWindowsAclBoundaries(
   credentialConfiguration,
   pathnameInputs,
@@ -334,154 +448,42 @@ export function assertWindowsAclBoundaries(
     ),
   ];
   requireAclBoundaryPathCount(pathnames, minimumPathCount);
-  const inspection =
-    "$ErrorActionPreference='Stop';" +
-    '$current=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value;' +
-    "$system='S-1-5-18';$allowed=@($current,$system);" +
-    '$entries=[Collections.Generic.List[object]]::new();' +
-    'foreach($p in $args){' +
-    "if(-not [IO.File]::Exists($p)-and-not [IO.Directory]::Exists($p)){throw 'ACL_PATH_MISSING'};" +
-    "$attrs=[IO.File]::GetAttributes($p);if(($attrs-band [IO.FileAttributes]::ReparsePoint)-ne 0){throw 'ACL_REPARSE_FORBIDDEN'};" +
-    '$acl=Get-Acl -LiteralPath $p;' +
-    "if(-not $acl.AreAccessRulesProtected){throw 'ACL_INHERITANCE_ENABLED'};" +
-    '$owner=([Security.Principal.NTAccount]$acl.Owner).Translate([Security.Principal.SecurityIdentifier]).Value;' +
-    "if($allowed-notcontains $owner){throw 'ACL_OWNER_INVALID'};" +
-    '$rules=@($acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]));' +
-    '$seen=@{};foreach($r in $rules){$sid=$r.IdentityReference.Value;' +
-    "if($r.IsInherited-or $r.AccessControlType-ne [Security.AccessControl.AccessControlType]::Allow-or $allowed-notcontains $sid-or (($r.FileSystemRights-band [Security.AccessControl.FileSystemRights]::FullControl)-ne [Security.AccessControl.FileSystemRights]::FullControl)){throw 'ACL_RULE_INVALID'};$seen[$sid]=$true};" +
-    "foreach($sid in $allowed){if(-not $seen.ContainsKey($sid)){throw 'ACL_PRINCIPAL_MISSING'}};" +
-    '$normalizedAclEntries=@($rules|ForEach-Object{[ordered]@{' +
-    'sid=$_.IdentityReference.Value;' +
-    'rights=[int64]$_.FileSystemRights;' +
-    'inheritanceFlags=[int]$_.InheritanceFlags;' +
-    'propagationFlags=[int]$_.PropagationFlags;' +
-    'isInherited=$_.IsInherited;' +
-    'accessControlType=$_.AccessControlType.ToString()' +
-    '}}|Sort-Object sid,rights,inheritanceFlags,propagationFlags,isInherited,accessControlType);' +
-    '$sections=[Security.AccessControl.AccessControlSections]::Owner-bor [Security.AccessControl.AccessControlSections]::Access;' +
-    '$entries.Add([ordered]@{' +
-    "kind=$(if([IO.Directory]::Exists($p)){'DIRECTORY'}else{'FILE'});" +
-    'ownerSid=$owner;' +
-    'accessRulesProtected=$acl.AreAccessRulesProtected;' +
-    'normalizedAclEntries=$normalizedAclEntries;' +
-    'sddl=$acl.GetSecurityDescriptorSddlForm($sections)' +
-    '})};' +
-    '[Console]::Out.Write(([ordered]@{' +
-    'schemaVersion=1;currentSid=$current;systemSid=$system;entries=$entries' +
-    '}|ConvertTo-Json -Compress -Depth 8));';
-  const result = spawnSync(
-    powershellExecutablePath,
-    [
-      '-NoLogo',
-      '-NoProfile',
-      '-NonInteractive',
-      '-Command',
-      `& {${inspection}}`,
-      ...pathnames,
-    ],
-    {
-      encoding: 'utf8',
-      env: minimalGitEnvironment(),
-      maxBuffer: 1_048_576,
-      shell: false,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: 30_000,
-      windowsHide: true,
-    }
+  const helperSnapshot = stableReadSnapshot(
+    OWNER_PRIVATE_ACL_HELPER_PATH,
+    MAXIMUM_JSON_ARTIFACT_BYTES,
+    'ACL_HELPER_INVALID'
   );
-  requireCondition(
-    result.error === undefined &&
-      result.signal === null &&
-      result.status === 0 &&
-      result.stdout.length > 0 &&
-      result.stderr.length === 0,
-    'ACL_BOUNDARY_INVALID'
+  const captured = pathnames.map(pathname =>
+    runWindowsAclHelper(
+      powershellExecutablePath,
+      pathname,
+      'CAPTURE',
+      'ACL_BOUNDARY_INVALID'
+    )
   );
-  let captured;
-  try {
-    captured = JSON.parse(result.stdout);
-  } catch {
-    fail('ACL_BOUNDARY_INVALID');
-  }
-  const root = requireExactKeys(
-    captured,
-    ['schemaVersion', 'currentSid', 'systemSid', 'entries'],
-    'ACL_BOUNDARY_INVALID'
+  assertSameSnapshot(
+    OWNER_PRIVATE_ACL_HELPER_PATH,
+    helperSnapshot,
+    MAXIMUM_JSON_ARTIFACT_BYTES,
+    'ACL_HELPER_INVALID'
   );
-  requireCondition(
-    root.schemaVersion === 1 &&
-      typeof root.currentSid === 'string' &&
-      root.currentSid.length > 0 &&
-      root.systemSid === 'S-1-5-18' &&
-      Array.isArray(root.entries) &&
-      root.entries.length === pathnames.length,
-    'ACL_BOUNDARY_INVALID'
-  );
-  const allowedSids = new Set([root.currentSid, root.systemSid]);
-  const normalizedAclEntries = root.entries
-    .map((entryInput, index) => {
-      const entry = requireExactKeys(
-        entryInput,
-        [
-          'kind',
-          'ownerSid',
-          'accessRulesProtected',
-          'normalizedAclEntries',
-          'sddl',
-        ],
-        'ACL_BOUNDARY_INVALID'
-      );
-      requireCondition(
-        (entry.kind === 'FILE' || entry.kind === 'DIRECTORY') &&
-          allowedSids.has(entry.ownerSid) &&
-          entry.accessRulesProtected === true &&
-          Array.isArray(entry.normalizedAclEntries) &&
-          entry.normalizedAclEntries.length >= 2 &&
-          typeof entry.sddl === 'string' &&
-          entry.sddl.length > 0,
-        'ACL_BOUNDARY_INVALID'
-      );
-      const rules = entry.normalizedAclEntries
-        .map(ruleInput => {
-          const rule = requireExactKeys(
-            ruleInput,
-            [
-              'sid',
-              'rights',
-              'inheritanceFlags',
-              'propagationFlags',
-              'isInherited',
-              'accessControlType',
-            ],
-            'ACL_BOUNDARY_INVALID'
-          );
-          requireCondition(
-            allowedSids.has(rule.sid) &&
-              Number.isSafeInteger(rule.rights) &&
-              Number.isSafeInteger(rule.inheritanceFlags) &&
-              Number.isSafeInteger(rule.propagationFlags) &&
-              rule.isInherited === false &&
-              rule.accessControlType === 'Allow',
-            'ACL_BOUNDARY_INVALID'
-          );
-          return {
-            sidSha256: sha256Text(rule.sid),
-            rights: rule.rights,
-            inheritanceFlags: rule.inheritanceFlags,
-            propagationFlags: rule.propagationFlags,
-            isInherited: false,
-            accessControlType: 'Allow',
-          };
-        })
+  const normalizedAclEntries = captured
+    .map(entry => {
+      const inheritanceFlags = entry.kind === 'DIRECTORY' ? 3 : 0;
+      const rules = entry.allowedSids
+        .map(sid => ({
+          sidSha256: sha256Text(sid),
+          rights: 2_032_127,
+          inheritanceFlags,
+          propagationFlags: 0,
+          isInherited: false,
+          accessControlType: 'Allow',
+        }))
         .sort((left, right) =>
           canonicalJson(left).localeCompare(canonicalJson(right), 'en')
         );
-      requireCondition(
-        new Set(entry.normalizedAclEntries.map(rule => rule.sid)).size === 2,
-        'ACL_BOUNDARY_INVALID'
-      );
       return {
-        pathSha256: sha256Text(normalizedPath(pathnames[index])),
+        pathSha256: sha256Text(normalizedPath(entry.pathname)),
         kind: entry.kind,
         ownerSidSha256: sha256Text(entry.ownerSid),
         accessRulesProtected: true,
@@ -529,48 +531,13 @@ export function protectWindowsOutputAcl(
   );
   for (const pathname of pathnames) {
     requireNoReparsePathComponents(pathname, 'OUTPUT_ACL_REPARSE_FORBIDDEN');
+    runWindowsAclHelper(
+      powershellExecutablePath,
+      pathname,
+      'PROTECT_AND_CAPTURE',
+      'OUTPUT_ACL_PROTECTION_FAILED'
+    );
   }
-  const protection =
-    "$ErrorActionPreference='Stop';" +
-    '$current=[Security.Principal.WindowsIdentity]::GetCurrent().User;' +
-    "$system=[Security.Principal.SecurityIdentifier]::new('S-1-5-18');" +
-    'foreach($p in $args){$isDirectory=[IO.Directory]::Exists($p);' +
-    "if(-not $isDirectory-and-not [IO.File]::Exists($p)){throw 'ACL_PATH_MISSING'};" +
-    'if($isDirectory){$security=[Security.AccessControl.DirectorySecurity]::new();' +
-    '$inheritance=[Security.AccessControl.InheritanceFlags]::ContainerInherit-bor [Security.AccessControl.InheritanceFlags]::ObjectInherit}' +
-    'else{$security=[Security.AccessControl.FileSecurity]::new();$inheritance=[Security.AccessControl.InheritanceFlags]::None};' +
-    '$security.SetAccessRuleProtection($true,$false);$security.SetOwner($current);' +
-    'foreach($sid in @($current,$system)){$rule=[Security.AccessControl.FileSystemAccessRule]::new($sid,[Security.AccessControl.FileSystemRights]::FullControl,$inheritance,[Security.AccessControl.PropagationFlags]::None,[Security.AccessControl.AccessControlType]::Allow);$null=$security.AddAccessRule($rule)};' +
-    'if($isDirectory){[IO.FileSystemAclExtensions]::SetAccessControl([IO.DirectoryInfo]::new($p),$security)}' +
-    'else{[IO.FileSystemAclExtensions]::SetAccessControl([IO.FileInfo]::new($p),$security)}};';
-  const result = spawnSync(
-    powershellExecutablePath,
-    [
-      '-NoLogo',
-      '-NoProfile',
-      '-NonInteractive',
-      '-Command',
-      `& {${protection}}`,
-      ...pathnames,
-    ],
-    {
-      encoding: 'utf8',
-      env: minimalGitEnvironment(),
-      maxBuffer: 4096,
-      shell: false,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: 30_000,
-      windowsHide: true,
-    }
-  );
-  requireCondition(
-    result.error === undefined &&
-      result.signal === null &&
-      result.status === 0 &&
-      result.stdout.length === 0 &&
-      result.stderr.length === 0,
-    'OUTPUT_ACL_PROTECTION_FAILED'
-  );
   return assertWindowsAclBoundaries(
     credentialConfiguration,
     pathnames,
