@@ -25,6 +25,7 @@ const requiredArtifacts = [
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v5.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration-v2.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v4.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-final-approval-receipt-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-official-pricing-evidence-v2.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-dpapi-bootstrap-approval-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-windows-dpapi-envelope-v1.template.json',
@@ -68,6 +69,8 @@ const requiredArtifacts = [
   'scripts/commercial-hardening/pr12-windows-dpapi-credential-channel.mjs',
   'scripts/commercial-hardening/pr12-windows-dpapi-credential-broker.ps1',
   'scripts/commercial-hardening/initialize-pr12-windows-dpapi-credentials.ps1',
+  'scripts/commercial-hardening/build-pr12-action003-approval-packet.mjs',
+  'scripts/commercial-hardening/prepare-pr12-action003-approval-packet.mjs',
   'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs',
   'scripts/commercial-hardening/verify-pr12-source-project-provisioning-evidence.mjs',
   'scripts/commercial-hardening/verify-pr12-evidence-manifest.mjs',
@@ -87,6 +90,8 @@ const requiredArtifacts = [
   'scripts/commercial-hardening/sql/pr12-post-replay-catalog-capture.sql',
   'scripts/commercial-hardening/sql/pr12-migration-history-parity.sql',
   'src/__tests__/security/commercial-pr12-evidence-verifier.test.ts',
+  'src/__tests__/security/commercial-pr12-action003-approval-builder.test.ts',
+  'src/__tests__/security/commercial-pr12-action003-approval-preflight.test.ts',
   'src/__tests__/security/commercial-pr12-source-project-provisioning-contract.test.ts',
   'src/__tests__/security/commercial-pr12-authority-artifact-contract.test.ts',
   'src/__tests__/security/commercial-pr12-stage-command-runtime.test.ts',
@@ -307,6 +312,34 @@ describe('commercial PR-12 qualification preparation contract', () => {
     for (const requiredPath of requiredArtifacts) {
       expect(fs.existsSync(repositoryPath(requiredPath))).toBe(true);
     }
+  });
+
+  it('binds the approval packet management handle to credential configuration v2', () => {
+    const credentialConfiguration = readJsonRecord(
+      'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration-v2.template.json'
+    );
+    const secrets = requireRecord(
+      credentialConfiguration.secrets,
+      'credential configuration v2 secrets'
+    );
+    const managementAccessToken = requireRecord(
+      secrets.managementAccessToken,
+      'credential configuration v2 management access token'
+    );
+    const opaqueHandle = managementAccessToken.opaqueHandle;
+    const approvalPacket = readRepositoryFile(
+      'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml'
+    );
+
+    expect(opaqueHandle).toBe(
+      'windows-dpapi-cu://pr12-source-project/management-access-token/v1'
+    );
+    expect(approvalPacket).toContain(
+      `      opaque_handle: ${String(opaqueHandle)}`
+    );
+    expect(approvalPacket).not.toContain(
+      'windows-dpapi-cu://pr12-source-project/management-token/v1'
+    );
   });
 
   it('rejects a representative-data digest that is not the tracked contract digest', () => {
@@ -682,6 +715,14 @@ describe('commercial PR-12 qualification preparation contract', () => {
     expect(packet).toContain(
       'source_identity_and_configuration_bootstrap_authorized: false'
     );
+    for (const action003CandidateAuthorityField of [
+      'candidate_binding_path: NOT_CAPTURED',
+      'candidate_binding_sha256: NOT_CAPTURED',
+      'final_approval_receipt_path: NOT_CAPTURED',
+      'final_approval_receipt_sha256: NOT_CAPTURED',
+    ]) {
+      expect(packet).toContain(action003CandidateAuthorityField);
+    }
     expect(entry).toContain(
       'stage_2_source_identity_and_read_only_configuration_bootstrap_PR12_CMD_004A'
     );
@@ -1506,6 +1547,28 @@ describe('commercial PR-12 qualification preparation contract', () => {
     expect(ledgerSourceProjectAction.readOnlySupportingRequests).not.toContain(
       'GET /v1/organizations/kbnsntifrawhimhfjrug'
     );
+    for (const wrapper of [
+      ledgerSourceProjectAction.wrapper,
+      ledgerSourceProjectAction.reconciliationOnlyWrapper,
+    ]) {
+      expect(wrapper).toContain('--binding <candidate-binding-v5.json>');
+      expect(wrapper).toContain(
+        '--credential-config <candidate-dpapi-credential-config-v2.json>'
+      );
+      expect(wrapper).toContain(
+        '--approval-evidence <owner-approval-candidate-v4.json>'
+      );
+      expect(wrapper).toContain(
+        '--initial-approval-receipt <initial-approval-receipt-v1.json>'
+      );
+      expect(wrapper).toContain(
+        '--final-approval-receipt <final-approval-receipt-v1.json>'
+      );
+      expect(wrapper).toContain(
+        '--owner-private-approval-root <owner-private-approval-root>'
+      );
+      expect(wrapper).not.toContain('<approved-binding-v5.json>');
+    }
     expect(ledgerOrganizationIdentityAction).toMatchObject({
       actionId: 'PR12-ACTION-002',
       method: 'OWNER_MANAGEMENT_API_GET_ORGANIZATION_IDENTITY',
@@ -1812,6 +1875,7 @@ describe('commercial PR-12 qualification preparation contract', () => {
       organizationListProductionRefObservationAccepted: false,
       sharedOrganizationIamBillingControlPlaneRiskAccepted: false,
       productionDirectContactProhibitionAcknowledged: false,
+      unknownChargesAcknowledged: false,
     });
     expect(provisioningOwnerApproval).toMatchObject({
       schemaVersion: 4,
@@ -1819,6 +1883,7 @@ describe('commercial PR-12 qualification preparation contract', () => {
       approverPrincipalId: 'owner:futoshi-iwasawa',
       operatorPrincipalId: 'owner:futoshi-iwasawa',
       sameUserDpapiCredentialExposureRiskAccepted: false,
+      unknownChargesAcknowledged: false,
       organizationId: 'kbnsntifrawhimhfjrug',
       organizationIdentityManifestSha256:
         '66db9ed2b7fdb7573b76e79273c71d95551cdb7385e0ca8ee21724c56399f582',

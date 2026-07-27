@@ -44,6 +44,17 @@ const provisioningBindingV5TemplatePath = path.join(
   phase1EvidenceRoot,
   'source-project-provisioning-binding-v5.template.json'
 );
+const action002SealedTuple = {
+  sourceGitCommit: '6edd6733756dd73e458cf705675895a5666c76e6',
+  sourceBindingMaterialSha256:
+    '56b07d3eb802d546df25be3b487e32b9c30f0aa7ac1f896bba483cb5e207eb3c',
+  sourceRequestSha256:
+    '95149b0f64407700298cbe842cbd15780300e9e357dc492f5d4d56e490490a8e',
+  manifestSha256:
+    '66db9ed2b7fdb7573b76e79273c71d95551cdb7385e0ca8ee21724c56399f582',
+  terminalSha256:
+    '3fec7d3156c52e862602e9adb115e460c6959caeba38d5a1b290abe41513782e',
+} as const;
 
 type JsonObject = { [key: string]: JsonValue };
 type JsonValue = JsonObject | JsonValue[] | boolean | number | string | null;
@@ -79,6 +90,12 @@ function canonicalSha256(value: JsonValue): string {
     .digest('hex');
 }
 
+function canonicalFileSha256(value: JsonValue): string {
+  return createHash('sha256')
+    .update(`${JSON.stringify(canonicalize(value))}\n`, 'utf8')
+    .digest('hex');
+}
+
 function writeCanonicalJson(
   directory: string,
   filename: string,
@@ -111,6 +128,7 @@ function makeSyntheticEvidenceBundle(
   const projectRef = 'abcdefghijklmnopqrst';
   const claimSha256 = 'd'.repeat(64);
   const postIntentSha256 = 'e'.repeat(64);
+  const finalApprovalReceiptSha256 = 'f'.repeat(64);
   const requestProjection = {
     db_pass: 'RUNTIME_SECRET_NOT_IN_EVIDENCE',
     desired_instance_size: 'large',
@@ -305,7 +323,7 @@ function makeSyntheticEvidenceBundle(
       capturedAt: '2026-07-23T12:01:00.000Z',
       capturedBy: secretBearing
         ? 'sbp_synthetic_management_pat_1234567890'
-        : 'operator@example.invalid',
+        : 'owner:futoshi-iwasawa',
     }
   );
   const resultMetadata = writeCanonicalJson(
@@ -322,10 +340,10 @@ function makeSyntheticEvidenceBundle(
       payloadSha256,
       operator: secretBearing
         ? 'sbp_synthetic_management_pat_1234567890'
-        : 'operator@example.invalid',
+        : 'owner:futoshi-iwasawa',
       approver: secretBearing
         ? 'sbp_synthetic_management_pat_1234567890'
-        : 'operator@example.invalid',
+        : 'owner:futoshi-iwasawa',
       operatorDisplayName: 'FUTOSHI IWASAWA',
       operatorControlMode: 'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1',
       identitySeparationAvailable: false,
@@ -340,7 +358,7 @@ function makeSyntheticEvidenceBundle(
       duplicateState: 'ABSENT_ALL_PAGES',
       partialFailureState: null,
       readOnlyReconciliation: null,
-      recoveryOwner: 'operator@example.invalid',
+      recoveryOwner: 'owner:futoshi-iwasawa',
       cleanupDeletionAuthorized: false,
       databaseConnectionPerformed: false,
       phase2AndLaterAuthorized: false,
@@ -392,15 +410,16 @@ function makeSyntheticEvidenceBundle(
         operatorReconfirmedAt: '2026-07-23T11:40:00.000Z',
         expiresAt: '2026-07-23T12:05:00.000Z',
         approvalEvidenceSha256: '8'.repeat(64),
+        finalApprovalReceiptSha256,
       },
       cleanupBoundary: {
         disposition:
           'DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION',
-        cleanupOwner: 'operator@example.invalid',
-        deletionApprovalRequester: 'operator@example.invalid',
+        cleanupOwner: 'owner:futoshi-iwasawa',
+        deletionApprovalRequester: 'owner:futoshi-iwasawa',
         deletionApprovalRequestDeadline: '2026-07-26T00:00:00.000Z',
-        billingEscalationOwner: 'operator@example.invalid',
-        fundedExtensionOwner: 'operator@example.invalid',
+        billingEscalationOwner: 'owner:futoshi-iwasawa',
+        fundedExtensionOwner: 'owner:futoshi-iwasawa',
         automaticDeletionAuthorized: false,
       },
       journalEvidence: {
@@ -437,6 +456,7 @@ function makeSyntheticEvidenceBundle(
     gitCommit,
     bindingMaterialSha256,
     payloadSha256,
+    finalApprovalReceiptSha256,
     fundingSource: 'OWNER_APPROVED_PERSONAL_PAYMENT_METHOD',
     artifacts: allMetadata,
     artifactCount: allMetadata.length,
@@ -1247,6 +1267,30 @@ function makeValidFixture() {
   const passwordHandleSha256 = createHash('sha256')
     .update(passwordHandle, 'utf8')
     .digest('hex');
+  const externalFileIdentity = (
+    filename: string,
+    contentSha256: string,
+    seed: string
+  ) => {
+    const normalized = path.win32
+      .resolve(filename)
+      .replaceAll('\\', '/')
+      .toLowerCase();
+    const pathSha256 = createHash('sha256')
+      .update(normalized, 'utf8')
+      .digest('hex');
+    return {
+      pathSha256,
+      resolvedPathSha256: pathSha256,
+      device: `${seed}01`,
+      inode: `${seed}02`,
+      size: 100 + seed.length,
+      modifiedAtMilliseconds: 1_750_000_000_000 + seed.length,
+      contentSha256,
+    };
+  };
+  const tokenEnvelopeFilename = `${tokenHandleSha256}.dpapi.json`;
+  const passwordEnvelopeFilename = `${passwordHandleSha256}.dpapi.json`;
   const credentialConfiguration = {
     schemaVersion: 2,
     resultType: 'SOURCE_PROJECT_PROVISIONING_CREDENTIAL_CONFIGURATION',
@@ -1299,8 +1343,13 @@ function makeValidFixture() {
         role: 'MANAGEMENT_ACCESS_TOKEN',
         opaqueHandle: tokenHandle,
         opaqueHandleSha256: tokenHandleSha256,
-        envelopeFilename: `${tokenHandleSha256}.dpapi.json`,
+        envelopeFilename: tokenEnvelopeFilename,
         envelopeSha256: 'f'.repeat(64),
+        envelopeIdentity: externalFileIdentity(
+          path.win32.join(providerRoot, tokenEnvelopeFilename),
+          'f'.repeat(64),
+          '2'
+        ),
         credentialType: 'SUPABASE_FINE_GRAINED_ACCESS_TOKEN',
         requiredEndpointOAuthScopes: [
           'projects:read',
@@ -1320,8 +1369,13 @@ function makeValidFixture() {
         role: 'DATABASE_PASSWORD',
         opaqueHandle: passwordHandle,
         opaqueHandleSha256: passwordHandleSha256,
-        envelopeFilename: `${passwordHandleSha256}.dpapi.json`,
+        envelopeFilename: passwordEnvelopeFilename,
         envelopeSha256: '1'.repeat(64),
+        envelopeIdentity: externalFileIdentity(
+          path.win32.join(providerRoot, passwordEnvelopeFilename),
+          '1'.repeat(64),
+          '3'
+        ),
         minimumBytes: 32,
         maximumBytes: 256,
       },
@@ -1355,7 +1409,7 @@ function makeValidFixture() {
       realCredentialBootstrapAuthorizedByThisPreparation: false,
       separateInteractiveAuthorizationRequired: true,
     },
-    approvedBy: 'owner@example.invalid',
+    approvedBy: 'owner:futoshi-iwasawa',
     approvedAt: '2026-07-22T23:00:00.000Z',
     notes:
       'Synthetic DPAPI configuration metadata only; no secret values are persisted.',
@@ -1376,13 +1430,14 @@ function makeValidFixture() {
     status: 'PASS',
     actionId: 'PR12-ACTION-002',
     terminalState: 'TERMINAL_PASS',
-    sourceGitCommit: '6edd6733756dd73e458cf705675895a5666c76e6',
-    sourceBindingMaterialSha256: '2'.repeat(64),
-    sourceRequestSha256: '3'.repeat(64),
+    sourceGitCommit: action002SealedTuple.sourceGitCommit,
+    sourceBindingMaterialSha256:
+      action002SealedTuple.sourceBindingMaterialSha256,
+    sourceRequestSha256: action002SealedTuple.sourceRequestSha256,
     evidenceDirectoryName:
       'source-organization-identity-capture-20260722T235500000Z',
-    manifestSha256: '4'.repeat(64),
-    terminalSha256: '5'.repeat(64),
+    manifestSha256: action002SealedTuple.manifestSha256,
+    terminalSha256: action002SealedTuple.terminalSha256,
     claimSha256: '6'.repeat(64),
     getIntentSha256: '7'.repeat(64),
     completedAt: '2026-07-22T23:55:00.000Z',
@@ -1414,13 +1469,68 @@ function makeValidFixture() {
       snapshotSha256: 'f'.repeat(64),
     },
   };
+  const credentialConfigurationSourceIdentity = externalFileIdentity(
+    'C:\\Users\\owner\\AppData\\Local\\PR12\\approval-inputs\\credential-configuration-v2.json',
+    '6'.repeat(64),
+    '4'
+  );
+  const pricingEvidenceSourceIdentity = externalFileIdentity(
+    'C:\\Users\\owner\\AppData\\Local\\PR12\\pricing\\official-pricing-evidence-v2.json',
+    '7'.repeat(64),
+    '5'
+  );
+  const actionJournalDirectoryFingerprint = {
+    pathSha256: '9'.repeat(64),
+    resolvedPathSha256: '9'.repeat(64),
+    device: '601',
+    inode: '602',
+    snapshotSha256: '6'.repeat(64),
+  };
+  const evidenceParentDirectoryFingerprint = {
+    pathSha256: '0'.repeat(64),
+    resolvedPathSha256: '0'.repeat(64),
+    device: '701',
+    inode: '702',
+    snapshotSha256: '7'.repeat(64),
+  };
 
+  const initialApprovalReceipt = {
+    schemaVersion: 1,
+    recordType: 'PR12_SOURCE_PROJECT_PROVISIONING_INITIAL_APPROVAL_RECEIPT',
+    decision: 'APPROVED',
+    attestationStatus: 'VERIFIED',
+    attestationMethod: 'SOLE_OPERATOR_EXPLICIT_INITIAL_APPROVAL',
+    actionId: 'PR12-ACTION-003',
+    approvedByPrincipalId: 'owner:futoshi-iwasawa',
+    approvedByDisplayName: 'FUTOSHI IWASAWA',
+    acceptedAt: '2026-07-23T00:00:00.000Z',
+    approvalPurpose: 'ACTION003_PACKET_PREPARATION_ONLY',
+    soleOperatorRiskAccepted: true,
+    sameUserDpapiCredentialExposureRiskAccepted: true,
+    providerSpendCapLimitationAcknowledged: true,
+    sameOrganizationExceptionRiskAccepted: true,
+    organizationListProductionRefObservationAccepted: true,
+    sharedOrganizationIamBillingControlPlaneRiskAccepted: true,
+    productionDirectContactProhibitionAcknowledged: true,
+    unknownChargesAcknowledged: true,
+    action003PacketPreparationAuthorized: true,
+    databasePasswordBootstrapAuthorized: false,
+    sourceProjectProvisioningAuthorized: false,
+    productionContactAuthorized: false,
+    phase2AndLaterAuthorized: false,
+    cleanupDeletionAuthorized: false,
+    notes:
+      'Synthetic owner receipt authorizing local ACTION-003 packet preparation only.',
+  };
+  const initialApprovalReceiptSha256 = canonicalFileSha256(
+    initialApprovalReceipt
+  );
   const binding = {
     schemaVersion: 5,
     phase: 'SOURCE_PROJECT_PROVISIONING',
-    status: 'APPROVED',
+    status: 'PENDING_FINAL_APPROVAL',
     authorization: {
-      sourceProjectProvisioningAuthorized: true,
+      sourceProjectProvisioningAuthorized: false,
       isolatedStagingConnectionAuthorized: false,
       isolatedStagingExecutionAuthorized: false,
       restoreProjectCreationAuthorized: false,
@@ -1445,7 +1555,7 @@ function makeValidFixture() {
       databaseConnectionAuthorized: false,
       requestTimeoutMilliseconds: 30000,
       readinessObservationMaximumSeconds: 900,
-      readinessPollIntervalSeconds: 10,
+      readinessPollIntervalSeconds: 15,
       providerCreatedAtMaximumClockSkewSeconds: 300,
       scheduledExecutionAt: '2026-07-23T00:15:00.000Z',
     },
@@ -1477,6 +1587,7 @@ function makeValidFixture() {
       provisioningCredentialConfiguration: {
         path: 'source-project-provisioning-credential-configuration-v2.json',
         sha256: '6'.repeat(64),
+        sourceIdentity: credentialConfigurationSourceIdentity,
       },
       requiredProviderId: 'WINDOWS_DPAPI_CURRENT_USER_V1',
       requiredRetrievalChannel: 'CLAIM_BOUND_CAPTURED_STDOUT_BINARY_V1',
@@ -1547,6 +1658,7 @@ function makeValidFixture() {
       credentialBrokerFailureConsumesActionIdentity: true,
       credentialBrokerAutomaticRetryAllowed: false,
       actionJournalDirectoryPathSha256: '9'.repeat(64),
+      actionJournalDirectoryFingerprint,
       organizationProjectListAllPagesRequiredBeforePost: true,
       fixedNameDuplicateAction: 'ABORT_POST_NOT_SENT',
       unknownRemoteOutcomeAction:
@@ -1554,7 +1666,7 @@ function makeValidFixture() {
       reconciliationOnlyMode: '--reconcile-dispatched-action',
       automaticCleanupAuthorized: false,
       destructiveRecoveryAuthorized: false,
-      recoveryOwner: 'owner@example.invalid',
+      recoveryOwner: 'owner:futoshi-iwasawa',
     },
     lifecycle: {
       sourceMaximumHoursFromCreation: 72,
@@ -1570,11 +1682,11 @@ function makeValidFixture() {
       fundingCeilingUsdScaled: 500000,
       fundingApprovedAmountUsdScaled: 500000,
       fundingSource: 'OWNER_APPROVED_PERSONAL_PAYMENT_METHOD',
-      cleanupOwner: 'owner@example.invalid',
-      deletionApprovalRequester: 'owner@example.invalid',
-      deletionApprovalRequestDeadline: '2026-07-25T00:00:00.000Z',
-      billingEscalationOwner: 'owner@example.invalid',
-      fundedExtensionOwner: 'owner@example.invalid',
+      cleanupOwner: 'owner:futoshi-iwasawa',
+      deletionApprovalRequester: 'owner:futoshi-iwasawa',
+      deletionApprovalRequestDeadline: '2026-07-25T22:15:00.000Z',
+      billingEscalationOwner: 'owner:futoshi-iwasawa',
+      fundedExtensionOwner: 'owner:futoshi-iwasawa',
     },
     cost: {
       currency: 'USD',
@@ -1599,15 +1711,17 @@ function makeValidFixture() {
         artifactPath: 'owner-private/source-project-pricing.json',
         artifactSha256: '7'.repeat(64),
         freshThrough: '2026-07-23T23:30:00.000Z',
+        sourceIdentity: pricingEvidenceSourceIdentity,
       },
     },
     approval: {
-      decision: 'APPROVED',
-      attestationStatus: 'VERIFIED',
-      approvedBy: 'owner@example.invalid',
+      decision: 'PENDING_FINAL_APPROVAL',
+      attestationStatus: 'AWAITING_FINAL_RECEIPT',
+      approvedBy: 'owner:futoshi-iwasawa',
       approvedAt: '2026-07-23T00:00:00.000Z',
-      operatorReconfirmedAt: '2026-07-23T00:05:00.000Z',
+      operatorReconfirmedAt: 'NOT_CAPTURED',
       expiresAt: '2026-07-23T00:30:00.000Z',
+      initialApprovalReceiptSha256,
       soleOperatorRiskAccepted: true,
       sameUserDpapiCredentialExposureRiskAccepted: true,
       providerSpendCapLimitationAcknowledged: true,
@@ -1615,6 +1729,7 @@ function makeValidFixture() {
       organizationListProductionRefObservationAccepted: true,
       sharedOrganizationIamBillingControlPlaneRiskAccepted: true,
       productionDirectContactProhibitionAcknowledged: true,
+      unknownChargesAcknowledged: true,
       evidencePath: 'owner-private/source-project-approval.json',
       evidenceSha256: '8'.repeat(64),
       approvedActionId: 'PR12-ACTION-003',
@@ -1622,11 +1737,11 @@ function makeValidFixture() {
       approvedBindingMaterialSha256: 'NOT_CAPTURED',
     },
     owners: {
-      commercialReleaseOwner: 'owner@example.invalid',
-      provisioningOperator: 'owner@example.invalid',
-      supabasePlatformOwner: 'owner@example.invalid',
-      cleanupOwner: 'owner@example.invalid',
-      evidenceCustodian: 'owner@example.invalid',
+      commercialReleaseOwner: 'owner:futoshi-iwasawa',
+      provisioningOperator: 'owner:futoshi-iwasawa',
+      supabasePlatformOwner: 'owner:futoshi-iwasawa',
+      cleanupOwner: 'owner:futoshi-iwasawa',
+      evidenceCustodian: 'owner:futoshi-iwasawa',
       databaseMigrationOperator: 'UNASSIGNED',
       disasterRecoveryOperator: 'UNASSIGNED',
       securityTenantReviewer: 'UNASSIGNED',
@@ -1638,7 +1753,7 @@ function makeValidFixture() {
     operatorControl: {
       mode: 'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1',
       principalDisplayName: 'FUTOSHI IWASAWA',
-      principalId: 'owner@example.invalid',
+      principalId: 'owner:futoshi-iwasawa',
       principalIdType: 'OWNER_DECLARED_STABLE_PRINCIPAL_ID',
       samePersonRoleKeys: [
         'commercialReleaseOwner',
@@ -1668,6 +1783,7 @@ function makeValidFixture() {
     },
     evidenceContract: {
       evidenceParentDirectoryPathSha256: '0'.repeat(64),
+      evidenceParentDirectoryFingerprint,
       secretFreeProjectionOnly: true,
       rawHttpHeadersPersisted: false,
       rawProviderBodiesPersisted: false,
@@ -1692,12 +1808,12 @@ function makeValidFixture() {
   const approvalEvidence = {
     schemaVersion: 4,
     recordType: 'PR12_SOURCE_PROJECT_PROVISIONING_OWNER_APPROVAL',
-    decision: 'APPROVED',
-    attestationStatus: 'VERIFIED',
+    decision: 'PENDING_FINAL_APPROVAL',
+    attestationStatus: 'AWAITING_FINAL_RECEIPT',
     attestationMethod: 'SOLE_OPERATOR_EXPLICIT_TWO_STEP_APPROVAL_RECORD',
-    approverPrincipalId: 'owner@example.invalid',
+    approverPrincipalId: 'owner:futoshi-iwasawa',
     approverDisplayName: 'FUTOSHI IWASAWA',
-    operatorPrincipalId: 'owner@example.invalid',
+    operatorPrincipalId: 'owner:futoshi-iwasawa',
     operatorDisplayName: 'FUTOSHI IWASAWA',
     operatorControlMode: 'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1',
     identitySeparationAvailable: false,
@@ -1709,6 +1825,7 @@ function makeValidFixture() {
     organizationListProductionRefObservationAccepted: true,
     sharedOrganizationIamBillingControlPlaneRiskAccepted: true,
     productionDirectContactProhibitionAcknowledged: true,
+    unknownChargesAcknowledged: true,
     actionId: 'PR12-ACTION-003',
     gitCommit: 'a'.repeat(40),
     bindingMaterialSha256: binding.approval.approvedBindingMaterialSha256,
@@ -1740,8 +1857,9 @@ function makeValidFixture() {
     organizationIdentitySourceRequestSha256:
       organizationIdentityEvidence.sourceRequestSha256,
     approvedAt: '2026-07-23T00:00:00.000Z',
-    operatorReconfirmedAt: '2026-07-23T00:05:00.000Z',
+    operatorReconfirmedAt: 'NOT_CAPTURED',
     expiresAt: '2026-07-23T00:30:00.000Z',
+    initialApprovalReceiptSha256,
     phase2AndLaterAuthorized: false,
     cleanupDeletionAuthorized: false,
     notes: 'Synthetic sole-operator action approval.',
@@ -1809,9 +1927,41 @@ function makeValidFixture() {
       lifetimeSeconds: 86400,
       freshThrough: '2026-07-23T23:30:00.000Z',
     },
-    capturedBy: 'owner@example.invalid',
+    capturedBy: 'owner:futoshi-iwasawa',
     rawOfficialSourceArtifactsPersistedInRepository: false,
     notes: 'Synthetic official list-price source evidence.',
+  };
+  const finalApprovalReceipt = {
+    schemaVersion: 1,
+    recordType: 'PR12_SOURCE_PROJECT_PROVISIONING_FINAL_APPROVAL_RECEIPT',
+    decision: 'APPROVED',
+    attestationStatus: 'VERIFIED',
+    attestationMethod: 'SOLE_OPERATOR_EXPLICIT_FINAL_HASH_RECONFIRMATION',
+    actionId: 'PR12-ACTION-003',
+    approvedByPrincipalId: 'owner:futoshi-iwasawa',
+    approvedByDisplayName: 'FUTOSHI IWASAWA',
+    acceptedAt: '2026-07-23T00:05:00.000Z',
+    expiresAt: '2026-07-23T00:30:00.000Z',
+    initialApprovalReceiptSha256,
+    bindingSha256: canonicalFileSha256(binding),
+    bindingMaterialSha256: binding.approval.approvedBindingMaterialSha256,
+    payloadSha256: canonicalSha256(approvedRequestProjection),
+    credentialConfigurationSha256: '6'.repeat(64),
+    pricingEvidenceSha256: '7'.repeat(64),
+    ownerApprovalSha256: '8'.repeat(64),
+    soleOperatorRiskAccepted: true,
+    sameUserDpapiCredentialExposureRiskAccepted: true,
+    providerSpendCapLimitationAcknowledged: true,
+    sameOrganizationExceptionRiskAccepted: true,
+    organizationListProductionRefObservationAccepted: true,
+    sharedOrganizationIamBillingControlPlaneRiskAccepted: true,
+    productionDirectContactProhibitionAcknowledged: true,
+    unknownChargesAcknowledged: true,
+    sourceProjectProvisioningAuthorized: true,
+    productionContactAuthorized: false,
+    phase2AndLaterAuthorized: false,
+    cleanupDeletionAuthorized: false,
+    notes: 'Synthetic explicit final hash reconfirmation.',
   };
   const context = {
     currentHead: 'a'.repeat(40),
@@ -1819,7 +1969,7 @@ function makeValidFixture() {
     worktreeClean: true,
     nodeVersion: 'v24.0.0',
     nodeExecArgv: [],
-    now: '2026-07-23T00:10:00.000Z',
+    now: '2026-07-23T00:15:00.000Z',
     governanceSha256: '3'.repeat(64),
     contractSha256: '4'.repeat(64),
     wrapperSha256: '5'.repeat(64),
@@ -1827,8 +1977,13 @@ function makeValidFixture() {
     organizationIdentityVerifierSha256: 'b'.repeat(64),
     credentialConfigurationSha256: '6'.repeat(64),
     approvalEvidenceSha256: '8'.repeat(64),
+    bindingSha256: finalApprovalReceipt.bindingSha256,
+    initialApprovalReceiptSha256,
+    finalApprovalReceiptSha256: canonicalFileSha256(finalApprovalReceipt),
     pricingEvidenceSha256: '7'.repeat(64),
     approvalEvidence,
+    initialApprovalReceipt,
+    finalApprovalReceipt,
     pricingEvidence,
     organizationIdentityEvidence,
     organizationIdentitySourceGitCommitIsAncestor: true,
@@ -1836,7 +1991,11 @@ function makeValidFixture() {
     priorActionState: null,
     approvalStage: 'PRE_CLAIM',
     actionJournalDirectoryPathSha256: '9'.repeat(64),
+    actionJournalDirectoryFingerprint,
     evidenceParentDirectoryPathSha256: '0'.repeat(64),
+    evidenceParentDirectoryFingerprint,
+    credentialConfigurationSourceIdentity,
+    pricingEvidenceSourceIdentity,
   };
 
   return {
@@ -1869,6 +2028,141 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     expect(result.ok).toBe(true);
   });
 
+  test('keeps a candidate non-executable until a separate final receipt is present', () => {
+    const fixture = makeValidFixture();
+    Reflect.deleteProperty(fixture.context, 'finalApprovalReceipt');
+    Reflect.deleteProperty(fixture.context, 'finalApprovalReceiptSha256');
+    const candidate = invokeContract('validateOfflineApprovalCandidate', [
+      fixture.binding,
+      fixture.credentialConfiguration,
+      fixture.context,
+    ]);
+    expect(candidate).toMatchObject({
+      ok: true,
+      value: {
+        finalApprovalRequired: true,
+        sourceProjectProvisioningAuthorized: false,
+        finalApprovalReceiptSha256: null,
+      },
+    });
+    expectRejected(
+      'validateOfflineApproval',
+      [fixture.binding, fixture.credentialConfiguration, fixture.context],
+      'FINAL_APPROVAL_RECEIPT_INVALID'
+    );
+  });
+
+  test.each([
+    [
+      'acceptedAt chronology',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.context.initialApprovalReceipt.acceptedAt =
+          '2026-07-23T00:00:01.000Z';
+      },
+    ],
+    [
+      'database password bootstrap authorization',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.context.initialApprovalReceipt.databasePasswordBootstrapAuthorized = true;
+      },
+    ],
+    [
+      'unknown-charge acceptance',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.context.initialApprovalReceipt.unknownChargesAcknowledged = false;
+      },
+    ],
+  ])('rejects initial approval receipt %s drift', (_label, mutate) => {
+    const fixture = makeValidFixture();
+    mutate(fixture);
+    fixture.context.initialApprovalReceiptSha256 = canonicalFileSha256(
+      fixture.context.initialApprovalReceipt
+    );
+    expectRejected(
+      'validateOfflineApprovalCandidate',
+      [fixture.binding, fixture.credentialConfiguration, fixture.context],
+      'INITIAL_APPROVAL_RECEIPT_INVALID'
+    );
+  });
+
+  test('allows final receipt verification before schedule but closes an unfinalized candidate after schedule', () => {
+    const finalized = makeValidFixture();
+    finalized.context.now = '2026-07-23T00:10:00.000Z';
+    expect(
+      invokeContract('validateOfflineApproval', [
+        finalized.binding,
+        finalized.credentialConfiguration,
+        finalized.context,
+      ])
+    ).toMatchObject({
+      ok: true,
+      value: {
+        operatorReconfirmedAt: '2026-07-23T00:05:00.000Z',
+        sourceProjectProvisioningAuthorized: true,
+      },
+    });
+
+    const unfinalized = makeValidFixture();
+    unfinalized.context.now = '2026-07-23T00:15:00.001Z';
+    Reflect.deleteProperty(unfinalized.context, 'finalApprovalReceipt');
+    Reflect.deleteProperty(unfinalized.context, 'finalApprovalReceiptSha256');
+    expectRejected(
+      'validateOfflineApprovalCandidate',
+      [
+        unfinalized.binding,
+        unfinalized.credentialConfiguration,
+        unfinalized.context,
+      ],
+      'APPROVAL_WINDOW_INVALID'
+    );
+  });
+
+  test.each([
+    [
+      'risk acceptance',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.context.finalApprovalReceipt.soleOperatorRiskAccepted = false;
+      },
+    ],
+    [
+      'unknown-charge acceptance',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.context.finalApprovalReceipt.unknownChargesAcknowledged = false;
+      },
+    ],
+    [
+      'binding hash',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.context.finalApprovalReceipt.bindingSha256 = '0'.repeat(64);
+      },
+    ],
+    [
+      'cooling-off timestamp',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.context.finalApprovalReceipt.acceptedAt =
+          '2026-07-23T00:04:59.999Z';
+      },
+    ],
+    [
+      'expiry',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.context.finalApprovalReceipt.expiresAt =
+          '2026-07-23T00:29:59.999Z';
+      },
+    ],
+  ])('rejects final approval receipt %s drift', (_label, mutate) => {
+    const fixture = makeValidFixture();
+    mutate(fixture);
+    fixture.context.finalApprovalReceiptSha256 = canonicalFileSha256(
+      fixture.context.finalApprovalReceipt
+    );
+    expectRejected(
+      'validateOfflineApproval',
+      [fixture.binding, fixture.credentialConfiguration, fixture.context],
+      'FINAL_APPROVAL_RECEIPT_INVALID'
+    );
+  });
+
   test('accepts the exact v5 template compensating controls when fully populated', () => {
     const fixture = makeValidFixture();
     const template = JSON.parse(
@@ -1896,6 +2190,16 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
   test('rejects owner approval evidence without same-user DPAPI risk acceptance', () => {
     const fixture = makeValidFixture();
     fixture.approvalEvidence.sameUserDpapiCredentialExposureRiskAccepted = false;
+    expectRejected(
+      'validateOfflineApproval',
+      [fixture.binding, fixture.credentialConfiguration, fixture.context],
+      'APPROVAL_EVIDENCE_INVALID'
+    );
+  });
+
+  test('rejects owner approval evidence without explicit unknown-charge acceptance', () => {
+    const fixture = makeValidFixture();
+    fixture.approvalEvidence.unknownChargesAcknowledged = false;
     expectRejected(
       'validateOfflineApproval',
       [fixture.binding, fixture.credentialConfiguration, fixture.context],
@@ -1938,6 +2242,58 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     );
   });
 
+  test.each(Object.keys(action002SealedTuple))(
+    'rejects synchronized substitution of the sealed ACTION-002 tuple field %s',
+    key => {
+      const fixture = makeValidFixture();
+      const substitutedEvidence = {
+        ...fixture.binding.organizationIdentityEvidence,
+        [key]: key === 'sourceGitCommit' ? '0'.repeat(40) : '0'.repeat(64),
+      };
+      fixture.binding.organizationIdentityEvidence = substitutedEvidence;
+      fixture.context.organizationIdentityEvidence = {
+        ...substitutedEvidence,
+      };
+      fixture.approvalEvidence.organizationIdentityManifestSha256 =
+        substitutedEvidence.manifestSha256;
+      fixture.approvalEvidence.organizationIdentityTerminalSha256 =
+        substitutedEvidence.terminalSha256;
+      fixture.approvalEvidence.organizationIdentitySourceBindingMaterialSha256 =
+        substitutedEvidence.sourceBindingMaterialSha256;
+      fixture.approvalEvidence.organizationIdentitySourceRequestSha256 =
+        substitutedEvidence.sourceRequestSha256;
+      const approvalMaterial = Object.fromEntries(
+        Object.entries(fixture.binding).filter(
+          ([bindingKey]) => bindingKey !== 'approval'
+        )
+      ) as JsonObject;
+      const bindingMaterialSha256 = canonicalSha256(approvalMaterial);
+      fixture.binding.approval.approvedBindingMaterialSha256 =
+        bindingMaterialSha256;
+      fixture.approvalEvidence.bindingMaterialSha256 = bindingMaterialSha256;
+      const ownerApprovalSha256 = canonicalFileSha256(fixture.approvalEvidence);
+      fixture.binding.approval.evidenceSha256 = ownerApprovalSha256;
+      fixture.context.approvalEvidence = fixture.approvalEvidence;
+      fixture.context.approvalEvidenceSha256 = ownerApprovalSha256;
+      fixture.context.finalApprovalReceipt.bindingMaterialSha256 =
+        bindingMaterialSha256;
+      fixture.context.finalApprovalReceipt.ownerApprovalSha256 =
+        ownerApprovalSha256;
+      const bindingSha256 = canonicalFileSha256(fixture.binding);
+      fixture.context.bindingSha256 = bindingSha256;
+      fixture.context.finalApprovalReceipt.bindingSha256 = bindingSha256;
+      fixture.context.finalApprovalReceiptSha256 = canonicalFileSha256(
+        fixture.context.finalApprovalReceipt
+      );
+
+      expectRejected(
+        'validateOfflineApproval',
+        [fixture.binding, fixture.credentialConfiguration, fixture.context],
+        'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
+      );
+    }
+  );
+
   test.each(['2026-07-26T01:14:59.999Z', '2026-07-26T01:15:00.001Z'])(
     'requires fundedThrough to equal scheduledExecutionAt plus exactly 73 hours (%s)',
     fundedThrough => {
@@ -1958,7 +2314,83 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     }
   );
 
+  test.each(['2026-07-23T00:14:59.999Z', '2026-07-23T00:15:00.001Z'])(
+    'requires scheduledExecutionAt to equal initial approval plus exactly 15 minutes (%s)',
+    scheduledExecutionAt => {
+      const fixture = makeValidFixture();
+      fixture.binding.provisioningAction.scheduledExecutionAt =
+        scheduledExecutionAt;
+      const approvalMaterial = Object.fromEntries(
+        Object.entries(fixture.binding).filter(([key]) => key !== 'approval')
+      ) as JsonObject;
+      fixture.binding.approval.approvedBindingMaterialSha256 =
+        canonicalSha256(approvalMaterial);
+      fixture.approvalEvidence.bindingMaterialSha256 =
+        fixture.binding.approval.approvedBindingMaterialSha256;
+      expectRejected(
+        'validateOfflineApproval',
+        [fixture.binding, fixture.credentialConfiguration, fixture.context],
+        'SCHEDULED_EXECUTION_TIME_INVALID'
+      );
+    }
+  );
+
+  test.each(['2026-07-23T00:29:59.999Z', '2026-07-23T00:30:00.001Z'])(
+    'requires expiresAt to equal initial approval plus exactly 30 minutes (%s)',
+    expiresAt => {
+      const fixture = makeValidFixture();
+      fixture.binding.approval.expiresAt = expiresAt;
+      expectRejected(
+        'validateOfflineApproval',
+        [fixture.binding, fixture.credentialConfiguration, fixture.context],
+        'APPROVAL_EXPIRY_TIME_INVALID'
+      );
+    }
+  );
+
+  test.each(['2026-07-25T22:14:59.999Z', '2026-07-25T22:15:00.001Z'])(
+    'requires deletion approval deadline to equal scheduled execution plus exactly 70 hours (%s)',
+    deletionApprovalRequestDeadline => {
+      const fixture = makeValidFixture();
+      fixture.binding.retentionAndCleanupDecision.deletionApprovalRequestDeadline =
+        deletionApprovalRequestDeadline;
+      const approvalMaterial = Object.fromEntries(
+        Object.entries(fixture.binding).filter(([key]) => key !== 'approval')
+      ) as JsonObject;
+      fixture.binding.approval.approvedBindingMaterialSha256 =
+        canonicalSha256(approvalMaterial);
+      fixture.approvalEvidence.bindingMaterialSha256 =
+        fixture.binding.approval.approvedBindingMaterialSha256;
+      expectRejected(
+        'validateOfflineApproval',
+        [fixture.binding, fixture.credentialConfiguration, fixture.context],
+        'CLEANUP_DECISION_INCOMPLETE'
+      );
+    }
+  );
+
   test.each([
+    [
+      'non-exact request timeout',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.provisioningAction.requestTimeoutMilliseconds = 29999;
+      },
+      'PROVISIONING_ACTION_INVALID',
+    ],
+    [
+      'non-exact readiness maximum',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.provisioningAction.readinessObservationMaximumSeconds = 899;
+      },
+      'PROVISIONING_ACTION_INVALID',
+    ],
+    [
+      'non-exact readiness poll interval',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.provisioningAction.readinessPollIntervalSeconds = 14;
+      },
+      'PROVISIONING_ACTION_INVALID',
+    ],
     [
       'unsigned binding',
       (fixture: ReturnType<typeof makeValidFixture>) => {
@@ -2070,6 +2502,13 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       'SOLE_OPERATOR_EXCEPTION_INVALID',
     ],
     [
+      'unknown charges not acknowledged by owner',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.approval.unknownChargesAcknowledged = false;
+      },
+      'SOLE_OPERATOR_EXCEPTION_INVALID',
+    ],
+    [
       'same-user DPAPI credential-exposure risk not accepted',
       (fixture: ReturnType<typeof makeValidFixture>) => {
         fixture.binding.approval.sameUserDpapiCredentialExposureRiskAccepted = false;
@@ -2110,7 +2549,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         fixture.binding.owners.supabasePlatformOwner =
           'approver@example.invalid';
       },
-      'SOLE_OPERATOR_EXCEPTION_INVALID',
+      'OWNER_ASSIGNMENT_INVALID',
     ],
     [
       'missing secret-store handle',
@@ -2294,6 +2733,20 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       'KNOWN_COST_NOT_CAPTURED',
     ],
     [
+      'nonzero known additional charge',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.cost.knownAdditionalChargesUsdScaled = 1;
+      },
+      'KNOWN_COST_NOT_CAPTURED',
+    ],
+    [
+      'cost-level unknown charges not acknowledged',
+      (fixture: ReturnType<typeof makeValidFixture>) => {
+        fixture.binding.cost.unknownChargesAcknowledged = false;
+      },
+      'PRICING_ARITHMETIC_INVALID',
+    ],
+    [
       'past cleanup approval deadline',
       (fixture: ReturnType<typeof makeValidFixture>) => {
         fixture.binding.retentionAndCleanupDecision.deletionApprovalRequestDeadline =
@@ -2406,8 +2859,15 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       (fixture: ReturnType<typeof makeValidFixture>) => {
         fixture.binding.evidenceContract.evidenceParentDirectoryPathSha256 =
           fixture.binding.duplicateAndFailurePolicy.actionJournalDirectoryPathSha256;
+        fixture.binding.evidenceContract.evidenceParentDirectoryFingerprint = {
+          ...fixture.binding.duplicateAndFailurePolicy
+            .actionJournalDirectoryFingerprint,
+        };
         fixture.context.evidenceParentDirectoryPathSha256 =
           fixture.context.actionJournalDirectoryPathSha256;
+        fixture.context.evidenceParentDirectoryFingerprint = {
+          ...fixture.context.actionJournalDirectoryFingerprint,
+        };
       },
       'RUNTIME_OUTPUT_DIRECTORIES_MUST_DIFFER',
     ],
@@ -2540,6 +3000,141 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     ).toMatchObject({ ok: true, value: true });
   });
 
+  test('binds the exact two-envelope provider-root snapshot and rejects sibling drift', () => {
+    if (process.platform !== 'win32') return;
+    const root = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'pr12-dpapi-provider-snapshot-')
+    );
+    const firstFilename = `${'1'.repeat(64)}.dpapi.json`;
+    const secondFilename = `${'2'.repeat(64)}.dpapi.json`;
+    const unexpectedFilename = 'unexpected-sibling.txt';
+    const renamedFilename = `${'4'.repeat(64)}.dpapi.json`;
+    const makeExpectedEntry = (filename: string): JsonObject => {
+      const filenamePath = path.join(root, filename);
+      const status = fs.statSync(filenamePath);
+      const normalizedPath = path.win32
+        .resolve(filenamePath)
+        .replaceAll('\\', '/')
+        .toLowerCase();
+      const resolvedPath = path.win32
+        .resolve(fs.realpathSync.native(filenamePath))
+        .replaceAll('\\', '/')
+        .toLowerCase();
+      return {
+        envelopeFilename: filename,
+        pathSha256: createHash('sha256')
+          .update(normalizedPath, 'utf8')
+          .digest('hex'),
+        resolvedPathSha256: createHash('sha256')
+          .update(resolvedPath, 'utf8')
+          .digest('hex'),
+        device: String(status.dev),
+        inode: String(status.ino),
+        size: status.size,
+        modifiedAtMilliseconds: status.mtimeMs,
+        contentSha256: createHash('sha256')
+          .update(fs.readFileSync(filenamePath))
+          .digest('hex'),
+      };
+    };
+    try {
+      fs.writeFileSync(
+        path.join(root, firstFilename),
+        '{"encryptedContent":"ciphertext-one"}\n',
+        'utf8'
+      );
+      fs.writeFileSync(
+        path.join(root, secondFilename),
+        '{"encryptedContent":"ciphertext-two"}\n',
+        'utf8'
+      );
+      const expectedEntries = [
+        makeExpectedEntry(secondFilename),
+        makeExpectedEntry(firstFilename),
+      ];
+      const accepted = invokeDpapiMethod('inspectDpapiProviderRootSnapshot', [
+        root,
+        expectedEntries,
+      ]);
+      expect(accepted.ok).toBe(true);
+      expect(accepted.value).toMatchObject({
+        schemaVersion: 1,
+        entryCount: 2,
+        snapshotSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+        entries: [
+          { envelopeFilename: firstFilename },
+          { envelopeFilename: secondFilename },
+        ],
+      });
+      const serializedSnapshot = JSON.stringify(accepted.value);
+      expect(serializedSnapshot).not.toContain(root);
+      expect(serializedSnapshot).not.toContain(root.replaceAll('\\', '\\\\'));
+      expect(serializedSnapshot).not.toContain(root.replaceAll('\\', '/'));
+
+      fs.writeFileSync(
+        path.join(root, unexpectedFilename),
+        '{"encryptedContent":"unexpected-ciphertext"}\n',
+        'utf8'
+      );
+      expect(
+        invokeDpapiMethod('inspectDpapiProviderRootSnapshot', [
+          root,
+          expectedEntries,
+        ])
+      ).toEqual({
+        ok: false,
+        code: 'DPAPI_PROVIDER_ROOT_ENTRY_SET_MISMATCH',
+      });
+      fs.rmSync(path.join(root, unexpectedFilename));
+
+      fs.renameSync(
+        path.join(root, secondFilename),
+        path.join(root, renamedFilename)
+      );
+      expect(
+        invokeDpapiMethod('inspectDpapiProviderRootSnapshot', [
+          root,
+          expectedEntries,
+        ])
+      ).toEqual({
+        ok: false,
+        code: 'DPAPI_PROVIDER_ROOT_ENTRY_SET_MISMATCH',
+      });
+      fs.renameSync(
+        path.join(root, renamedFilename),
+        path.join(root, secondFilename)
+      );
+
+      fs.writeFileSync(
+        path.join(root, firstFilename),
+        '{"encryptedContent":"changed-ciphertext"}\n',
+        'utf8'
+      );
+      expect(
+        invokeDpapiMethod('inspectDpapiProviderRootSnapshot', [
+          root,
+          expectedEntries,
+        ])
+      ).toEqual({
+        ok: false,
+        code: 'DPAPI_PROVIDER_ROOT_SNAPSHOT_MISMATCH',
+      });
+
+      fs.rmSync(path.join(root, secondFilename));
+      expect(
+        invokeDpapiMethod('inspectDpapiProviderRootSnapshot', [
+          root,
+          expectedEntries,
+        ])
+      ).toEqual({
+        ok: false,
+        code: 'DPAPI_PROVIDER_ROOT_ENTRY_SET_MISMATCH',
+      });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   test('rejects a provider root beneath a junction ancestor on Windows', () => {
     if (process.platform !== 'win32') return;
     const root = fs.mkdtempSync(
@@ -2665,25 +3260,142 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     expect(wrapperSource).toContain(
       'requireNoReparseDirectoryComponents(directory, code)'
     );
-    const prePostRevalidationStart = wrapperSource.indexOf(
-      'function revalidateImmediatelyBeforePost('
+    for (const approvalTopologyBoundary of [
+      'function captureApprovalInputTopology({',
+      'APPROVAL_CANDIDATE_FILE_SET_INVALID',
+      'INITIAL_APPROVAL_RECEIPT_FILE_SET_INVALID',
+      'FINAL_APPROVAL_RECEIPT_FILE_SET_INVALID',
+      'OWNER_PRIVATE_APPROVAL_ROOT_INSIDE_TEMPORARY_ROOT',
+      'revalidateApprovalInputTopology(inputs)',
+      'source-project-provisioning-binding-v5.json',
+      'source-project-provisioning-credential-configuration-v2.json',
+      'source-project-provisioning-owner-approval-v4.json',
+      'source-project-provisioning-initial-approval-receipt-v1.json',
+      'source-project-provisioning-final-approval-receipt-v1.json',
+      'inspectOwnerPrivatePathAcl({',
+      'approvalReceiptContract',
+      'ownerPrivateAclHelper',
+    ]) {
+      expect(wrapperSource).toContain(approvalTopologyBoundary);
+    }
+    const immutableRevalidationStart = wrapperSource.indexOf(
+      'function revalidateImmutableApprovalInputs('
     );
-    const prePostRevalidationEnd = wrapperSource.indexOf(
-      '\nfunction validatePostIntentImmediatelyBeforeFetch',
-      prePostRevalidationStart
+    const immutableRevalidationEnd = wrapperSource.indexOf(
+      '\nfunction revalidateImmediatelyBeforePost',
+      immutableRevalidationStart
     );
-    const prePostRevalidationSource = wrapperSource.slice(
-      prePostRevalidationStart,
-      prePostRevalidationEnd
+    const immutableRevalidationSource = wrapperSource.slice(
+      immutableRevalidationStart,
+      immutableRevalidationEnd
     );
-    expect(prePostRevalidationSource).toContain(
+    expect(immutableRevalidationSource).toContain(
       'organizationIdentityTerminal: readFileSnapshot('
     );
-    expect(prePostRevalidationSource).toContain(
+    expect(immutableRevalidationSource).toContain(
       'currentSnapshots.organizationIdentityTerminal.sha256'
     );
-    expect(prePostRevalidationSource).toContain(
+    expect(immutableRevalidationSource).toContain(
       'currentSnapshots.organizationIdentityTerminal.identity'
+    );
+    expect(immutableRevalidationSource).toContain(
+      'initialApprovalReceipt: readFileSnapshot('
+    );
+    expect(immutableRevalidationSource).toContain(
+      'currentSnapshots.initialApprovalReceipt.sha256'
+    );
+    expect(immutableRevalidationSource).toContain(
+      'currentSnapshots.initialApprovalReceipt.identity'
+    );
+    expect(immutableRevalidationSource).toContain(
+      'finalApprovalReceipt: readFileSnapshot('
+    );
+    const postIntentRevalidationStart = wrapperSource.indexOf(
+      'function validatePostIntentImmediatelyBeforeFetch('
+    );
+    const postIntentRevalidationEnd = wrapperSource.indexOf(
+      '\nfunction writeJsonExclusive',
+      postIntentRevalidationStart
+    );
+    const postIntentRevalidationSource = wrapperSource.slice(
+      postIntentRevalidationStart,
+      postIntentRevalidationEnd
+    );
+    expect(postIntentRevalidationSource).toContain(
+      'revalidateOfficialPricingSources(inputs)'
+    );
+    expect(postIntentRevalidationSource).toContain(
+      'revalidateExecutionStateBeforeRemoteContact(inputs)'
+    );
+    const postIntentGuardCall = wrapperSource.indexOf(
+      'validatePostIntentImmediatelyBeforeFetch({',
+      executeStart
+    );
+    const createFetchCall = wrapperSource.indexOf(
+      'createResponse = await providerFetch(',
+      executeStart
+    );
+    expect(postIntentGuardCall).toBeGreaterThan(brokerIndex);
+    expect(createFetchCall).toBeGreaterThan(postIntentGuardCall);
+    expect(wrapperSource).not.toContain('onRemoteContact = () => undefined');
+    expect(wrapperSource).not.toContain(
+      'beforeRemoteContact = () => undefined'
+    );
+    const providerFetchStart = wrapperSource.indexOf(
+      'async function providerFetch('
+    );
+    const providerFetchEnd = wrapperSource.indexOf(
+      '\nasync function fetchReadOnlyProjection',
+      providerFetchStart
+    );
+    const providerFetchSource = wrapperSource.slice(
+      providerFetchStart,
+      providerFetchEnd
+    );
+    expect(providerFetchSource).toContain(
+      "fail('REMOTE_CONTACT_GUARD_REQUIRED')"
+    );
+    expect(providerFetchSource.indexOf('beforeRemoteContact();')).toBeLessThan(
+      providerFetchSource.indexOf('onRemoteContact();')
+    );
+    expect(providerFetchSource.indexOf('onRemoteContact();')).toBeLessThan(
+      providerFetchSource.indexOf('return fetch(url')
+    );
+    const remoteRevalidationStart = wrapperSource.indexOf(
+      'function revalidateExecutionStateBeforeRemoteContact('
+    );
+    const remoteRevalidationEnd = wrapperSource.indexOf(
+      '\nfunction revalidateImmediatelyBeforePost',
+      remoteRevalidationStart
+    );
+    const remoteRevalidationSource = wrapperSource.slice(
+      remoteRevalidationStart,
+      remoteRevalidationEnd
+    );
+    for (const requiredGuard of [
+      'revalidateImmutableApprovalInputs(inputs)',
+      'revalidatePreparedLocalResources(inputs)',
+      "'status', '--porcelain=v1', '--untracked-files=all'",
+      'ambientCredentialNames()',
+      'validateOfflineApproval(',
+    ]) {
+      expect(remoteRevalidationSource).toContain(requiredGuard);
+    }
+    expect(remoteRevalidationSource).toMatch(
+      /runGit\(\s*\['rev-parse', 'HEAD'\]/
+    );
+    expect(remoteRevalidationSource).toMatch(
+      /runGit\(\s*\['merge-base', 'HEAD', 'origin\/main'\]/
+    );
+    expect(
+      (
+        wrapperSource.match(
+          /beforeRemoteContact: revalidateBeforeRemoteContact/g
+        ) ?? []
+      ).length
+    ).toBe(3);
+    expect(wrapperSource).toContain(
+      'beforeRemoteContact: revalidateBeforeRecoveryRemoteContact'
     );
   });
 
@@ -2703,8 +3415,14 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         )
       ) as JsonObject;
       const now = Date.now();
+      expect(template.authorizedRoles).toEqual(['DATABASE_PASSWORD']);
       template.approvedAt = new Date(now - 60_000).toISOString();
       template.expiresAt = new Date(now + 300_000).toISOString();
+      template.approvedByPrincipalId = 'owner:futoshi-iwasawa';
+      template.attestationStatus = 'VERIFIED';
+      template.decision = 'APPROVED';
+      template.envelopeCreationAuthorized = true;
+      template.realSecretInteractiveReadAuthorized = true;
       for (const key of [
         'bootstrapScriptSha256',
         'machineNameSha256',
@@ -2778,6 +3496,18 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
           phase1EvidenceRoot,
           'source-project-provisioning-owner-approval-v4.template.json'
         ),
+        '--initial-approval-receipt',
+        path.join(
+          phase1EvidenceRoot,
+          'source-project-provisioning-initial-approval-receipt-v1.template.json'
+        ),
+        '--final-approval-receipt',
+        path.join(
+          phase1EvidenceRoot,
+          'source-project-provisioning-final-approval-receipt-v1.template.json'
+        ),
+        '--owner-private-approval-root',
+        phase1EvidenceRoot,
         '--pricing-evidence',
         path.join(
           phase1EvidenceRoot,
@@ -2809,7 +3539,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     );
     expect(child.status).toBe(1);
     expect(child.stdout).toBe('');
-    expect(child.stderr).toContain('SOURCE_PROVISIONING_NOT_AUTHORIZED');
+    expect(child.stderr).toContain('SOURCE_PROVISIONING_CANDIDATE_INVALID');
     expect(fs.readdirSync(journalDirectory)).toEqual([]);
     expect(fs.readdirSync(evidenceParent)).toEqual([]);
   });
@@ -2837,6 +3567,8 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       'run-pr12-source-project-provisioning.mjs',
       'pr12-source-project-provisioning-contract.mjs',
       'pr12-windows-dpapi-credential-channel.mjs',
+      'pr12-action003-approval-receipt-contract.mjs',
+      'pr12-windows-owner-private-acl.ps1',
       'verify-pr12-source-project-provisioning-evidence.mjs',
       'pr12-source-organization-identity-capture-contract.mjs',
       'verify-pr12-source-organization-identity-capture-evidence.mjs',
@@ -2868,6 +3600,18 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
             phase1EvidenceRoot,
             'source-project-provisioning-owner-approval-v4.template.json'
           ),
+          '--initial-approval-receipt',
+          path.join(
+            phase1EvidenceRoot,
+            'source-project-provisioning-initial-approval-receipt-v1.template.json'
+          ),
+          '--final-approval-receipt',
+          path.join(
+            phase1EvidenceRoot,
+            'source-project-provisioning-final-approval-receipt-v1.template.json'
+          ),
+          '--owner-private-approval-root',
+          temporaryRoot,
           '--pricing-evidence',
           path.join(
             phase1EvidenceRoot,
@@ -2937,6 +3681,18 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
           phase1EvidenceRoot,
           'source-project-provisioning-owner-approval-v4.template.json'
         ),
+        '--initial-approval-receipt',
+        path.join(
+          phase1EvidenceRoot,
+          'source-project-provisioning-initial-approval-receipt-v1.template.json'
+        ),
+        '--final-approval-receipt',
+        path.join(
+          phase1EvidenceRoot,
+          'source-project-provisioning-final-approval-receipt-v1.template.json'
+        ),
+        '--owner-private-approval-root',
+        evidenceParent,
         '--pricing-evidence',
         path.join(
           phase1EvidenceRoot,
@@ -3004,6 +3760,18 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
           phase1EvidenceRoot,
           'source-project-provisioning-owner-approval-v4.template.json'
         ),
+        '--initial-approval-receipt',
+        path.join(
+          phase1EvidenceRoot,
+          'source-project-provisioning-initial-approval-receipt-v1.template.json'
+        ),
+        '--final-approval-receipt',
+        path.join(
+          phase1EvidenceRoot,
+          'source-project-provisioning-final-approval-receipt-v1.template.json'
+        ),
+        '--owner-private-approval-root',
+        linkRoot,
         '--pricing-evidence',
         path.join(
           phase1EvidenceRoot,
@@ -3338,6 +4106,121 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     ).toBe(true);
   });
 
+  test('freezes three exact and filesystem-distinct official pricing artifacts', () => {
+    const pricingRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'pr12-official-pricing-')
+    );
+    const officialDirectory = path.join(pricingRoot, 'official');
+    fs.mkdirSync(officialDirectory);
+    const definitions = [
+      {
+        sourceId: 'COMPUTE_AND_DISK',
+        url: 'https://supabase.com/docs/guides/platform/compute-and-disk',
+        artifactPath: 'official/compute-and-disk.html',
+        body: '<html>compute-and-disk</html>',
+      },
+      {
+        sourceId: 'COMPUTE_USAGE',
+        url: 'https://supabase.com/docs/guides/platform/manage-your-usage/compute',
+        artifactPath: 'official/compute-usage.html',
+        body: '<html>compute-usage</html>',
+      },
+      {
+        sourceId: 'PRICING',
+        url: 'https://supabase.com/pricing',
+        artifactPath: 'official/pricing.html',
+        body: '<html>pricing</html>',
+      },
+    ];
+    try {
+      const officialSources = definitions.map(definition => {
+        const filename = path.join(
+          pricingRoot,
+          ...definition.artifactPath.split('/')
+        );
+        fs.writeFileSync(filename, definition.body, 'utf8');
+        return {
+          sourceId: definition.sourceId,
+          url: definition.url,
+          retrievedAt: '2026-07-22T23:30:00.000Z',
+          artifactPath: definition.artifactPath,
+          artifactSha256: createHash('sha256')
+            .update(definition.body, 'utf8')
+            .digest('hex'),
+        };
+      });
+      const inputs = {
+        context: { pricingEvidence: { officialSources } },
+        pricingPath: path.join(
+          pricingRoot,
+          'official-pricing-evidence-v2.json'
+        ),
+        repositoryRoot: repoRoot,
+      };
+
+      expect(
+        invokeWrapperMethod('snapshotOfficialPricingSources', [inputs]).ok
+      ).toBe(true);
+
+      officialSources[0].url = 'https://example.invalid/pricing';
+      expect(
+        invokeWrapperMethod('snapshotOfficialPricingSources', [inputs])
+      ).toEqual({
+        ok: false,
+        code: 'PRICING_SOURCE_ARTIFACT_INVALID',
+      });
+      officialSources[0].url = definitions[0].url;
+
+      officialSources[0].artifactPath = 'official/./compute-and-disk.html';
+      expect(
+        invokeWrapperMethod('snapshotOfficialPricingSources', [inputs])
+      ).toEqual({
+        ok: false,
+        code: 'PRICING_SOURCE_ARTIFACT_INVALID',
+      });
+      officialSources[0].artifactPath = definitions[0].artifactPath;
+
+      officialSources[1].artifactPath = officialSources[0].artifactPath;
+      officialSources[1].artifactSha256 = officialSources[0].artifactSha256;
+      expect(
+        invokeWrapperMethod('snapshotOfficialPricingSources', [inputs])
+      ).toEqual({
+        ok: false,
+        code: 'PRICING_SOURCE_ARTIFACT_IDENTITY_DUPLICATE',
+      });
+
+      officialSources[1].artifactPath = definitions[1].artifactPath;
+      const duplicateBody = definitions[0].body;
+      fs.writeFileSync(
+        path.join(pricingRoot, ...definitions[1].artifactPath.split('/')),
+        duplicateBody,
+        'utf8'
+      );
+      officialSources[1].artifactSha256 = createHash('sha256')
+        .update(duplicateBody, 'utf8')
+        .digest('hex');
+      expect(
+        invokeWrapperMethod('snapshotOfficialPricingSources', [inputs])
+      ).toEqual({
+        ok: false,
+        code: 'PRICING_SOURCE_ARTIFACT_IDENTITY_DUPLICATE',
+      });
+
+      [officialSources[0], officialSources[1]] = [
+        officialSources[1],
+        officialSources[0],
+      ];
+      expect(
+        invokeWrapperMethod('snapshotOfficialPricingSources', [inputs])
+      ).toEqual({
+        ok: false,
+        code: 'PRICING_SOURCE_ARTIFACT_INVALID',
+      });
+    } finally {
+      fs.rmSync(pricingRoot, { recursive: true, force: true });
+    }
+  });
+
   test('strictly validates nested region provider response shapes', () => {
     const fixture = makeValidFixture();
     const response = {
@@ -3650,6 +4533,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       actionId: 'PR12-ACTION-003',
       bindingMaterialSha256: '9'.repeat(64),
       payloadSha256: '8'.repeat(64),
+      finalApprovalReceiptSha256: '7'.repeat(64),
       claimedAt: '2026-07-23T12:00:00.000Z',
       state: 'CLAIMED_POST_NOT_SENT',
     };
@@ -3669,10 +4553,12 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     );
     const bindingMaterialSha256 = '9'.repeat(64);
     const payloadSha256 = '8'.repeat(64);
+    const finalApprovalReceiptSha256 = '7'.repeat(64);
     const claim = {
       actionId: 'PR12-ACTION-003',
       bindingMaterialSha256,
       payloadSha256,
+      finalApprovalReceiptSha256,
       claimedAt: '2026-07-23T12:00:00.000Z',
       state: 'CLAIMED_POST_NOT_SENT',
     };
@@ -3684,6 +4570,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         directory,
         bindingMaterialSha256,
         payloadSha256,
+        finalApprovalReceiptSha256,
       ])
     ).toMatchObject({
       ok: true,
@@ -3697,6 +4584,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         actionId: 'PR12-ACTION-003',
         bindingMaterialSha256,
         payloadSha256,
+        finalApprovalReceiptSha256,
         postIntentAt: '2026-07-23T12:00:01.000Z',
         state: 'POST_INTENT_DURABLE',
         automaticRetryCount: 0,
@@ -3708,6 +4596,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         directory,
         bindingMaterialSha256,
         payloadSha256,
+        finalApprovalReceiptSha256,
       ])
     ).toMatchObject({
       ok: true,
@@ -3720,6 +4609,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         directory,
         bindingMaterialSha256,
         payloadSha256,
+        finalApprovalReceiptSha256,
       ])
     ).toEqual({ ok: false, code: 'ACTION_JOURNAL_FILE_SET_INVALID' });
 
@@ -3742,6 +4632,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         tamperedDirectory,
         bindingMaterialSha256,
         payloadSha256,
+        finalApprovalReceiptSha256,
       ])
     ).toEqual({ ok: false, code: 'ACTION_JOURNAL_CLAIM_INVALID' });
 
@@ -3758,6 +4649,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         actionId: 'PR12-ACTION-003',
         bindingMaterialSha256,
         payloadSha256,
+        finalApprovalReceiptSha256,
         state: 'FABRICATED_PASS',
         reasonCode: null,
         completedAt: '2026-07-23T12:00:01.000Z',
@@ -3776,6 +4668,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         terminalDirectory,
         bindingMaterialSha256,
         payloadSha256,
+        finalApprovalReceiptSha256,
       ])
     ).toEqual({ ok: false, code: 'ACTION_JOURNAL_TERMINAL_INVALID' });
   });
@@ -3824,9 +4717,10 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       },
       approvalWindow: {
         approvedAt: fixture.binding.approval.approvedAt,
-        operatorReconfirmedAt: fixture.binding.approval.operatorReconfirmedAt,
+        operatorReconfirmedAt: fixture.context.finalApprovalReceipt.acceptedAt,
         expiresAt: fixture.binding.approval.expiresAt,
         approvalEvidenceSha256: fixture.binding.approval.evidenceSha256,
+        finalApprovalReceiptSha256: fixture.context.finalApprovalReceiptSha256,
       },
       cleanupBoundary: {
         disposition: fixture.binding.retentionAndCleanupDecision.disposition,
@@ -3852,7 +4746,10 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     };
     const journalState = {
       state: 'POST_INTENT_DURABLE_OUTCOME_UNRESOLVED',
-      claim: { claimedAt: actionStartedAt },
+      claim: {
+        claimedAt: actionStartedAt,
+        finalApprovalReceiptSha256: fixture.context.finalApprovalReceiptSha256,
+      },
       claimSha256,
       postIntent: {
         state: 'POST_INTENT_DURABLE',
@@ -3866,6 +4763,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         { outcome: 'PASS' },
         journalState,
         fixture.binding,
+        fixture.context.finalApprovalReceipt,
       ]).ok
     ).toBe(true);
     expect(
@@ -3874,6 +4772,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         { outcome: 'PASS' },
         journalState,
         fixture.binding,
+        fixture.context.finalApprovalReceipt,
       ])
     ).toEqual({
       ok: false,
@@ -3890,6 +4789,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
           postIntentSha256: null,
         },
         fixture.binding,
+        fixture.context.finalApprovalReceipt,
       ])
     ).toEqual({
       ok: false,
@@ -3905,6 +4805,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         { outcome: 'PRECHECK_ABORTED' },
         journalState,
         fixture.binding,
+        fixture.context.finalApprovalReceipt,
       ]).ok
     ).toBe(true);
   });
@@ -4451,8 +5352,8 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     const providerPath = path.join(directory, 'provider-export.safe.json');
     const rawProvider = fs.readFileSync(providerPath, 'utf8');
     const duplicateKeyProvider = rawProvider.replace(
-      '"capturedBy":"operator@example.invalid"',
-      '"capturedBy":"Bearer synthetic_duplicate_key_secret","capturedBy":"operator@example.invalid"'
+      '"capturedBy":"owner:futoshi-iwasawa"',
+      '"capturedBy":"Bearer synthetic_duplicate_key_secret","capturedBy":"owner:futoshi-iwasawa"'
     );
     expect(duplicateKeyProvider).not.toBe(rawProvider);
     replaceEvidenceArtifactRawAndReseal(
