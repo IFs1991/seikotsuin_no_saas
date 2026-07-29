@@ -117,6 +117,7 @@ const action002TerminalSha256 =
 let preflight: PreflightModule;
 const cleanupDirectories: string[] = [];
 const savedAmbientEnvironment = new Map<string, string>();
+const win = process.platform === 'win32' ? test : test.skip;
 
 function isForbiddenAmbientNameForTest(nameInput: string): boolean {
   const name = nameInput.toUpperCase();
@@ -231,6 +232,13 @@ function makeIdentity(realPath: string): JsonObject {
     device: '1',
     inode: sha256Bytes(realPath).slice(0, 12),
   };
+}
+
+function normalizedRuntimeIdentityPath(value: string): string {
+  if (/^[A-Za-z]:[\\/]/u.test(value)) {
+    return path.win32.resolve(value).replaceAll('\\', '/').toLowerCase();
+  }
+  return path.resolve(value).replaceAll('\\', '/');
 }
 
 function makeFixture(): {
@@ -407,18 +415,10 @@ function makeRuntime(
     }),
     verifyAction002: () => action002Evidence(),
     inspectDirectoryIdentity: directory => {
-      const normalized = directory.replaceAll('\\', '/').toLowerCase();
-      return makeIdentity(
-        normalized.startsWith('c:/')
-          ? normalized
-          : `c:/test/${sha256Bytes(normalized)}`
-      );
+      return makeIdentity(normalizedRuntimeIdentityPath(directory));
     },
     inspectEmptyDirectoryFingerprint: directory => {
-      const normalized = directory.replaceAll('\\', '/').toLowerCase();
-      const realPath = normalized.startsWith('c:/')
-        ? normalized
-        : `c:/test/${sha256Bytes(normalized)}`;
+      const realPath = normalizedRuntimeIdentityPath(directory);
       return {
         pathSha256: sha256Bytes(realPath),
         resolvedPathSha256: sha256Bytes(realPath),
@@ -723,7 +723,7 @@ describe('PR12 ACTION-003 operational approval preflight', () => {
     ).toBe(10);
   });
 
-  test('captures a content-bound ACL proof for opaque paths through the real Windows runtime', () => {
+  win('captures a content-bound ACL proof through the Windows runtime', () => {
     const cleanupRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), 'pr12-acl-proof-')
     );

@@ -48,6 +48,7 @@ const ownerApprovalTemplatePath = path.join(
 
 let builder: BuilderModule;
 const temporaryDirectories: string[] = [];
+const win = process.platform === 'win32' ? test : test.skip;
 
 function isJsonObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -893,7 +894,7 @@ describe('PR12 ACTION-003 local-only approval builder', () => {
     );
   });
 
-  test('writes a new packet directory once and never overwrites it', () => {
+  win('writes a new packet directory once and never overwrites it', () => {
     const ownerPrivateRoot = fs.mkdtempSync(
       path.join(os.homedir(), '.pr12-action003-builder-')
     );
@@ -965,7 +966,7 @@ describe('PR12 ACTION-003 local-only approval builder', () => {
     expect(fs.readFileSync(bindingPath)).toEqual(before);
   });
 
-  test('rejects a changed packet after durable canonical readback', () => {
+  win('rejects a changed packet after durable canonical readback', () => {
     const ownerPrivateRoot = fs.mkdtempSync(
       path.join(os.homedir(), '.pr12-action003-builder-tamper-')
     );
@@ -1010,7 +1011,7 @@ describe('PR12 ACTION-003 local-only approval builder', () => {
     ).toThrow('OUTPUT_BINDING_READBACK_INVALID');
   });
 
-  test('rejects output directory identity drift before completing the packet', () => {
+  win('rejects output identity drift before packet completion', () => {
     const ownerPrivateRoot = fs.mkdtempSync(
       path.join(os.homedir(), '.pr12-action003-builder-identity-')
     );

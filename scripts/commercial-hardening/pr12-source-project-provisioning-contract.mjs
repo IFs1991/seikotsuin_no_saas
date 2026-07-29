@@ -61,6 +61,7 @@ export const SOLE_OPERATOR_CONTROL_MODE =
   'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1';
 export const DPAPI_PROVIDER_ID = 'WINDOWS_DPAPI_CURRENT_USER_V1';
 export const DPAPI_RETRIEVAL_CHANNEL = 'CLAIM_BOUND_CAPTURED_STDOUT_BINARY_V1';
+const WINDOWS_DRIVE_ABSOLUTE_PATH_PATTERN = /^[A-Za-z]:[\\/]/;
 const GOVERNANCE_RELATIVE_PATH =
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml';
 const CONTRACT_RELATIVE_PATH =
@@ -665,10 +666,11 @@ export function journalDirectoryFingerprint(directoryInput) {
     'ACTION_JOURNAL_DIRECTORY_INVALID'
   );
   requireCondition(
-    path.isAbsolute(directory),
+    WINDOWS_DRIVE_ABSOLUTE_PATH_PATTERN.test(directory) &&
+      !directory.startsWith('\\\\'),
     'ACTION_JOURNAL_DIRECTORY_INVALID'
   );
-  const normalized = path
+  const normalized = path.win32
     .resolve(directory)
     .replaceAll('\\', '/')
     .toLowerCase();
