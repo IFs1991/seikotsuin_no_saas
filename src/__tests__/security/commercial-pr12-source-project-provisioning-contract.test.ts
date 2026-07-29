@@ -3000,6 +3000,38 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     ).toMatchObject({ ok: true, value: true });
   });
 
+  test('fingerprints canonical Windows drive paths independently of the host OS', () => {
+    const expectedFingerprint = createHash('sha256')
+      .update('c:/owner/pr12/action003-journal', 'utf8')
+      .digest('hex');
+
+    for (const pathname of [
+      'C:\\Owner\\PR12\\action003-journal',
+      'c:/owner/pr12/action003-journal',
+      'C:\\Owner\\PR12\\nested\\..\\action003-journal',
+    ]) {
+      expect(invokeContract('journalDirectoryFingerprint', [pathname])).toEqual(
+        {
+          ok: true,
+          value: expectedFingerprint,
+        }
+      );
+    }
+
+    for (const pathname of [
+      '',
+      'relative\\action003-journal',
+      '\\\\server\\share\\action003-journal',
+    ]) {
+      expect(invokeContract('journalDirectoryFingerprint', [pathname])).toEqual(
+        {
+          ok: false,
+          code: 'ACTION_JOURNAL_DIRECTORY_INVALID',
+        }
+      );
+    }
+  });
+
   test('binds the exact two-envelope provider-root snapshot and rejects sibling drift', () => {
     if (process.platform !== 'win32') return;
     const root = fs.mkdtempSync(
