@@ -362,7 +362,7 @@ function makeFixture(): {
     organizationIdentityEvidenceDirectoryPath:
       'C:\\Owner\\PR12\\action002-evidence',
     organizationIdentityTerminalPath:
-      'C:\\Owner\\PR12\\action002-journal\\source-organization-identity-capture-action.terminal.json',
+      'C:/Owner/PR12/action002-journal/source-organization-identity-capture-action.terminal.json',
     actionJournalDirectoryPath: 'C:\\Owner\\PR12\\action003-journal',
     evidenceParentDirectoryPath: 'C:\\Owner\\PR12\\action003-evidence',
     ownerPrivateApprovalRoot,
@@ -507,6 +507,20 @@ afterEach(() => {
 });
 
 describe('PR12 ACTION-003 operational approval preflight', () => {
+  test('keeps the Windows journal fixture segment-aware under the host path runtime', () => {
+    const fixture = makeFixture();
+    const terminalPath = String(
+      fixture.descriptor.organizationIdentityTerminalPath
+    );
+
+    expect(terminalPath).toBe(
+      'C:/Owner/PR12/action002-journal/source-organization-identity-capture-action.terminal.json'
+    );
+    expect(normalizedRuntimeIdentityPath(path.dirname(terminalPath))).toBe(
+      'c:/owner/pr12/action002-journal'
+    );
+  });
+
   test('stable-reads local inputs and validates both envelope resources without writing', () => {
     const fixture = makeFixture();
     const result = preflight.validateAction003ApprovalPreflightForTest(
