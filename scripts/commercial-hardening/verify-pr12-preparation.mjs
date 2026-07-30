@@ -2725,6 +2725,7 @@ function verifyProposalContracts() {
         'WINDOWS_DPAPI_CURRENT_USER_V1' &&
       provisioningCredential.provider.retrievalChannel ===
         'CLAIM_BOUND_CAPTURED_STDOUT_BINARY_V1' &&
+      provisioningCredential.protocol.brokerTimeoutMilliseconds === 30_000 &&
       provisioningCredential.provider.ownerApproved === false &&
       provisioningCredential.secrets.managementAccessToken.opaqueHandle ===
         'windows-dpapi-cu://pr12-source-project/management-access-token/v1' &&

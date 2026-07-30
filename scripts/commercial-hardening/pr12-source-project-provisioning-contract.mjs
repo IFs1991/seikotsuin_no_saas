@@ -1317,9 +1317,7 @@ function validateCredentialConfiguration(binding, credentialConfiguration) {
       protocol.responseVersion === 1 &&
       protocol.requestMaximumBytes === 16_384 &&
       protocol.responseMaximumBytes === 8_192 &&
-      Number.isInteger(protocol.brokerTimeoutMilliseconds) &&
-      protocol.brokerTimeoutMilliseconds >= 1_000 &&
-      protocol.brokerTimeoutMilliseconds <= 30_000 &&
+      protocol.brokerTimeoutMilliseconds === 30_000 &&
       protocol.automaticRetryAllowed === false &&
       protocol.requestViaCapturedStdinOnly === true &&
       protocol.responseViaCapturedStdoutBinaryOnly === true &&

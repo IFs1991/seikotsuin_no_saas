@@ -36,10 +36,19 @@ const dpapiBootstrapPath = path.join(
   repoRoot,
   'scripts/commercial-hardening/initialize-pr12-windows-dpapi-credentials.ps1'
 );
+const dpapiBrokerCanarySetupPath = path.join(
+  repoRoot,
+  'src/__tests__/fixtures/pr12-dpapi-broker-canary-setup.ps1'
+);
+const dpapiBrokerTimeoutCanaryPath = path.join(
+  repoRoot,
+  'src/__tests__/fixtures/pr12-dpapi-broker-timeout-canary.ps1'
+);
 const phase1EvidenceRoot = path.join(
   repoRoot,
   'docs/stabilization/evidence/commercial-hardening/pr12'
 );
+const testOnWindows = process.platform === 'win32' ? test : test.skip;
 const provisioningBindingV5TemplatePath = path.join(
   phase1EvidenceRoot,
   'source-project-provisioning-binding-v5.template.json'
@@ -65,12 +74,55 @@ interface HarnessResult {
   value?: unknown;
 }
 
+interface DpapiBrokerCanarySetupResult {
+  claimSha256: string;
+  database: {
+    envelopeFilename: string;
+    envelopeSha256: string;
+    opaqueHandle: string;
+    opaqueHandleSha256: string;
+    role: string;
+  };
+  management: {
+    envelopeFilename: string;
+    envelopeSha256: string;
+    opaqueHandle: string;
+    opaqueHandleSha256: string;
+    role: string;
+  };
+  powershellPath: string;
+}
+
 function isHarnessResult(value: unknown): value is HarnessResult {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as Record<string, unknown>;
   return (
     typeof candidate.ok === 'boolean' &&
     (candidate.code === undefined || typeof candidate.code === 'string')
+  );
+}
+
+function isDpapiBrokerCanarySetupResult(
+  value: unknown
+): value is DpapiBrokerCanarySetupResult {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  const isEnvelope = (entry: unknown): boolean => {
+    if (typeof entry !== 'object' || entry === null) return false;
+    const envelope = entry as Record<string, unknown>;
+    return [
+      'envelopeFilename',
+      'envelopeSha256',
+      'opaqueHandle',
+      'opaqueHandleSha256',
+      'role',
+    ].every(key => typeof envelope[key] === 'string');
+  };
+  return (
+    typeof candidate.claimSha256 === 'string' &&
+    isEnvelope(candidate.database) &&
+    isEnvelope(candidate.management) &&
+    typeof candidate.powershellPath === 'string'
   );
 }
 
@@ -1058,6 +1110,56 @@ function invokeDpapiMethod(method: string, args: JsonValue[]): HarnessResult {
   return parsed;
 }
 
+function invokeDpapiCredentialCanary(input: JsonObject): HarnessResult {
+  const harness = `
+    import { readFileSync } from 'node:fs';
+    const input = JSON.parse(readFileSync(0, 'utf8'));
+    const channel = await import(${JSON.stringify(dpapiChannelUrl)});
+    try {
+      const credentials = channel.retrieveClaimBoundCredentials(input);
+      const accepted =
+        credentials.managementAccessToken ===
+          'synthetic-management-value' &&
+        credentials.databasePassword ===
+          'synthetic-database-password-value';
+      process.stdout.write(JSON.stringify({
+        ok: accepted,
+        value: accepted ? 'SYNTHETIC_ROUND_TRIP_PASS' : undefined,
+        code: accepted ? undefined : 'SYNTHETIC_VALUE_MISMATCH'
+      }));
+      if (!accepted) process.exitCode = 2;
+    } catch (error) {
+      const code = error && typeof error === 'object' && 'code' in error &&
+        typeof error.code === 'string' ? error.code : 'UNEXPECTED_ERROR';
+      process.stdout.write(JSON.stringify({ ok: false, code }));
+      process.exitCode = 2;
+    }
+  `;
+  const child = spawnSync(
+    process.execPath,
+    ['--input-type=module', '-e', harness],
+    {
+      cwd: repoRoot,
+      env: {
+        PATH: process.env.PATH,
+        PATHEXT: process.env.PATHEXT,
+        SYSTEMROOT: process.env.SYSTEMROOT,
+        TEMP: process.env.TEMP,
+        TMP: process.env.TMP,
+      },
+      input: JSON.stringify(input),
+      encoding: 'utf8',
+    }
+  );
+  expect(child.stderr).toBe('');
+  const parsed: unknown = JSON.parse(child.stdout);
+  expect(isHarnessResult(parsed)).toBe(true);
+  if (!isHarnessResult(parsed)) {
+    throw new Error('DPAPI credential canary returned an invalid result');
+  }
+  return parsed;
+}
+
 function invokeDpapiFrameParser(
   frame: Buffer,
   requestBytes: Buffer,
@@ -1332,7 +1434,7 @@ function makeValidFixture() {
       responseVersion: 1,
       requestMaximumBytes: 16384,
       responseMaximumBytes: 8192,
-      brokerTimeoutMilliseconds: 15000,
+      brokerTimeoutMilliseconds: 30000,
       automaticRetryAllowed: false,
       requestViaCapturedStdinOnly: true,
       responseViaCapturedStdoutBinaryOnly: true,
@@ -2980,6 +3082,63 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     expect(JSON.stringify(recovery.value)).not.toContain('DATABASE_PASSWORD');
   });
 
+  test('requires the exact 30-second broker deadline', () => {
+    const credentialTemplate = JSON.parse(
+      fs.readFileSync(
+        path.join(
+          phase1EvidenceRoot,
+          'source-project-provisioning-credential-configuration-v2.template.json'
+        ),
+        'utf8'
+      )
+    ) as JsonObject;
+    const protocol = credentialTemplate.protocol as JsonObject;
+    expect(protocol.brokerTimeoutMilliseconds).toBe(30_000);
+  });
+
+  testOnWindows('preserves a timeout-specific safe broker code', () => {
+    const fixture = makeValidFixture();
+    const credentialConfiguration = structuredClone(
+      fixture.credentialConfiguration
+    );
+    const runtimeProtocol = credentialConfiguration.protocol as JsonObject;
+    runtimeProtocol.brokerTimeoutMilliseconds = 50;
+    expect(
+      invokeDpapiMethod('retrieveClaimBoundCredentials', [
+        {
+          approvalExpiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+          bindingMaterialSha256: 'a'.repeat(64),
+          claimSha256: 'c'.repeat(64),
+          credentialConfiguration,
+          credentialConfigurationSha256: 'd'.repeat(64),
+          evidenceParentDirectory: 'C:\\PR12\\evidence',
+          evidenceParentDirectoryPathSha256: '1'.repeat(64),
+          journalDirectory: 'C:\\PR12\\journal',
+          journalDirectoryPathSha256: 'e'.repeat(64),
+          mode: 'EXECUTE',
+          payloadSha256: 'b'.repeat(64),
+          resources: {
+            brokerPath: dpapiBrokerTimeoutCanaryPath,
+            powershellPath: 'C:\\Program Files\\PowerShell\\7\\pwsh.exe',
+          },
+        },
+      ])
+    ).toEqual({
+      ok: false,
+      code: 'CREDENTIAL_BROKER_TIMEOUT',
+    });
+  });
+
+  test('rejects the former 15-second broker deadline before remote contact', () => {
+    const fixture = makeValidFixture();
+    fixture.credentialConfiguration.protocol.brokerTimeoutMilliseconds = 15_000;
+    expectRejected(
+      'validateOfflineApproval',
+      [fixture.binding, fixture.credentialConfiguration, fixture.context],
+      'CREDENTIAL_PROTOCOL_INVALID'
+    );
+  });
+
   test('rejects overlapping provider, journal, and evidence directory trees', () => {
     const provider = { realPath: 'c:/pr12/provider' };
     const journal = { realPath: 'c:/pr12/provider/journal' };
@@ -3244,6 +3403,137 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       ).toEqual({ ok: false, code: 'DPAPI_BROKER_FRAME_INVALID' });
     }
   });
+
+  testOnWindows(
+    'round-trips two synthetic credentials through the exact Windows broker boundary',
+    () => {
+      const temporaryRoot = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'pr12-dpapi-broker-canary-')
+      );
+      const providerRoot = path.join(temporaryRoot, 'provider');
+      const journalDirectory = path.join(temporaryRoot, 'journal');
+      const evidenceParentDirectory = path.join(temporaryRoot, 'evidence');
+      const configurationId = 'pr12-synthetic-broker-canary-v1';
+      const bindingMaterialSha256 = 'a'.repeat(64);
+      const payloadSha256 = 'b'.repeat(64);
+      const bootstrapScriptSha256 = createHash('sha256')
+        .update(fs.readFileSync(dpapiBootstrapPath))
+        .digest('hex');
+      try {
+        const setupChild = spawnSync(
+          'pwsh.exe',
+          [
+            '-NoLogo',
+            '-NoProfile',
+            '-NonInteractive',
+            '-File',
+            dpapiBrokerCanarySetupPath,
+          ],
+          {
+            cwd: repoRoot,
+            env: {
+              PATH: process.env.PATH,
+              PATHEXT: process.env.PATHEXT,
+              SYSTEMROOT: process.env.SYSTEMROOT,
+              TEMP: process.env.TEMP,
+              TMP: process.env.TMP,
+            },
+            input: JSON.stringify({
+              bindingMaterialSha256,
+              bootstrapScriptSha256,
+              configurationId,
+              evidenceParentDirectory,
+              journalDirectory,
+              payloadSha256,
+              providerRoot,
+            }),
+            encoding: 'utf8',
+            windowsHide: true,
+          }
+        );
+        expect(setupChild.status).toBe(0);
+        expect(setupChild.stderr).toBe('');
+        const setupResult: unknown = JSON.parse(setupChild.stdout);
+        expect(isDpapiBrokerCanarySetupResult(setupResult)).toBe(true);
+        if (!isDpapiBrokerCanarySetupResult(setupResult)) {
+          throw new Error(
+            'DPAPI broker canary setup returned an invalid result'
+          );
+        }
+        const providerRootPathSha256 = createHash('sha256')
+          .update(
+            path.win32
+              .resolve(providerRoot)
+              .replaceAll('\\', '/')
+              .toLowerCase(),
+            'utf8'
+          )
+          .digest('hex');
+        const credentialConfiguration = {
+          provider: {
+            configurationId,
+            providerId: 'WINDOWS_DPAPI_CURRENT_USER_V1',
+            providerRoot,
+            providerRootPathSha256,
+            providerRootResolvedPathSha256: providerRootPathSha256,
+          },
+          protocol: {
+            brokerTimeoutMilliseconds: 30_000,
+            requestMaximumBytes: 16_384,
+            responseMaximumBytes: 8_192,
+          },
+          runtime: {
+            bootstrapScriptSha256,
+          },
+          secrets: {
+            databasePassword: {
+              ...setupResult.database,
+              maximumBytes: 256,
+              minimumBytes: 32,
+            },
+            managementAccessToken: {
+              ...setupResult.management,
+              maximumBytes: 4_096,
+              minimumBytes: 20,
+            },
+          },
+        };
+        const pathFingerprint = (value: string): string =>
+          createHash('sha256')
+            .update(
+              path.win32.resolve(value).replaceAll('\\', '/').toLowerCase(),
+              'utf8'
+            )
+            .digest('hex');
+        expect(
+          invokeDpapiCredentialCanary({
+            approvalExpiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+            bindingMaterialSha256,
+            claimSha256: setupResult.claimSha256,
+            credentialConfiguration,
+            credentialConfigurationSha256: 'c'.repeat(64),
+            evidenceParentDirectory,
+            evidenceParentDirectoryPathSha256: pathFingerprint(
+              evidenceParentDirectory
+            ),
+            journalDirectory,
+            journalDirectoryPathSha256: pathFingerprint(journalDirectory),
+            mode: 'EXECUTE',
+            payloadSha256,
+            resources: {
+              brokerPath: dpapiBrokerPath,
+              powershellPath: setupResult.powershellPath,
+            },
+          })
+        ).toEqual({
+          ok: true,
+          value: 'SYNTHETIC_ROUND_TRIP_PASS',
+        });
+      } finally {
+        fs.rmSync(temporaryRoot, { recursive: true, force: true });
+      }
+    }
+  );
 
   test('keeps DPAPI retrieval after the durable claim and never relays broker output', () => {
     const wrapperSource = fs.readFileSync(provisioningWrapperPath, 'utf8');

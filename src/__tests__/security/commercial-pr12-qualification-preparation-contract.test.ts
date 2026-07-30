@@ -327,12 +327,23 @@ describe('commercial PR-12 qualification preparation contract', () => {
       'credential configuration v2 management access token'
     );
     const opaqueHandle = managementAccessToken.opaqueHandle;
+    const protocol = requireRecord(
+      credentialConfiguration.protocol,
+      'credential configuration v2 protocol'
+    );
     const approvalPacket = readRepositoryFile(
       'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml'
+    );
+    const preparationVerifier = readRepositoryFile(
+      'scripts/commercial-hardening/verify-pr12-preparation.mjs'
     );
 
     expect(opaqueHandle).toBe(
       'windows-dpapi-cu://pr12-source-project/management-access-token/v1'
+    );
+    expect(protocol.brokerTimeoutMilliseconds).toBe(30_000);
+    expect(preparationVerifier).toMatch(
+      /provisioningCredential\.protocol\.brokerTimeoutMilliseconds ===\s*30_000/
     );
     expect(approvalPacket).toContain(
       `      opaque_handle: ${String(opaqueHandle)}`

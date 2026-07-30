@@ -175,7 +175,7 @@ function makeCredentialConfiguration(): JsonObject {
       responseVersion: 1,
       requestMaximumBytes: 16384,
       responseMaximumBytes: 8192,
-      brokerTimeoutMilliseconds: 15000,
+      brokerTimeoutMilliseconds: 30000,
       automaticRetryAllowed: false,
       requestViaCapturedStdinOnly: true,
       responseViaCapturedStdoutBinaryOnly: true,

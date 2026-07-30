@@ -507,9 +507,7 @@ export function validateDpapiCredentialResources(
       protocol.responseVersion === 1 &&
       protocol.requestMaximumBytes === 16384 &&
       protocol.responseMaximumBytes === 8192 &&
-      Number.isInteger(protocol.brokerTimeoutMilliseconds) &&
-      protocol.brokerTimeoutMilliseconds >= 1000 &&
-      protocol.brokerTimeoutMilliseconds <= 30000 &&
+      protocol.brokerTimeoutMilliseconds === 30000 &&
       protocol.automaticRetryAllowed === false &&
       protocol.requestViaCapturedStdinOnly === true &&
       protocol.responseViaCapturedStdoutBinaryOnly === true &&
@@ -985,13 +983,22 @@ export function retrieveClaimBoundCredentials({
     );
     stdout = Buffer.isBuffer(result.stdout) ? result.stdout : Buffer.alloc(0);
     stderr = Buffer.isBuffer(result.stderr) ? result.stderr : Buffer.alloc(0);
+    if (
+      isRecord(result.error) &&
+      typeof result.error.code === 'string' &&
+      result.error.code === 'ETIMEDOUT'
+    ) {
+      fail('CREDENTIAL_BROKER_TIMEOUT');
+    }
     requireCondition(
       result.error === undefined &&
         result.signal === null &&
-        result.status === 0 &&
-        stderr.length === 0 &&
-        stdout.length > 0,
-      'CREDENTIAL_BROKER_FAILED'
+        result.status === 0,
+      'CREDENTIAL_BROKER_REJECTED'
+    );
+    requireCondition(
+      stderr.length === 0 && stdout.length > 0,
+      'CREDENTIAL_BROKER_PROTOCOL_INVALID'
     );
     return parseCredentialBrokerFrame(
       stdout,
@@ -999,7 +1006,8 @@ export function retrieveClaimBoundCredentials({
       mode,
       credentialConfiguration
     );
-  } catch {
+  } catch (error) {
+    if (error instanceof DpapiCredentialChannelError) throw error;
     fail('CREDENTIAL_BROKER_FAILED');
   } finally {
     request.bytes.fill(0);
