@@ -114,4 +114,40 @@ describe('PR12 ACTION-003 public pricing source authenticity', () => {
       })
     ).toThrow('PRICING_SOURCE_SEMANTICS_INVALID');
   });
+
+  test('rejects the expected rate when it appears only in a different table column', () => {
+    expect(() =>
+      subject.validateOfficialPricingSourceBytesForTest({
+        sourceId: 'COMPUTE_AND_DISK',
+        contentType: 'text/html',
+        bytes: bytes(
+          '<table><thead><tr><th>Compute Size</th><th>Hourly Price USD</th><th>Legacy Monthly Price USD</th></tr></thead><tbody><tr><td>Large</td><td>$0.2000</td><td>$0.1517</td></tr></tbody></table>'
+        ),
+      })
+    ).toThrow('PRICING_SOURCE_SEMANTICS_INVALID');
+  });
+
+  test('rejects an explicit negation of the full-hour charge', () => {
+    expect(() =>
+      subject.validateOfficialPricingSourceBytesForTest({
+        sourceId: 'COMPUTE_USAGE',
+        contentType: 'text/html',
+        bytes: bytes(
+          '<html><body>A project runs for part of an hour and is not charged for the full hour.</body></html>'
+        ),
+      })
+    ).toThrow('PRICING_SOURCE_SEMANTICS_INVALID');
+  });
+
+  test('rejects challenge content even when executable markup contains pricing anchors', () => {
+    expect(() =>
+      subject.validateOfficialPricingSourceBytesForTest({
+        sourceId: 'COMPUTE_AND_DISK',
+        contentType: 'text/html',
+        bytes: bytes(
+          '<html><head><title>Just a moment...</title></head><body><script>Hourly Price USD Large $0.1517</script></body></html>'
+        ),
+      })
+    ).toThrow('PRICING_SOURCE_SEMANTICS_INVALID');
+  });
 });

@@ -527,6 +527,65 @@ export function sha256Canonical(value) {
   return sha256Text(canonicalJson(value));
 }
 
+function visibleHtmlSource(value) {
+  return value.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/giu, ' ');
+}
+
+function normalizedHtmlText(value) {
+  return value
+    .replace(/<!--[\s\S]*?-->/gu, ' ')
+    .replace(/<[^>]*>/gu, ' ')
+    .replace(/(?:&nbsp;|&#160;|&#x0*a0;)/giu, ' ')
+    .replace(/(?:&dollar;|&#36;|&#x0*24;)/giu, '$')
+    .replace(/&amp;/giu, '&')
+    .toLowerCase()
+    .replace(/\s+/gu, ' ')
+    .trim();
+}
+
+function inspectComputePricingTables(html) {
+  const tables = [];
+  for (const tableMatch of html.matchAll(
+    /<table\b[^>]*>[\s\S]*?<\/table>/giu
+  )) {
+    const rows = [];
+    for (const rowMatch of tableMatch[0].matchAll(
+      /<tr\b[^>]*>[\s\S]*?<\/tr>/giu
+    )) {
+      const cells = [];
+      for (const cellMatch of rowMatch[0].matchAll(
+        /<(th|td)\b[^>]*>([\s\S]*?)<\/\1>/giu
+      )) {
+        cells.push({
+          kind: cellMatch[1].toLowerCase(),
+          text: normalizedHtmlText(cellMatch[2]),
+        });
+      }
+      if (cells.length > 0) rows.push(cells);
+    }
+    const header = rows.find(row =>
+      row.some(cell => cell.kind === 'th' && cell.text === 'compute size')
+    );
+    if (!header) continue;
+    const computeSizeIndex = header.findIndex(
+      cell => cell.kind === 'th' && cell.text === 'compute size'
+    );
+    const hourlyPriceIndex = header.findIndex(
+      cell => cell.kind === 'th' && cell.text === 'hourly price usd'
+    );
+    if (computeSizeIndex < 0 || hourlyPriceIndex < 0) continue;
+    const largeRows = rows.filter(
+      row => row[computeSizeIndex]?.text === 'large'
+    );
+    tables.push({
+      largeHourlyPrices: largeRows.map(row =>
+        (row[hourlyPriceIndex]?.text ?? '').replace(/\s+/gu, '')
+      ),
+    });
+  }
+  return tables;
+}
+
 export function assertOfficialPricingSourceSemantics(inputValue) {
   const input = requireRecord(inputValue, 'PRICING_SOURCE_SEMANTICS_INVALID');
   requireCondition(
@@ -534,27 +593,63 @@ export function assertOfficialPricingSourceSemantics(inputValue) {
       (Buffer.isBuffer(input.bytes) || input.bytes instanceof Uint8Array),
     'PRICING_SOURCE_SEMANTICS_INVALID'
   );
+  let visibleHtml;
   let normalizedText;
   try {
-    normalizedText = new TextDecoder('utf-8', { fatal: true })
-      .decode(input.bytes)
-      .toLowerCase()
-      .replace(/<[^>]*>/gu, ' ')
-      .replace(/\s+/gu, ' ')
-      .trim();
+    visibleHtml = visibleHtmlSource(
+      new TextDecoder('utf-8', { fatal: true }).decode(input.bytes)
+    );
+    normalizedText = normalizedHtmlText(visibleHtml);
   } catch {
     fail('PRICING_SOURCE_SEMANTICS_INVALID');
   }
-  const semanticChecks = {
-    COMPUTE_AND_DISK:
-      /(?:\bhourly price usd\b.{0,1200}\blarge\b.{0,240}\b(?:usd\s*)?\$?0\.1517\b|\blarge\b.{0,240}\b(?:usd\s*)?\$?0\.1517\b.{0,120}\b(?:per\s+)?(?:project\s+)?hour\b)/su,
-    COMPUTE_USAGE:
-      /(?:\bpartial\b.{0,200}\bhours?\b.{0,200}\bround(?:ed|ing)?\s+up\b|\bpart of an hour\b.{0,240}\bcharged\b.{0,160}\bfull hour\b)/su,
-    PRICING: /\bpro\b.{0,500}\bcompute\b/su,
-  };
-  const check = semanticChecks[input.sourceId];
   requireCondition(
-    check instanceof RegExp && check.test(normalizedText),
+    ![
+      /\bjust a moment\b/u,
+      /\bchecking your browser\b/u,
+      /\battention required\b/u,
+      /\bverify you are human\b/u,
+      /\bcaptcha\b/u,
+    ].some(marker => marker.test(normalizedText)),
+    'PRICING_SOURCE_SEMANTICS_INVALID'
+  );
+
+  if (input.sourceId === 'COMPUTE_AND_DISK') {
+    const computeTables = inspectComputePricingTables(visibleHtml);
+    if (computeTables.length > 0) {
+      requireCondition(
+        computeTables.length === 1 &&
+          computeTables[0].largeHourlyPrices.length === 1 &&
+          computeTables[0].largeHourlyPrices[0] === '$0.1517',
+        'PRICING_SOURCE_SEMANTICS_INVALID'
+      );
+      return;
+    }
+    requireCondition(
+      /\blarge (?:compute )?(?:(?:is|costs?) )?\$\s*0\.1517 per (?:project )?hour\b/u.test(
+        normalizedText
+      ),
+      'PRICING_SOURCE_SEMANTICS_INVALID'
+    );
+    return;
+  }
+
+  if (input.sourceId === 'COMPUTE_USAGE') {
+    requireCondition(
+      /\bpartial (?:compute )?hours? (?:are|is) rounded up(?: to (?:a|one) full hour)?\b/u.test(
+        normalizedText
+      ) ||
+        /\bif a project runs for part of an hour,? you are still charged for the full hour\b/u.test(
+          normalizedText
+        ),
+      'PRICING_SOURCE_SEMANTICS_INVALID'
+    );
+    return;
+  }
+
+  requireCondition(
+    input.sourceId === 'PRICING' &&
+      /\bpro\b.{0,500}\bcompute\b/su.test(normalizedText),
     'PRICING_SOURCE_SEMANTICS_INVALID'
   );
 }
