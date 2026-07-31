@@ -46,10 +46,27 @@ describe('PR12 ACTION-003 public pricing source authenticity', () => {
     ).not.toThrow();
   });
 
+  test('accepts the current official table ordering without detaching Large from its rate', () => {
+    expect(() =>
+      subject.validateOfficialPricingSourceBytesForTest({
+        sourceId: 'COMPUTE_AND_DISK',
+        contentType: 'text/html; charset=utf-8',
+        bytes: bytes(
+          '<table><thead><tr><th>Compute Size</th><th>Hourly Price USD</th><th>Monthly Price USD</th></tr></thead><tbody><tr><td>Micro</td><td>$0.01344</td><td>~$10</td></tr><tr><td>Large</td><td>$0.1517</td><td>~$110</td></tr></tbody></table>'
+        ),
+      })
+    ).not.toThrow();
+  });
+
   test.each([
     ['wrong MIME', 'application/json', '<html>Large $0.1517 per hour</html>'],
     ['challenge page', 'text/html', '<html>Just a moment...</html>'],
     ['changed rate', 'text/html', '<html>Large $0.2000 per hour</html>'],
+    [
+      'changed table rate',
+      'text/html',
+      '<table><thead><tr><th>Compute Size</th><th>Hourly Price USD</th></tr></thead><tbody><tr><td>Large</td><td>$0.2000</td></tr></tbody></table>',
+    ],
   ])('rejects %s', (_label, contentType, body) => {
     expect(() =>
       subject.validateOfficialPricingSourceBytesForTest({
