@@ -58,6 +58,18 @@ describe('PR12 ACTION-003 public pricing source authenticity', () => {
     ).not.toThrow();
   });
 
+  test('accepts the current official partial-hour billing wording', () => {
+    expect(() =>
+      subject.validateOfficialPricingSourceBytesForTest({
+        sourceId: 'COMPUTE_USAGE',
+        contentType: 'text/html; charset=utf-8',
+        bytes: bytes(
+          '<html><body>If a project runs for part of an hour, you are still charged for the full hour.</body></html>'
+        ),
+      })
+    ).not.toThrow();
+  });
+
   test.each([
     ['wrong MIME', 'application/json', '<html>Large $0.1517 per hour</html>'],
     ['challenge page', 'text/html', '<html>Just a moment...</html>'],
@@ -86,6 +98,18 @@ describe('PR12 ACTION-003 public pricing source authenticity', () => {
           `<html><body>Large ${'unrelated '.repeat(
             80
           )} 0.1517 per hour</body></html>`
+        ),
+      })
+    ).toThrow('PRICING_SOURCE_SEMANTICS_INVALID');
+  });
+
+  test('rejects partial-hour wording that does not bind to a full-hour charge', () => {
+    expect(() =>
+      subject.validateOfficialPricingSourceBytesForTest({
+        sourceId: 'COMPUTE_USAGE',
+        contentType: 'text/html',
+        bytes: bytes(
+          '<html><body>A project runs for part of an hour and is charged for half an hour.</body></html>'
         ),
       })
     ).toThrow('PRICING_SOURCE_SEMANTICS_INVALID');

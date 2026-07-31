@@ -549,7 +549,7 @@ export function assertOfficialPricingSourceSemantics(inputValue) {
     COMPUTE_AND_DISK:
       /(?:\bhourly price usd\b.{0,1200}\blarge\b.{0,240}\b(?:usd\s*)?\$?0\.1517\b|\blarge\b.{0,240}\b(?:usd\s*)?\$?0\.1517\b.{0,120}\b(?:per\s+)?(?:project\s+)?hour\b)/su,
     COMPUTE_USAGE:
-      /\bpartial\b.{0,200}\bhours?\b.{0,200}\bround(?:ed|ing)?\s+up\b/su,
+      /(?:\bpartial\b.{0,200}\bhours?\b.{0,200}\bround(?:ed|ing)?\s+up\b|\bpart of an hour\b.{0,240}\bcharged\b.{0,160}\bfull hour\b)/su,
     PRICING: /\bpro\b.{0,500}\bcompute\b/su,
   };
   const check = semanticChecks[input.sourceId];
