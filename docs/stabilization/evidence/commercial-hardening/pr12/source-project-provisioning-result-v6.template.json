@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "phase": "SOURCE_PROJECT_PROVISIONING_RESULT",
   "resultType": "SOURCE_PROJECT_PROVISIONING_OPERATION",
   "status": "NOT_RUN",
@@ -95,11 +95,11 @@
     "fundedThrough": "NOT_CAPTURED"
   },
   "approvalWindow": {
-    "approvedAt": "NOT_CAPTURED",
-    "operatorReconfirmedAt": "NOT_CAPTURED",
+    "authorityAcceptedAt": "NOT_CAPTURED",
+    "derivedExecutionBindingGeneratedAt": "NOT_CAPTURED",
     "expiresAt": "NOT_CAPTURED",
     "approvalEvidenceSha256": "NOT_CAPTURED",
-    "finalApprovalReceiptSha256": "NOT_CAPTURED"
+    "derivedExecutionBindingSha256": "NOT_CAPTURED"
   },
   "cleanupBoundary": {
     "disposition": "DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION",

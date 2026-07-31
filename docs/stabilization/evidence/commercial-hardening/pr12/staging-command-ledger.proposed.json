@@ -96,7 +96,7 @@
     "phase1ImplementationPath": "scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs",
     "organizationIdentityCaptureImplementationPath": "scripts/commercial-hardening/run-pr12-source-organization-identity-capture.mjs",
     "organizationIdentityCaptureRequiredBeforeSourceProvisioning": true,
-    "organizationIdentityCaptureEvidenceLinkageStatus": "IMPLEMENTED_ACTION_003_V5_REQUIRED",
+    "organizationIdentityCaptureEvidenceLinkageStatus": "IMPLEMENTED_ACTION_003_V6_REQUIRED",
     "stageCommandRuntimeImplementationPath": "scripts/commercial-hardening/pr12-stage-command-runtime.mjs",
     "sourceReplayImplementationPath": "scripts/commercial-hardening/pr12-source-replay-catalog-contract.mjs",
     "laterPhaseImplementationPath": "PARTIAL_READINESS_ONLY",
@@ -792,7 +792,7 @@
       "evidenceSealOrder": "PARTIAL_FLUSH_VERIFY_ATOMIC_RENAME_THEN_TERMINAL",
       "providerResponseBodySha256": "83c6dc4b04892443255175fc7be3f82e068f17c15402433305606e5aab9e179a",
       "providerSafeProjectionSha256": "fbda9b89c34154da871525265a9dca2261990863e91324395f7d304ce198d33e",
-      "action003IdentityEvidenceLinkageStatus": "IMPLEMENTED_ACTION_003_V5_REQUIRED",
+      "action003IdentityEvidenceLinkageStatus": "IMPLEMENTED_ACTION_003_V6_REQUIRED",
       "terminalJournalToManifestVerifierStatus": "IMPLEMENTED_FAIL_CLOSED",
       "productionBoundaryObservedCounts": {
         "organizationProjectEnumerationPerformed": false,
@@ -864,8 +864,8 @@
         "productionCredentialAccessAuthorized": false
       },
       "outboundRequestGuard": "EXACT_HTTPS_HOST_METHOD_PATH_QUERY_ALLOWLIST_PRODUCTION_REF_AND_ORIGIN_DENY_BEFORE_FETCH",
-      "wrapper": "fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs --execute-authorized-action PR12-ACTION-003 --binding <candidate-binding-v5.json> --credential-config <candidate-dpapi-credential-config-v2.json> --approval-evidence <owner-approval-candidate-v4.json> --initial-approval-receipt <initial-approval-receipt-v1.json> --final-approval-receipt <final-approval-receipt-v1.json> --owner-private-approval-root <owner-private-approval-root> --pricing-evidence <official-pricing-evidence-v2.json> --organization-identity-evidence-directory <sealed-action-002-evidence-directory> --organization-identity-terminal <action-002-terminal-journal.json> --journal-directory <owner-controlled-absolute-directory> --evidence-parent <owner-controlled-absolute-directory>",
-      "reconciliationOnlyWrapper": "fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs --reconcile-dispatched-action PR12-ACTION-003 --binding <candidate-binding-v5.json> --credential-config <candidate-dpapi-credential-config-v2.json> --approval-evidence <owner-approval-candidate-v4.json> --initial-approval-receipt <initial-approval-receipt-v1.json> --final-approval-receipt <final-approval-receipt-v1.json> --owner-private-approval-root <owner-private-approval-root> --pricing-evidence <official-pricing-evidence-v2.json> --organization-identity-evidence-directory <sealed-action-002-evidence-directory> --organization-identity-terminal <action-002-terminal-journal.json> --journal-directory <owner-controlled-absolute-directory> --evidence-parent <owner-controlled-absolute-directory>",
+      "wrapper": "fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs --execute-authorized-action PR12-ACTION-003 --binding <candidate-binding-v6.json> --credential-config <candidate-dpapi-credential-config-v2.json> --approval-evidence <authorization-projection-candidate-v1.json> --single-action-approval-receipt <single-action-approval-receipt-v2.json> --derived-execution-binding <derived-execution-binding-v1.json> --owner-private-approval-root <owner-private-approval-root> --pricing-evidence <official-pricing-evidence-v3.json> --organization-identity-evidence-directory <sealed-action-002-evidence-directory> --organization-identity-terminal <action-002-terminal-journal.json> --journal-directory <owner-controlled-absolute-directory> --evidence-parent <owner-controlled-absolute-directory>",
+      "reconciliationOnlyWrapper": "fnm exec --using=24 node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs --reconcile-dispatched-action PR12-ACTION-003 --binding <candidate-binding-v6.json> --credential-config <candidate-dpapi-credential-config-v2.json> --approval-evidence <authorization-projection-candidate-v1.json> --single-action-approval-receipt <single-action-approval-receipt-v2.json> --derived-execution-binding <derived-execution-binding-v1.json> --owner-private-approval-root <owner-private-approval-root> --pricing-evidence <official-pricing-evidence-v3.json> --organization-identity-evidence-directory <sealed-action-002-evidence-directory> --organization-identity-terminal <action-002-terminal-journal.json> --journal-directory <owner-controlled-absolute-directory> --evidence-parent <owner-controlled-absolute-directory>",
       "recoveryModeHasPostPath": false,
       "wrapperImplemented": true,
       "wrapperExecuted": false,
@@ -892,27 +892,27 @@
       "realCredentialBootstrapCompleted": false,
       "fundingApprovedAmountUsd": 50.0,
       "fundingSource": "FUTOSHI IWASAWAが管理するIFs1991's Org登録済み支払方法",
-      "fundedThroughPolicy": "PR12-ACTION-003 scheduled execution time plus 73 hours",
+      "fundedThroughPolicy": "PR12-ACTION-003 authority acceptedAt plus 73 hours",
       "scheduledExecutionAt": "NOT_CAPTURED",
       "fundedThrough": "NOT_CAPTURED",
       "organizationIdentityCaptureActionId": "PR12-ACTION-002",
       "organizationIdentityEvidenceManifestSha256": "66db9ed2b7fdb7573b76e79273c71d95551cdb7385e0ca8ee21724c56399f582",
       "organizationIdentityTerminalSha256": "3fec7d3156c52e862602e9adb115e460c6959caeba38d5a1b290abe41513782e",
-      "organizationIdentityEvidenceLinkageStatus": "IMPLEMENTED_ACTION_003_V5_REQUIRED",
+      "organizationIdentityEvidenceLinkageStatus": "IMPLEMENTED_ACTION_003_V6_REQUIRED",
       "organizationIdentityDuplicateGetStatus": "REMOVED_ACTION_002_EVIDENCE_IS_SOLE_SOURCE",
-      "fundedThroughPolicyBindingStatus": "IMPLEMENTED_EXACT_SCHEDULED_PLUS_73_HOURS",
-      "fundedThroughPolicyVerifierStatus": "IMPLEMENTED_EXACT_SCHEDULED_PLUS_73_HOURS",
+      "fundedThroughPolicyBindingStatus": "IMPLEMENTED_EXACT_AUTHORITY_ACCEPTED_AT_PLUS_73_HOURS",
+      "fundedThroughPolicyVerifierStatus": "IMPLEMENTED_EXACT_AUTHORITY_ACCEPTED_AT_PLUS_73_HOURS",
       "actionApprovable": false,
       "approvalBlockers": [
         "final head and artifact hashes",
         "populated Action-002 evidence-directory and terminal-journal inputs plus raw-path-free fingerprints",
         "exact production deny identity revalidation",
         "fresh official-pricing source captures",
-        "initial approval receipt, frozen candidate tuple hashes, and a separate final approval receipt for the fixed canonical sole-operator principal, eight risk/boundary acceptances, and expiry",
-        "cleanup/recovery deadlines and scheduled/fundedThrough timestamps",
+        "one single-action owner approval receipt for the fixed canonical sole-operator principal, exact HEAD and candidate identity inputs, eight risk/boundary acceptances, relative expiry, and at most one create POST",
+        "cleanup/recovery deadlines plus authority-relative fundedThrough and deletion-request timestamps",
         "exact DPAPI configuration, hashes, completed bootstrap, and real credential envelopes",
         "stable journal/evidence path fingerprints",
-        "timeouts and an unexpired hash-bound separate final approval receipt"
+        "timeouts, an unexpired single-action owner approval receipt, and the system-derived exact execution binding"
       ]
     },
     "restoreProject": {
@@ -929,7 +929,7 @@
     "appendOnlyForwardFixRequiresSeparateApproval": true
   },
   "knownBlockers": [
-    "The source project ref, PR12-ACTION-003 frozen candidate tuple and separate final approval receipt, exact scheduledExecutionAt/fundedThrough values, final hashes, two-role credential envelopes, and candidate credential-provider inputs are not captured.",
+    "The source project ref, PR12-ACTION-003 single-action owner approval receipt, authority-relative fundedThrough values, final system-derived hashes, two-role credential envelopes, and candidate credential-provider inputs are not captured.",
     "Node and official Supabase archive observation are not implemented; the pinned executable paths, CA content/path, SUPABASE_HOME, DOCKER_CONFIG, external workdir, seven-path projection, replay-input manifest SHA, and durable projection SHA are NOT_CAPTURED.",
     "The production project-ref and direct-host denials are fixed, but the production database system-identifier denylist is NOT_CAPTURED_BLOCKING; no remote command may run until all three denylist dimensions are approved and bound.",
     "The Stage 2 identity/configuration capture and selected Stage 3/4 descriptors, collectors, fixture contract, hosted-types comparator, Advisor normalizer/diff, and all-role-smoke component are offline-verified only; every remote execution remains NOT_RUN and NOT_AUTHORIZED.",
@@ -938,5 +938,5 @@
     "exact security, Data API, GraphQL, billing, and request matrices are not hash-pinned",
     "The restore project ref cannot be captured until a separately approved restore creation action completes, after which a supplemental binding is still required."
   ],
-  "notes": "This JSON is owner-reviewable proposal input, not an approved or executable staging ledger. IMPLEMENTED_OFFLINE_VERIFIED means only that the named local descriptor, collector, compiler, or validator has been verified offline; it does not claim remote execution, COMM PASS, or whole-command completion beyond the stated purpose. A readiness component never upgrades a whole command marked NOT_IMPLEMENTED. PR12-ACTION-002 separately completed PASS at head 6edd6733756dd73e458cf705675895a5666c76e6 with one GET attempt, zero retry, and zero production contact; its sealed evidence and terminal journal remain the sole Organization identity/plan source for Action-003 v5, so Action-003 performs no duplicate Organization GET. This work authorizes none of PR12-ACTION-003, project creation, any remote command, production contact, credential decryption, cleanup/deletion, or Phase 2+ execution. Every remote command remains authorizedNow=false and executionStatus=NOT_RUN."
+  "notes": "This JSON is owner-reviewable proposal input, not an approved or executable staging ledger. IMPLEMENTED_OFFLINE_VERIFIED means only that the named local descriptor, collector, compiler, or validator has been verified offline; it does not claim remote execution, COMM PASS, or whole-command completion beyond the stated purpose. A readiness component never upgrades a whole command marked NOT_IMPLEMENTED. PR12-ACTION-002 separately completed PASS at head 6edd6733756dd73e458cf705675895a5666c76e6 with one GET attempt, zero retry, and zero production contact; its sealed evidence and terminal journal remain the sole Organization identity/plan source for Action-003 v6, so Action-003 performs no duplicate Organization GET. This work authorizes none of PR12-ACTION-003, project creation, any remote command, production contact, credential decryption, cleanup/deletion, or Phase 2+ execution. Every remote command remains authorizedNow=false and executionStatus=NOT_RUN."
 }

@@ -77,19 +77,19 @@ authorization_phases:
     provider_response_body_sha256: 83c6dc4b04892443255175fc7be3f82e068f17c15402433305606e5aab9e179a
     provider_safe_projection_sha256: fbda9b89c34154da871525265a9dca2261990863e91324395f7d304ce198d33e
     production_contact_counts_all_zero: true
-    action_003_identity_evidence_linkage_status: IMPLEMENTED_ACTION_003_V5_REQUIRED
+    action_003_identity_evidence_linkage_status: IMPLEMENTED_ACTION_003_V6_REQUIRED
     terminal_to_manifest_journal_verifier_status: IMPLEMENTED_FAIL_CLOSED
     expiry: '2026-07-26T04:46:07.365Z'
   source_project_provisioning:
-    template: source-project-provisioning-binding-v5.template.json
-    phase_local_contract_version: 5
-    result_template: source-project-provisioning-result-v5.template.json
+    template: source-project-provisioning-binding-v6.template.json
+    phase_local_contract_version: 6
+    result_template: source-project-provisioning-result-v6.template.json
     provider_safe_projection_template: source-project-provider-safe-projection-v4.template.json
     credential_configuration_template: source-project-provisioning-credential-configuration-v2.template.json
-    owner_approval_template: source-project-provisioning-owner-approval-v4.template.json
-    initial_approval_receipt_template: source-project-provisioning-initial-approval-receipt-v1.template.json
-    final_approval_receipt_template: source-project-provisioning-final-approval-receipt-v1.template.json
-    official_pricing_evidence_template: source-project-official-pricing-evidence-v2.template.json
+    authorization_projection_template: source-project-provisioning-authorization-projection-v1.template.json
+    single_action_approval_receipt_template: source-project-provisioning-single-action-approval-receipt-v2.template.json
+    derived_execution_binding_template: source-project-provisioning-derived-execution-binding-v1.template.json
+    official_pricing_evidence_template: source-project-official-pricing-evidence-v3.template.json
     dpapi_envelope_template: source-project-windows-dpapi-envelope-v1.template.json
     dpapi_bootstrap_approval_template: source-project-dpapi-bootstrap-approval-v1.template.json
     dpapi_bootstrap_authorized_roles:
@@ -167,10 +167,10 @@ authorization_phases:
       blocker: SOURCE_PROVISIONING_V2_PROMOTION_NOT_IMPLEMENTED
     candidate_binding_path: NOT_CAPTURED
     candidate_binding_sha256: NOT_CAPTURED
-    initial_approval_receipt_path: NOT_CAPTURED
-    initial_approval_receipt_sha256: NOT_CAPTURED
-    final_approval_receipt_path: NOT_CAPTURED
-    final_approval_receipt_sha256: NOT_CAPTURED
+    single_action_approval_receipt_path: NOT_CAPTURED
+    single_action_approval_receipt_sha256: NOT_CAPTURED
+    derived_execution_binding_path: NOT_CAPTURED
+    derived_execution_binding_sha256: NOT_CAPTURED
     authorized: false
     expiry: NOT_CAPTURED
   source_identity_and_configuration_bootstrap:
@@ -261,7 +261,7 @@ official_platform_source_review:
   actual_dashboard_state_still_required: true
   precreate_large_dashboard_quote_available_in_observed_flow: false
   official_list_price_substitution_locally_authorized: true
-  pricing_evidence_must_be_recaptured_and_hash_bound_for_final_approval: true
+  pricing_evidence_must_be_current_and_hash_bound_for_single_action_approval: true
 environment:
   project_ref: NOT_CAPTURED
   project_name: seikotsuin-pr12-isolated-qualification-20260719
@@ -996,7 +996,7 @@ cli:
     - gen_types
     - status
   command_ledger_path: staging-command-ledger.proposed.json
-  command_ledger_sha256: 81a17643bcb071d444eecaf1c9bc9335b6350ce755680c2f2360e6fa25ebf913
+  command_ledger_sha256: 10f1d6dd38308b764d9036c909a5dcb2de4858420ba37c26c6bfce6c6eab21c7
   exact_commands: PROPOSED_NOT_EXECUTABLE
   exact_commands_blocker: Phase 1 and selected runtime/replay/fixture/types/Advisor/all-role readiness are implemented offline, but all remote execution remains NOT_RUN and unauthorized. External path/CA fingerprints, runtime target identity, credentials, fresh target catalog/classification approval, canonical PR11 and hosted SLO runners, full security/Data API/GraphQL/COMM/backup/restore/side-effect collectors, and later owner decisions remain blockers.
   executable_command_metadata_required:
@@ -1095,11 +1095,11 @@ time_and_cost:
   funded_retention_and_cleanup_decision_required_before_provisioning: true
   cleanup_disposition: DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION
   funded_through: NOT_CAPTURED
-  source_funded_through_policy: PR12-ACTION-003 scheduled execution time plus 73 hours
+  source_funded_through_policy: PR12-ACTION-003 authority acceptedAt plus 73 hours
   source_scheduled_execution_at: NOT_CAPTURED
-  source_funding_requirement: exact funded_through must equal the approved PR12-ACTION-003 scheduled execution time plus 73 hours
-  source_funded_through_policy_binding_status: IMPLEMENTED_EXACT_SCHEDULED_PLUS_73_HOURS
-  source_funded_through_policy_verifier_status: IMPLEMENTED_EXACT_SCHEDULED_PLUS_73_HOURS
+  source_funding_requirement: exact funded_through must equal the approved PR12-ACTION-003 authority acceptedAt plus 73 hours
+  source_funded_through_policy_binding_status: IMPLEMENTED_EXACT_AUTHORITY_ACCEPTED_AT_PLUS_73_HOURS
+  source_funded_through_policy_verifier_status: IMPLEMENTED_EXACT_AUTHORITY_ACCEPTED_AT_PLUS_73_HOURS
   pr12_action_003_approvable: false
   restore_funding_requirement: funded_through must be at least 24 hours after restore-creation approval expiry
   phase1_funding_approved_amount_usd: 50.00
@@ -1134,10 +1134,10 @@ phase1_local_preparation_decision:
   organization_identity_capture_remote_get_authorized_by_this_decision: false
   organization_identity_capture_remote_get_executed: true
   organization_identity_capture_execution_status: PASS
-  organization_identity_capture_action_003_linkage_status: IMPLEMENTED_ACTION_003_V5_REQUIRED
+  organization_identity_capture_action_003_linkage_status: IMPLEMENTED_ACTION_003_V6_REQUIRED
   organization_identity_terminal_to_manifest_journal_verifier_status: IMPLEMENTED_FAIL_CLOSED
   pr12_action_003_duplicate_organization_get_status: REMOVED_ACTION_002_EVIDENCE_IS_SOLE_SOURCE
-  pr12_action_003_scheduled_plus_73h_binding_and_verifier_linkage: IMPLEMENTED_EXACT
+  pr12_action_003_authority_accepted_at_plus_73h_binding_and_verifier_linkage: IMPLEMENTED_EXACT
   pr12_action_003_authorized: false
   source_project_creation_authorized: false
   authenticated_supabase_contact_authorized: false
@@ -1211,9 +1211,9 @@ approval_checklist:
   machine_readable_execution_binding: NOT_CAPTURED
   source_project_provisioning_binding: NOT_CAPTURED
   source_project_provisioning_credential_configuration: NOT_CAPTURED
-  source_project_provisioning_owner_approval: NOT_CAPTURED
-  source_project_provisioning_initial_approval_receipt: NOT_CAPTURED
-  source_project_provisioning_final_approval_receipt: NOT_CAPTURED
+  source_project_provisioning_authorization_projection: NOT_CAPTURED
+  source_project_provisioning_single_action_approval_receipt: NOT_CAPTURED
+  source_project_provisioning_derived_execution_binding: NOT_CAPTURED
   source_project_official_pricing_evidence: NOT_CAPTURED
   source_project_official_pricing_source_artifacts: NOT_CAPTURED
   source_project_dpapi_envelopes: NOT_CAPTURED
@@ -1231,8 +1231,8 @@ approval_checklist:
   integrations_and_billing_sandbox: PROPOSED_UPSTASH_UNASSIGNED
   exact_commands_and_side_effects: SELECTED_READINESS_IMPLEMENTED_OFFLINE_ALL_REMOTE_EXECUTION_NOT_RUN
   credential_channel: WINDOWS_DPAPI_CURRENT_USER_V1_ACTION_002_TOKEN_BOOTSTRAPPED_ACTION_003_TWO_ROLE_CONFIGURATION_AND_DATABASE_PASSWORD_ENVELOPE_NOT_CAPTURED
-  time_cost_and_owners: PHASE1_CEILING_AND_FUNDING_SOURCE_AMOUNT_POLICY_CAPTURED_DISPLAY_NAME_CAPTURED_CANONICAL_ID_SCHEDULED_EXECUTION_FUNDED_THROUGH_AND_EXPIRY_NOT_CAPTURED
-  pr12_action_003_scheduled_plus_73h_binding_and_verifier_linkage: IMPLEMENTED_TIMESTAMPS_NOT_CAPTURED_ACTION_003_NOT_APPROVABLE
+  time_cost_and_owners: PHASE1_CEILING_AND_FUNDING_SOURCE_AMOUNT_POLICY_CAPTURED_DISPLAY_NAME_CAPTURED_CANONICAL_ID_AUTHORITY_ACCEPTANCE_FUNDED_THROUGH_AND_EXPIRY_NOT_CAPTURED
+  pr12_action_003_authority_accepted_at_plus_73h_binding_and_verifier_linkage: IMPLEMENTED_TIMESTAMPS_NOT_CAPTURED_ACTION_003_NOT_APPROVABLE
   funded_retention_and_cleanup_decision: UNASSIGNED
   stricter_product_rto_rpo_authority_decision: UNASSIGNED
   maximum_allowed_clock_skew_seconds: UNASSIGNED
@@ -1275,5 +1275,5 @@ residual_risk:
   - Safe authority lookup query-error induction, dedicated hosted Auth actor provisioning, stale-authority/token-expiry/skew evidence, and relational selector/query/timestamp collectors are not implemented; COMM-AUTH-002 and related COMM-TENANT gates cannot PASS.
   - The immutable 54-gate COMM claim map is defined, but its typed collector registry is incomplete; execution PASS is intentionally impossible.
   - Maximum acceptable clock skew across provider, database, and operator clocks is UNASSIGNED; RTO/RPO PASS is blocked.
-  - FUTOSHI IWASAWA is the captured Phase 1 sole-operator display name and owner:futoshi-iwasawa is the recorded canonical principal. PR12-ACTION-002 completed PASS with one GET, zero retry, zero production contact, and the shared Organization ID/plan captured. Action-002 sealed-evidence/terminal-journal linkage, duplicate-GET removal, and exact scheduled+73-hour enforcement are implemented. Populated Action-002 path fingerprints, Action-003 scheduled/funded-through timestamps, its two-role credential configuration/database-password envelope, final hashes/risk acceptance/expiry, fresh official-pricing source captures, cleanup deadlines, exact API/GraphQL matrices, runtime psql version-command/path observation, application URL, and stricter RTO/RPO authority decision remain blockers.
+  - FUTOSHI IWASAWA is the captured Phase 1 sole-operator display name and owner:futoshi-iwasawa is the recorded canonical principal. PR12-ACTION-002 completed PASS with one GET, zero retry, zero production contact, and the shared Organization ID/plan captured. Action-002 sealed-evidence/terminal-journal linkage, duplicate-GET removal, and exact authority-acceptedAt+73-hour enforcement are implemented. Populated Action-002 path fingerprints, Action-003 authority-relative funded-through timestamps, its two-role credential configuration/database-password envelope, final hashes/risk acceptance/expiry, fresh official-pricing source captures, cleanup deadlines, exact API/GraphQL matrices, runtime psql version-command/path observation, application URL, and stricter RTO/RPO authority decision remain blockers.
 notes: PR12-ACTION-002 separately completed PASS without production contact. No isolated staging project was contacted or created by this Action-003 enablement work. This packet remains NOT_RUN for staging and all Action-003, provisioning, restore, Ready, merge, production, and release authorizations remain false.

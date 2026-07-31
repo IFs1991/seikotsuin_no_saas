@@ -22,15 +22,16 @@ const requiredArtifacts = [
   'docs/stabilization/evidence/commercial-hardening/pr12/qualification-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-binding.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v5.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v6.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration-v2.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v4.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-final-approval-receipt-v1.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-official-pricing-evidence-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-authorization-projection-v1.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-single-action-approval-receipt-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-derived-execution-binding-v1.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-official-pricing-evidence-v3.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-dpapi-bootstrap-approval-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-windows-dpapi-envelope-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-action-journal.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v5.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v6.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v4.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-privacy-scan.template.json',
@@ -729,8 +730,10 @@ describe('commercial PR-12 qualification preparation contract', () => {
     for (const action003CandidateAuthorityField of [
       'candidate_binding_path: NOT_CAPTURED',
       'candidate_binding_sha256: NOT_CAPTURED',
-      'final_approval_receipt_path: NOT_CAPTURED',
-      'final_approval_receipt_sha256: NOT_CAPTURED',
+      'single_action_approval_receipt_path: NOT_CAPTURED',
+      'single_action_approval_receipt_sha256: NOT_CAPTURED',
+      'derived_execution_binding_path: NOT_CAPTURED',
+      'derived_execution_binding_sha256: NOT_CAPTURED',
     ]) {
       expect(packet).toContain(action003CandidateAuthorityField);
     }
@@ -1158,7 +1161,7 @@ describe('commercial PR-12 qualification preparation contract', () => {
         'scripts/commercial-hardening/run-pr12-source-organization-identity-capture.mjs',
       organizationIdentityCaptureRequiredBeforeSourceProvisioning: true,
       organizationIdentityCaptureEvidenceLinkageStatus:
-        'IMPLEMENTED_ACTION_003_V5_REQUIRED',
+        'IMPLEMENTED_ACTION_003_V6_REQUIRED',
     });
     const ledgerProvisioningActions = requireRecord(
       ledger.provisioningActions,
@@ -1455,13 +1458,13 @@ describe('commercial PR-12 qualification preparation contract', () => {
     });
 
     const provisioning = readJsonRecord(
-      `${evidencePrefix}source-project-provisioning-binding-v5.template.json`
+      `${evidencePrefix}source-project-provisioning-binding-v6.template.json`
     );
-    const provisioningOwnerApproval = readJsonRecord(
-      `${evidencePrefix}source-project-provisioning-owner-approval-v4.template.json`
+    const provisioningAuthorizationProjection = readJsonRecord(
+      `${evidencePrefix}source-project-provisioning-authorization-projection-v1.template.json`
     );
     const provisioningResult = readJsonRecord(
-      `${evidencePrefix}source-project-provisioning-result-v5.template.json`
+      `${evidencePrefix}source-project-provisioning-result-v6.template.json`
     );
     const provisioningProviderProjection = readJsonRecord(
       `${evidencePrefix}source-project-provider-safe-projection-v4.template.json`
@@ -1533,19 +1536,18 @@ describe('commercial PR-12 qualification preparation contract', () => {
       realCredentialBootstrapCompleted: false,
       fundingApprovedAmountUsd: 50,
       fundingSource: "FUTOSHI IWASAWAが管理するIFs1991's Org登録済み支払方法",
-      fundedThroughPolicy:
-        'PR12-ACTION-003 scheduled execution time plus 73 hours',
+      fundedThroughPolicy: 'PR12-ACTION-003 authority acceptedAt plus 73 hours',
       scheduledExecutionAt: 'NOT_CAPTURED',
       fundedThrough: 'NOT_CAPTURED',
       organizationIdentityCaptureActionId: 'PR12-ACTION-002',
       organizationIdentityEvidenceLinkageStatus:
-        'IMPLEMENTED_ACTION_003_V5_REQUIRED',
+        'IMPLEMENTED_ACTION_003_V6_REQUIRED',
       organizationIdentityDuplicateGetStatus:
         'REMOVED_ACTION_002_EVIDENCE_IS_SOLE_SOURCE',
       fundedThroughPolicyBindingStatus:
-        'IMPLEMENTED_EXACT_SCHEDULED_PLUS_73_HOURS',
+        'IMPLEMENTED_EXACT_AUTHORITY_ACCEPTED_AT_PLUS_73_HOURS',
       fundedThroughPolicyVerifierStatus:
-        'IMPLEMENTED_EXACT_SCHEDULED_PLUS_73_HOURS',
+        'IMPLEMENTED_EXACT_AUTHORITY_ACCEPTED_AT_PLUS_73_HOURS',
       sameOrganizationException: {
         mode: 'PHASE1_SAME_ORGANIZATION_PRODUCTION_PROJECT_DENY_EXCEPTION_V1',
         productionProjectRef: 'qnanuoqveidwvacvbhqp',
@@ -1562,23 +1564,23 @@ describe('commercial PR-12 qualification preparation contract', () => {
       ledgerSourceProjectAction.wrapper,
       ledgerSourceProjectAction.reconciliationOnlyWrapper,
     ]) {
-      expect(wrapper).toContain('--binding <candidate-binding-v5.json>');
+      expect(wrapper).toContain('--binding <candidate-binding-v6.json>');
       expect(wrapper).toContain(
         '--credential-config <candidate-dpapi-credential-config-v2.json>'
       );
       expect(wrapper).toContain(
-        '--approval-evidence <owner-approval-candidate-v4.json>'
+        '--approval-evidence <authorization-projection-candidate-v1.json>'
       );
       expect(wrapper).toContain(
-        '--initial-approval-receipt <initial-approval-receipt-v1.json>'
+        '--single-action-approval-receipt <single-action-approval-receipt-v2.json>'
       );
       expect(wrapper).toContain(
-        '--final-approval-receipt <final-approval-receipt-v1.json>'
+        '--derived-execution-binding <derived-execution-binding-v1.json>'
       );
       expect(wrapper).toContain(
         '--owner-private-approval-root <owner-private-approval-root>'
       );
-      expect(wrapper).not.toContain('<approved-binding-v5.json>');
+      expect(wrapper).not.toContain('<approved-binding-v6.json>');
     }
     expect(ledgerOrganizationIdentityAction).toMatchObject({
       actionId: 'PR12-ACTION-002',
@@ -1618,7 +1620,7 @@ describe('commercial PR-12 qualification preparation contract', () => {
       requestAttemptCount: 1,
       automaticRetryCount: 0,
       action003IdentityEvidenceLinkageStatus:
-        'IMPLEMENTED_ACTION_003_V5_REQUIRED',
+        'IMPLEMENTED_ACTION_003_V6_REQUIRED',
       terminalJournalToManifestVerifierStatus: 'IMPLEMENTED_FAIL_CLOSED',
     });
     expect(provisioningAction).toMatchObject({
@@ -1662,10 +1664,10 @@ describe('commercial PR-12 qualification preparation contract', () => {
       `    endpoint: ${String(provisioningAction.endpoint)}`
     );
     expect(approvalPacket).toContain(
-      '    template: source-project-provisioning-binding-v5.template.json'
+      '    template: source-project-provisioning-binding-v6.template.json'
     );
     expect(approvalPacket).toContain(
-      '    official_pricing_evidence_template: source-project-official-pricing-evidence-v2.template.json'
+      '    official_pricing_evidence_template: source-project-official-pricing-evidence-v3.template.json'
     );
     expect(approvalPacket).toContain(
       '  sole_operator_self_approval_exception_design_authorized: true'
@@ -1782,7 +1784,7 @@ describe('commercial PR-12 qualification preparation contract', () => {
       sha256: 'NOT_CAPTURED',
     });
     expect(provisioning.status).toBe('NOT_RUN');
-    expect(provisioning.schemaVersion).toBe(5);
+    expect(provisioning.schemaVersion).toBe(6);
     expect(provisioning.operatorControl).toMatchObject({
       mode: 'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1',
       principalDisplayName: 'FUTOSHI IWASAWA',
@@ -1888,10 +1890,11 @@ describe('commercial PR-12 qualification preparation contract', () => {
       productionDirectContactProhibitionAcknowledged: false,
       unknownChargesAcknowledged: false,
     });
-    expect(provisioningOwnerApproval).toMatchObject({
-      schemaVersion: 4,
-      decision: 'NOT_CAPTURED',
-      approverPrincipalId: 'owner:futoshi-iwasawa',
+    expect(provisioningAuthorizationProjection).toMatchObject({
+      schemaVersion: 1,
+      projectionStatus: 'NOT_DERIVED',
+      derivationStatus: 'NOT_DERIVED',
+      authorityReceiptSha256: 'NOT_CAPTURED',
       operatorPrincipalId: 'owner:futoshi-iwasawa',
       sameUserDpapiCredentialExposureRiskAccepted: false,
       unknownChargesAcknowledged: false,
@@ -1905,7 +1908,7 @@ describe('commercial PR-12 qualification preparation contract', () => {
       phase2AndLaterAuthorized: false,
     });
     expect(provisioningResult).toMatchObject({
-      schemaVersion: 5,
+      schemaVersion: 6,
       status: 'NOT_RUN',
       organizationIdentityEvidence: {
         actionId: 'PR12-ACTION-002',

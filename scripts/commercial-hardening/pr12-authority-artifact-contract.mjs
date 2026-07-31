@@ -42,11 +42,13 @@ const EXPECTED_ACCEPTANCE = [
 ];
 
 const CURRENT_ACTION_003_TUPLE = [
-  'source-project-provisioning-binding-v5.template.json',
+  'source-project-provisioning-binding-v6.template.json',
   'source-project-provisioning-credential-configuration-v2.template.json',
-  'source-project-provisioning-owner-approval-v4.template.json',
-  'source-project-official-pricing-evidence-v2.template.json',
-  'source-project-provisioning-result-v5.template.json',
+  'source-project-provisioning-authorization-projection-v1.template.json',
+  'source-project-provisioning-single-action-approval-receipt-v2.template.json',
+  'source-project-provisioning-derived-execution-binding-v1.template.json',
+  'source-project-official-pricing-evidence-v3.template.json',
+  'source-project-provisioning-result-v6.template.json',
   'source-project-provider-safe-projection-v4.template.json',
 ];
 
@@ -54,12 +56,18 @@ const SUPERSEDED_ACTION_003_TEMPLATES = [
   'source-project-provisioning-binding-v2.template.json',
   'source-project-provisioning-binding-v3.template.json',
   'source-project-provisioning-binding-v4.template.json',
+  'source-project-provisioning-binding-v5.template.json',
   'source-project-provisioning-result-v2.template.json',
   'source-project-provisioning-result-v3.template.json',
   'source-project-provisioning-result-v4.template.json',
+  'source-project-provisioning-result-v5.template.json',
   'source-project-provisioning-owner-approval.template.json',
   'source-project-provisioning-owner-approval-v2.template.json',
   'source-project-provisioning-owner-approval-v3.template.json',
+  'source-project-provisioning-owner-approval-v4.template.json',
+  'source-project-official-pricing-evidence-v2.template.json',
+  'source-project-provisioning-initial-approval-receipt-v1.template.json',
+  'source-project-provisioning-final-approval-receipt-v1.template.json',
   'source-project-provider-safe-projection-v2.template.json',
   'source-project-provider-safe-projection-v3.template.json',
   'source-project-provisioning-credential-configuration.template.json',

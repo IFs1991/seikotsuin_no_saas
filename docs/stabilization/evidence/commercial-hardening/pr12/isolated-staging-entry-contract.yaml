@@ -105,7 +105,7 @@ integration_and_credential_contract:
     dotenv_or_ambient_credential_fallback_allowed: false
 command_ledger:
   path: staging-command-ledger.proposed.json
-  sha256: 81a17643bcb071d444eecaf1c9bc9335b6350ce755680c2f2360e6fa25ebf913
+  sha256: 10f1d6dd38308b764d9036c909a5dcb2de4858420ba37c26c6bfce6c6eab21c7
   status: PROPOSED_NOT_EXECUTABLE
 local_readiness:
   status: IMPLEMENTED_OFFLINE_VERIFIED
@@ -322,7 +322,7 @@ approval:
   approval_packet_sha256: NOT_CAPTURED
   machine_readable_binding_path: NOT_CAPTURED
   machine_readable_binding_sha256: NOT_CAPTURED
-  source_project_provisioning_binding_template: source-project-provisioning-binding-v5.template.json
+  source_project_provisioning_binding_template: source-project-provisioning-binding-v6.template.json
   source_project_provisioning_binding_path: NOT_CAPTURED
   source_project_provisioning_binding_sha256: NOT_CAPTURED
   source_identity_bootstrap_binding_template: source-identity-bootstrap-binding.template.json

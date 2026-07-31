@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "recordType": "PR12_SOURCE_PROJECT_OFFICIAL_PRICING_EVIDENCE",
   "status": "NOT_CAPTURED",
   "provider": "SUPABASE",
@@ -56,11 +56,11 @@
   },
   "freshness": {
     "policy": "LOCAL_24_HOUR_REVALIDATION_NOT_PROVIDER_QUOTE_VALIDITY",
-    "maximumAgeAtApprovalSeconds": 3600,
+    "maximumAgeAtApprovalSeconds": 86400,
     "lifetimeSeconds": 86400,
     "freshThrough": "NOT_CAPTURED"
   },
   "capturedBy": "UNASSIGNED",
   "rawOfficialSourceArtifactsPersistedInRepository": false,
-  "notes": "Template only. This is public official list-price evidence, not an organization-specific Dashboard quote and not a provider-enforced spend cap. Fresh source bytes must be retained outside the repository and hash-bound shortly before final action approval."
+  "notes": "Template only. This is public official list-price evidence, not an organization-specific Dashboard quote and not a provider-enforced spend cap. Source bytes are retained outside the repository, hash-bound, and reusable for the exact 24-hour local lifetime when unchanged."
 }

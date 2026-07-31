@@ -40,12 +40,12 @@ const CANONICAL_MANAGEMENT_HANDLE =
   'windows-dpapi-cu://pr12-source-project/management-access-token/v1';
 const CANONICAL_DATABASE_PASSWORD_HANDLE =
   'windows-dpapi-cu://pr12-source-project/database-password/v1';
-const BINDING_FILENAME = 'source-project-provisioning-binding-v5.json';
+const BINDING_FILENAME = 'source-project-provisioning-binding-v6.json';
 const CREDENTIAL_FILENAME =
   'source-project-provisioning-credential-configuration-v2.json';
-const OWNER_APPROVAL_FILENAME =
-  'source-project-provisioning-owner-approval-v4.json';
-const PRICING_FILENAME = 'source-project-official-pricing-evidence-v2.json';
+const AUTHORIZATION_PROJECTION_FILENAME =
+  'source-project-provisioning-authorization-projection-v1.json';
+const PRICING_FILENAME = 'source-project-official-pricing-evidence-v3.json';
 const REPOSITORY_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -333,7 +333,7 @@ function requirePricingEvidence(pricingInput, artifactSha256) {
     'PRICING_EVIDENCE_INVALID'
   );
   requireCondition(
-    pricing.schemaVersion === 2 &&
+    pricing.schemaVersion === 3 &&
       pricing.recordType === 'PR12_SOURCE_PROJECT_OFFICIAL_PRICING_EVIDENCE' &&
       pricing.status === 'CAPTURED' &&
       canonicalFileSha256(pricing) ===
@@ -366,16 +366,16 @@ function requireRiskAcceptances(value) {
   return risks;
 }
 
-function buildOwnerApproval(
-  ownerTemplateInput,
+function buildAuthorizationProjection(
+  projectionTemplateInput,
   binding,
   hashes,
   approvalRecord,
   notes
 ) {
-  const ownerApproval = requireRecord(
-    cloneJson(ownerTemplateInput),
-    'OWNER_APPROVAL_TEMPLATE_INVALID'
+  const projection = requireRecord(
+    cloneJson(projectionTemplateInput),
+    'AUTHORIZATION_PROJECTION_TEMPLATE_INVALID'
   );
   const organizationIdentity = binding.organizationIdentityEvidence;
   const environment = binding.environmentProposal;
@@ -384,11 +384,11 @@ function buildOwnerApproval(
   const cleanup = binding.retentionAndCleanupDecision;
   const risks = approvalRecord.riskAcceptances;
 
-  Object.assign(ownerApproval, {
-    decision: 'PENDING_FINAL_APPROVAL',
-    attestationStatus: 'AWAITING_FINAL_RECEIPT',
-    approverPrincipalId: PRINCIPAL_ID,
-    approverDisplayName: PRINCIPAL_DISPLAY_NAME,
+  Object.assign(projection, {
+    projectionStatus: 'DERIVED',
+    derivationStatus: 'VERIFIED_LOCAL_DERIVATION',
+    derivationMethod: 'SYSTEM_DERIVED_FROM_SINGLE_ACTION_APPROVAL',
+    authorityReceiptSha256: approvalRecord.initialApprovalReceiptSha256,
     operatorPrincipalId: PRINCIPAL_ID,
     operatorDisplayName: PRINCIPAL_DISPLAY_NAME,
     operatorControlMode: binding.operatorControl.mode,
@@ -423,16 +423,14 @@ function buildOwnerApproval(
     authorizedDurationHours: binding.lifecycle.sourceMaximumHoursFromCreation,
     scheduledExecutionAt: binding.provisioningAction.scheduledExecutionAt,
     fundedThrough: cleanup.fundedThrough,
-    approvedAt: approval.approvedAt,
-    operatorReconfirmedAt: 'NOT_CAPTURED',
+    authorityAcceptedAt: approval.authorityAcceptedAt,
     expiresAt: approval.expiresAt,
-    initialApprovalReceiptSha256: approval.initialApprovalReceiptSha256,
     phase2AndLaterAuthorized: false,
     cleanupDeletionAuthorized: false,
     notes,
   });
-  assertSecretFreeEvidence(ownerApproval, []);
-  return ownerApproval;
+  assertSecretFreeEvidence(projection, []);
+  return projection;
 }
 
 export function buildAction003ApprovalArtifacts(inputValue) {
@@ -440,7 +438,7 @@ export function buildAction003ApprovalArtifacts(inputValue) {
     inputValue,
     [
       'bindingTemplate',
-      'ownerApprovalTemplate',
+      'authorizationProjectionTemplate',
       'credentialConfiguration',
       'credentialConfigurationArtifactSha256',
       'pricingEvidence',
@@ -602,8 +600,10 @@ export function buildAction003ApprovalArtifacts(inputValue) {
       'principalId',
       'principalDisplayName',
       'approvedAt',
+      'expiresAt',
       'builtAt',
       'initialApprovalReceiptSha256',
+      'authorizationScope',
       'riskAcceptances',
     ],
     'APPROVAL_RECORD_INVALID'
@@ -614,12 +614,35 @@ export function buildAction003ApprovalArtifacts(inputValue) {
     'OWNER_IDENTITY_INVALID'
   );
   const risks = requireRiskAcceptances(approvalRecord.riskAcceptances);
+  const authorizationScope = requireExactKeys(
+    approvalRecord.authorizationScope,
+    [
+      'gitCommit',
+      'organizationId',
+      'organizationSlug',
+      'projectName',
+      'region',
+      'tier',
+      'ownerAuthorizationCeilingUsdScaled',
+      'authorizedDurationHours',
+      'maximumPostAttempts',
+      'credentialConfigurationSha256',
+      'pricingEvidenceSha256',
+      'actionJournalDirectoryPathSha256',
+      'actionJournalDirectoryFingerprint',
+      'evidenceParentDirectoryPathSha256',
+      'evidenceParentDirectoryFingerprint',
+    ],
+    'INITIAL_APPROVAL_SCOPE_INVALID'
+  );
   requireCondition(
     canonicalJson({
       principalId: approvalRecord.principalId,
       principalDisplayName: approvalRecord.principalDisplayName,
       approvedAt: approvalRecord.approvedAt,
+      expiresAt: approvalRecord.expiresAt,
       initialApprovalReceiptSha256: approvalRecord.initialApprovalReceiptSha256,
+      authorizationScope,
       riskAcceptances: risks,
     }) === canonicalJson(initialApprovalReceiptValidation.approvalRecordFields),
     'INITIAL_APPROVAL_RECEIPT_INVALID'
@@ -632,8 +655,11 @@ export function buildAction003ApprovalArtifacts(inputValue) {
     approvalRecord.builtAt,
     'APPROVAL_TIMESTAMP_INVALID'
   );
-  const scheduledExecutionAt = approvedAt + 15 * 60 * 1000;
-  const expiresAt = approvedAt + 30 * 60 * 1000;
+  const scheduledExecutionAt = approvedAt;
+  const expiresAt = requireCanonicalTimestamp(
+    approvalRecord.expiresAt,
+    'APPROVAL_TIMESTAMP_INVALID'
+  );
   const fundedThrough = scheduledExecutionAt + 73 * 60 * 60 * 1000;
   const deletionApprovalRequestDeadline =
     scheduledExecutionAt + 70 * 60 * 60 * 1000;
@@ -643,9 +669,34 @@ export function buildAction003ApprovalArtifacts(inputValue) {
       'INITIAL_APPROVAL_RECEIPT_INVALID'
     ) === approvalRecord.initialApprovalReceiptSha256 &&
       builtAt >= approvedAt &&
-      builtAt <= scheduledExecutionAt &&
-      builtAt < expiresAt,
+      builtAt < expiresAt &&
+      expiresAt === approvedAt + 60 * 60 * 1000,
     'APPROVAL_TIMESTAMP_INVALID'
+  );
+  requireCondition(
+    authorizationScope.gitCommit === currentHead &&
+      authorizationScope.organizationId === 'kbnsntifrawhimhfjrug' &&
+      authorizationScope.organizationSlug === 'kbnsntifrawhimhfjrug' &&
+      authorizationScope.projectName ===
+        'seikotsuin-pr12-isolated-qualification-20260719' &&
+      authorizationScope.region === 'ap-northeast-1' &&
+      authorizationScope.tier === 'LARGE' &&
+      authorizationScope.ownerAuthorizationCeilingUsdScaled === 500000 &&
+      authorizationScope.authorizedDurationHours === 72 &&
+      authorizationScope.maximumPostAttempts === 1 &&
+      authorizationScope.credentialConfigurationSha256 ===
+        input.credentialConfigurationArtifactSha256 &&
+      authorizationScope.pricingEvidenceSha256 ===
+        input.pricingEvidenceArtifactSha256 &&
+      authorizationScope.actionJournalDirectoryPathSha256 ===
+        journalDirectoryFingerprint(actionJournalPath) &&
+      canonicalJson(authorizationScope.actionJournalDirectoryFingerprint) ===
+        canonicalJson(actionJournalDirectoryFingerprint) &&
+      authorizationScope.evidenceParentDirectoryPathSha256 ===
+        journalDirectoryFingerprint(evidenceParentPath) &&
+      canonicalJson(authorizationScope.evidenceParentDirectoryFingerprint) ===
+        canonicalJson(evidenceParentDirectoryFingerprint),
+    'INITIAL_APPROVAL_SCOPE_INVALID'
   );
 
   requireCondition(
@@ -659,16 +710,18 @@ export function buildAction003ApprovalArtifacts(inputValue) {
   );
   const notes = requireExactKeys(
     input.notes,
-    ['binding', 'ownerApproval'],
+    ['authorizationProjection', 'binding'],
     'NOTES_INVALID'
   );
   requireCondition(
     typeof notes.binding === 'string' &&
       notes.binding.trim().length > 0 &&
-      typeof notes.ownerApproval === 'string' &&
-      notes.ownerApproval.trim().length > 0 &&
-      /zeroization/iu.test(`${notes.binding} ${notes.ownerApproval}`) &&
-      /Phase 2/iu.test(`${notes.binding} ${notes.ownerApproval}`),
+      typeof notes.authorizationProjection === 'string' &&
+      notes.authorizationProjection.trim().length > 0 &&
+      /zeroization/iu.test(
+        `${notes.binding} ${notes.authorizationProjection}`
+      ) &&
+      /Phase 2/iu.test(`${notes.binding} ${notes.authorizationProjection}`),
     'NOTES_INVALID'
   );
 
@@ -676,7 +729,7 @@ export function buildAction003ApprovalArtifacts(inputValue) {
     cloneJson(input.bindingTemplate),
     'BINDING_TEMPLATE_INVALID'
   );
-  binding.status = 'PENDING_FINAL_APPROVAL';
+  binding.status = 'PENDING_DERIVED_EXECUTION_BINDING';
   binding.authorization.sourceProjectProvisioningAuthorized = false;
   Object.assign(binding.provisioningAction, {
     scheduledExecutionAt: iso(scheduledExecutionAt),
@@ -733,15 +786,15 @@ export function buildAction003ApprovalArtifacts(inputValue) {
     sourceIdentity: pricingEvidenceSourceIdentity,
   });
   Object.assign(binding.approval, {
-    decision: 'PENDING_FINAL_APPROVAL',
-    attestationStatus: 'AWAITING_FINAL_RECEIPT',
-    approvedBy: PRINCIPAL_ID,
-    approvedAt: approvalRecord.approvedAt,
-    operatorReconfirmedAt: 'NOT_CAPTURED',
+    decision: 'SINGLE_ACTION_AUTHORITY_CAPTURED',
+    attestationStatus: 'AWAITING_DERIVED_EXECUTION_BINDING',
+    authorityPrincipalId: PRINCIPAL_ID,
+    authorityAcceptedAt: approvalRecord.approvedAt,
+    derivedExecutionBindingGeneratedAt: 'NOT_CAPTURED',
     expiresAt: iso(expiresAt),
-    initialApprovalReceiptSha256: approvalRecord.initialApprovalReceiptSha256,
+    authorityReceiptSha256: approvalRecord.initialApprovalReceiptSha256,
     ...risks,
-    evidencePath: OWNER_APPROVAL_FILENAME,
+    evidencePath: AUTHORIZATION_PROJECTION_FILENAME,
     evidenceSha256: '0'.repeat(64),
     approvedActionId: ACTION_ID,
   });
@@ -757,6 +810,8 @@ export function buildAction003ApprovalArtifacts(inputValue) {
   Object.assign(binding.operatorControl, {
     principalDisplayName: PRINCIPAL_DISPLAY_NAME,
     principalId: PRINCIPAL_ID,
+    minimumCoolingOffSeconds: 0,
+    maximumApprovalWindowSeconds: 3600,
   });
   binding.evidenceContract.evidenceParentDirectoryPathSha256 =
     journalDirectoryFingerprint(evidenceParentPath);
@@ -771,12 +826,12 @@ export function buildAction003ApprovalArtifacts(inputValue) {
   const payloadSha256 = sha256Canonical(projection);
   binding.approvedRequest.projection = projection;
   binding.approvedRequest.sha256 = payloadSha256;
-  binding.approval.approvedPayloadSha256 = payloadSha256;
+  binding.approval.derivedPayloadSha256 = payloadSha256;
 
   const bindingMaterialSha256 = sha256Canonical(buildBindingMaterial(binding));
-  binding.approval.approvedBindingMaterialSha256 = bindingMaterialSha256;
-  const ownerApproval = buildOwnerApproval(
-    input.ownerApprovalTemplate,
+  binding.approval.derivedBindingMaterialSha256 = bindingMaterialSha256;
+  const authorizationProjection = buildAuthorizationProjection(
+    input.authorizationProjectionTemplate,
     binding,
     {
       bindingMaterialSha256,
@@ -786,10 +841,12 @@ export function buildAction003ApprovalArtifacts(inputValue) {
       pricingEvidenceSha256: input.pricingEvidenceArtifactSha256,
     },
     { ...approvalRecord, riskAcceptances: risks },
-    notes.ownerApproval
+    notes.authorizationProjection
   );
-  const ownerApprovalSha256 = canonicalFileSha256(ownerApproval);
-  binding.approval.evidenceSha256 = ownerApprovalSha256;
+  const authorizationProjectionSha256 = canonicalFileSha256(
+    authorizationProjection
+  );
+  binding.approval.evidenceSha256 = authorizationProjectionSha256;
 
   const context = {
     currentHead,
@@ -806,9 +863,9 @@ export function buildAction003ApprovalArtifacts(inputValue) {
     organizationIdentityVerifierSha256:
       repository.organizationIdentityVerifierSha256,
     credentialConfigurationSha256: input.credentialConfigurationArtifactSha256,
-    approvalEvidenceSha256: ownerApprovalSha256,
+    approvalEvidenceSha256: authorizationProjectionSha256,
     pricingEvidenceSha256: input.pricingEvidenceArtifactSha256,
-    approvalEvidence: ownerApproval,
+    approvalEvidence: authorizationProjection,
     initialApprovalReceipt: initialApprovalReceiptValidation.receipt,
     initialApprovalReceiptSha256:
       initialApprovalReceiptValidation.receiptSha256,
@@ -847,15 +904,15 @@ export function buildAction003ApprovalArtifacts(inputValue) {
     payloadSha256,
     credentialConfigurationSha256: input.credentialConfigurationArtifactSha256,
     pricingEvidenceSha256: input.pricingEvidenceArtifactSha256,
-    ownerApprovalSha256,
+    authorizationProjectionSha256,
     bindingSha256: canonicalFileSha256(binding),
     scheduledExecutionAt: binding.provisioningAction.scheduledExecutionAt,
     fundedThrough: binding.retentionAndCleanupDecision.fundedThrough,
     deletionApprovalRequestDeadline:
       binding.retentionAndCleanupDecision.deletionApprovalRequestDeadline,
     expiresAt: binding.approval.expiresAt,
-    initialApprovalReceiptSha256: binding.approval.initialApprovalReceiptSha256,
-    finalApprovalRequired: true,
+    authorityReceiptSha256: binding.approval.authorityReceiptSha256,
+    derivedExecutionBindingRequired: true,
     sourceProjectProvisioningAuthorized: false,
     phase2AndLaterAuthorized: false,
     cleanupDeletionAuthorized: false,
@@ -867,7 +924,7 @@ export function buildAction003ApprovalArtifacts(inputValue) {
   return {
     binding,
     credentialConfiguration,
-    ownerApproval,
+    authorizationProjection,
     summary,
   };
 }
@@ -947,9 +1004,9 @@ function requireOutputBoundary(outputDirectoryInput, ownerPrivateRootInput) {
 function captureStableDirectoryIdentity(directoryInput, code) {
   const directory = path.resolve(directoryInput);
   try {
-    const before = lstatSync(directory);
+    const before = lstatSync(directory, { bigint: true });
     const resolved = realpathSync.native(directory);
-    const after = statSync(directory);
+    const after = statSync(directory, { bigint: true });
     requireCondition(
       before.isDirectory() &&
         !before.isSymbolicLink() &&
@@ -1008,11 +1065,11 @@ function stableCanonicalArtifactSnapshot(filename, expectedValue, code) {
     requireCondition(!lstatSync(filename).isSymbolicLink(), code);
     const resolvedBefore = realpathSync.native(filename);
     descriptor = openSync(filename, 'r');
-    const before = fstatSync(descriptor);
+    const before = fstatSync(descriptor, { bigint: true });
     requireCondition(before.isFile(), code);
     const bytes = readFileSync(descriptor);
-    const after = fstatSync(descriptor);
-    const pathStatus = statSync(filename);
+    const after = fstatSync(descriptor, { bigint: true });
+    const pathStatus = statSync(filename, { bigint: true });
     const resolvedAfter = realpathSync.native(filename);
     const expectedBytes = Buffer.from(
       `${canonicalJson(expectedValue)}\n`,
@@ -1023,7 +1080,7 @@ function stableCanonicalArtifactSnapshot(filename, expectedValue, code) {
         String(before.ino) === String(after.ino) &&
         before.size === after.size &&
         before.mtimeMs === after.mtimeMs &&
-        bytes.length === after.size &&
+        BigInt(bytes.length) === after.size &&
         pathStatus.isFile() &&
         String(pathStatus.dev) === String(after.dev) &&
         String(pathStatus.ino) === String(after.ino) &&
@@ -1042,8 +1099,8 @@ function stableCanonicalArtifactSnapshot(filename, expectedValue, code) {
         resolvedPathSha256: windowsPathFingerprint(resolvedAfter),
         device: String(after.dev),
         inode: String(after.ino),
-        size: after.size,
-        modifiedAtMilliseconds: after.mtimeMs,
+        size: Number(after.size),
+        modifiedAtMilliseconds: Number(after.mtimeMs),
         contentSha256,
       },
     };
@@ -1126,7 +1183,12 @@ export function verifyAction003ApprovalOutput(
   const outputDirectory = path.resolve(outputDirectoryInput);
   const artifacts = requireExactKeys(
     artifactsInput,
-    ['binding', 'credentialConfiguration', 'ownerApproval', 'summary'],
+    [
+      'authorizationProjection',
+      'binding',
+      'credentialConfiguration',
+      'summary',
+    ],
     'OUTPUT_ARTIFACTS_INVALID'
   );
   requireSameOutputBoundary(
@@ -1137,7 +1199,7 @@ export function verifyAction003ApprovalOutput(
   );
   requireExactOutputEntries(
     outputDirectory,
-    [BINDING_FILENAME, CREDENTIAL_FILENAME, OWNER_APPROVAL_FILENAME],
+    [BINDING_FILENAME, CREDENTIAL_FILENAME, AUTHORIZATION_PROJECTION_FILENAME],
     'OUTPUT_FILE_SET_INVALID'
   );
   const bindingSnapshot = stableCanonicalArtifactSnapshot(
@@ -1150,9 +1212,9 @@ export function verifyAction003ApprovalOutput(
     artifacts.credentialConfiguration,
     'OUTPUT_CREDENTIAL_READBACK_INVALID'
   );
-  const ownerApprovalSnapshot = stableCanonicalArtifactSnapshot(
-    path.join(outputDirectory, OWNER_APPROVAL_FILENAME),
-    artifacts.ownerApproval,
+  const authorizationProjectionSnapshot = stableCanonicalArtifactSnapshot(
+    path.join(outputDirectory, AUTHORIZATION_PROJECTION_FILENAME),
+    artifacts.authorizationProjection,
     'OUTPUT_OWNER_APPROVAL_READBACK_INVALID'
   );
   requireSameOutputBoundary(
@@ -1172,7 +1234,8 @@ export function verifyAction003ApprovalOutput(
     bindingSnapshot.sha256 === artifacts.summary.bindingSha256 &&
       credentialSnapshot.sha256 ===
         artifacts.summary.credentialConfigurationSha256 &&
-      ownerApprovalSnapshot.sha256 === artifacts.summary.ownerApprovalSha256,
+      authorizationProjectionSnapshot.sha256 ===
+        artifacts.summary.authorizationProjectionSha256,
     'OUTPUT_SUMMARY_HASH_MISMATCH'
   );
   return {
@@ -1181,7 +1244,7 @@ export function verifyAction003ApprovalOutput(
     outputDirectoryPathSha256: journalDirectoryFingerprint(outputDirectory),
     bindingSha256: bindingSnapshot.sha256,
     credentialConfigurationSha256: credentialSnapshot.sha256,
-    ownerApprovalSha256: ownerApprovalSnapshot.sha256,
+    authorizationProjectionSha256: authorizationProjectionSnapshot.sha256,
     remoteContactPerformed: false,
     credentialReadPerformed: false,
   };
@@ -1272,7 +1335,12 @@ export function completeAction003ApprovalOutputCreateNew(
   const outputDirectory = path.resolve(outputDirectoryInput);
   const artifacts = requireExactKeys(
     artifactsInput,
-    ['binding', 'credentialConfiguration', 'ownerApproval', 'summary'],
+    [
+      'authorizationProjection',
+      'binding',
+      'credentialConfiguration',
+      'summary',
+    ],
     'OUTPUT_ARTIFACTS_INVALID'
   );
   requireSameOutputBoundary(
@@ -1308,8 +1376,8 @@ export function completeAction003ApprovalOutputCreateNew(
     expectedOwnerPrivateRootIdentity
   );
   writeCanonicalJsonCreateNew(
-    path.join(outputDirectory, OWNER_APPROVAL_FILENAME),
-    artifacts.ownerApproval
+    path.join(outputDirectory, AUTHORIZATION_PROJECTION_FILENAME),
+    artifacts.authorizationProjection
   );
   requireSameOutputBoundary(
     outputDirectory,

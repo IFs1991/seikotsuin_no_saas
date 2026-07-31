@@ -11,7 +11,7 @@ type JsonValue = JsonObject | JsonValue[] | boolean | number | string | null;
 interface ApprovalArtifacts {
   binding: JsonObject;
   credentialConfiguration: JsonObject;
-  ownerApproval: JsonObject;
+  authorizationProjection: JsonObject;
   summary: JsonObject;
 }
 
@@ -39,11 +39,11 @@ const builderPath = path.join(
 );
 const bindingTemplatePath = path.join(
   repoRoot,
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v5.template.json'
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v6.template.json'
 );
-const ownerApprovalTemplatePath = path.join(
+const authorizationProjectionTemplatePath = path.join(
   repoRoot,
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v4.template.json'
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-authorization-projection-v1.template.json'
 );
 
 let builder: BuilderModule;
@@ -260,7 +260,7 @@ function makeCredentialConfiguration(): JsonObject {
 
 function makePricingEvidence(): JsonObject {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     recordType: 'PR12_SOURCE_PROJECT_OFFICIAL_PRICING_EVIDENCE',
     status: 'CAPTURED',
     provider: 'SUPABASE',
@@ -317,7 +317,7 @@ function makePricingEvidence(): JsonObject {
     },
     freshness: {
       policy: 'LOCAL_24_HOUR_REVALIDATION_NOT_PROVIDER_QUOTE_VALIDITY',
-      maximumAgeAtApprovalSeconds: 3600,
+      maximumAgeAtApprovalSeconds: 86400,
       lifetimeSeconds: 86400,
       freshThrough: '2026-07-27T23:30:00.000Z',
     },
@@ -329,7 +329,9 @@ function makePricingEvidence(): JsonObject {
 
 function makeInput(): JsonObject {
   const bindingTemplate = readJsonObject(bindingTemplatePath);
-  const ownerApprovalTemplate = readJsonObject(ownerApprovalTemplatePath);
+  const authorizationProjectionTemplate = readJsonObject(
+    authorizationProjectionTemplatePath
+  );
   const organizationIdentityEvidence = clone(
     jsonObject(
       bindingTemplate.organizationIdentityEvidence,
@@ -352,17 +354,56 @@ function makeInput(): JsonObject {
   };
   const credentialConfiguration = makeCredentialConfiguration();
   const pricingEvidence = makePricingEvidence();
+  const actionJournalDirectoryPath = 'C:\\Owner\\PR12\\action003-journal';
+  const evidenceParentDirectoryPath = 'C:\\Owner\\PR12\\action003-evidence';
+  const credentialConfigurationArtifactSha256 = canonicalFileSha256(
+    credentialConfiguration
+  );
+  const pricingEvidenceArtifactSha256 = canonicalFileSha256(pricingEvidence);
+  const actionJournalDirectoryFingerprint = makeDirectoryFingerprint(
+    actionJournalDirectoryPath,
+    '4'
+  );
+  const evidenceParentDirectoryFingerprint = makeDirectoryFingerprint(
+    evidenceParentDirectoryPath,
+    '5'
+  );
   const initialApprovalReceipt = {
-    schemaVersion: 1,
-    recordType: 'PR12_SOURCE_PROJECT_PROVISIONING_INITIAL_APPROVAL_RECEIPT',
+    schemaVersion: 2,
+    recordType:
+      'PR12_SOURCE_PROJECT_PROVISIONING_SINGLE_ACTION_APPROVAL_RECEIPT',
     decision: 'APPROVED',
     attestationStatus: 'VERIFIED',
-    attestationMethod: 'SOLE_OPERATOR_EXPLICIT_INITIAL_APPROVAL',
+    attestationMethod: 'SOLE_OPERATOR_EXPLICIT_SINGLE_ACTION_APPROVAL',
     actionId: 'PR12-ACTION-003',
     approvedByPrincipalId: 'owner:futoshi-iwasawa',
     approvedByDisplayName: 'FUTOSHI IWASAWA',
     acceptedAt: '2026-07-27T00:00:00.000Z',
-    approvalPurpose: 'ACTION003_PACKET_PREPARATION_ONLY',
+    expiresAt: '2026-07-27T01:00:00.000Z',
+    approvalTtlSeconds: 3600,
+    approvalPurpose:
+      'ACTION003_PACKET_PREPARATION_AND_SOURCE_PROJECT_PROVISIONING',
+    gitCommit: 'b'.repeat(40),
+    organizationId: 'kbnsntifrawhimhfjrug',
+    organizationSlug: 'kbnsntifrawhimhfjrug',
+    projectName: 'seikotsuin-pr12-isolated-qualification-20260719',
+    region: 'ap-northeast-1',
+    tier: 'LARGE',
+    ownerAuthorizationCeilingUsdScaled: 500000,
+    authorizedDurationHours: 72,
+    maximumPostAttempts: 1,
+    credentialConfigurationSha256: credentialConfigurationArtifactSha256,
+    pricingEvidenceSha256: pricingEvidenceArtifactSha256,
+    actionJournalDirectoryPathSha256: pathFingerprint(
+      actionJournalDirectoryPath
+    ),
+    actionJournalDirectoryFingerprint: clone(actionJournalDirectoryFingerprint),
+    evidenceParentDirectoryPathSha256: pathFingerprint(
+      evidenceParentDirectoryPath
+    ),
+    evidenceParentDirectoryFingerprint: clone(
+      evidenceParentDirectoryFingerprint
+    ),
     soleOperatorRiskAccepted: true,
     sameUserDpapiCredentialExposureRiskAccepted: true,
     providerSpendCapLimitationAcknowledged: true,
@@ -373,7 +414,7 @@ function makeInput(): JsonObject {
     unknownChargesAcknowledged: true,
     action003PacketPreparationAuthorized: true,
     databasePasswordBootstrapAuthorized: false,
-    sourceProjectProvisioningAuthorized: false,
+    sourceProjectProvisioningAuthorized: true,
     productionContactAuthorized: false,
     phase2AndLaterAuthorized: false,
     cleanupDeletionAuthorized: false,
@@ -383,15 +424,9 @@ function makeInput(): JsonObject {
   const initialApprovalReceiptArtifactSha256 = canonicalFileSha256(
     initialApprovalReceipt
   );
-  const credentialConfigurationArtifactSha256 = canonicalFileSha256(
-    credentialConfiguration
-  );
-  const pricingEvidenceArtifactSha256 = canonicalFileSha256(pricingEvidence);
-  const actionJournalDirectoryPath = 'C:\\Owner\\PR12\\action003-journal';
-  const evidenceParentDirectoryPath = 'C:\\Owner\\PR12\\action003-evidence';
   return {
     bindingTemplate,
-    ownerApprovalTemplate,
+    authorizationProjectionTemplate,
     credentialConfiguration,
     credentialConfigurationArtifactSha256,
     pricingEvidence,
@@ -417,14 +452,12 @@ function makeInput(): JsonObject {
     },
     directoryBindings: {
       actionJournalDirectoryPath,
-      actionJournalDirectoryFingerprint: makeDirectoryFingerprint(
-        actionJournalDirectoryPath,
-        '4'
+      actionJournalDirectoryFingerprint: clone(
+        actionJournalDirectoryFingerprint
       ),
       evidenceParentDirectoryPath,
-      evidenceParentDirectoryFingerprint: makeDirectoryFingerprint(
-        evidenceParentDirectoryPath,
-        '5'
+      evidenceParentDirectoryFingerprint: clone(
+        evidenceParentDirectoryFingerprint
       ),
       providerRootResolvedPath: 'C:\\Owner\\PR12\\credentials',
       credentialConfigurationSourceIdentity: makeExternalFileIdentity(
@@ -433,7 +466,7 @@ function makeInput(): JsonObject {
         '6'
       ),
       pricingEvidenceSourceIdentity: makeExternalFileIdentity(
-        'C:\\Owner\\PR12\\pricing\\official-pricing-evidence-v2.json',
+        'C:\\Owner\\PR12\\pricing\\official-pricing-evidence-v3.json',
         pricingEvidenceArtifactSha256,
         '7'
       ),
@@ -442,7 +475,33 @@ function makeInput(): JsonObject {
       principalId: 'owner:futoshi-iwasawa',
       principalDisplayName: 'FUTOSHI IWASAWA',
       approvedAt: '2026-07-27T00:00:00.000Z',
+      expiresAt: '2026-07-27T01:00:00.000Z',
       initialApprovalReceiptSha256: initialApprovalReceiptArtifactSha256,
+      authorizationScope: {
+        gitCommit: 'b'.repeat(40),
+        organizationId: 'kbnsntifrawhimhfjrug',
+        organizationSlug: 'kbnsntifrawhimhfjrug',
+        projectName: 'seikotsuin-pr12-isolated-qualification-20260719',
+        region: 'ap-northeast-1',
+        tier: 'LARGE',
+        ownerAuthorizationCeilingUsdScaled: 500000,
+        authorizedDurationHours: 72,
+        maximumPostAttempts: 1,
+        credentialConfigurationSha256: credentialConfigurationArtifactSha256,
+        pricingEvidenceSha256: pricingEvidenceArtifactSha256,
+        actionJournalDirectoryPathSha256: pathFingerprint(
+          actionJournalDirectoryPath
+        ),
+        actionJournalDirectoryFingerprint: clone(
+          actionJournalDirectoryFingerprint
+        ),
+        evidenceParentDirectoryPathSha256: pathFingerprint(
+          evidenceParentDirectoryPath
+        ),
+        evidenceParentDirectoryFingerprint: clone(
+          evidenceParentDirectoryFingerprint
+        ),
+      },
       builtAt: '2026-07-27T00:05:01.000Z',
       riskAcceptances: {
         soleOperatorRiskAccepted: true,
@@ -460,8 +519,8 @@ function makeInput(): JsonObject {
     notes: {
       binding:
         'Owner-approved Phase 1 ACTION-003 binding; JavaScript and .NET zeroization is not guaranteed; Phase 2 remains unauthorized; no remote action performed by this builder.',
-      ownerApproval:
-        'Owner explicit two-step ACTION-003 approval accepting the residual zeroization risk; Phase 2 and cleanup remain unauthorized.',
+      authorizationProjection:
+        'System-derived ACTION-003 authorization projection; owner accepted the residual zeroization risk; Phase 2 and cleanup remain unauthorized.',
     },
   };
 }
@@ -476,6 +535,12 @@ function rebindCredentialConfigurationArtifact(input: JsonObject): void {
     'CREDENTIAL_SOURCE_IDENTITY'
   );
   identity.contentSha256 = sha256;
+  const receipt = jsonObject(
+    input.initialApprovalReceipt,
+    'INITIAL_APPROVAL_RECEIPT'
+  );
+  receipt.credentialConfigurationSha256 = sha256;
+  rebindInitialApprovalReceiptArtifact(input);
 }
 
 function rebindPricingEvidenceArtifact(input: JsonObject): void {
@@ -488,6 +553,12 @@ function rebindPricingEvidenceArtifact(input: JsonObject): void {
     'PRICING_SOURCE_IDENTITY'
   );
   identity.contentSha256 = sha256;
+  const receipt = jsonObject(
+    input.initialApprovalReceipt,
+    'INITIAL_APPROVAL_RECEIPT'
+  );
+  receipt.pricingEvidenceSha256 = sha256;
+  rebindInitialApprovalReceiptArtifact(input);
 }
 
 function rebindInitialApprovalReceiptArtifact(input: JsonObject): void {
@@ -495,7 +566,33 @@ function rebindInitialApprovalReceiptArtifact(input: JsonObject): void {
     input.initialApprovalReceipt,
     'INITIAL_APPROVAL_RECEIPT'
   );
-  input.initialApprovalReceiptArtifactSha256 = canonicalFileSha256(receipt);
+  const receiptSha256 = canonicalFileSha256(receipt);
+  input.initialApprovalReceiptArtifactSha256 = receiptSha256;
+  const approvalRecord = jsonObject(input.approvalRecord, 'APPROVAL_RECORD');
+  approvalRecord.initialApprovalReceiptSha256 = receiptSha256;
+  approvalRecord.approvedAt = receipt.acceptedAt;
+  approvalRecord.expiresAt = receipt.expiresAt;
+  approvalRecord.authorizationScope = {
+    gitCommit: receipt.gitCommit,
+    organizationId: receipt.organizationId,
+    organizationSlug: receipt.organizationSlug,
+    projectName: receipt.projectName,
+    region: receipt.region,
+    tier: receipt.tier,
+    ownerAuthorizationCeilingUsdScaled:
+      receipt.ownerAuthorizationCeilingUsdScaled,
+    authorizedDurationHours: receipt.authorizedDurationHours,
+    maximumPostAttempts: receipt.maximumPostAttempts,
+    credentialConfigurationSha256: receipt.credentialConfigurationSha256,
+    pricingEvidenceSha256: receipt.pricingEvidenceSha256,
+    actionJournalDirectoryPathSha256: receipt.actionJournalDirectoryPathSha256,
+    actionJournalDirectoryFingerprint:
+      receipt.actionJournalDirectoryFingerprint,
+    evidenceParentDirectoryPathSha256:
+      receipt.evidenceParentDirectoryPathSha256,
+    evidenceParentDirectoryFingerprint:
+      receipt.evidenceParentDirectoryFingerprint,
+  };
 }
 
 beforeAll(async () => {
@@ -540,12 +637,12 @@ describe('PR12 ACTION-003 local-only approval builder', () => {
     expect(action.requestTimeoutMilliseconds).toBe(30000);
     expect(action.readinessObservationMaximumSeconds).toBe(900);
     expect(action.readinessPollIntervalSeconds).toBe(15);
-    expect(action.scheduledExecutionAt).toBe('2026-07-27T00:15:00.000Z');
-    expect(cleanup.fundedThrough).toBe('2026-07-30T01:15:00.000Z');
+    expect(action.scheduledExecutionAt).toBe('2026-07-27T00:00:00.000Z');
+    expect(cleanup.fundedThrough).toBe('2026-07-30T01:00:00.000Z');
     expect(cleanup.deletionApprovalRequestDeadline).toBe(
-      '2026-07-29T22:15:00.000Z'
+      '2026-07-29T22:00:00.000Z'
     );
-    expect(approval.expiresAt).toBe('2026-07-27T00:30:00.000Z');
+    expect(approval.expiresAt).toBe('2026-07-27T01:00:00.000Z');
     expect(
       jsonObject(result.binding.cost, 'COST').knownAdditionalChargesUsdScaled
     ).toBe(0);
@@ -553,7 +650,9 @@ describe('PR12 ACTION-003 local-only approval builder', () => {
       jsonObject(result.binding.cost, 'COST').unknownChargesAcknowledged
     ).toBe(true);
     expect(approval.unknownChargesAcknowledged).toBe(true);
-    expect(result.ownerApproval.unknownChargesAcknowledged).toBe(true);
+    expect(result.authorizationProjection.unknownChargesAcknowledged).toBe(
+      true
+    );
     expect(duplicatePolicy.actionJournalDirectoryFingerprint).toEqual(
       jsonObject(
         jsonObject(input.directoryBindings, 'DIRECTORIES')
@@ -578,7 +677,7 @@ describe('PR12 ACTION-003 local-only approval builder', () => {
 
     const outputs = canonicalJson({
       binding: result.binding,
-      ownerApproval: result.ownerApproval,
+      authorizationProjection: result.authorizationProjection,
       summary: result.summary,
     });
     expect(outputs).not.toContain('C:/Owner');
@@ -586,21 +685,21 @@ describe('PR12 ACTION-003 local-only approval builder', () => {
     expect(outputs).not.toContain('providerRoot');
     expect(result.summary).toMatchObject({
       actionId: 'PR12-ACTION-003',
-      finalApprovalRequired: true,
+      derivedExecutionBindingRequired: true,
       sourceProjectProvisioningAuthorized: false,
       remoteContactPerformed: false,
       credentialReadPerformed: false,
     });
     expect(result.binding).toMatchObject({
-      status: 'PENDING_FINAL_APPROVAL',
+      status: 'PENDING_DERIVED_EXECUTION_BINDING',
       authorization: {
         sourceProjectProvisioningAuthorized: false,
       },
     });
-    expect(result.ownerApproval).toMatchObject({
-      decision: 'PENDING_FINAL_APPROVAL',
-      attestationStatus: 'AWAITING_FINAL_RECEIPT',
-      operatorReconfirmedAt: 'NOT_CAPTURED',
+    expect(result.authorizationProjection).toMatchObject({
+      recordType: 'PR12_SOURCE_PROJECT_PROVISIONING_AUTHORIZATION_PROJECTION',
+      projectionStatus: 'DERIVED',
+      derivationStatus: 'VERIFIED_LOCAL_DERIVATION',
     });
   });
 
@@ -838,14 +937,14 @@ describe('PR12 ACTION-003 local-only approval builder', () => {
       'PRICING_EVIDENCE_NOT_CURRENT_AT_APPROVAL',
     ],
     [
-      'pricing evidence older than one hour at scheduled execution',
+      'pricing evidence older than 24 hours at approval',
       (input: JsonObject) => {
         const pricing = jsonObject(input.pricingEvidence, 'PRICING');
         const sources = pricing.officialSources;
         if (!Array.isArray(sources)) throw new Error('SOURCES_INVALID');
         for (const sourceInput of sources) {
           const source = jsonObject(sourceInput, 'SOURCE');
-          source.retrievedAt = '2026-07-26T23:10:00.000Z';
+          source.retrievedAt = '2026-07-25T23:10:00.000Z';
         }
         const freshness = jsonObject(pricing.freshness, 'FRESHNESS');
         freshness.freshThrough = '2026-07-27T23:10:00.000Z';
@@ -857,15 +956,15 @@ describe('PR12 ACTION-003 local-only approval builder', () => {
       'expired approval build',
       (input: JsonObject) => {
         const approval = jsonObject(input.approvalRecord, 'APPROVAL_RECORD');
-        approval.builtAt = '2026-07-27T00:30:00.000Z';
+        approval.builtAt = '2026-07-27T01:00:00.000Z';
       },
       'APPROVAL_TIMESTAMP_INVALID',
     ],
     [
-      'build after the scheduled execution time',
+      'build before the approval receipt',
       (input: JsonObject) => {
         const approval = jsonObject(input.approvalRecord, 'APPROVAL_RECORD');
-        approval.builtAt = '2026-07-27T00:16:00.000Z';
+        approval.builtAt = '2026-07-26T23:59:59.999Z';
       },
       'APPROVAL_TIMESTAMP_INVALID',
     ],
@@ -926,23 +1025,23 @@ describe('PR12 ACTION-003 local-only approval builder', () => {
     );
     const bindingPath = path.join(
       output,
-      'source-project-provisioning-binding-v5.json'
+      'source-project-provisioning-binding-v6.json'
     );
     const credentialPath = path.join(
       output,
       'source-project-provisioning-credential-configuration-v2.json'
     );
-    const ownerApprovalPath = path.join(
+    const authorizationProjectionPath = path.join(
       output,
-      'source-project-provisioning-owner-approval-v4.json'
+      'source-project-provisioning-authorization-projection-v1.json'
     );
     const before = fs.readFileSync(bindingPath);
     expect(written).toMatchObject({ status: 'CREATED', fileCount: 3 });
     expect(fs.readFileSync(credentialPath, 'utf8')).toBe(
       `${canonicalJson(artifacts.credentialConfiguration)}\n`
     );
-    expect(fs.readFileSync(ownerApprovalPath, 'utf8')).toBe(
-      `${canonicalJson(artifacts.ownerApproval)}\n`
+    expect(fs.readFileSync(authorizationProjectionPath, 'utf8')).toBe(
+      `${canonicalJson(artifacts.authorizationProjection)}\n`
     );
     const verified = builder.verifyAction003ApprovalOutput(
       output,
@@ -996,7 +1095,7 @@ describe('PR12 ACTION-003 local-only approval builder', () => {
       initialized.ownerPrivateRootIdentity
     );
     fs.appendFileSync(
-      path.join(output, 'source-project-provisioning-binding-v5.json'),
+      path.join(output, 'source-project-provisioning-binding-v6.json'),
       ' ',
       'utf8'
     );

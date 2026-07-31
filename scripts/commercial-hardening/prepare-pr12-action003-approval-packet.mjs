@@ -25,6 +25,7 @@ import {
   ACTION002_SEALED_EVIDENCE,
   APPROVED_BASE_COMMIT,
   OFFICIAL_PRICING_SOURCES,
+  assertOfficialPricingSourceSemantics,
   canonicalJson,
   derivePricingExecutionFreshThrough,
   hasAsciiControlCharacter,
@@ -66,9 +67,9 @@ const MODULE_REPOSITORY_ROOT = path.resolve(
   '..'
 );
 const TRACKED_BINDING_TEMPLATE =
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v5.template.json';
-const TRACKED_OWNER_APPROVAL_TEMPLATE =
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v4.template.json';
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v6.template.json';
+const TRACKED_AUTHORIZATION_PROJECTION_TEMPLATE =
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-authorization-projection-v1.template.json';
 const OWNER_PRIVATE_ACL_HELPER_RELATIVE_PATH =
   'scripts/commercial-hardening/pr12-windows-owner-private-acl.ps1';
 const OWNER_PRIVATE_ACL_HELPER_PATH = path.join(
@@ -92,7 +93,7 @@ const HASH_BOUND_TRACKED_FILES = Object.freeze({
 });
 const TRACKED_RUNTIME_INPUTS = Object.freeze([
   TRACKED_BINDING_TEMPLATE,
-  TRACKED_OWNER_APPROVAL_TEMPLATE,
+  TRACKED_AUTHORIZATION_PROJECTION_TEMPLATE,
   ...Object.values(HASH_BOUND_TRACKED_FILES),
   'scripts/commercial-hardening/build-pr12-action003-approval-packet.mjs',
   OWNER_PRIVATE_ACL_HELPER_RELATIVE_PATH,
@@ -206,19 +207,19 @@ function stableReadSnapshot(filenameInput, maximumBytes, code) {
       code
     );
     descriptor = openSync(filename, 'r');
-    const before = fstatSync(descriptor);
+    const before = fstatSync(descriptor, { bigint: true });
     const resolved = realpathSync.native(filename);
     requireCondition(
       before.isFile() &&
-        before.size <= maximumBytes &&
+        before.size <= BigInt(maximumBytes) &&
         normalizedPath(resolved) === normalizedPath(filename),
       code
     );
     bytes = readFileSync(descriptor);
-    const after = fstatSync(descriptor);
+    const after = fstatSync(descriptor, { bigint: true });
     const finalLinkStatus = lstatSync(filename);
     const finalResolved = realpathSync.native(filename);
-    const current = statSync(filename);
+    const current = statSync(filename, { bigint: true });
     requireCondition(
       after.isFile() &&
         finalLinkStatus.isFile() &&
@@ -231,7 +232,7 @@ function stableReadSnapshot(filenameInput, maximumBytes, code) {
         before.mtimeMs === after.mtimeMs &&
         after.dev === current.dev &&
         after.ino === current.ino &&
-        bytes.length === after.size,
+        BigInt(bytes.length) === after.size,
       `${code}_CHANGED`
     );
     return {
@@ -242,8 +243,8 @@ function stableReadSnapshot(filenameInput, maximumBytes, code) {
         resolvedPathSha256: sha256Text(normalizedPath(resolved)),
         device: String(after.dev),
         inode: String(after.ino),
-        size: after.size,
-        modifiedAtMilliseconds: after.mtimeMs,
+        size: Number(after.size),
+        modifiedAtMilliseconds: Number(after.mtimeMs),
       },
     };
   } finally {
@@ -745,6 +746,10 @@ function inspectPricingSourceArtifacts(pricingEvidence, pricingEvidencePath) {
       snapshot.sha256 === source.artifactSha256,
       'PRICING_SOURCE_ARTIFACT_HASH_MISMATCH'
     );
+    assertOfficialPricingSourceSemantics({
+      sourceId: source.sourceId,
+      bytes: snapshot.bytes,
+    });
     return {
       sourceId: source.sourceId,
       relativePath: relativePath.toLowerCase(),
@@ -815,9 +820,9 @@ function inspectEmptyDirectoryFingerprint(directoryInput) {
     'EMPTY_DIRECTORY_FINGERPRINT_INVALID'
   );
   const identity = inspectDpapiDirectoryIdentity(directory);
-  const before = statSync(directory);
+  const before = statSync(directory, { bigint: true });
   const entries = readdirSync(directory);
-  const after = statSync(directory);
+  const after = statSync(directory, { bigint: true });
   requireCondition(
     before.isDirectory() &&
       after.isDirectory() &&
@@ -958,15 +963,13 @@ function assertOperationalClock(
 ) {
   const approvedAt = Date.parse(approvalRecord.approvedAt);
   requireCondition(Number.isFinite(approvedAt), 'APPROVAL_TIMESTAMP_INVALID');
-  const scheduledExecutionAt = approvedAt + 15 * 60 * 1000;
+  const expiresAt = approvedAt + 60 * 60 * 1000;
   requireCondition(
     Number.isFinite(now) &&
       now >= builtAt - 5_000 &&
       (requireRecentBuild === false || now - builtAt <= 60_000) &&
-      now <= scheduledExecutionAt,
-    now > scheduledExecutionAt
-      ? 'SCHEDULED_EXECUTION_TIME_MISSED'
-      : 'BUILT_AT_CLOCK_MISMATCH'
+      now < expiresAt,
+    now >= expiresAt ? 'APPROVAL_EXPIRED' : 'BUILT_AT_CLOCK_MISMATCH'
   );
 }
 
@@ -1178,7 +1181,7 @@ function prepareAction003ApprovalPacketWithRuntime(
         descriptor.outputDirectoryPath,
         path.join(
           descriptor.outputDirectoryPath,
-          'source-project-provisioning-binding-v5.json'
+          'source-project-provisioning-binding-v6.json'
         ),
         path.join(
           descriptor.outputDirectoryPath,
@@ -1186,7 +1189,7 @@ function prepareAction003ApprovalPacketWithRuntime(
         ),
         path.join(
           descriptor.outputDirectoryPath,
-          'source-project-provisioning-owner-approval-v4.json'
+          'source-project-provisioning-authorization-projection-v1.json'
         ),
       ]
     : [];
@@ -1283,7 +1286,7 @@ function prepareAction003ApprovalPacketWithRuntime(
         path.resolve(descriptor.outputDirectoryPath) &&
       canonicalJson(readdirSync(initialApprovalReceiptDirectory).sort()) ===
         canonicalJson([
-          'source-project-provisioning-initial-approval-receipt-v1.json',
+          'source-project-provisioning-single-action-approval-receipt-v2.json',
         ]) &&
       path.resolve(descriptor.initialApprovalReceiptPath) !==
         path.resolve(descriptorPath) &&
@@ -1296,9 +1299,9 @@ function prepareAction003ApprovalPacketWithRuntime(
           canonicalJson(readdirSync(descriptor.outputDirectoryPath).sort()) ===
             canonicalJson(
               [
-                'source-project-provisioning-binding-v5.json',
+                'source-project-provisioning-binding-v6.json',
                 'source-project-provisioning-credential-configuration-v2.json',
-                'source-project-provisioning-owner-approval-v4.json',
+                'source-project-provisioning-authorization-projection-v1.json',
               ].sort()
             )
         : !existsSync(descriptor.outputDirectoryPath)),
@@ -1310,10 +1313,10 @@ function prepareAction003ApprovalPacketWithRuntime(
     TRACKED_BINDING_TEMPLATE,
     'BINDING_TEMPLATE_INVALID'
   );
-  const ownerApprovalTemplateRead = readTrackedTemplate(
+  const authorizationProjectionTemplateRead = readTrackedTemplate(
     repositoryRoot,
-    TRACKED_OWNER_APPROVAL_TEMPLATE,
-    'OWNER_APPROVAL_TEMPLATE_INVALID'
+    TRACKED_AUTHORIZATION_PROJECTION_TEMPLATE,
+    'AUTHORIZATION_PROJECTION_TEMPLATE_INVALID'
   );
   const repositoryHashes = Object.fromEntries(
     Object.entries(HASH_BOUND_TRACKED_FILES).map(([key, relativePath]) => [
@@ -1340,7 +1343,7 @@ function prepareAction003ApprovalPacketWithRuntime(
     : externalFileIdentityFromSnapshot(credentialRead.snapshot);
   const builderInput = {
     bindingTemplate: bindingTemplateRead.value,
-    ownerApprovalTemplate: ownerApprovalTemplateRead.value,
+    authorizationProjectionTemplate: authorizationProjectionTemplateRead.value,
     credentialConfiguration: credentialRead.value,
     credentialConfigurationArtifactSha256: credentialRead.snapshot.sha256,
     pricingEvidence: pricingRead.value,
@@ -1483,7 +1486,7 @@ function prepareAction003ApprovalPacketWithRuntime(
   requireCondition(
     canonicalJson(readdirSync(initialApprovalReceiptDirectory).sort()) ===
       canonicalJson([
-        'source-project-provisioning-initial-approval-receipt-v1.json',
+        'source-project-provisioning-single-action-approval-receipt-v2.json',
       ]),
     'INITIAL_APPROVAL_RECEIPT_DIRECTORY_CHANGED'
   );
@@ -1531,7 +1534,7 @@ function prepareAction003ApprovalPacketWithRuntime(
   requireCondition(
     prevalidatedArtifacts.summary.sourceProjectProvisioningAuthorized ===
       false &&
-      prevalidatedArtifacts.summary.finalApprovalRequired === true &&
+      prevalidatedArtifacts.summary.derivedExecutionBindingRequired === true &&
       prevalidatedArtifacts.summary.remoteContactPerformed === false &&
       prevalidatedArtifacts.summary.credentialReadPerformed === false,
     'OFFLINE_VALIDATION_FAILED'
@@ -1549,8 +1552,8 @@ function prepareAction003ApprovalPacketWithRuntime(
           prevalidatedArtifacts.summary.bindingSha256 &&
         verifiedExistingOutput.credentialConfigurationSha256 ===
           prevalidatedArtifacts.summary.credentialConfigurationSha256 &&
-        verifiedExistingOutput.ownerApprovalSha256 ===
-          prevalidatedArtifacts.summary.ownerApprovalSha256 &&
+        verifiedExistingOutput.authorizationProjectionSha256 ===
+          prevalidatedArtifacts.summary.authorizationProjectionSha256 &&
         verifiedExistingOutput.remoteContactPerformed === false &&
         verifiedExistingOutput.credentialReadPerformed === false,
       'EXISTING_OUTPUT_REVALIDATION_FAILED'
@@ -1566,11 +1569,12 @@ function prepareAction003ApprovalPacketWithRuntime(
       bindingSha256: verifiedExistingOutput.bindingSha256,
       credentialConfigurationSha256:
         verifiedExistingOutput.credentialConfigurationSha256,
-      ownerApprovalSha256: verifiedExistingOutput.ownerApprovalSha256,
+      authorizationProjectionSha256:
+        verifiedExistingOutput.authorizationProjectionSha256,
       aclProofSha256: aclInspection.aclProofSha256,
       outputCreated: false,
       sourceProjectProvisioningAuthorized: false,
-      finalApprovalRequired: true,
+      derivedExecutionBindingRequired: true,
       remoteContactPerformed: false,
       credentialPlaintextReadPerformed: false,
     };
@@ -1585,7 +1589,7 @@ function prepareAction003ApprovalPacketWithRuntime(
         initialApprovalReceiptValidation.receiptSha256,
       outputCreated: false,
       sourceProjectProvisioningAuthorized: false,
-      finalApprovalRequired: true,
+      derivedExecutionBindingRequired: true,
       remoteContactPerformed: false,
       credentialPlaintextReadPerformed: false,
     };
@@ -1628,7 +1632,7 @@ function prepareAction003ApprovalPacketWithRuntime(
     descriptor.outputDirectoryPath,
     path.join(
       descriptor.outputDirectoryPath,
-      'source-project-provisioning-binding-v5.json'
+      'source-project-provisioning-binding-v6.json'
     ),
     path.join(
       descriptor.outputDirectoryPath,
@@ -1636,7 +1640,7 @@ function prepareAction003ApprovalPacketWithRuntime(
     ),
     path.join(
       descriptor.outputDirectoryPath,
-      'source-project-provisioning-owner-approval-v4.json'
+      'source-project-provisioning-authorization-projection-v1.json'
     ),
   ]);
   const verifiedOutput = runtime.verifyOutput(
@@ -1657,8 +1661,8 @@ function prepareAction003ApprovalPacketWithRuntime(
       verifiedOutput.bindingSha256 === artifacts.summary.bindingSha256 &&
       verifiedOutput.credentialConfigurationSha256 ===
         artifacts.summary.credentialConfigurationSha256 &&
-      verifiedOutput.ownerApprovalSha256 ===
-        artifacts.summary.ownerApprovalSha256,
+      verifiedOutput.authorizationProjectionSha256 ===
+        artifacts.summary.authorizationProjectionSha256,
     'OUTPUT_WRITE_INVALID'
   );
   return {
@@ -1673,14 +1677,15 @@ function prepareAction003ApprovalPacketWithRuntime(
     credentialConfigurationSha256:
       artifacts.summary.credentialConfigurationSha256,
     pricingEvidenceSha256: artifacts.summary.pricingEvidenceSha256,
-    ownerApprovalSha256: artifacts.summary.ownerApprovalSha256,
+    authorizationProjectionSha256:
+      artifacts.summary.authorizationProjectionSha256,
     bindingSha256: artifacts.summary.bindingSha256,
     scheduledExecutionAt: artifacts.summary.scheduledExecutionAt,
     fundedThrough: artifacts.summary.fundedThrough,
     deletionApprovalRequestDeadline:
       artifacts.summary.deletionApprovalRequestDeadline,
     expiresAt: artifacts.summary.expiresAt,
-    finalApprovalRequired: true,
+    derivedExecutionBindingRequired: true,
     sourceProjectProvisioningAuthorized: false,
     outputDirectoryPathSha256: written.outputDirectoryPathSha256,
     phase2AndLaterAuthorized: false,

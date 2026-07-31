@@ -45,11 +45,13 @@ const datedOriginalSha256 =
   'fb3960ef365f803c718f7e297fd6b49378341c3f7a1b9250828fd64d0b0a40b5';
 
 const currentAction003Tuple = [
-  'source-project-provisioning-binding-v5.template.json',
+  'source-project-provisioning-binding-v6.template.json',
   'source-project-provisioning-credential-configuration-v2.template.json',
-  'source-project-provisioning-owner-approval-v4.template.json',
-  'source-project-official-pricing-evidence-v2.template.json',
-  'source-project-provisioning-result-v5.template.json',
+  'source-project-provisioning-authorization-projection-v1.template.json',
+  'source-project-provisioning-single-action-approval-receipt-v2.template.json',
+  'source-project-provisioning-derived-execution-binding-v1.template.json',
+  'source-project-official-pricing-evidence-v3.template.json',
+  'source-project-provisioning-result-v6.template.json',
   'source-project-provider-safe-projection-v4.template.json',
 ] as const;
 
@@ -57,12 +59,18 @@ const supersededAction003Templates = [
   'source-project-provisioning-binding-v2.template.json',
   'source-project-provisioning-binding-v3.template.json',
   'source-project-provisioning-binding-v4.template.json',
+  'source-project-provisioning-binding-v5.template.json',
   'source-project-provisioning-result-v2.template.json',
   'source-project-provisioning-result-v3.template.json',
   'source-project-provisioning-result-v4.template.json',
+  'source-project-provisioning-result-v5.template.json',
   'source-project-provisioning-owner-approval.template.json',
   'source-project-provisioning-owner-approval-v2.template.json',
   'source-project-provisioning-owner-approval-v3.template.json',
+  'source-project-provisioning-owner-approval-v4.template.json',
+  'source-project-official-pricing-evidence-v2.template.json',
+  'source-project-provisioning-initial-approval-receipt-v1.template.json',
+  'source-project-provisioning-final-approval-receipt-v1.template.json',
   'source-project-provider-safe-projection-v2.template.json',
   'source-project-provider-safe-projection-v3.template.json',
   'source-project-provisioning-credential-configuration.template.json',
@@ -256,7 +264,7 @@ describe('PR12 canonical authority and current artifact contract', () => {
     expect(readme).toContain(
       'Legacy commercial-manifest v1 compatibility only'
     );
-    expect(readme).toContain('schema v2 through v5');
+    expect(readme).toContain('schema v2 through v6');
     for (const superseded of supersededAction003Templates) {
       expect(readme).not.toContain(superseded);
     }

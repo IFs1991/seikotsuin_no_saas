@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "phase": "SOURCE_PROJECT_PROVISIONING",
   "status": "NOT_RUN",
   "authorization": {
@@ -253,11 +253,11 @@
   "approval": {
     "decision": "NOT_CAPTURED",
     "attestationStatus": "NOT_CAPTURED",
-    "approvedBy": "UNASSIGNED",
-    "approvedAt": "NOT_CAPTURED",
-    "operatorReconfirmedAt": "NOT_CAPTURED",
+    "authorityPrincipalId": "UNASSIGNED",
+    "authorityAcceptedAt": "NOT_CAPTURED",
+    "derivedExecutionBindingGeneratedAt": "NOT_CAPTURED",
     "expiresAt": "NOT_CAPTURED",
-    "initialApprovalReceiptSha256": "NOT_CAPTURED",
+    "authorityReceiptSha256": "NOT_CAPTURED",
     "soleOperatorRiskAccepted": false,
     "sameUserDpapiCredentialExposureRiskAccepted": false,
     "providerSpendCapLimitationAcknowledged": false,
@@ -269,8 +269,8 @@
     "evidencePath": "NOT_CAPTURED",
     "evidenceSha256": "NOT_CAPTURED",
     "approvedActionId": "PR12-ACTION-003",
-    "approvedPayloadSha256": "NOT_CAPTURED",
-    "approvedBindingMaterialSha256": "NOT_CAPTURED"
+    "derivedPayloadSha256": "NOT_CAPTURED",
+    "derivedBindingMaterialSha256": "NOT_CAPTURED"
   },
   "owners": {
     "commercialReleaseOwner": "UNASSIGNED",
@@ -303,8 +303,8 @@
     "localPreparationExceptionAuthorized": true,
     "localPreparationExceptionAuthorizedOn": "2026-07-24",
     "finalActionSelfApprovalRequired": true,
-    "minimumCoolingOffSeconds": 300,
-    "maximumApprovalWindowSeconds": 1800,
+    "minimumCoolingOffSeconds": 0,
+    "maximumApprovalWindowSeconds": 3600,
     "compensatingControls": [
       "EXACT_HEAD_BASE_GOVERNANCE_CONTRACT_WRAPPER_AND_PAYLOAD_HASHES",
       "ACTION_002_SEALED_EVIDENCE_AND_TERMINAL_JOURNAL_HASH_LINKAGE",
@@ -313,7 +313,7 @@
       "ONE_DURABLE_CREATE_ONCE_CLAIM_NO_POST_RETRY",
       "DPAPI_CURRENT_USER_CLAIM_BOUND_POST_CLAIM_RETRIEVAL",
       "USD_50_OWNER_AUTHORIZATION_CEILING_FOR_72_HOURS",
-      "EXACT_SCHEDULED_EXECUTION_PLUS_73_HOURS_FUNDING_BINDING",
+      "RELATIVE_APPROVAL_TTL_PLUS_73_HOURS_FUNDING_BINDING",
       "PHASE2_AND_CLEANUP_DELETION_REMAIN_SEPARATELY_UNAUTHORIZED"
     ]
   },
@@ -337,5 +337,5 @@
     "partialEvidenceAutomaticDeletionAllowed": false,
     "abortDuplicateAndPartialFailureEvidenceRequired": true
   },
-  "notes": "Preparation template only. The sealed PR12-ACTION-002 PASS evidence captured organization kbnsntifrawhimhfjrug and is the sole Organization identity/plan source for Action-003; Action-003 must not repeat the Organization GET. The v5 runtime contract must verify the bound manifest and terminal journal plus raw-path-free directory fingerprints before credential retrieval or remote contact. The exact canonical scheduledExecutionAt and fundedThrough remain NOT_CAPTURED, but v5 requires fundedThrough to equal scheduledExecutionAt plus exactly 73 hours. The Management-token bootstrap used by Action-002 does not complete the two-role Action-003 credential configuration or database-password envelope. Final approval must explicitly accept the same-user DPAPI credential-exposure and non-guaranteed JavaScript/.NET zeroization residual risk. Project creation, Action-003 remote contact, Phase 2+, cleanup/deletion, Ready, merge, production, and commercial release remain unauthorized. Every NOT_CAPTURED, NOT_RUN, or UNASSIGNED Action-003 field is a hard stop."
+  "notes": "Preparation template only. The sealed PR12-ACTION-002 PASS evidence captured organization kbnsntifrawhimhfjrug and is the sole Organization identity/plan source for Action-003; Action-003 must not repeat the Organization GET. The v6 runtime contract must verify the bound manifest and terminal journal plus raw-path-free directory fingerprints before credential retrieval or remote contact. Populated candidates set scheduledExecutionAt to the single approval instant, expire exactly 60 minutes later, and require fundedThrough to equal scheduledExecutionAt plus exactly 73 hours. The single approval must explicitly accept same-user DPAPI credential-exposure and non-guaranteed JavaScript/.NET zeroization residual risk. Production contact, Phase 2+, cleanup/deletion, Ready, merge, and commercial release remain unauthorized."
 }

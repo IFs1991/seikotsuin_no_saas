@@ -822,7 +822,7 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
     'PROVISIONING_RESULT_INVALID'
   );
   requireCondition(
-    result.schemaVersion === 5 &&
+    [5, 6].includes(result.schemaVersion) &&
       result.phase === 'SOURCE_PROJECT_PROVISIONING_RESULT' &&
       result.resultType === 'SOURCE_PROJECT_PROVISIONING_OPERATION' &&
       result.status === manifest.status &&
@@ -890,43 +890,68 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
       providerEvidence.sha256 === providerMetadata.sha256,
     'PROVISIONING_RESULT_INVALID'
   );
+  const legacyApproval = result.schemaVersion === 5;
   const approval = requireExactKeys(
     result.approvalWindow,
-    [
-      'approvedAt',
-      'operatorReconfirmedAt',
-      'expiresAt',
-      'approvalEvidenceSha256',
-      'finalApprovalReceiptSha256',
-    ],
+    legacyApproval
+      ? [
+          'approvedAt',
+          'operatorReconfirmedAt',
+          'expiresAt',
+          'approvalEvidenceSha256',
+          'finalApprovalReceiptSha256',
+        ]
+      : [
+          'authorityAcceptedAt',
+          'derivedExecutionBindingGeneratedAt',
+          'expiresAt',
+          'approvalEvidenceSha256',
+          'derivedExecutionBindingSha256',
+        ],
     'PROVISIONING_RESULT_INVALID'
   );
-  const approvedAt = Date.parse(
-    requireTimestamp(approval.approvedAt, 'PROVISIONING_RESULT_INVALID')
+  const authorityAcceptedAt = Date.parse(
+    requireTimestamp(
+      legacyApproval ? approval.approvedAt : approval.authorityAcceptedAt,
+      'PROVISIONING_RESULT_INVALID'
+    )
   );
   const expiresAt = Date.parse(
     requireTimestamp(approval.expiresAt, 'PROVISIONING_RESULT_INVALID')
   );
-  const operatorReconfirmedAt = Date.parse(
+  const executionBindingAt = Date.parse(
     requireTimestamp(
-      approval.operatorReconfirmedAt,
+      legacyApproval
+        ? approval.operatorReconfirmedAt
+        : approval.derivedExecutionBindingGeneratedAt,
       'PROVISIONING_RESULT_INVALID'
     )
   );
   requireSha256(approval.approvalEvidenceSha256, 'PROVISIONING_RESULT_INVALID');
-  requireCondition(
-    requireSha256(
-      approval.finalApprovalReceiptSha256,
-      'PROVISIONING_RESULT_INVALID'
-    ) === manifest.finalApprovalReceiptSha256,
+  const executionBindingSha256 = requireSha256(
+    legacyApproval
+      ? approval.finalApprovalReceiptSha256
+      : approval.derivedExecutionBindingSha256,
     'PROVISIONING_RESULT_INVALID'
   );
   requireCondition(
-    approvedAt < operatorReconfirmedAt &&
-      operatorReconfirmedAt - approvedAt >= 300_000 &&
-      expiresAt - approvedAt <= 1_800_000 &&
-      operatorReconfirmedAt <= startedAt &&
-      startedAt < expiresAt,
+    executionBindingSha256 ===
+      (legacyApproval
+        ? manifest.finalApprovalReceiptSha256
+        : manifest.derivedExecutionBindingSha256),
+    'PROVISIONING_RESULT_INVALID'
+  );
+  requireCondition(
+    legacyApproval
+      ? authorityAcceptedAt < executionBindingAt &&
+          executionBindingAt - authorityAcceptedAt >= 300_000 &&
+          expiresAt - authorityAcceptedAt <= 1_800_000 &&
+          executionBindingAt <= startedAt &&
+          startedAt < expiresAt
+      : authorityAcceptedAt <= executionBindingAt &&
+          expiresAt - authorityAcceptedAt === 3_600_000 &&
+          executionBindingAt <= startedAt &&
+          startedAt < expiresAt,
     'PROVISIONING_RESULT_INVALID'
   );
   const pricing = requireExactKeys(
@@ -992,7 +1017,9 @@ function validateProvisioningResult(resultInput, manifest, providerMetadata) {
   requireCondition(
     pricingFreshThrough >= expiresAt &&
       pricingFreshThrough >= startedAt &&
-      operatorReconfirmedAt <= scheduledExecutionAt &&
+      (legacyApproval
+        ? executionBindingAt <= scheduledExecutionAt
+        : authorityAcceptedAt === scheduledExecutionAt) &&
       scheduledExecutionAt < expiresAt &&
       scheduledExecutionAt <= startedAt &&
       organizationIdentityEvidence.sealedAt <= result.actionStartedAt &&
@@ -1698,24 +1725,49 @@ export function verifyProvisioningEvidenceDirectory(
 
   const manifestPath = path.join(directory, 'manifest.json');
   const manifestSnapshot = snapshots.get('manifest.json');
+  const manifestInput = parseJsonSnapshot(
+    manifestSnapshot,
+    'MANIFEST_INVALID',
+    forbiddenValues
+  );
+  const currentManifest =
+    isRecord(manifestInput) &&
+    Object.hasOwn(manifestInput, 'derivedExecutionBindingSha256');
   const manifest = requireExactKeys(
-    parseJsonSnapshot(manifestSnapshot, 'MANIFEST_INVALID', forbiddenValues),
-    [
-      'schemaVersion',
-      'manifestType',
-      'status',
-      'actionId',
-      'gitCommit',
-      'bindingMaterialSha256',
-      'payloadSha256',
-      'finalApprovalReceiptSha256',
-      'fundingSource',
-      'artifacts',
-      'artifactCount',
-      'rawProviderBodiesPersisted',
-      'rawHttpHeadersPersisted',
-      'sealedAt',
-    ],
+    manifestInput,
+    currentManifest
+      ? [
+          'schemaVersion',
+          'manifestType',
+          'status',
+          'actionId',
+          'gitCommit',
+          'bindingMaterialSha256',
+          'payloadSha256',
+          'derivedExecutionBindingSha256',
+          'fundingSource',
+          'artifacts',
+          'artifactCount',
+          'rawProviderBodiesPersisted',
+          'rawHttpHeadersPersisted',
+          'sealedAt',
+        ]
+      : [
+          'schemaVersion',
+          'manifestType',
+          'status',
+          'actionId',
+          'gitCommit',
+          'bindingMaterialSha256',
+          'payloadSha256',
+          'finalApprovalReceiptSha256',
+          'fundingSource',
+          'artifacts',
+          'artifactCount',
+          'rawProviderBodiesPersisted',
+          'rawHttpHeadersPersisted',
+          'sealedAt',
+        ],
     'MANIFEST_INVALID'
   );
   requireCondition(
@@ -1730,8 +1782,14 @@ export function verifyProvisioningEvidenceDirectory(
       SHA256_PATTERN.test(manifest.bindingMaterialSha256) &&
       typeof manifest.payloadSha256 === 'string' &&
       SHA256_PATTERN.test(manifest.payloadSha256) &&
-      typeof manifest.finalApprovalReceiptSha256 === 'string' &&
-      SHA256_PATTERN.test(manifest.finalApprovalReceiptSha256) &&
+      typeof (currentManifest
+        ? manifest.derivedExecutionBindingSha256
+        : manifest.finalApprovalReceiptSha256) === 'string' &&
+      SHA256_PATTERN.test(
+        currentManifest
+          ? manifest.derivedExecutionBindingSha256
+          : manifest.finalApprovalReceiptSha256
+      ) &&
       /^[A-Z][A-Z0-9_:-]{7,127}$/.test(
         requireString(manifest.fundingSource, 'MANIFEST_INVALID')
       ) &&
@@ -1941,7 +1999,13 @@ export function verifyProvisioningEvidenceDirectory(
     gitCommit: manifest.gitCommit,
     bindingMaterialSha256: manifest.bindingMaterialSha256,
     payloadSha256: manifest.payloadSha256,
-    finalApprovalReceiptSha256: manifest.finalApprovalReceiptSha256,
+    ...(currentManifest
+      ? {
+          derivedExecutionBindingSha256: manifest.derivedExecutionBindingSha256,
+        }
+      : {
+          finalApprovalReceiptSha256: manifest.finalApprovalReceiptSha256,
+        }),
     manifestSha256,
     artifactCount: manifest.artifactCount,
     secretBearingEvidenceFound: false,

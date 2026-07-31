@@ -17,10 +17,10 @@ interface InitialReceiptValidation {
   credentialReadPerformed: false;
 }
 
-interface FinalReceiptValidation {
-  receipt: JsonObject;
-  receiptSha256: string;
-  acceptedAt: string;
+interface ExecutionBindingValidation {
+  binding: JsonObject;
+  bindingSha256: string;
+  generatedAt: string;
   remoteContactPerformed: false;
   credentialReadPerformed: false;
 }
@@ -31,15 +31,18 @@ interface ReceiptContractModule {
   validateInitialAction003ApprovalReceipt(
     receipt: JsonObject
   ): InitialReceiptValidation;
-  validateFinalAction003ApprovalReceipt(
-    receipt: JsonObject,
+  validateAction003ExecutionBinding(
+    binding: JsonObject,
     expected: JsonObject,
     now: string
-  ): FinalReceiptValidation;
+  ): ExecutionBindingValidation;
+  deriveAction003ExecutionBinding(
+    expected: JsonObject
+  ): ExecutionBindingValidation;
   recordInitialAction003ApprovalReceiptCreateNew(input: JsonObject): JsonObject;
-  recordFinalAction003ApprovalReceiptCreateNew(input: JsonObject): JsonObject;
+  recordAction003ExecutionBindingCreateNew(input: JsonObject): JsonObject;
   verifyInitialAction003ApprovalReceiptStable(input: JsonObject): JsonObject;
-  verifyFinalAction003ApprovalReceiptStable(input: JsonObject): JsonObject;
+  verifyAction003ExecutionBindingStable(input: JsonObject): JsonObject;
 }
 
 const repoRoot = path.resolve(__dirname, '../../..');
@@ -49,11 +52,11 @@ const contractPath = path.join(
 );
 const initialTemplatePath = path.join(
   repoRoot,
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-initial-approval-receipt-v1.template.json'
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-single-action-approval-receipt-v2.template.json'
 );
 const finalTemplatePath = path.join(
   repoRoot,
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-final-approval-receipt-v1.template.json'
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-derived-execution-binding-v1.template.json'
 );
 const temporaryDirectories: string[] = [];
 let subject: ReceiptContractModule;
@@ -96,16 +99,47 @@ function canonicalFileSha256(value: JsonValue): string {
 
 function validInitialReceipt(acceptedAt = '2026-07-27T00:00:00.000Z') {
   return {
-    schemaVersion: 1,
-    recordType: 'PR12_SOURCE_PROJECT_PROVISIONING_INITIAL_APPROVAL_RECEIPT',
+    schemaVersion: 2,
+    recordType:
+      'PR12_SOURCE_PROJECT_PROVISIONING_SINGLE_ACTION_APPROVAL_RECEIPT',
     decision: 'APPROVED',
     attestationStatus: 'VERIFIED',
-    attestationMethod: 'SOLE_OPERATOR_EXPLICIT_INITIAL_APPROVAL',
+    attestationMethod: 'SOLE_OPERATOR_EXPLICIT_SINGLE_ACTION_APPROVAL',
     actionId: 'PR12-ACTION-003',
     approvedByPrincipalId: 'owner:futoshi-iwasawa',
     approvedByDisplayName: 'FUTOSHI IWASAWA',
     acceptedAt,
-    approvalPurpose: 'ACTION003_PACKET_PREPARATION_ONLY',
+    expiresAt: new Date(Date.parse(acceptedAt) + 60 * 60 * 1000).toISOString(),
+    approvalTtlSeconds: 3600,
+    approvalPurpose:
+      'ACTION003_PACKET_PREPARATION_AND_SOURCE_PROJECT_PROVISIONING',
+    gitCommit: '1'.repeat(40),
+    organizationId: 'kbnsntifrawhimhfjrug',
+    organizationSlug: 'kbnsntifrawhimhfjrug',
+    projectName: 'seikotsuin-pr12-isolated-qualification-20260719',
+    region: 'ap-northeast-1',
+    tier: 'LARGE',
+    ownerAuthorizationCeilingUsdScaled: 500000,
+    authorizedDurationHours: 72,
+    maximumPostAttempts: 1,
+    credentialConfigurationSha256: 'd'.repeat(64),
+    pricingEvidenceSha256: 'e'.repeat(64),
+    actionJournalDirectoryPathSha256: '1'.repeat(64),
+    actionJournalDirectoryFingerprint: {
+      pathSha256: '1'.repeat(64),
+      resolvedPathSha256: '1'.repeat(64),
+      device: '101',
+      inode: '102',
+      snapshotSha256: '3'.repeat(64),
+    },
+    evidenceParentDirectoryPathSha256: '2'.repeat(64),
+    evidenceParentDirectoryFingerprint: {
+      pathSha256: '2'.repeat(64),
+      resolvedPathSha256: '2'.repeat(64),
+      device: '201',
+      inode: '202',
+      snapshotSha256: '4'.repeat(64),
+    },
     soleOperatorRiskAccepted: true,
     sameUserDpapiCredentialExposureRiskAccepted: true,
     providerSpendCapLimitationAcknowledged: true,
@@ -116,67 +150,86 @@ function validInitialReceipt(acceptedAt = '2026-07-27T00:00:00.000Z') {
     unknownChargesAcknowledged: true,
     action003PacketPreparationAuthorized: true,
     databasePasswordBootstrapAuthorized: false,
-    sourceProjectProvisioningAuthorized: false,
-    productionContactAuthorized: false,
-    phase2AndLaterAuthorized: false,
-    cleanupDeletionAuthorized: false,
-    notes:
-      'Externally supplied initial owner authorization receipt. Local packet preparation only.',
-  };
-}
-
-function expectedFinalReceiptBinding(initialReceipt: JsonObject): JsonObject {
-  return {
-    initialApprovalReceipt: initialReceipt,
-    bindingSha256: 'a'.repeat(64),
-    bindingMaterialSha256: 'b'.repeat(64),
-    payloadSha256: 'c'.repeat(64),
-    credentialConfigurationSha256: 'd'.repeat(64),
-    pricingEvidenceSha256: 'e'.repeat(64),
-    ownerApprovalSha256: 'f'.repeat(64),
-    scheduledExecutionAt: '2026-07-27T00:15:00.000Z',
-    expiresAt: '2026-07-27T00:30:00.000Z',
-  };
-}
-
-function validFinalReceipt(
-  initialReceipt: JsonObject,
-  acceptedAt = '2026-07-27T00:05:00.000Z'
-): JsonObject {
-  const expected = expectedFinalReceiptBinding(initialReceipt);
-  return {
-    schemaVersion: 1,
-    recordType: 'PR12_SOURCE_PROJECT_PROVISIONING_FINAL_APPROVAL_RECEIPT',
-    decision: 'APPROVED',
-    attestationStatus: 'VERIFIED',
-    attestationMethod: 'SOLE_OPERATOR_EXPLICIT_FINAL_HASH_RECONFIRMATION',
-    actionId: 'PR12-ACTION-003',
-    approvedByPrincipalId: 'owner:futoshi-iwasawa',
-    approvedByDisplayName: 'FUTOSHI IWASAWA',
-    acceptedAt,
-    expiresAt: expected.expiresAt,
-    initialApprovalReceiptSha256: canonicalFileSha256(initialReceipt),
-    bindingSha256: expected.bindingSha256,
-    bindingMaterialSha256: expected.bindingMaterialSha256,
-    payloadSha256: expected.payloadSha256,
-    credentialConfigurationSha256: expected.credentialConfigurationSha256,
-    pricingEvidenceSha256: expected.pricingEvidenceSha256,
-    ownerApprovalSha256: expected.ownerApprovalSha256,
-    soleOperatorRiskAccepted: true,
-    sameUserDpapiCredentialExposureRiskAccepted: true,
-    providerSpendCapLimitationAcknowledged: true,
-    sameOrganizationExceptionRiskAccepted: true,
-    organizationListProductionRefObservationAccepted: true,
-    sharedOrganizationIamBillingControlPlaneRiskAccepted: true,
-    productionDirectContactProhibitionAcknowledged: true,
-    unknownChargesAcknowledged: true,
     sourceProjectProvisioningAuthorized: true,
     productionContactAuthorized: false,
     phase2AndLaterAuthorized: false,
     cleanupDeletionAuthorized: false,
     notes:
-      'Externally supplied final owner authorization receipt for the exact candidate hashes.',
+      'Single owner approval for local preparation and at most one isolated source-project provisioning POST.',
   };
+}
+
+function expectedExecutionBinding(initialReceipt: JsonObject): JsonObject {
+  return {
+    authorityReceipt: initialReceipt,
+    bindingSha256: 'a'.repeat(64),
+    bindingMaterialSha256: 'b'.repeat(64),
+    payloadSha256: 'c'.repeat(64),
+    credentialConfigurationSha256: 'd'.repeat(64),
+    pricingEvidenceSha256: 'e'.repeat(64),
+    authorizationProjectionSha256: 'f'.repeat(64),
+    scheduledExecutionAt: String(initialReceipt.acceptedAt),
+    expiresAt: String(initialReceipt.expiresAt),
+    generatedAt: new Date(
+      Date.parse(String(initialReceipt.acceptedAt)) + 1000
+    ).toISOString(),
+  };
+}
+
+function validExecutionBinding(initialReceipt: JsonObject): JsonObject {
+  const expected = expectedExecutionBinding(initialReceipt);
+  return {
+    schemaVersion: 1,
+    recordType: 'PR12_SOURCE_PROJECT_PROVISIONING_DERIVED_EXECUTION_BINDING',
+    derivationStatus: 'VERIFIED_LOCAL_DERIVATION',
+    derivationMethod: 'SYSTEM_DERIVED_HASH_BINDING_FROM_SINGLE_APPROVAL',
+    actionId: 'PR12-ACTION-003',
+    generatedAt: expected.generatedAt,
+    expiresAt: expected.expiresAt,
+    authorityReceiptSha256: canonicalFileSha256(initialReceipt),
+    bindingSha256: expected.bindingSha256,
+    bindingMaterialSha256: expected.bindingMaterialSha256,
+    payloadSha256: expected.payloadSha256,
+    credentialConfigurationSha256: expected.credentialConfigurationSha256,
+    pricingEvidenceSha256: expected.pricingEvidenceSha256,
+    authorizationProjectionSha256: expected.authorizationProjectionSha256,
+    authorityScopeConfirmed: true,
+    productionContactAuthorized: false,
+    phase2AndLaterAuthorized: false,
+    cleanupDeletionAuthorized: false,
+    notes:
+      'System-derived exact-hash execution binding. Authority remains exclusively in the single owner receipt; this artifact records no human decision or reconfirmation.',
+  };
+}
+
+function validSingleActionApprovalReceipt(
+  acceptedAt = '2026-07-27T00:00:00.000Z'
+): JsonObject {
+  return {
+    ...validInitialReceipt(acceptedAt),
+    attestationMethod: 'SOLE_OPERATOR_EXPLICIT_SINGLE_ACTION_APPROVAL',
+    approvalPurpose:
+      'ACTION003_PACKET_PREPARATION_AND_SOURCE_PROJECT_PROVISIONING',
+    sourceProjectProvisioningAuthorized: true,
+    notes:
+      'Single owner approval for local preparation and at most one isolated source-project provisioning POST.',
+  };
+}
+
+function expectedDerivedReceiptBinding(
+  singleApprovalReceipt: JsonObject
+): JsonObject {
+  return {
+    ...expectedExecutionBinding(singleApprovalReceipt),
+    scheduledExecutionAt: '2026-07-27T00:00:00.000Z',
+    expiresAt: '2026-07-27T01:00:00.000Z',
+  };
+}
+
+function validDerivedExecutionReceipt(
+  singleApprovalReceipt: JsonObject
+): JsonObject {
+  return validExecutionBinding(singleApprovalReceipt);
 }
 
 function expectCode(callback: () => unknown, code: string): void {
@@ -204,6 +257,29 @@ afterEach(() => {
 });
 
 describe('PR12 ACTION-003 approval receipt contract', () => {
+  test('uses one owner approval with an immediate relative one-hour TTL and a non-human derived hash receipt', () => {
+    const singleApproval = validSingleActionApprovalReceipt();
+    const initial =
+      subject.validateInitialAction003ApprovalReceipt(singleApproval);
+    const expected = expectedDerivedReceiptBinding(singleApproval);
+    const derivedBinding =
+      subject.deriveAction003ExecutionBinding(expected).binding;
+    const derived = subject.validateAction003ExecutionBinding(
+      derivedBinding,
+      expected,
+      '2026-07-27T00:00:01.000Z'
+    );
+
+    expect(initial.approvalRecordFields).toMatchObject({
+      approvedAt: '2026-07-27T00:00:00.000Z',
+    });
+    expect(derived.generatedAt).toBe('2026-07-27T00:00:01.000Z');
+    expect(expected).toMatchObject({
+      scheduledExecutionAt: '2026-07-27T00:00:00.000Z',
+      expiresAt: '2026-07-27T01:00:00.000Z',
+    });
+  });
+
   test('exports fail-closed owner-private boundary and read-only ACL inspectors', () => {
     expect(typeof subject.requireOwnerPrivateBoundary).toBe('function');
     expect(typeof subject.inspectOwnerPrivatePathAcl).toBe('function');
@@ -250,27 +326,26 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
 
   test('keeps both tracked receipt templates non-authorizing', () => {
     const initialTemplate = readJsonObject(initialTemplatePath);
-    const finalTemplate = readJsonObject(finalTemplatePath);
+    const executionBindingTemplate = readJsonObject(finalTemplatePath);
 
     expect(initialTemplate.decision).toBe('NOT_CAPTURED');
     expect(initialTemplate.action003PacketPreparationAuthorized).toBe(false);
     expect(initialTemplate.sourceProjectProvisioningAuthorized).toBe(false);
     expect(initialTemplate.unknownChargesAcknowledged).toBe(false);
-    expect(finalTemplate.decision).toBe('NOT_CAPTURED');
-    expect(finalTemplate.sourceProjectProvisioningAuthorized).toBe(false);
-    expect(finalTemplate.unknownChargesAcknowledged).toBe(false);
+    expect(executionBindingTemplate.derivationStatus).toBe('NOT_DERIVED');
+    expect(executionBindingTemplate.authorityScopeConfirmed).toBe(false);
     expectCode(
       () => subject.validateInitialAction003ApprovalReceipt(initialTemplate),
       'INITIAL_APPROVAL_RECEIPT_INVALID'
     );
     expectCode(
       () =>
-        subject.validateFinalAction003ApprovalReceipt(
-          finalTemplate,
-          expectedFinalReceiptBinding(validInitialReceipt()),
+        subject.validateAction003ExecutionBinding(
+          executionBindingTemplate,
+          expectedExecutionBinding(validInitialReceipt()),
           '2026-07-27T00:05:01.000Z'
         ),
-      'FINAL_APPROVAL_RECEIPT_INVALID'
+      'DERIVED_EXECUTION_BINDING_INVALID'
     );
   });
 
@@ -284,7 +359,30 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
       principalId: 'owner:futoshi-iwasawa',
       principalDisplayName: 'FUTOSHI IWASAWA',
       approvedAt: receipt.acceptedAt,
+      expiresAt: receipt.expiresAt,
       initialApprovalReceiptSha256: canonicalFileSha256(receipt),
+      authorizationScope: {
+        gitCommit: receipt.gitCommit,
+        organizationId: receipt.organizationId,
+        organizationSlug: receipt.organizationSlug,
+        projectName: receipt.projectName,
+        region: receipt.region,
+        tier: receipt.tier,
+        ownerAuthorizationCeilingUsdScaled:
+          receipt.ownerAuthorizationCeilingUsdScaled,
+        authorizedDurationHours: receipt.authorizedDurationHours,
+        maximumPostAttempts: receipt.maximumPostAttempts,
+        credentialConfigurationSha256: receipt.credentialConfigurationSha256,
+        pricingEvidenceSha256: receipt.pricingEvidenceSha256,
+        actionJournalDirectoryPathSha256:
+          receipt.actionJournalDirectoryPathSha256,
+        actionJournalDirectoryFingerprint:
+          receipt.actionJournalDirectoryFingerprint,
+        evidenceParentDirectoryPathSha256:
+          receipt.evidenceParentDirectoryPathSha256,
+        evidenceParentDirectoryFingerprint:
+          receipt.evidenceParentDirectoryFingerprint,
+      },
       riskAcceptances: {
         soleOperatorRiskAccepted: true,
         sameUserDpapiCredentialExposureRiskAccepted: true,
@@ -334,9 +432,9 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
       },
     ],
     [
-      'remote provisioning authorization',
+      'source-project provisioning authorization missing',
       (receipt: JsonObject) => {
-        receipt.sourceProjectProvisioningAuthorized = true;
+        receipt.sourceProjectProvisioningAuthorized = false;
       },
     ],
     [
@@ -360,22 +458,22 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
     );
   });
 
-  test('validates only an externally populated final receipt bound to the exact initial receipt and candidate tuple', () => {
+  test('validates only a system-derived binding tied to the exact authority receipt and candidate tuple', () => {
     const initialReceipt = validInitialReceipt();
-    const expected = expectedFinalReceiptBinding(initialReceipt);
-    const receipt = validFinalReceipt(initialReceipt);
-    const before = clone(receipt);
+    const expected = expectedExecutionBinding(initialReceipt);
+    const binding = validExecutionBinding(initialReceipt);
+    const before = clone(binding);
 
-    const result = subject.validateFinalAction003ApprovalReceipt(
-      receipt,
+    const result = subject.validateAction003ExecutionBinding(
+      binding,
       expected,
-      '2026-07-27T00:05:01.000Z'
+      '2026-07-27T00:00:01.000Z'
     );
 
-    expect(receipt).toEqual(before);
-    expect(result.receipt).toEqual(receipt);
-    expect(result.receiptSha256).toBe(canonicalFileSha256(receipt));
-    expect(result.acceptedAt).toBe(receipt.acceptedAt);
+    expect(binding).toEqual(before);
+    expect(result.binding).toEqual(binding);
+    expect(result.bindingSha256).toBe(canonicalFileSha256(binding));
+    expect(result.generatedAt).toBe(binding.generatedAt);
     expect(result.remoteContactPerformed).toBe(false);
     expect(result.credentialReadPerformed).toBe(false);
   });
@@ -384,7 +482,7 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
     [
       'wrong initial receipt hash',
       (receipt: JsonObject, _expected: JsonObject) => {
-        receipt.initialApprovalReceiptSha256 = '0'.repeat(64);
+        receipt.authorityReceiptSha256 = '0'.repeat(64);
       },
     ],
     [
@@ -394,21 +492,21 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
       },
     ],
     [
-      'too-early final receipt',
+      'derived binding before single approval',
       (receipt: JsonObject, _expected: JsonObject) => {
-        receipt.acceptedAt = '2026-07-27T00:04:59.999Z';
+        receipt.generatedAt = '2026-07-26T23:59:59.999Z';
       },
     ],
     [
-      'after schedule',
+      'derived binding generated after the expected instant',
       (receipt: JsonObject, _expected: JsonObject) => {
-        receipt.acceptedAt = '2026-07-27T00:15:00.001Z';
+        receipt.generatedAt = '2026-07-27T00:00:02.000Z';
       },
     ],
     [
-      'future receipt',
+      'future binding',
       (receipt: JsonObject, _expected: JsonObject) => {
-        receipt.acceptedAt = '2026-07-27T00:06:00.000Z';
+        receipt.generatedAt = '2026-07-27T00:00:02.000Z';
       },
     ],
     [
@@ -424,24 +522,24 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
       },
     ],
     [
-      'unknown charges not acknowledged',
+      'authority scope not confirmed',
       (receipt: JsonObject, _expected: JsonObject) => {
-        receipt.unknownChargesAcknowledged = false;
+        receipt.authorityScopeConfirmed = false;
       },
     ],
-  ])('rejects an invalid final receipt: %s', (_label, mutate) => {
+  ])('rejects an invalid derived binding: %s', (_label, mutate) => {
     const initialReceipt = validInitialReceipt();
-    const expected = expectedFinalReceiptBinding(initialReceipt);
-    const receipt = validFinalReceipt(initialReceipt);
+    const expected = expectedExecutionBinding(initialReceipt);
+    const receipt = validExecutionBinding(initialReceipt);
     mutate(receipt, expected);
     expectCode(
       () =>
-        subject.validateFinalAction003ApprovalReceipt(
+        subject.validateAction003ExecutionBinding(
           receipt,
           expected,
-          '2026-07-27T00:05:01.000Z'
+          '2026-07-27T00:00:01.000Z'
         ),
-      'FINAL_APPROVAL_RECEIPT_INVALID'
+      'DERIVED_EXECUTION_BINDING_INVALID'
     );
   });
 
@@ -463,7 +561,7 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
     );
     const outputDirectory = path.join(
       ownerPrivateRoot,
-      'source-project-provisioning-initial-approval-receipt-v1'
+      'source-project-provisioning-single-action-approval-receipt-v2'
     );
     const before = clone(receipt);
     const template = readJsonObject(initialTemplatePath);
@@ -500,7 +598,8 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
     expect(receipt).toEqual(before);
     expect(recorded).toMatchObject({
       status: 'RECORDED',
-      recordType: 'PR12_SOURCE_PROJECT_PROVISIONING_INITIAL_APPROVAL_RECEIPT',
+      recordType:
+        'PR12_SOURCE_PROJECT_PROVISIONING_SINGLE_ACTION_APPROVAL_RECEIPT',
       fileCount: 1,
       receiptSha256: canonicalFileSha256(receipt),
       acceptedAt: receipt.acceptedAt,
@@ -511,7 +610,7 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
     const verified = subject.verifyInitialAction003ApprovalReceiptStable({
       receiptPath: path.join(
         outputDirectory,
-        'source-project-provisioning-initial-approval-receipt-v1.json'
+        'source-project-provisioning-single-action-approval-receipt-v2.json'
       ),
       expectedReceipt: receipt,
       ownerPrivateRoot,
@@ -536,7 +635,7 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
         ownerPrivateRoot,
         targetPath: path.join(
           outputDirectory,
-          'source-project-provisioning-initial-approval-receipt-v1.json'
+          'source-project-provisioning-single-action-approval-receipt-v2.json'
         ),
         kind: 'FILE',
       });
@@ -572,37 +671,29 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
 
     const now = Date.now();
     const initialAcceptedAt = new Date(now - 6 * 60 * 1000).toISOString();
-    const finalAcceptedAt = new Date(now - 30 * 1000).toISOString();
     const initialReceipt = validInitialReceipt(initialAcceptedAt);
-    const expected = expectedFinalReceiptBinding(initialReceipt);
-    expected.scheduledExecutionAt = new Date(
-      Date.parse(initialAcceptedAt) + 15 * 60 * 1000
-    ).toISOString();
-    expected.expiresAt = new Date(
-      Date.parse(initialAcceptedAt) + 30 * 60 * 1000
-    ).toISOString();
-    const receipt = validFinalReceipt(initialReceipt, finalAcceptedAt);
-    receipt.expiresAt = expected.expiresAt;
+    const expected = expectedExecutionBinding(initialReceipt);
+    const binding = validExecutionBinding(initialReceipt);
 
     const ownerPrivateRoot = makeOwnerPrivateRoot(
-      'pr12-action003-receipt-owner-'
+      'pr12-action003-execution-binding-owner-'
     );
     const outputDirectory = path.join(
       ownerPrivateRoot,
-      'source-project-provisioning-final-approval-receipt-v1'
+      'source-project-provisioning-derived-execution-binding-v1'
     );
-    const before = clone(receipt);
-    const recorded = subject.recordFinalAction003ApprovalReceiptCreateNew({
+    const before = clone(binding);
+    const recorded = subject.recordAction003ExecutionBindingCreateNew({
       ownerPrivateRoot,
       outputDirectory,
-      receipt,
+      binding,
       expected,
     });
 
-    expect(receipt).toEqual(before);
+    expect(binding).toEqual(before);
     expect(recorded.status).toBe('RECORDED');
     expect(recorded.fileCount).toBe(1);
-    expect(recorded.receiptSha256).toBe(canonicalFileSha256(receipt));
+    expect(recorded.executionBindingSha256).toBe(canonicalFileSha256(binding));
     expect(recorded.remoteContactPerformed).toBe(false);
     expect(recorded.credentialReadPerformed).toBe(false);
     expect(recorded.fileAcl).toMatchObject({
@@ -621,13 +712,13 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
       accessRuleCount: 2,
     });
 
-    const verified = subject.verifyFinalAction003ApprovalReceiptStable({
+    const verified = subject.verifyAction003ExecutionBindingStable({
       ownerPrivateRoot,
       receiptPath: path.join(
         outputDirectory,
-        'source-project-provisioning-final-approval-receipt-v1.json'
+        'source-project-provisioning-derived-execution-binding-v1.json'
       ),
-      expectedReceipt: receipt,
+      expectedReceipt: binding,
       expectedOwnerPrivateRootIdentity: recorded.ownerPrivateRootIdentity,
       expectedOwnerPrivateRootAcl: recorded.ownerPrivateRootAcl,
       expectedFileIdentity: recorded.fileIdentity,
@@ -639,10 +730,10 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
 
     expectCode(
       () =>
-        subject.recordFinalAction003ApprovalReceiptCreateNew({
+        subject.recordAction003ExecutionBindingCreateNew({
           ownerPrivateRoot,
           outputDirectory,
-          receipt,
+          binding,
           expected,
         }),
       'RECEIPT_OUTPUT_ALREADY_EXISTS'
@@ -652,13 +743,13 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
     wrongIdentity.contentSha256 = '0'.repeat(64);
     expectCode(
       () =>
-        subject.verifyFinalAction003ApprovalReceiptStable({
+        subject.verifyAction003ExecutionBindingStable({
           ownerPrivateRoot,
           receiptPath: path.join(
             outputDirectory,
-            'source-project-provisioning-final-approval-receipt-v1.json'
+            'source-project-provisioning-derived-execution-binding-v1.json'
           ),
-          expectedReceipt: receipt,
+          expectedReceipt: binding,
           expectedOwnerPrivateRootIdentity: recorded.ownerPrivateRootIdentity,
           expectedOwnerPrivateRootAcl: recorded.ownerPrivateRootAcl,
           expectedFileIdentity: wrongIdentity,
@@ -673,13 +764,13 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
     wrongAcl.sddlSha256 = '0'.repeat(64);
     expectCode(
       () =>
-        subject.verifyFinalAction003ApprovalReceiptStable({
+        subject.verifyAction003ExecutionBindingStable({
           ownerPrivateRoot,
           receiptPath: path.join(
             outputDirectory,
-            'source-project-provisioning-final-approval-receipt-v1.json'
+            'source-project-provisioning-derived-execution-binding-v1.json'
           ),
-          expectedReceipt: receipt,
+          expectedReceipt: binding,
           expectedOwnerPrivateRootIdentity: recorded.ownerPrivateRootIdentity,
           expectedOwnerPrivateRootAcl: recorded.ownerPrivateRootAcl,
           expectedFileIdentity: recorded.fileIdentity,
@@ -696,13 +787,13 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
     wrongRootIdentity.inode = 'not-the-recorded-root';
     expectCode(
       () =>
-        subject.verifyFinalAction003ApprovalReceiptStable({
+        subject.verifyAction003ExecutionBindingStable({
           ownerPrivateRoot,
           receiptPath: path.join(
             outputDirectory,
-            'source-project-provisioning-final-approval-receipt-v1.json'
+            'source-project-provisioning-derived-execution-binding-v1.json'
           ),
-          expectedReceipt: receipt,
+          expectedReceipt: binding,
           expectedOwnerPrivateRootIdentity: wrongRootIdentity,
           expectedOwnerPrivateRootAcl: recorded.ownerPrivateRootAcl,
           expectedFileIdentity: recorded.fileIdentity,
@@ -716,20 +807,20 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
     fs.appendFileSync(
       path.join(
         outputDirectory,
-        'source-project-provisioning-final-approval-receipt-v1.json'
+        'source-project-provisioning-derived-execution-binding-v1.json'
       ),
       ' ',
       'utf8'
     );
     expectCode(
       () =>
-        subject.verifyFinalAction003ApprovalReceiptStable({
+        subject.verifyAction003ExecutionBindingStable({
           ownerPrivateRoot,
           receiptPath: path.join(
             outputDirectory,
-            'source-project-provisioning-final-approval-receipt-v1.json'
+            'source-project-provisioning-derived-execution-binding-v1.json'
           ),
-          expectedReceipt: receipt,
+          expectedReceipt: binding,
           expectedOwnerPrivateRootIdentity: recorded.ownerPrivateRootIdentity,
           expectedOwnerPrivateRootAcl: recorded.ownerPrivateRootAcl,
           expectedFileIdentity: recorded.fileIdentity,
@@ -747,11 +838,11 @@ describe('PR12 ACTION-003 approval receipt contract', () => {
 
     expectCode(
       () =>
-        subject.recordFinalAction003ApprovalReceiptCreateNew({
+        subject.recordAction003ExecutionBindingCreateNew({
           ownerPrivateRoot: path.resolve(os.tmpdir()),
           outputDirectory: path.resolve(os.tmpdir(), 'not-created'),
-          receipt: validFinalReceipt(initialReceipt),
-          expected: expectedFinalReceiptBinding(initialReceipt),
+          binding: validExecutionBinding(initialReceipt),
+          expected: expectedExecutionBinding(initialReceipt),
         }),
       'WINDOWS_ACL_CAPTURE_REQUIRED'
     );

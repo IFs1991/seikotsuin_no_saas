@@ -1,11 +1,10 @@
 {
-  "schemaVersion": 4,
-  "recordType": "PR12_SOURCE_PROJECT_PROVISIONING_OWNER_APPROVAL",
-  "decision": "NOT_CAPTURED",
-  "attestationStatus": "NOT_CAPTURED",
-  "attestationMethod": "SOLE_OPERATOR_EXPLICIT_TWO_STEP_APPROVAL_RECORD",
-  "approverPrincipalId": "owner:futoshi-iwasawa",
-  "approverDisplayName": "FUTOSHI IWASAWA",
+  "schemaVersion": 1,
+  "recordType": "PR12_SOURCE_PROJECT_PROVISIONING_AUTHORIZATION_PROJECTION",
+  "projectionStatus": "NOT_DERIVED",
+  "derivationStatus": "NOT_DERIVED",
+  "derivationMethod": "SYSTEM_DERIVED_FROM_SINGLE_ACTION_APPROVAL",
+  "authorityReceiptSha256": "NOT_CAPTURED",
   "operatorPrincipalId": "owner:futoshi-iwasawa",
   "operatorDisplayName": "FUTOSHI IWASAWA",
   "operatorControlMode": "PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1",
@@ -44,11 +43,9 @@
   "authorizedDurationHours": 72,
   "scheduledExecutionAt": "NOT_CAPTURED",
   "fundedThrough": "NOT_CAPTURED",
-  "approvedAt": "NOT_CAPTURED",
-  "operatorReconfirmedAt": "NOT_CAPTURED",
+  "authorityAcceptedAt": "NOT_CAPTURED",
   "expiresAt": "NOT_CAPTURED",
-  "initialApprovalReceiptSha256": "NOT_CAPTURED",
   "phase2AndLaterAuthorized": false,
   "cleanupDeletionAuthorized": false,
-  "notes": "Template only. PR12-ACTION-002 completed PASS and its manifest, terminal journal, source binding, source request, and captured Organization identity are fixed here. A populated Action-003 owner record must also bind the exact v5 binding, canonical scheduledExecutionAt, fundedThrough equal to that schedule plus exactly 73 hours, and explicit acceptance of the same-user DPAPI credential-exposure and non-guaranteed JavaScript/.NET zeroization residual risk. This template does not approve PR12-ACTION-003, project creation, production contact, cleanup/deletion, or Phase 2+."
+  "notes": "Template only. Automation derives this secret-free projection from the populated v2 single-action authority receipt and deterministic v6 candidate. It does not claim that a person separately reviewed or approved this generated file."
 }

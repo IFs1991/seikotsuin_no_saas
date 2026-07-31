@@ -387,7 +387,7 @@ export function derivePricingExecutionFreshThrough(pricingEvidenceInput) {
   );
   requireCondition(
     sources.length === OFFICIAL_PRICING_SOURCES.length &&
-      freshness.maximumAgeAtApprovalSeconds === 3600,
+      freshness.maximumAgeAtApprovalSeconds === 86400,
     'PRICING_EVIDENCE_INVALID'
   );
   const earliestRetrievedAt = Math.min(
@@ -525,6 +525,38 @@ export function sha256Text(text) {
 
 export function sha256Canonical(value) {
   return sha256Text(canonicalJson(value));
+}
+
+export function assertOfficialPricingSourceSemantics(inputValue) {
+  const input = requireRecord(inputValue, 'PRICING_SOURCE_SEMANTICS_INVALID');
+  requireCondition(
+    typeof input.sourceId === 'string' &&
+      (Buffer.isBuffer(input.bytes) || input.bytes instanceof Uint8Array),
+    'PRICING_SOURCE_SEMANTICS_INVALID'
+  );
+  let normalizedText;
+  try {
+    normalizedText = new TextDecoder('utf-8', { fatal: true })
+      .decode(input.bytes)
+      .toLowerCase()
+      .replace(/<[^>]*>/gu, ' ')
+      .replace(/\s+/gu, ' ')
+      .trim();
+  } catch {
+    fail('PRICING_SOURCE_SEMANTICS_INVALID');
+  }
+  const semanticChecks = {
+    COMPUTE_AND_DISK:
+      /\blarge\b.{0,240}\b(?:usd\s*)?\$?0\.1517\b.{0,120}\b(?:per\s+)?(?:project\s+)?hour\b/su,
+    COMPUTE_USAGE:
+      /\bpartial\b.{0,200}\bhours?\b.{0,200}\bround(?:ed|ing)?\s+up\b/su,
+    PRICING: /\bpro\b.{0,500}\bcompute\b/su,
+  };
+  const check = semanticChecks[input.sourceId];
+  requireCondition(
+    check instanceof RegExp && check.test(normalizedText),
+    'PRICING_SOURCE_SEMANTICS_INVALID'
+  );
 }
 
 function decodeUrlComponentRepeatedly(value) {
@@ -1041,11 +1073,11 @@ function validateBindingShape(binding) {
   exact(binding.approval, [
     'decision',
     'attestationStatus',
-    'approvedBy',
-    'approvedAt',
-    'operatorReconfirmedAt',
+    'authorityPrincipalId',
+    'authorityAcceptedAt',
+    'derivedExecutionBindingGeneratedAt',
     'expiresAt',
-    'initialApprovalReceiptSha256',
+    'authorityReceiptSha256',
     'soleOperatorRiskAccepted',
     'sameUserDpapiCredentialExposureRiskAccepted',
     'providerSpendCapLimitationAcknowledged',
@@ -1057,8 +1089,8 @@ function validateBindingShape(binding) {
     'evidencePath',
     'evidenceSha256',
     'approvedActionId',
-    'approvedPayloadSha256',
-    'approvedBindingMaterialSha256',
+    'derivedPayloadSha256',
+    'derivedBindingMaterialSha256',
   ]);
   exact(binding.owners, [
     'commercialReleaseOwner',
@@ -1580,7 +1612,7 @@ function validateCredentialConfiguration(binding, credentialConfiguration) {
       'CREDENTIAL_APPROVAL_CHRONOLOGY_INVALID'
     ) <=
       parseTimestamp(
-        requireRecord(binding.approval, 'APPROVAL_INVALID').approvedAt,
+        requireRecord(binding.approval, 'APPROVAL_INVALID').authorityAcceptedAt,
         'APPROVAL_INVALID'
       ),
     'CREDENTIAL_APPROVAL_CHRONOLOGY_INVALID'
@@ -1635,10 +1667,10 @@ function validateAuthorization(binding) {
 }
 
 function validateApprovalStatus(binding) {
-  requireCondition(binding.schemaVersion === 5, 'BINDING_SCHEMA_INVALID');
+  requireCondition(binding.schemaVersion === 6, 'BINDING_SCHEMA_INVALID');
   requireCondition(
     binding.phase === 'SOURCE_PROJECT_PROVISIONING' &&
-      binding.status === 'PENDING_FINAL_APPROVAL',
+      binding.status === 'PENDING_DERIVED_EXECUTION_BINDING',
     'SOURCE_PROVISIONING_CANDIDATE_INVALID'
   );
 }
@@ -1802,7 +1834,7 @@ function validateOrganizationIdentityEvidence(binding, context) {
       completedAt <= sealedAt &&
       sealedAt <=
         parseTimestamp(
-          binding.approval.approvedAt,
+          binding.approval.authorityAcceptedAt,
           'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
         ),
     'ORGANIZATION_IDENTITY_EVIDENCE_INVALID'
@@ -1946,7 +1978,10 @@ function validateOwnersAndCleanup(binding) {
     'SOLE_OPERATOR_EXCEPTION_INVALID'
   );
   const approval = requireRecord(binding.approval, 'APPROVAL_INVALID');
-  requireCanonicalOwnerId(approval.approvedBy, 'OWNER_ASSIGNMENT_INVALID');
+  requireCanonicalOwnerId(
+    approval.authorityPrincipalId,
+    'OWNER_ASSIGNMENT_INVALID'
+  );
   requireCondition(
     operatorControl.mode === SOLE_OPERATOR_CONTROL_MODE &&
       operatorControl.principalDisplayName === 'FUTOSHI IWASAWA' &&
@@ -1959,8 +1994,8 @@ function validateOwnersAndCleanup(binding) {
       operatorControl.localPreparationExceptionAuthorized === true &&
       operatorControl.localPreparationExceptionAuthorizedOn === '2026-07-24' &&
       operatorControl.finalActionSelfApprovalRequired === true &&
-      operatorControl.minimumCoolingOffSeconds === 300 &&
-      operatorControl.maximumApprovalWindowSeconds === 1800 &&
+      operatorControl.minimumCoolingOffSeconds === 0 &&
+      operatorControl.maximumApprovalWindowSeconds === 3600 &&
       canonicalJson(operatorControl.compensatingControls) ===
         canonicalJson([
           'EXACT_HEAD_BASE_GOVERNANCE_CONTRACT_WRAPPER_AND_PAYLOAD_HASHES',
@@ -1970,11 +2005,11 @@ function validateOwnersAndCleanup(binding) {
           'ONE_DURABLE_CREATE_ONCE_CLAIM_NO_POST_RETRY',
           'DPAPI_CURRENT_USER_CLAIM_BOUND_POST_CLAIM_RETRIEVAL',
           'USD_50_OWNER_AUTHORIZATION_CEILING_FOR_72_HOURS',
-          'EXACT_SCHEDULED_EXECUTION_PLUS_73_HOURS_FUNDING_BINDING',
+          'RELATIVE_APPROVAL_TTL_PLUS_73_HOURS_FUNDING_BINDING',
           'PHASE2_AND_CLEANUP_DELETION_REMAIN_SEPARATELY_UNAUTHORIZED',
         ]) &&
       consolidatedOwnerKeys.every(key => owners[key] === principalId) &&
-      approval.approvedBy === principalId &&
+      approval.authorityPrincipalId === principalId &&
       approval.soleOperatorRiskAccepted === true &&
       approval.sameUserDpapiCredentialExposureRiskAccepted === true &&
       approval.providerSpendCapLimitationAcknowledged === true &&
@@ -2020,13 +2055,12 @@ function validateOwnersAndCleanup(binding) {
   );
 }
 
-function validateCostFundingAndChronology(
-  binding,
-  context,
-  finalApprovalRequired
-) {
+function validateCostFundingAndChronology(binding, context) {
   const approval = requireRecord(binding.approval, 'APPROVAL_INVALID');
-  const approvedAt = parseTimestamp(approval.approvedAt, 'APPROVAL_INVALID');
+  const approvedAt = parseTimestamp(
+    approval.authorityAcceptedAt,
+    'APPROVAL_INVALID'
+  );
   const expiresAt = parseTimestamp(approval.expiresAt, 'APPROVAL_INVALID');
   const scheduledExecutionAt = parseTimestamp(
     binding.provisioningAction.scheduledExecutionAt,
@@ -2038,26 +2072,25 @@ function validateCostFundingAndChronology(
     'SOLE_OPERATOR_EXCEPTION_INVALID'
   );
   requireCondition(
-    scheduledExecutionAt === approvedAt + 15 * 60 * 1000,
+    scheduledExecutionAt === approvedAt,
     'SCHEDULED_EXECUTION_TIME_INVALID'
   );
   requireCondition(
-    expiresAt === approvedAt + 30 * 60 * 1000,
+    expiresAt === approvedAt + 60 * 60 * 1000,
     'APPROVAL_EXPIRY_TIME_INVALID'
   );
   requireCondition(
-    approval.operatorReconfirmedAt === 'NOT_CAPTURED' &&
+    approval.derivedExecutionBindingGeneratedAt === 'NOT_CAPTURED' &&
       scheduledExecutionAt < expiresAt &&
       expiresAt - approvedAt <=
         operatorControl.maximumApprovalWindowSeconds * 1000 &&
-      operatorControl.minimumCoolingOffSeconds === 300 &&
+      operatorControl.minimumCoolingOffSeconds === 0 &&
       requireSha256(
-        approval.initialApprovalReceiptSha256,
+        approval.authorityReceiptSha256,
         'INITIAL_APPROVAL_RECEIPT_INVALID'
-      ) === approval.initialApprovalReceiptSha256 &&
+      ) === approval.authorityReceiptSha256 &&
       now >= approvedAt &&
-      now < expiresAt &&
-      (finalApprovalRequired || now <= scheduledExecutionAt),
+      now < expiresAt,
     now >= expiresAt ? 'APPROVAL_EXPIRED' : 'APPROVAL_WINDOW_INVALID'
   );
 
@@ -2165,8 +2198,7 @@ function validateCostFundingAndChronology(
       /^[A-Z][A-Z0-9_:-]{7,127}$/.test(fundingSource) &&
       fundingCeiling === OWNER_AUTHORIZATION_CEILING_USD_SCALED &&
       fundedAmount === OWNER_AUTHORIZATION_CEILING_USD_SCALED &&
-      fundingCeiling === ceiling &&
-      fundedThrough >= expiresAt + 72 * 60 * 60 * 1000,
+      fundingCeiling === ceiling,
     'FUNDING_NOT_CAPTURED'
   );
   requireCondition(
@@ -2276,7 +2308,7 @@ function validatePricingEvidence(binding, pricingEvidenceInput, context) {
   );
   const cost = binding.cost;
   requireCondition(
-    pricingEvidence.schemaVersion === 2 &&
+    pricingEvidence.schemaVersion === 3 &&
       pricingEvidence.recordType ===
         'PR12_SOURCE_PROJECT_OFFICIAL_PRICING_EVIDENCE' &&
       pricingEvidence.status === 'CAPTURED' &&
@@ -2303,7 +2335,10 @@ function validatePricingEvidence(binding, pricingEvidenceInput, context) {
     'PRICING_EVIDENCE_INVALID'
   );
   const approval = requireRecord(binding.approval, 'APPROVAL_INVALID');
-  const approvedAt = parseTimestamp(approval.approvedAt, 'APPROVAL_INVALID');
+  const approvedAt = parseTimestamp(
+    approval.authorityAcceptedAt,
+    'APPROVAL_INVALID'
+  );
   const retrievedTimes = sources.map((sourceInput, index) => {
     const source = assertExactKeys(
       sourceInput,
@@ -2450,7 +2485,7 @@ function validatePricingEvidence(binding, pricingEvidenceInput, context) {
   requireCondition(
     freshness.policy ===
       'LOCAL_24_HOUR_REVALIDATION_NOT_PROVIDER_QUOTE_VALIDITY' &&
-      freshness.maximumAgeAtApprovalSeconds === 3600 &&
+      freshness.maximumAgeAtApprovalSeconds === 86400 &&
       freshness.lifetimeSeconds === 86400 &&
       retrievedTimes.every(
         retrievedAt =>
@@ -2493,11 +2528,10 @@ function validateApprovalEvidence(
     [
       'schemaVersion',
       'recordType',
-      'decision',
-      'attestationStatus',
-      'attestationMethod',
-      'approverPrincipalId',
-      'approverDisplayName',
+      'projectionStatus',
+      'derivationStatus',
+      'derivationMethod',
+      'authorityReceiptSha256',
       'operatorPrincipalId',
       'operatorDisplayName',
       'operatorControlMode',
@@ -2536,10 +2570,8 @@ function validateApprovalEvidence(
       'organizationIdentityTerminalSha256',
       'organizationIdentitySourceBindingMaterialSha256',
       'organizationIdentitySourceRequestSha256',
-      'approvedAt',
-      'operatorReconfirmedAt',
+      'authorityAcceptedAt',
       'expiresAt',
-      'initialApprovalReceiptSha256',
       'phase2AndLaterAuthorized',
       'cleanupDeletionAuthorized',
       'notes',
@@ -2549,17 +2581,15 @@ function validateApprovalEvidence(
   const approval = binding.approval;
   const environment = binding.environmentProposal;
   requireCondition(
-    evidence.schemaVersion === 4 &&
+    evidence.schemaVersion === 1 &&
       evidence.recordType ===
-        'PR12_SOURCE_PROJECT_PROVISIONING_OWNER_APPROVAL' &&
-      evidence.decision === 'PENDING_FINAL_APPROVAL' &&
-      evidence.attestationStatus === 'AWAITING_FINAL_RECEIPT' &&
-      evidence.attestationMethod ===
-        'SOLE_OPERATOR_EXPLICIT_TWO_STEP_APPROVAL_RECORD' &&
-      evidence.approverPrincipalId === approval.approvedBy &&
+        'PR12_SOURCE_PROJECT_PROVISIONING_AUTHORIZATION_PROJECTION' &&
+      evidence.projectionStatus === 'DERIVED' &&
+      evidence.derivationStatus === 'VERIFIED_LOCAL_DERIVATION' &&
+      evidence.derivationMethod ===
+        'SYSTEM_DERIVED_FROM_SINGLE_ACTION_APPROVAL' &&
+      evidence.authorityReceiptSha256 === approval.authorityReceiptSha256 &&
       evidence.operatorPrincipalId === binding.operatorControl.principalId &&
-      evidence.approverPrincipalId === evidence.operatorPrincipalId &&
-      evidence.approverDisplayName === 'FUTOSHI IWASAWA' &&
       evidence.operatorDisplayName === 'FUTOSHI IWASAWA' &&
       evidence.operatorControlMode === SOLE_OPERATOR_CONTROL_MODE &&
       evidence.identitySeparationAvailable === false &&
@@ -2610,11 +2640,8 @@ function validateApprovalEvidence(
         binding.organizationIdentityEvidence.sourceBindingMaterialSha256 &&
       evidence.organizationIdentitySourceRequestSha256 ===
         binding.organizationIdentityEvidence.sourceRequestSha256 &&
-      evidence.approvedAt === approval.approvedAt &&
-      evidence.operatorReconfirmedAt === approval.operatorReconfirmedAt &&
+      evidence.authorityAcceptedAt === approval.authorityAcceptedAt &&
       evidence.expiresAt === approval.expiresAt &&
-      evidence.initialApprovalReceiptSha256 ===
-        approval.initialApprovalReceiptSha256 &&
       evidence.phase2AndLaterAuthorized === false &&
       evidence.cleanupDeletionAuthorized === false,
     'APPROVAL_EVIDENCE_INVALID'
@@ -2636,7 +2663,24 @@ function validateInitialApprovalReceipt(binding, context) {
       'approvedByPrincipalId',
       'approvedByDisplayName',
       'acceptedAt',
+      'expiresAt',
+      'approvalTtlSeconds',
       'approvalPurpose',
+      'gitCommit',
+      'organizationId',
+      'organizationSlug',
+      'projectName',
+      'region',
+      'tier',
+      'ownerAuthorizationCeilingUsdScaled',
+      'authorizedDurationHours',
+      'maximumPostAttempts',
+      'credentialConfigurationSha256',
+      'pricingEvidenceSha256',
+      'actionJournalDirectoryPathSha256',
+      'actionJournalDirectoryFingerprint',
+      'evidenceParentDirectoryPathSha256',
+      'evidenceParentDirectoryFingerprint',
       'soleOperatorRiskAccepted',
       'sameUserDpapiCredentialExposureRiskAccepted',
       'providerSpendCapLimitationAcknowledged',
@@ -2661,30 +2705,67 @@ function validateInitialApprovalReceipt(binding, context) {
     'INITIAL_APPROVAL_RECEIPT_INVALID'
   );
   const approvedAt = parseTimestamp(
-    approval.approvedAt,
+    approval.authorityAcceptedAt,
+    'INITIAL_APPROVAL_RECEIPT_INVALID'
+  );
+  const receiptExpiresAt = parseTimestamp(
+    receipt.expiresAt,
     'INITIAL_APPROVAL_RECEIPT_INVALID'
   );
   const now = parseTimestamp(context.now, 'INITIAL_APPROVAL_RECEIPT_INVALID');
   const receiptSha256 = sha256Text(`${canonicalJson(receipt)}\n`);
   requireCondition(
-    receipt.schemaVersion === 1 &&
+    receipt.schemaVersion === 2 &&
       receipt.recordType ===
-        'PR12_SOURCE_PROJECT_PROVISIONING_INITIAL_APPROVAL_RECEIPT' &&
+        'PR12_SOURCE_PROJECT_PROVISIONING_SINGLE_ACTION_APPROVAL_RECEIPT' &&
       receipt.decision === 'APPROVED' &&
       receipt.attestationStatus === 'VERIFIED' &&
-      receipt.attestationMethod === 'SOLE_OPERATOR_EXPLICIT_INITIAL_APPROVAL' &&
+      receipt.attestationMethod ===
+        'SOLE_OPERATOR_EXPLICIT_SINGLE_ACTION_APPROVAL' &&
       receipt.actionId === ACTION_ID &&
-      receipt.approvedByPrincipalId === approval.approvedBy &&
+      receipt.approvedByPrincipalId === approval.authorityPrincipalId &&
       receipt.approvedByDisplayName === 'FUTOSHI IWASAWA' &&
-      receipt.approvalPurpose === 'ACTION003_PACKET_PREPARATION_ONLY' &&
+      receipt.approvalPurpose ===
+        'ACTION003_PACKET_PREPARATION_AND_SOURCE_PROJECT_PROVISIONING' &&
       acceptedAt === approvedAt &&
+      receiptExpiresAt === acceptedAt + 60 * 60 * 1000 &&
+      receipt.expiresAt === approval.expiresAt &&
+      receipt.approvalTtlSeconds === 3600 &&
+      receipt.gitCommit === binding.target.gitCommit &&
+      receipt.organizationId === binding.environmentProposal.organizationId &&
+      receipt.organizationSlug ===
+        binding.environmentProposal.organizationSlug &&
+      receipt.projectName === binding.environmentProposal.projectName &&
+      receipt.region === binding.environmentProposal.region &&
+      receipt.tier === binding.environmentProposal.databaseTier &&
+      receipt.ownerAuthorizationCeilingUsdScaled ===
+        binding.cost.ownerAuthorizationCeilingUsdScaled &&
+      receipt.authorizedDurationHours ===
+        binding.lifecycle.sourceMaximumHoursFromCreation &&
+      receipt.maximumPostAttempts === 1 &&
+      receipt.credentialConfigurationSha256 ===
+        binding.credentialControls.provisioningCredentialConfiguration.sha256 &&
+      receipt.pricingEvidenceSha256 ===
+        binding.cost.pricingEvidence.artifactSha256 &&
+      receipt.actionJournalDirectoryPathSha256 ===
+        binding.duplicateAndFailurePolicy.actionJournalDirectoryPathSha256 &&
+      canonicalJson(receipt.actionJournalDirectoryFingerprint) ===
+        canonicalJson(
+          binding.duplicateAndFailurePolicy.actionJournalDirectoryFingerprint
+        ) &&
+      receipt.evidenceParentDirectoryPathSha256 ===
+        binding.evidenceContract.evidenceParentDirectoryPathSha256 &&
+      canonicalJson(receipt.evidenceParentDirectoryFingerprint) ===
+        canonicalJson(
+          binding.evidenceContract.evidenceParentDirectoryFingerprint
+        ) &&
       acceptedAt <= now &&
       receiptSha256 ===
         requireSha256(
           context.initialApprovalReceiptSha256,
           'INITIAL_APPROVAL_RECEIPT_INVALID'
         ) &&
-      receiptSha256 === approval.initialApprovalReceiptSha256 &&
+      receiptSha256 === approval.authorityReceiptSha256 &&
       receipt.soleOperatorRiskAccepted === true &&
       receipt.sameUserDpapiCredentialExposureRiskAccepted === true &&
       receipt.providerSpendCapLimitationAcknowledged === true &&
@@ -2695,7 +2776,7 @@ function validateInitialApprovalReceipt(binding, context) {
       receipt.unknownChargesAcknowledged === true &&
       receipt.action003PacketPreparationAuthorized === true &&
       receipt.databasePasswordBootstrapAuthorized === false &&
-      receipt.sourceProjectProvisioningAuthorized === false &&
+      receipt.sourceProjectProvisioningAuthorized === true &&
       receipt.productionContactAuthorized === false &&
       receipt.phase2AndLaterAuthorized === false &&
       receipt.cleanupDeletionAuthorized === false,
@@ -2705,132 +2786,114 @@ function validateInitialApprovalReceipt(binding, context) {
   assertSecretFreeEvidence(receipt, []);
 }
 
-function validateFinalApprovalReceipt(
+function validateDerivedExecutionBinding(
   binding,
   context,
   bindingMaterialSha256,
   payloadSha256
 ) {
-  const receipt = assertExactKeys(
-    context.finalApprovalReceipt,
+  const executionBinding = assertExactKeys(
+    context.derivedExecutionBinding,
     [
       'schemaVersion',
       'recordType',
-      'decision',
-      'attestationStatus',
-      'attestationMethod',
+      'derivationStatus',
+      'derivationMethod',
       'actionId',
-      'approvedByPrincipalId',
-      'approvedByDisplayName',
-      'acceptedAt',
+      'generatedAt',
       'expiresAt',
-      'initialApprovalReceiptSha256',
+      'authorityReceiptSha256',
       'bindingSha256',
       'bindingMaterialSha256',
       'payloadSha256',
       'credentialConfigurationSha256',
       'pricingEvidenceSha256',
-      'ownerApprovalSha256',
-      'soleOperatorRiskAccepted',
-      'sameUserDpapiCredentialExposureRiskAccepted',
-      'providerSpendCapLimitationAcknowledged',
-      'sameOrganizationExceptionRiskAccepted',
-      'organizationListProductionRefObservationAccepted',
-      'sharedOrganizationIamBillingControlPlaneRiskAccepted',
-      'productionDirectContactProhibitionAcknowledged',
-      'unknownChargesAcknowledged',
-      'sourceProjectProvisioningAuthorized',
+      'authorizationProjectionSha256',
+      'authorityScopeConfirmed',
       'productionContactAuthorized',
       'phase2AndLaterAuthorized',
       'cleanupDeletionAuthorized',
       'notes',
     ],
-    'FINAL_APPROVAL_RECEIPT_INVALID'
+    'DERIVED_EXECUTION_BINDING_INVALID'
   );
   const approval = binding.approval;
-  const acceptedAt = parseTimestamp(
-    receipt.acceptedAt,
-    'FINAL_APPROVAL_RECEIPT_INVALID'
+  const generatedAt = parseTimestamp(
+    executionBinding.generatedAt,
+    'DERIVED_EXECUTION_BINDING_INVALID'
   );
   const approvedAt = parseTimestamp(
-    approval.approvedAt,
-    'FINAL_APPROVAL_RECEIPT_INVALID'
-  );
-  const scheduledExecutionAt = parseTimestamp(
-    binding.provisioningAction.scheduledExecutionAt,
-    'FINAL_APPROVAL_RECEIPT_INVALID'
+    approval.authorityAcceptedAt,
+    'DERIVED_EXECUTION_BINDING_INVALID'
   );
   const expiresAt = parseTimestamp(
     approval.expiresAt,
-    'FINAL_APPROVAL_RECEIPT_INVALID'
+    'DERIVED_EXECUTION_BINDING_INVALID'
   );
-  const now = parseTimestamp(context.now, 'FINAL_APPROVAL_RECEIPT_INVALID');
+  const now = parseTimestamp(context.now, 'DERIVED_EXECUTION_BINDING_INVALID');
   const bindingSha256 = sha256Text(`${canonicalJson(binding)}\n`);
-  const finalReceiptSha256 = sha256Text(`${canonicalJson(receipt)}\n`);
+  const executionBindingSha256 = sha256Text(
+    `${canonicalJson(executionBinding)}\n`
+  );
   requireCondition(
-    receipt.schemaVersion === 1 &&
-      receipt.recordType ===
-        'PR12_SOURCE_PROJECT_PROVISIONING_FINAL_APPROVAL_RECEIPT' &&
-      receipt.decision === 'APPROVED' &&
-      receipt.attestationStatus === 'VERIFIED' &&
-      receipt.attestationMethod ===
-        'SOLE_OPERATOR_EXPLICIT_FINAL_HASH_RECONFIRMATION' &&
-      receipt.actionId === ACTION_ID &&
-      receipt.approvedByPrincipalId === approval.approvedBy &&
-      receipt.approvedByDisplayName === 'FUTOSHI IWASAWA' &&
-      acceptedAt >= approvedAt + 5 * 60 * 1000 &&
-      acceptedAt <= scheduledExecutionAt &&
-      acceptedAt < expiresAt &&
-      now >= acceptedAt &&
+    executionBinding.schemaVersion === 1 &&
+      executionBinding.recordType ===
+        'PR12_SOURCE_PROJECT_PROVISIONING_DERIVED_EXECUTION_BINDING' &&
+      executionBinding.derivationStatus === 'VERIFIED_LOCAL_DERIVATION' &&
+      executionBinding.derivationMethod ===
+        'SYSTEM_DERIVED_HASH_BINDING_FROM_SINGLE_APPROVAL' &&
+      executionBinding.actionId === ACTION_ID &&
+      generatedAt >= approvedAt &&
+      generatedAt < expiresAt &&
+      now >= generatedAt &&
       now < expiresAt &&
-      receipt.expiresAt === approval.expiresAt &&
-      receipt.initialApprovalReceiptSha256 ===
-        approval.initialApprovalReceiptSha256 &&
-      receipt.bindingSha256 === bindingSha256 &&
-      receipt.bindingSha256 ===
+      executionBinding.expiresAt === approval.expiresAt &&
+      executionBinding.authorityReceiptSha256 ===
+        approval.authorityReceiptSha256 &&
+      executionBinding.bindingSha256 === bindingSha256 &&
+      executionBinding.bindingSha256 ===
         requireSha256(
           context.bindingSha256,
-          'FINAL_APPROVAL_RECEIPT_INVALID'
+          'DERIVED_EXECUTION_BINDING_INVALID'
         ) &&
-      receipt.bindingMaterialSha256 === bindingMaterialSha256 &&
-      receipt.payloadSha256 === payloadSha256 &&
-      receipt.credentialConfigurationSha256 ===
+      executionBinding.bindingMaterialSha256 === bindingMaterialSha256 &&
+      executionBinding.payloadSha256 === payloadSha256 &&
+      executionBinding.credentialConfigurationSha256 ===
         binding.credentialControls.provisioningCredentialConfiguration.sha256 &&
-      receipt.pricingEvidenceSha256 ===
+      executionBinding.pricingEvidenceSha256 ===
         binding.cost.pricingEvidence.artifactSha256 &&
-      receipt.ownerApprovalSha256 ===
+      executionBinding.authorizationProjectionSha256 ===
         requireSha256(
           context.approvalEvidenceSha256,
-          'FINAL_APPROVAL_RECEIPT_INVALID'
+          'DERIVED_EXECUTION_BINDING_INVALID'
         ) &&
-      finalReceiptSha256 ===
+      executionBindingSha256 ===
         requireSha256(
-          context.finalApprovalReceiptSha256,
-          'FINAL_APPROVAL_RECEIPT_INVALID'
+          context.derivedExecutionBindingSha256,
+          'DERIVED_EXECUTION_BINDING_INVALID'
         ) &&
-      receipt.soleOperatorRiskAccepted === true &&
-      receipt.sameUserDpapiCredentialExposureRiskAccepted === true &&
-      receipt.providerSpendCapLimitationAcknowledged === true &&
-      receipt.sameOrganizationExceptionRiskAccepted === true &&
-      receipt.organizationListProductionRefObservationAccepted === true &&
-      receipt.sharedOrganizationIamBillingControlPlaneRiskAccepted === true &&
-      receipt.productionDirectContactProhibitionAcknowledged === true &&
-      receipt.unknownChargesAcknowledged === true &&
-      receipt.sourceProjectProvisioningAuthorized === true &&
-      receipt.productionContactAuthorized === false &&
-      receipt.phase2AndLaterAuthorized === false &&
-      receipt.cleanupDeletionAuthorized === false,
-    'FINAL_APPROVAL_RECEIPT_INVALID'
+      executionBinding.authorityScopeConfirmed === true &&
+      executionBinding.productionContactAuthorized === false &&
+      executionBinding.phase2AndLaterAuthorized === false &&
+      executionBinding.cleanupDeletionAuthorized === false,
+    'DERIVED_EXECUTION_BINDING_INVALID'
   );
-  requireConcreteString(receipt.notes, 'FINAL_APPROVAL_RECEIPT_INVALID');
-  assertSecretFreeEvidence(receipt, []);
+  requireConcreteString(
+    executionBinding.notes,
+    'DERIVED_EXECUTION_BINDING_INVALID'
+  );
+  assertSecretFreeEvidence(executionBinding, []);
+  return {
+    generatedAt: executionBinding.generatedAt,
+    executionBindingSha256,
+  };
 }
 
 function validateOfflineApprovalCore(
   bindingInput,
   credentialConfigurationInput,
   contextInput,
-  finalApprovalRequired
+  executionBindingRequired
 ) {
   const binding = requireRecord(bindingInput, 'BINDING_INVALID');
   const context = requireRecord(contextInput, 'VALIDATION_CONTEXT_INVALID');
@@ -2840,19 +2903,22 @@ function validateOfflineApprovalCore(
 
   const approval = requireRecord(binding.approval, 'APPROVAL_INVALID');
   requireCondition(
-    approval.decision === 'PENDING_FINAL_APPROVAL' &&
-      approval.attestationStatus === 'AWAITING_FINAL_RECEIPT' &&
+    approval.decision === 'SINGLE_ACTION_AUTHORITY_CAPTURED' &&
+      approval.attestationStatus === 'AWAITING_DERIVED_EXECUTION_BINDING' &&
       approval.approvedActionId === ACTION_ID,
     'APPROVAL_ATTESTATION_INVALID'
   );
-  requireCanonicalOwnerId(approval.approvedBy, 'APPROVAL_ATTESTATION_INVALID');
+  requireCanonicalOwnerId(
+    approval.authorityPrincipalId,
+    'APPROVAL_ATTESTATION_INVALID'
+  );
   requireSafeEvidencePath(
     approval.evidencePath,
     'APPROVAL_ATTESTATION_INVALID'
   );
   requireSha256(approval.evidenceSha256, 'APPROVAL_ATTESTATION_INVALID');
   requireSha256(
-    approval.initialApprovalReceiptSha256,
+    approval.authorityReceiptSha256,
     'INITIAL_APPROVAL_RECEIPT_INVALID'
   );
   validateInitialApprovalReceipt(binding, context);
@@ -2889,7 +2955,7 @@ function validateOfflineApprovalCore(
   validateOrganizationIdentityEvidence(binding, context);
   validateInitialPosture(binding);
   validateOwnersAndCleanup(binding);
-  validateCostFundingAndChronology(binding, context, finalApprovalRequired);
+  validateCostFundingAndChronology(binding, context);
   validateFailureAndEvidenceContracts(binding);
   validateCredentialConfiguration(binding, credentialConfigurationInput);
 
@@ -2970,7 +3036,7 @@ function validateOfflineApprovalCore(
   requireCondition(
     canonicalJson(approvedRequest.projection) === canonicalJson(projection) &&
       approvedRequest.sha256 === projectionSha256 &&
-      approval.approvedPayloadSha256 === projectionSha256,
+      approval.derivedPayloadSha256 === projectionSha256,
     'REQUEST_PAYLOAD_HASH_MISMATCH'
   );
   const forbiddenFields = requireArray(
@@ -3088,7 +3154,7 @@ function validateOfflineApprovalCore(
 
   const bindingMaterialSha256 = sha256Canonical(buildBindingMaterial(binding));
   requireCondition(
-    approval.approvedBindingMaterialSha256 === bindingMaterialSha256,
+    approval.derivedBindingMaterialSha256 === bindingMaterialSha256,
     'BINDING_MATERIAL_HASH_MISMATCH'
   );
   validatePricingEvidence(binding, context.pricingEvidence, context);
@@ -3098,19 +3164,19 @@ function validateOfflineApprovalCore(
     bindingMaterialSha256,
     projectionSha256
   );
-  if (finalApprovalRequired) {
-    validateFinalApprovalReceipt(
-      binding,
-      context,
-      bindingMaterialSha256,
-      projectionSha256
-    );
-  }
+  const executionBindingValidation = executionBindingRequired
+    ? validateDerivedExecutionBinding(
+        binding,
+        context,
+        bindingMaterialSha256,
+        projectionSha256
+      )
+    : null;
   requireNoUnresolvedValues(
     {
       approval: Object.fromEntries(
         Object.entries(binding.approval).filter(
-          ([key]) => key !== 'operatorReconfirmedAt'
+          ([key]) => key !== 'derivedExecutionBindingGeneratedAt'
         )
       ),
       approvedRequest: binding.approvedRequest,
@@ -3150,15 +3216,16 @@ function validateOfflineApprovalCore(
     organizationIdentityEvidence: binding.organizationIdentityEvidence,
     remoteContactPerformed: false,
     credentialReadPerformed: false,
-    finalApprovalRequired: !finalApprovalRequired,
-    sourceProjectProvisioningAuthorized: finalApprovalRequired,
-    operatorReconfirmedAt: finalApprovalRequired
-      ? context.finalApprovalReceipt.acceptedAt
-      : 'NOT_CAPTURED',
-    finalApprovalReceiptSha256: finalApprovalRequired
+    derivedExecutionBindingRequired: !executionBindingRequired,
+    sourceProjectProvisioningAuthorized: executionBindingRequired,
+    authorityAcceptedAt: approval.authorityAcceptedAt,
+    derivedExecutionBindingGeneratedAt: executionBindingRequired
+      ? executionBindingValidation.generatedAt
+      : 'NOT_DERIVED',
+    derivedExecutionBindingSha256: executionBindingRequired
       ? requireSha256(
-          context.finalApprovalReceiptSha256,
-          'FINAL_APPROVAL_RECEIPT_INVALID'
+          context.derivedExecutionBindingSha256,
+          'DERIVED_EXECUTION_BINDING_INVALID'
         )
       : null,
   };
@@ -3714,7 +3781,7 @@ export function claimActionJournal(directoryInput, claimInput) {
       'actionId',
       'bindingMaterialSha256',
       'payloadSha256',
-      'finalApprovalReceiptSha256',
+      'derivedExecutionBindingSha256',
       'claimedAt',
       'state',
     ],
@@ -3724,7 +3791,7 @@ export function claimActionJournal(directoryInput, claimInput) {
     claim.actionId === ACTION_ID &&
       SHA256_PATTERN.test(claim.bindingMaterialSha256) &&
       SHA256_PATTERN.test(claim.payloadSha256) &&
-      SHA256_PATTERN.test(claim.finalApprovalReceiptSha256) &&
+      SHA256_PATTERN.test(claim.derivedExecutionBindingSha256) &&
       Number.isFinite(
         parseTimestamp(claim.claimedAt, 'ACTION_JOURNAL_CLAIM_INVALID')
       ) &&

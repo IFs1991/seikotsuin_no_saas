@@ -39,7 +39,7 @@ interface PreflightRuntime {
   buildArtifacts(input: JsonObject): {
     binding: JsonObject;
     credentialConfiguration: JsonObject;
-    ownerApproval: JsonObject;
+    authorizationProjection: JsonObject;
     summary: JsonObject;
   };
   initializeOutput(
@@ -65,7 +65,7 @@ interface PreflightRuntime {
 interface ApprovalArtifacts {
   binding: JsonObject;
   credentialConfiguration: JsonObject;
-  ownerApproval: JsonObject;
+  authorizationProjection: JsonObject;
   summary: JsonObject;
 }
 
@@ -182,6 +182,16 @@ function sha256Bytes(value: string | Buffer): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
+function canonicalFileSha256(value: JsonObject): string {
+  return sha256Bytes(`${canonicalJson(value)}\n`);
+}
+
+function pathFingerprint(value: string): string {
+  return sha256Bytes(
+    path.win32.resolve(value).replaceAll('\\', '/').toLowerCase()
+  );
+}
+
 function writeCanonicalJson(filename: string, value: JsonObject): void {
   fs.writeFileSync(filename, `${canonicalJson(value)}\n`, 'utf8');
 }
@@ -230,7 +240,7 @@ function makeIdentity(realPath: string): JsonObject {
     realPath,
     resolvedPathSha256: sha256Bytes(realPath),
     device: '1',
-    inode: sha256Bytes(realPath).slice(0, 12),
+    inode: BigInt(`0x${sha256Bytes(realPath).slice(0, 12)}`).toString(10),
   };
 }
 
@@ -258,24 +268,73 @@ function makeFixture(): {
   fs.mkdirSync(ownerPrivateApprovalRoot);
   const initialApprovalReceiptDirectory = path.join(
     ownerPrivateApprovalRoot,
-    'source-project-provisioning-initial-approval-receipt-v1'
+    'source-project-provisioning-single-action-approval-receipt-v2'
   );
   fs.mkdirSync(initialApprovalReceiptDirectory);
+  const actionJournalDirectoryPath = 'C:\\Owner\\PR12\\action003-journal';
+  const evidenceParentDirectoryPath = 'C:\\Owner\\PR12\\action003-evidence';
+  const actionJournalRealPath = normalizedRuntimeIdentityPath(
+    actionJournalDirectoryPath
+  );
+  const evidenceParentRealPath = normalizedRuntimeIdentityPath(
+    evidenceParentDirectoryPath
+  );
+  const actionJournalDirectoryFingerprint = {
+    pathSha256: sha256Bytes(actionJournalRealPath),
+    resolvedPathSha256: sha256Bytes(actionJournalRealPath),
+    device: '1',
+    inode: BigInt(
+      `0x${sha256Bytes(actionJournalRealPath).slice(0, 12)}`
+    ).toString(10),
+    snapshotSha256: sha256Bytes('[]'),
+  };
+  const evidenceParentDirectoryFingerprint = {
+    pathSha256: sha256Bytes(evidenceParentRealPath),
+    resolvedPathSha256: sha256Bytes(evidenceParentRealPath),
+    device: '1',
+    inode: BigInt(
+      `0x${sha256Bytes(evidenceParentRealPath).slice(0, 12)}`
+    ).toString(10),
+    snapshotSha256: sha256Bytes('[]'),
+  };
   const initialApprovalReceiptPath = path.join(
     initialApprovalReceiptDirectory,
-    'source-project-provisioning-initial-approval-receipt-v1.json'
+    'source-project-provisioning-single-action-approval-receipt-v2.json'
   );
-  writeCanonicalJson(initialApprovalReceiptPath, {
-    schemaVersion: 1,
-    recordType: 'PR12_SOURCE_PROJECT_PROVISIONING_INITIAL_APPROVAL_RECEIPT',
+  const initialApprovalReceipt: JsonObject = {
+    schemaVersion: 2,
+    recordType:
+      'PR12_SOURCE_PROJECT_PROVISIONING_SINGLE_ACTION_APPROVAL_RECEIPT',
     decision: 'APPROVED',
     attestationStatus: 'VERIFIED',
-    attestationMethod: 'SOLE_OPERATOR_EXPLICIT_INITIAL_APPROVAL',
+    attestationMethod: 'SOLE_OPERATOR_EXPLICIT_SINGLE_ACTION_APPROVAL',
     actionId: 'PR12-ACTION-003',
     approvedByPrincipalId: 'owner:futoshi-iwasawa',
     approvedByDisplayName: 'FUTOSHI IWASAWA',
     acceptedAt: '2026-07-27T00:00:00.000Z',
-    approvalPurpose: 'ACTION003_PACKET_PREPARATION_ONLY',
+    expiresAt: '2026-07-27T01:00:00.000Z',
+    approvalTtlSeconds: 3600,
+    approvalPurpose:
+      'ACTION003_PACKET_PREPARATION_AND_SOURCE_PROJECT_PROVISIONING',
+    gitCommit: expectedHead,
+    organizationId: 'kbnsntifrawhimhfjrug',
+    organizationSlug: 'kbnsntifrawhimhfjrug',
+    projectName: 'seikotsuin-pr12-isolated-qualification-20260719',
+    region: 'ap-northeast-1',
+    tier: 'LARGE',
+    ownerAuthorizationCeilingUsdScaled: 500000,
+    authorizedDurationHours: 72,
+    maximumPostAttempts: 1,
+    credentialConfigurationSha256: '0'.repeat(64),
+    pricingEvidenceSha256: '0'.repeat(64),
+    actionJournalDirectoryPathSha256: pathFingerprint(
+      actionJournalDirectoryPath
+    ),
+    actionJournalDirectoryFingerprint,
+    evidenceParentDirectoryPathSha256: pathFingerprint(
+      evidenceParentDirectoryPath
+    ),
+    evidenceParentDirectoryFingerprint,
     soleOperatorRiskAccepted: true,
     sameUserDpapiCredentialExposureRiskAccepted: true,
     providerSpendCapLimitationAcknowledged: true,
@@ -286,24 +345,29 @@ function makeFixture(): {
     unknownChargesAcknowledged: true,
     action003PacketPreparationAuthorized: true,
     databasePasswordBootstrapAuthorized: false,
-    sourceProjectProvisioningAuthorized: false,
+    sourceProjectProvisioningAuthorized: true,
     productionContactAuthorized: false,
     phase2AndLaterAuthorized: false,
     cleanupDeletionAuthorized: false,
     notes:
       'Synthetic owner receipt authorizing local ACTION-003 packet preparation only.',
-  });
-  const pricingRawPaths = [1, 2, 3].map(index => {
+  };
+  const pricingSourceBodies = [
+    '<html><body>Pro plan compute: Large costs $0.1517 per hour. Partial hours are rounded up to one full hour.</body></html>',
+    '<html><body>Pro compute pricing: Large is $0.1517 per project hour, and partial hours are rounded up to a full hour.</body></html>',
+    '<html><body>The Pro plan offers Large compute at $0.1517 per hour; partial hours are rounded up.</body></html>',
+  ];
+  const pricingRawPaths = pricingSourceBodies.map((body, index) => {
     const filename = path.join(
       pricingDirectory,
-      `official-source-${String(index)}.html`
+      `official-source-${String(index + 1)}.html`
     );
-    fs.writeFileSync(filename, `official-source-${String(index)}\n`, 'utf8');
+    fs.writeFileSync(filename, `${body}\n`, 'utf8');
     return filename;
   });
   const pricingEvidence: JsonObject = {
     freshness: {
-      maximumAgeAtApprovalSeconds: 3600,
+      maximumAgeAtApprovalSeconds: 86400,
     },
     officialSources: [
       {
@@ -350,6 +414,12 @@ function makeFixture(): {
     'credential-configuration.json'
   );
   writeCanonicalJson(credentialConfigurationPath, credentialConfiguration);
+  initialApprovalReceipt.credentialConfigurationSha256 = canonicalFileSha256(
+    credentialConfiguration
+  );
+  initialApprovalReceipt.pricingEvidenceSha256 =
+    canonicalFileSha256(pricingEvidence);
+  writeCanonicalJson(initialApprovalReceiptPath, initialApprovalReceipt);
   const outputDirectory = path.join(ownerPrivateApprovalRoot, 'packet');
   const descriptor: JsonObject = {
     schemaVersion: 1,
@@ -363,8 +433,8 @@ function makeFixture(): {
       'C:\\Owner\\PR12\\action002-evidence',
     organizationIdentityTerminalPath:
       'C:/Owner/PR12/action002-journal/source-organization-identity-capture-action.terminal.json',
-    actionJournalDirectoryPath: 'C:\\Owner\\PR12\\action003-journal',
-    evidenceParentDirectoryPath: 'C:\\Owner\\PR12\\action003-evidence',
+    actionJournalDirectoryPath,
+    evidenceParentDirectoryPath,
     ownerPrivateApprovalRoot,
     outputDirectoryPath: outputDirectory,
     approvalRecord: {
@@ -375,8 +445,8 @@ function makeFixture(): {
     notes: {
       binding:
         'Phase 1 only; zeroization residual risk accepted; Phase 2 remains unauthorized.',
-      ownerApproval:
-        'ACTION-003 only; zeroization residual risk accepted; Phase 2 remains unauthorized.',
+      authorizationProjection:
+        'System-derived ACTION-003 authorization projection; zeroization residual risk accepted; Phase 2 remains unauthorized.',
     },
   };
   const descriptorPath = path.join(ownerPrivateApprovalRoot, 'descriptor.json');
@@ -451,13 +521,13 @@ function makeRuntime(
     buildArtifacts: () => ({
       binding: {},
       credentialConfiguration: {},
-      ownerApproval: {},
+      authorizationProjection: {},
       summary: {
         bindingSha256: 'd'.repeat(64),
         credentialConfigurationSha256: 'e'.repeat(64),
-        ownerApprovalSha256: 'f'.repeat(64),
+        authorizationProjectionSha256: 'f'.repeat(64),
         sourceProjectProvisioningAuthorized: false,
-        finalApprovalRequired: true,
+        derivedExecutionBindingRequired: true,
         remoteContactPerformed: false,
         credentialReadPerformed: false,
       },
@@ -533,7 +603,7 @@ describe('PR12 ACTION-003 operational approval preflight', () => {
       gitHead: expectedHead,
       action002TerminalSha256,
       outputCreated: false,
-      finalApprovalRequired: true,
+      derivedExecutionBindingRequired: true,
       sourceProjectProvisioningAuthorized: false,
       remoteContactPerformed: false,
       credentialPlaintextReadPerformed: false,
@@ -549,9 +619,9 @@ describe('PR12 ACTION-003 operational approval preflight', () => {
     const fixture = makeFixture();
     fs.mkdirSync(fixture.outputDirectory);
     for (const filename of [
-      'source-project-provisioning-binding-v5.json',
+      'source-project-provisioning-binding-v6.json',
       'source-project-provisioning-credential-configuration-v2.json',
-      'source-project-provisioning-owner-approval-v4.json',
+      'source-project-provisioning-authorization-projection-v1.json',
     ]) {
       writeCanonicalJson(path.join(fixture.outputDirectory, filename), {});
     }
@@ -560,7 +630,7 @@ describe('PR12 ACTION-003 operational approval preflight', () => {
       fileCount: 3,
       bindingSha256: 'd'.repeat(64),
       credentialConfigurationSha256: 'e'.repeat(64),
-      ownerApprovalSha256: 'f'.repeat(64),
+      authorizationProjectionSha256: 'f'.repeat(64),
       remoteContactPerformed: false,
       credentialReadPerformed: false,
     }));
@@ -579,11 +649,11 @@ describe('PR12 ACTION-003 operational approval preflight', () => {
       action002TerminalSha256,
       bindingSha256: 'd'.repeat(64),
       credentialConfigurationSha256: 'e'.repeat(64),
-      ownerApprovalSha256: 'f'.repeat(64),
+      authorizationProjectionSha256: 'f'.repeat(64),
       aclProofSha256: 'c'.repeat(64),
       outputCreated: false,
       sourceProjectProvisioningAuthorized: false,
-      finalApprovalRequired: true,
+      derivedExecutionBindingRequired: true,
       remoteContactPerformed: false,
       credentialPlaintextReadPerformed: false,
     });
@@ -696,7 +766,7 @@ describe('PR12 ACTION-003 operational approval preflight', () => {
     }
   });
 
-  test('rejects pricing evidence after its exact one-hour freshness window', () => {
+  test('rejects pricing evidence after its exact 24-hour reuse window', () => {
     const fixture = makeFixture();
     const pricingPath = String(fixture.descriptor.pricingEvidencePath);
     const pricingValue: unknown = JSON.parse(
@@ -707,7 +777,7 @@ describe('PR12 ACTION-003 operational approval preflight', () => {
     if (!Array.isArray(sources)) throw new Error('PRICING_SOURCES_INVALID');
     for (const source of sources) {
       if (!isJsonObject(source)) throw new Error('PRICING_SOURCE_INVALID');
-      source.retrievedAt = '2026-07-26T22:00:00.000Z';
+      source.retrievedAt = '2026-07-25T23:59:59.999Z';
     }
     writeCanonicalJson(pricingPath, pricingValue);
 
@@ -815,9 +885,9 @@ describe('PR12 ACTION-003 operational approval preflight', () => {
     for (const [runtime, code] of [
       [
         makeRuntime({
-          now: () => Date.parse('2026-07-27T00:16:00.000Z'),
+          now: () => Date.parse('2026-07-27T01:00:00.000Z'),
         }),
-        'SCHEDULED_EXECUTION_TIME_MISSED',
+        'APPROVAL_EXPIRED',
       ],
       [
         makeRuntime({

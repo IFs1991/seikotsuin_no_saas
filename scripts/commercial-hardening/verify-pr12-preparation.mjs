@@ -103,16 +103,16 @@ const REQUIRED_ARTIFACTS = [
   'docs/stabilization/evidence/commercial-hardening/pr12/qualification-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml',
   'docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-binding.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v5.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-binding-v6.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-credential-configuration-v2.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-owner-approval-v4.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-initial-approval-receipt-v1.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-final-approval-receipt-v1.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-official-pricing-evidence-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-authorization-projection-v1.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-single-action-approval-receipt-v2.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-derived-execution-binding-v1.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-official-pricing-evidence-v3.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-dpapi-bootstrap-approval-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-windows-dpapi-envelope-v1.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-action-journal.template.json',
-  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v5.template.json',
+  'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-result-v6.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provider-safe-projection-v4.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-evidence-manifest.template.json',
   'docs/stabilization/evidence/commercial-hardening/pr12/source-project-provisioning-privacy-scan.template.json',
@@ -162,7 +162,9 @@ const REQUIRED_ARTIFACTS = [
   'scripts/commercial-hardening/prepare-pr12-action003-approval-packet.mjs',
   'scripts/commercial-hardening/pr12-action003-approval-receipt-contract.mjs',
   'scripts/commercial-hardening/pr12-windows-owner-private-acl.ps1',
-  'scripts/commercial-hardening/record-pr12-action003-final-approval-receipt.mjs',
+  'scripts/commercial-hardening/capture-pr12-action003-public-pricing.mjs',
+  'scripts/commercial-hardening/derive-pr12-action003-execution-binding.mjs',
+  'scripts/commercial-hardening/record-pr12-action003-derived-execution-binding.mjs',
   'scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs',
   'scripts/commercial-hardening/verify-pr12-source-project-provisioning-evidence.mjs',
   'scripts/commercial-hardening/pr12-source-organization-identity-capture-contract.mjs',
@@ -1804,7 +1806,7 @@ function verifyProposalContracts() {
       targetGuard.organizationIdentityCaptureRequiredBeforeSourceProvisioning ===
         true &&
       targetGuard.organizationIdentityCaptureEvidenceLinkageStatus ===
-        'IMPLEMENTED_ACTION_003_V5_REQUIRED' &&
+        'IMPLEMENTED_ACTION_003_V6_REQUIRED' &&
       targetGuard.stageCommandRuntimeImplementationPath ===
         'scripts/commercial-hardening/pr12-stage-command-runtime.mjs' &&
       targetGuard.repositoryLinkMetadataAllowed === false &&
@@ -2028,22 +2030,22 @@ function verifyProposalContracts() {
   }
 
   const provisioning = readJson(
-    `${prefix}source-project-provisioning-binding-v5.template.json`
+    `${prefix}source-project-provisioning-binding-v6.template.json`
   );
   const provisioningCredential = readJson(
     `${prefix}source-project-provisioning-credential-configuration-v2.template.json`
   );
-  const provisioningOwnerApproval = readJson(
-    `${prefix}source-project-provisioning-owner-approval-v4.template.json`
+  const provisioningAuthorizationProjection = readJson(
+    `${prefix}source-project-provisioning-authorization-projection-v1.template.json`
   );
-  const provisioningInitialApprovalReceipt = readJson(
-    `${prefix}source-project-provisioning-initial-approval-receipt-v1.template.json`
+  const provisioningSingleActionApprovalReceipt = readJson(
+    `${prefix}source-project-provisioning-single-action-approval-receipt-v2.template.json`
   );
-  const provisioningFinalApprovalReceipt = readJson(
-    `${prefix}source-project-provisioning-final-approval-receipt-v1.template.json`
+  const provisioningDerivedExecutionBinding = readJson(
+    `${prefix}source-project-provisioning-derived-execution-binding-v1.template.json`
   );
   const provisioningPricing = readJson(
-    `${prefix}source-project-official-pricing-evidence-v2.template.json`
+    `${prefix}source-project-official-pricing-evidence-v3.template.json`
   );
   const provisioningBootstrapApproval = readJson(
     `${prefix}source-project-dpapi-bootstrap-approval-v1.template.json`
@@ -2052,7 +2054,7 @@ function verifyProposalContracts() {
     `${prefix}source-project-provisioning-action-journal.template.json`
   );
   const provisioningResult = readJson(
-    `${prefix}source-project-provisioning-result-v5.template.json`
+    `${prefix}source-project-provisioning-result-v6.template.json`
   );
   const provisioningProviderExport = readJson(
     `${prefix}source-project-provider-safe-projection-v4.template.json`
@@ -2226,7 +2228,7 @@ function verifyProposalContracts() {
       ledgerOrganizationIdentityAction.requestAttemptCount === 1 &&
       ledgerOrganizationIdentityAction.automaticRetryCount === 0 &&
       ledgerOrganizationIdentityAction.action003IdentityEvidenceLinkageStatus ===
-        'IMPLEMENTED_ACTION_003_V5_REQUIRED' &&
+        'IMPLEMENTED_ACTION_003_V6_REQUIRED' &&
       ledgerOrganizationIdentityAction.terminalJournalToManifestVerifierStatus ===
         'IMPLEMENTED_FAIL_CLOSED' &&
       normalizedApproval.includes('  source_organization_identity_capture:') &&
@@ -2241,7 +2243,7 @@ function verifyProposalContracts() {
         '    database_password_retrieval_allowed: false'
       ) &&
       normalizedApproval.includes(
-        '    action_003_identity_evidence_linkage_status: IMPLEMENTED_ACTION_003_V5_REQUIRED'
+        '    action_003_identity_evidence_linkage_status: IMPLEMENTED_ACTION_003_V6_REQUIRED'
       ) &&
       normalizedApproval.includes('    wrapper_executed: true') &&
       normalizedApproval.includes('    execution_status: PASS') &&
@@ -2379,11 +2381,11 @@ function verifyProposalContracts() {
       ) &&
       normalizedApproval.includes('    automatic_reseal_allowed: false') &&
       normalizedApproval.includes(
-        '    template: source-project-provisioning-binding-v5.template.json'
+        '    template: source-project-provisioning-binding-v6.template.json'
       ) &&
-      normalizedApproval.includes('    phase_local_contract_version: 5') &&
+      normalizedApproval.includes('    phase_local_contract_version: 6') &&
       normalizedApproval.includes(
-        '    result_template: source-project-provisioning-result-v5.template.json'
+        '    result_template: source-project-provisioning-result-v6.template.json'
       ) &&
       normalizedApproval.includes(
         '    provider_safe_projection_template: source-project-provider-safe-projection-v4.template.json'
@@ -2392,65 +2394,65 @@ function verifyProposalContracts() {
         '    credential_configuration_template: source-project-provisioning-credential-configuration-v2.template.json'
       ) &&
       normalizedApproval.includes(
-        '    owner_approval_template: source-project-provisioning-owner-approval-v4.template.json'
+        '    authorization_projection_template: source-project-provisioning-authorization-projection-v1.template.json'
       ) &&
       normalizedApproval.includes(
-        '    initial_approval_receipt_template: source-project-provisioning-initial-approval-receipt-v1.template.json'
+        '    single_action_approval_receipt_template: source-project-provisioning-single-action-approval-receipt-v2.template.json'
       ) &&
       normalizedApproval.includes(
-        '    final_approval_receipt_template: source-project-provisioning-final-approval-receipt-v1.template.json'
+        '    derived_execution_binding_template: source-project-provisioning-derived-execution-binding-v1.template.json'
       ) &&
       normalizedApproval.includes('    candidate_binding_path: NOT_CAPTURED') &&
       normalizedApproval.includes(
         '    candidate_binding_sha256: NOT_CAPTURED'
       ) &&
       normalizedApproval.includes(
-        '    initial_approval_receipt_path: NOT_CAPTURED'
+        '    single_action_approval_receipt_path: NOT_CAPTURED'
       ) &&
       normalizedApproval.includes(
-        '    initial_approval_receipt_sha256: NOT_CAPTURED'
+        '    single_action_approval_receipt_sha256: NOT_CAPTURED'
       ) &&
       normalizedApproval.includes(
-        '    final_approval_receipt_path: NOT_CAPTURED'
+        '    derived_execution_binding_path: NOT_CAPTURED'
       ) &&
       normalizedApproval.includes(
-        '    final_approval_receipt_sha256: NOT_CAPTURED'
+        '    derived_execution_binding_sha256: NOT_CAPTURED'
       ) &&
       normalizedApproval.includes(
-        '    official_pricing_evidence_template: source-project-official-pricing-evidence-v2.template.json'
+        '    official_pricing_evidence_template: source-project-official-pricing-evidence-v3.template.json'
       ) &&
       ledgerSourceProjectAction.wrapper.includes(
-        '--binding <candidate-binding-v5.json>'
+        '--binding <candidate-binding-v6.json>'
       ) &&
       ledgerSourceProjectAction.wrapper.includes(
         '--credential-config <candidate-dpapi-credential-config-v2.json>'
       ) &&
       ledgerSourceProjectAction.wrapper.includes(
-        '--approval-evidence <owner-approval-candidate-v4.json>'
+        '--approval-evidence <authorization-projection-candidate-v1.json>'
       ) &&
       ledgerSourceProjectAction.wrapper.includes(
-        '--initial-approval-receipt <initial-approval-receipt-v1.json>'
+        '--single-action-approval-receipt <single-action-approval-receipt-v2.json>'
       ) &&
       ledgerSourceProjectAction.wrapper.includes(
-        '--final-approval-receipt <final-approval-receipt-v1.json>'
+        '--derived-execution-binding <derived-execution-binding-v1.json>'
       ) &&
       ledgerSourceProjectAction.wrapper.includes(
         '--owner-private-approval-root <owner-private-approval-root>'
       ) &&
       ledgerSourceProjectAction.reconciliationOnlyWrapper.includes(
-        '--initial-approval-receipt <initial-approval-receipt-v1.json>'
+        '--single-action-approval-receipt <single-action-approval-receipt-v2.json>'
       ) &&
       ledgerSourceProjectAction.reconciliationOnlyWrapper.includes(
-        '--final-approval-receipt <final-approval-receipt-v1.json>'
+        '--derived-execution-binding <derived-execution-binding-v1.json>'
       ) &&
       ledgerSourceProjectAction.reconciliationOnlyWrapper.includes(
         '--owner-private-approval-root <owner-private-approval-root>'
       ) &&
       !ledgerSourceProjectAction.wrapper.includes(
-        '<approved-binding-v5.json>'
+        '<approved-binding-v6.json>'
       ) &&
       !ledgerSourceProjectAction.reconciliationOnlyWrapper.includes(
-        '<approved-binding-v5.json>'
+        '<approved-binding-v6.json>'
       ),
     'source project provisioning action is not cross-bound across packet, ledger, and binding'
   );
@@ -2459,7 +2461,7 @@ function verifyProposalContracts() {
       sourceAuthorization.isolatedStagingConnectionAuthorized === false &&
       sourceAuthorization.isolatedStagingExecutionAuthorized === false &&
       provisioning.status === 'NOT_RUN' &&
-      provisioning.schemaVersion === 5 &&
+      provisioning.schemaVersion === 6 &&
       provisionEnvironment.organizationId === 'kbnsntifrawhimhfjrug' &&
       provisionEnvironment.organizationSlug === 'kbnsntifrawhimhfjrug' &&
       JSON.stringify(provisionEnvironment.prohibitedOrganizationIds) ===
@@ -2625,17 +2627,17 @@ function verifyProposalContracts() {
       ledgerSourceProjectAction.fundingSource ===
         "FUTOSHI IWASAWAが管理するIFs1991's Org登録済み支払方法" &&
       ledgerSourceProjectAction.fundedThroughPolicy ===
-        'PR12-ACTION-003 scheduled execution time plus 73 hours' &&
+        'PR12-ACTION-003 authority acceptedAt plus 73 hours' &&
       ledgerSourceProjectAction.scheduledExecutionAt === 'NOT_CAPTURED' &&
       ledgerSourceProjectAction.fundedThrough === 'NOT_CAPTURED' &&
       ledgerSourceProjectAction.organizationIdentityCaptureActionId ===
         'PR12-ACTION-002' &&
       ledgerSourceProjectAction.organizationIdentityEvidenceLinkageStatus ===
-        'IMPLEMENTED_ACTION_003_V5_REQUIRED' &&
+        'IMPLEMENTED_ACTION_003_V6_REQUIRED' &&
       ledgerSourceProjectAction.fundedThroughPolicyBindingStatus ===
-        'IMPLEMENTED_EXACT_SCHEDULED_PLUS_73_HOURS' &&
+        'IMPLEMENTED_EXACT_AUTHORITY_ACCEPTED_AT_PLUS_73_HOURS' &&
       ledgerSourceProjectAction.fundedThroughPolicyVerifierStatus ===
-        'IMPLEMENTED_EXACT_SCHEDULED_PLUS_73_HOURS' &&
+        'IMPLEMENTED_EXACT_AUTHORITY_ACCEPTED_AT_PLUS_73_HOURS' &&
       ledgerSourceProjectAction.actionApprovable === false &&
       normalizedApproval.includes(
         '  phase1_source_project_owner_authorization_ceiling_usd: 50'
@@ -2693,10 +2695,10 @@ function verifyProposalContracts() {
         '  phase1_funding_source: "FUTOSHI IWASAWAが管理するIFs1991\'s Org登録済み支払方法"'
       ) &&
       normalizedApproval.includes(
-        '  source_funded_through_policy_binding_status: IMPLEMENTED_EXACT_SCHEDULED_PLUS_73_HOURS'
+        '  source_funded_through_policy_binding_status: IMPLEMENTED_EXACT_AUTHORITY_ACCEPTED_AT_PLUS_73_HOURS'
       ) &&
       normalizedApproval.includes(
-        '  source_funded_through_policy_verifier_status: IMPLEMENTED_EXACT_SCHEDULED_PLUS_73_HOURS'
+        '  source_funded_through_policy_verifier_status: IMPLEMENTED_EXACT_AUTHORITY_ACCEPTED_AT_PLUS_73_HOURS'
       ) &&
       normalizedApproval.includes(
         '  pr12_action_003_duplicate_organization_get_status: REMOVED_ACTION_002_EVIDENCE_IS_SOLE_SOURCE'
@@ -2754,35 +2756,42 @@ function verifyProposalContracts() {
     'Phase 1 provisioning credential contract drift'
   );
   assert(
-    provisioningOwnerApproval.recordType ===
-      'PR12_SOURCE_PROJECT_PROVISIONING_OWNER_APPROVAL' &&
-      provisioningOwnerApproval.decision === 'NOT_CAPTURED' &&
-      provisioningOwnerApproval.actionId === 'PR12-ACTION-003' &&
-      provisioningOwnerApproval.schemaVersion === 4 &&
-      provisioningOwnerApproval.operatorControlMode ===
+    provisioningAuthorizationProjection.recordType ===
+      'PR12_SOURCE_PROJECT_PROVISIONING_AUTHORIZATION_PROJECTION' &&
+      provisioningAuthorizationProjection.projectionStatus === 'NOT_DERIVED' &&
+      provisioningAuthorizationProjection.derivationStatus === 'NOT_DERIVED' &&
+      provisioningAuthorizationProjection.derivationMethod ===
+        'SYSTEM_DERIVED_FROM_SINGLE_ACTION_APPROVAL' &&
+      provisioningAuthorizationProjection.actionId === 'PR12-ACTION-003' &&
+      provisioningAuthorizationProjection.schemaVersion === 1 &&
+      provisioningAuthorizationProjection.operatorControlMode ===
         'PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1' &&
-      provisioningOwnerApproval.soleOperatorRiskAccepted === false &&
-      provisioningOwnerApproval.sameUserDpapiCredentialExposureRiskAccepted ===
+      provisioningAuthorizationProjection.soleOperatorRiskAccepted === false &&
+      provisioningAuthorizationProjection.sameUserDpapiCredentialExposureRiskAccepted ===
         false &&
-      provisioningOwnerApproval.sameOrganizationExceptionRiskAccepted ===
+      provisioningAuthorizationProjection.sameOrganizationExceptionRiskAccepted ===
         false &&
-      provisioningOwnerApproval.unknownChargesAcknowledged === false &&
-      provisioningOwnerApproval.productionProjectRef ===
+      provisioningAuthorizationProjection.unknownChargesAcknowledged ===
+        false &&
+      provisioningAuthorizationProjection.productionProjectRef ===
         'qnanuoqveidwvacvbhqp' &&
-      provisioningOwnerApproval.organizationSlug === 'kbnsntifrawhimhfjrug' &&
-      provisioningOwnerApproval.organizationId === 'kbnsntifrawhimhfjrug' &&
-      provisioningOwnerApproval.organizationIdentityManifestSha256 ===
+      provisioningAuthorizationProjection.organizationSlug ===
+        'kbnsntifrawhimhfjrug' &&
+      provisioningAuthorizationProjection.organizationId ===
+        'kbnsntifrawhimhfjrug' &&
+      provisioningAuthorizationProjection.organizationIdentityManifestSha256 ===
         organizationIdentityEvidence.manifestSha256 &&
-      provisioningOwnerApproval.organizationIdentityTerminalSha256 ===
+      provisioningAuthorizationProjection.organizationIdentityTerminalSha256 ===
         organizationIdentityEvidence.terminalSha256 &&
-      provisioningOwnerApproval.organizationIdentitySourceBindingMaterialSha256 ===
+      provisioningAuthorizationProjection.organizationIdentitySourceBindingMaterialSha256 ===
         organizationIdentityEvidence.sourceBindingMaterialSha256 &&
-      provisioningOwnerApproval.organizationIdentitySourceRequestSha256 ===
+      provisioningAuthorizationProjection.organizationIdentitySourceRequestSha256 ===
         organizationIdentityEvidence.sourceRequestSha256 &&
-      provisioningOwnerApproval.scheduledExecutionAt === 'NOT_CAPTURED' &&
-      provisioningOwnerApproval.fundedThrough === 'NOT_CAPTURED' &&
-      provisioningOwnerApproval.phase2AndLaterAuthorized === false &&
-      provisioningOwnerApproval.cleanupDeletionAuthorized === false &&
+      provisioningAuthorizationProjection.scheduledExecutionAt ===
+        'NOT_CAPTURED' &&
+      provisioningAuthorizationProjection.fundedThrough === 'NOT_CAPTURED' &&
+      provisioningAuthorizationProjection.phase2AndLaterAuthorized === false &&
+      provisioningAuthorizationProjection.cleanupDeletionAuthorized === false &&
       provisioningPricing.recordType ===
         'PR12_SOURCE_PROJECT_OFFICIAL_PRICING_EVIDENCE' &&
       provisioningPricing.status === 'NOT_CAPTURED' &&
@@ -2802,87 +2811,82 @@ function verifyProposalContracts() {
       provisioningBootstrapApproval.envelopeCreationAuthorized === false &&
       provisioningBootstrapApproval.sourceProjectProvisioningAuthorized ===
         false,
-    'Phase 1 owner approval, pricing, or DPAPI bootstrap contract drift'
+    'Phase 1 authorization projection, pricing, or DPAPI bootstrap contract drift'
   );
   assert(
-    provisioningInitialApprovalReceipt.schemaVersion === 1 &&
-      provisioningInitialApprovalReceipt.recordType ===
-        'PR12_SOURCE_PROJECT_PROVISIONING_INITIAL_APPROVAL_RECEIPT' &&
-      provisioningInitialApprovalReceipt.decision === 'NOT_CAPTURED' &&
-      provisioningInitialApprovalReceipt.attestationStatus === 'NOT_CAPTURED' &&
-      provisioningInitialApprovalReceipt.attestationMethod ===
-        'SOLE_OPERATOR_EXPLICIT_INITIAL_APPROVAL' &&
-      provisioningInitialApprovalReceipt.actionId === 'PR12-ACTION-003' &&
-      provisioningInitialApprovalReceipt.approvedByPrincipalId ===
+    provisioningSingleActionApprovalReceipt.schemaVersion === 2 &&
+      provisioningSingleActionApprovalReceipt.recordType ===
+        'PR12_SOURCE_PROJECT_PROVISIONING_SINGLE_ACTION_APPROVAL_RECEIPT' &&
+      provisioningSingleActionApprovalReceipt.decision === 'NOT_CAPTURED' &&
+      provisioningSingleActionApprovalReceipt.attestationStatus ===
+        'NOT_CAPTURED' &&
+      provisioningSingleActionApprovalReceipt.attestationMethod ===
+        'SOLE_OPERATOR_EXPLICIT_SINGLE_ACTION_APPROVAL' &&
+      provisioningSingleActionApprovalReceipt.actionId === 'PR12-ACTION-003' &&
+      provisioningSingleActionApprovalReceipt.approvedByPrincipalId ===
         'owner:futoshi-iwasawa' &&
-      provisioningInitialApprovalReceipt.approvedByDisplayName ===
+      provisioningSingleActionApprovalReceipt.approvedByDisplayName ===
         'FUTOSHI IWASAWA' &&
-      provisioningInitialApprovalReceipt.acceptedAt === 'NOT_CAPTURED' &&
-      provisioningInitialApprovalReceipt.approvalPurpose ===
-        'ACTION003_PACKET_PREPARATION_ONLY' &&
-      provisioningInitialApprovalReceipt.unknownChargesAcknowledged === false &&
-      provisioningInitialApprovalReceipt.action003PacketPreparationAuthorized ===
+      provisioningSingleActionApprovalReceipt.acceptedAt === 'NOT_CAPTURED' &&
+      provisioningSingleActionApprovalReceipt.expiresAt === 'NOT_CAPTURED' &&
+      provisioningSingleActionApprovalReceipt.approvalTtlSeconds === 3600 &&
+      provisioningSingleActionApprovalReceipt.approvalPurpose ===
+        'ACTION003_PACKET_PREPARATION_AND_SOURCE_PROJECT_PROVISIONING' &&
+      provisioningSingleActionApprovalReceipt.maximumPostAttempts === 1 &&
+      provisioningSingleActionApprovalReceipt.unknownChargesAcknowledged ===
         false &&
-      provisioningInitialApprovalReceipt.databasePasswordBootstrapAuthorized ===
+      provisioningSingleActionApprovalReceipt.action003PacketPreparationAuthorized ===
         false &&
-      provisioningInitialApprovalReceipt.sourceProjectProvisioningAuthorized ===
+      provisioningSingleActionApprovalReceipt.databasePasswordBootstrapAuthorized ===
         false &&
-      provisioningInitialApprovalReceipt.productionContactAuthorized ===
+      provisioningSingleActionApprovalReceipt.sourceProjectProvisioningAuthorized ===
         false &&
-      provisioningInitialApprovalReceipt.phase2AndLaterAuthorized === false &&
-      provisioningInitialApprovalReceipt.cleanupDeletionAuthorized === false,
-    'Phase 1 initial approval receipt template drift'
+      provisioningSingleActionApprovalReceipt.productionContactAuthorized ===
+        false &&
+      provisioningSingleActionApprovalReceipt.phase2AndLaterAuthorized ===
+        false &&
+      provisioningSingleActionApprovalReceipt.cleanupDeletionAuthorized ===
+        false,
+    'Phase 1 single-action approval receipt template drift'
   );
   assert(
-    provisioningFinalApprovalReceipt.schemaVersion === 1 &&
-      provisioningFinalApprovalReceipt.recordType ===
-        'PR12_SOURCE_PROJECT_PROVISIONING_FINAL_APPROVAL_RECEIPT' &&
-      provisioningFinalApprovalReceipt.decision === 'NOT_CAPTURED' &&
-      provisioningFinalApprovalReceipt.attestationStatus === 'NOT_CAPTURED' &&
-      provisioningFinalApprovalReceipt.attestationMethod ===
-        'SOLE_OPERATOR_EXPLICIT_FINAL_HASH_RECONFIRMATION' &&
-      provisioningFinalApprovalReceipt.actionId === 'PR12-ACTION-003' &&
-      provisioningFinalApprovalReceipt.approvedByPrincipalId ===
-        'owner:futoshi-iwasawa' &&
-      provisioningFinalApprovalReceipt.approvedByDisplayName ===
-        'FUTOSHI IWASAWA' &&
-      provisioningFinalApprovalReceipt.acceptedAt === 'NOT_CAPTURED' &&
-      provisioningFinalApprovalReceipt.expiresAt === 'NOT_CAPTURED' &&
-      provisioningFinalApprovalReceipt.initialApprovalReceiptSha256 ===
+    provisioningDerivedExecutionBinding.schemaVersion === 1 &&
+      provisioningDerivedExecutionBinding.recordType ===
+        'PR12_SOURCE_PROJECT_PROVISIONING_DERIVED_EXECUTION_BINDING' &&
+      provisioningDerivedExecutionBinding.derivationStatus === 'NOT_DERIVED' &&
+      provisioningDerivedExecutionBinding.derivationMethod ===
+        'SYSTEM_DERIVED_HASH_BINDING_FROM_SINGLE_APPROVAL' &&
+      provisioningDerivedExecutionBinding.actionId === 'PR12-ACTION-003' &&
+      provisioningDerivedExecutionBinding.generatedAt === 'NOT_CAPTURED' &&
+      provisioningDerivedExecutionBinding.expiresAt === 'NOT_CAPTURED' &&
+      provisioningDerivedExecutionBinding.authorityReceiptSha256 ===
         'NOT_CAPTURED' &&
-      provisioningFinalApprovalReceipt.bindingSha256 === 'NOT_CAPTURED' &&
-      provisioningFinalApprovalReceipt.bindingMaterialSha256 ===
+      provisioningDerivedExecutionBinding.bindingSha256 === 'NOT_CAPTURED' &&
+      provisioningDerivedExecutionBinding.bindingMaterialSha256 ===
         'NOT_CAPTURED' &&
-      provisioningFinalApprovalReceipt.payloadSha256 === 'NOT_CAPTURED' &&
-      provisioningFinalApprovalReceipt.credentialConfigurationSha256 ===
+      provisioningDerivedExecutionBinding.payloadSha256 === 'NOT_CAPTURED' &&
+      provisioningDerivedExecutionBinding.credentialConfigurationSha256 ===
         'NOT_CAPTURED' &&
-      provisioningFinalApprovalReceipt.pricingEvidenceSha256 ===
+      provisioningDerivedExecutionBinding.pricingEvidenceSha256 ===
         'NOT_CAPTURED' &&
-      provisioningFinalApprovalReceipt.ownerApprovalSha256 === 'NOT_CAPTURED' &&
-      provisioningFinalApprovalReceipt.soleOperatorRiskAccepted === false &&
-      provisioningFinalApprovalReceipt.sameUserDpapiCredentialExposureRiskAccepted ===
+      provisioningDerivedExecutionBinding.authorizationProjectionSha256 ===
+        'NOT_CAPTURED' &&
+      provisioningDerivedExecutionBinding.authorityScopeConfirmed === false &&
+      provisioningDerivedExecutionBinding.productionContactAuthorized ===
         false &&
-      provisioningFinalApprovalReceipt.providerSpendCapLimitationAcknowledged ===
-        false &&
-      provisioningFinalApprovalReceipt.sameOrganizationExceptionRiskAccepted ===
-        false &&
-      provisioningFinalApprovalReceipt.organizationListProductionRefObservationAccepted ===
-        false &&
-      provisioningFinalApprovalReceipt.sharedOrganizationIamBillingControlPlaneRiskAccepted ===
-        false &&
-      provisioningFinalApprovalReceipt.productionDirectContactProhibitionAcknowledged ===
-        false &&
-      provisioningFinalApprovalReceipt.unknownChargesAcknowledged === false &&
-      provisioningFinalApprovalReceipt.sourceProjectProvisioningAuthorized ===
-        false &&
-      provisioningFinalApprovalReceipt.productionContactAuthorized === false &&
-      provisioningFinalApprovalReceipt.phase2AndLaterAuthorized === false &&
-      provisioningFinalApprovalReceipt.cleanupDeletionAuthorized === false,
-    'Phase 1 final approval receipt template drift'
+      provisioningDerivedExecutionBinding.phase2AndLaterAuthorized === false &&
+      provisioningDerivedExecutionBinding.cleanupDeletionAuthorized === false &&
+      !Object.hasOwn(
+        provisioningDerivedExecutionBinding,
+        'approvedByPrincipalId'
+      ) &&
+      !Object.hasOwn(provisioningDerivedExecutionBinding, 'acceptedAt') &&
+      !Object.hasOwn(provisioningDerivedExecutionBinding, 'decision'),
+    'Phase 1 derived execution binding template drift'
   );
   assert(
     provisioningJournal.actionId === 'PR12-ACTION-003' &&
-      provisioningJournal.finalApprovalReceiptSha256 === 'NOT_CAPTURED' &&
+      provisioningJournal.derivedExecutionBindingSha256 === 'NOT_CAPTURED' &&
       provisioningJournal.post.attemptCount === 0 &&
       provisioningJournal.post.automaticRetryCount === 0 &&
       provisioningJournal.readOnlyReconciliation.state === 'NOT_RUN' &&
@@ -2896,7 +2900,7 @@ function verifyProposalContracts() {
       provisioningJournal.automaticResealAllowed === false &&
       provisioningJournal.automaticCleanupAuthorized === false &&
       provisioningJournal.destructiveRecoveryAuthorized === false &&
-      provisioningResult.schemaVersion === 5 &&
+      provisioningResult.schemaVersion === 6 &&
       provisioningResult.status === 'NOT_RUN' &&
       provisioningResult.createPostAttemptCount === 0 &&
       provisioningResult.automaticRetryCount === 0 &&
@@ -2910,7 +2914,7 @@ function verifyProposalContracts() {
       provisioningResult.pricingAndFunding.scheduledExecutionAt ===
         'NOT_CAPTURED' &&
       provisioningResult.pricingAndFunding.fundedThrough === 'NOT_CAPTURED' &&
-      provisioningResult.approvalWindow.finalApprovalReceiptSha256 ===
+      provisioningResult.approvalWindow.derivedExecutionBindingSha256 ===
         'NOT_CAPTURED' &&
       requireRecord(
         provisioningResult.organizationIdentityEvidence,
@@ -2945,7 +2949,7 @@ function verifyProposalContracts() {
       provisioningProviderExport.rawProviderBodiesPersisted === false &&
       provisioningEvidenceManifest.manifestType ===
         'PR12_PHASE1_SOURCE_PROJECT_PROVISIONING_EVIDENCE' &&
-      provisioningEvidenceManifest.finalApprovalReceiptSha256 ===
+      provisioningEvidenceManifest.derivedExecutionBindingSha256 ===
         'NOT_CAPTURED' &&
       provisioningEvidenceManifest.rawProviderBodiesPersisted === false &&
       provisioningPrivacyScan.scanType ===
@@ -2975,12 +2979,12 @@ function verifyProposalContracts() {
     'buildSecretFreeRequestProjection',
     'validateInitialAction003ApprovalReceipt',
     'validateOfflineApprovalCandidate',
-    'PENDING_FINAL_APPROVAL',
+    'PENDING_DERIVED_EXECUTION_BINDING',
     'initialApprovalReceiptSha256',
     'sourceProjectProvisioningAuthorized: false',
-    'source-project-provisioning-binding-v5.json',
+    'source-project-provisioning-binding-v6.json',
     'source-project-provisioning-credential-configuration-v2.json',
-    'source-project-provisioning-owner-approval-v4.json',
+    'source-project-provisioning-authorization-projection-v1.json',
     "flag: 'wx'",
     'remoteContactPerformed: false',
     'credentialReadPerformed: false',
@@ -3013,7 +3017,7 @@ function verifyProposalContracts() {
     'TEST_RUNTIME_OVERRIDE_FORBIDDEN',
     'AMBIENT_CREDENTIAL_FORBIDDEN',
     'BUILT_AT_CLOCK_MISMATCH',
-    'SCHEDULED_EXECUTION_TIME_MISSED',
+    'APPROVAL_EXPIRED',
     'validateInitialAction003ApprovalReceipt',
     'initialApprovalReceiptPath',
     'assertWindowsAclBoundaries',
@@ -3060,12 +3064,14 @@ function verifyProposalContracts() {
   for (const requiredReceiptBoundary of [
     'requireOwnerPrivateBoundary',
     'inspectOwnerPrivatePathAcl',
+    'protectOwnerPrivatePath',
     'validateInitialAction003ApprovalReceipt',
-    'validateFinalAction003ApprovalReceipt',
+    'validateAction003ExecutionBinding',
+    'deriveAction003ExecutionBinding',
     'recordInitialAction003ApprovalReceiptCreateNew',
-    'recordFinalAction003ApprovalReceiptCreateNew',
+    'recordAction003ExecutionBindingCreateNew',
     'verifyInitialAction003ApprovalReceiptStable',
-    'verifyFinalAction003ApprovalReceiptStable',
+    'verifyAction003ExecutionBindingStable',
     'OWNER_PRIVATE_BOUNDARY_INVALID',
     'OWNER_PRIVATE_ROOT_ACL_INVALID',
     'OWNER_PRIVATE_TARGET_ACL_INVALID',
@@ -3090,29 +3096,21 @@ function verifyProposalContracts() {
     'Action-003 approval receipt contract must remain local-only and credential-free'
   );
   const action003ApprovalReceiptRecorder = readRepositoryFile(
-    'scripts/commercial-hardening/record-pr12-action003-final-approval-receipt.mjs'
+    'scripts/commercial-hardening/record-pr12-action003-derived-execution-binding.mjs'
   );
   for (const requiredRecorderBoundary of [
-    'RECORD_PR12_ACTION003_FINAL_APPROVAL_RECEIPT_LOCAL_ONLY',
-    'recordAction003InitialApprovalReceipt',
-    'recordAction003FinalApprovalReceipt',
-    'inspectOwnerPrivatePathAcl',
-    'validateOfflineApprovalCandidate',
-    'validateOfflineApproval',
-    'APPROVAL_INPUT_IDENTITY_OR_CONTENT_CHANGED',
-    'REPOSITORY_STATE_CHANGED',
-    'AMBIENT_CREDENTIAL_FORBIDDEN',
-    '--record-initial',
+    'RECORD_PR12_ACTION003_DERIVED_EXECUTION_BINDING_LOCAL_ONLY',
+    'recordAction003DerivedExecutionBinding',
     '--owner-private-root',
     '--candidate-directory',
-    '--preflight-descriptor',
-    '--initial-approval-receipt',
+    '--input',
+    '--single-action-approval-receipt',
     '--pricing-evidence',
-    '--populated-final-approval-receipt',
+    '--pricing-owner-private-root',
+    '--derived-execution-binding-output',
     'remoteContactPerformed: false',
-    'credentialPlaintextReadPerformed: false',
+    'credentialPlaintextReadPerformed === false',
     'revalidateAction003ApprovalPacket',
-    'ACTION003_EXTERNAL_STATE_CHANGED',
   ]) {
     assert(
       action003ApprovalReceiptRecorder.includes(requiredRecorderBoundary),
@@ -3233,11 +3231,11 @@ function verifyProposalContracts() {
   for (const requiredApprovalBoundary of [
     'PHASE1_OWNER_PRINCIPAL_ID',
     'validateOfflineApprovalCandidate',
-    'validateFinalApprovalReceipt',
-    'FINAL_APPROVAL_RECEIPT_INVALID',
+    'validateDerivedExecutionBinding',
+    'DERIVED_EXECUTION_BINDING_INVALID',
     'SCHEDULED_EXECUTION_TIME_INVALID',
     'APPROVAL_EXPIRY_TIME_INVALID',
-    'finalApprovalReceiptSha256',
+    'derivedExecutionBindingSha256',
   ]) {
     assert(
       provisioningContract.includes(requiredApprovalBoundary),
@@ -3297,9 +3295,11 @@ function verifyProposalContracts() {
       provisioningWrapper.includes(
         'function revalidateImmutableApprovalInputs('
       ) &&
-      provisioningWrapper.includes('finalApprovalReceipt: readFileSnapshot(') &&
-      provisioningWrapper.includes('--final-approval-receipt') &&
-      provisioningWrapper.includes('finalApprovalReceiptSha256') &&
+      provisioningWrapper.includes(
+        'derivedExecutionBinding: readFileSnapshot('
+      ) &&
+      provisioningWrapper.includes('--derived-execution-binding') &&
+      provisioningWrapper.includes('derivedExecutionBindingSha256') &&
       provisioningWrapper.includes('inspectOwnerPrivatePathAcl({') &&
       provisioningWrapper.includes('approvalReceiptContractPath') &&
       provisioningWrapper.includes('ownerPrivateAclHelperPath') &&
@@ -3346,7 +3346,7 @@ function verifyProposalContracts() {
       provisioningWrapper.includes('verified.trustedResult') &&
       provisioningWrapper.includes('verified.trustedProvider') &&
       provisioningEvidenceVerifier.includes('function readFileSnapshot(') &&
-      provisioningEvidenceVerifier.includes('finalApprovalReceiptSha256') &&
+      provisioningEvidenceVerifier.includes('derivedExecutionBindingSha256') &&
       provisioningEvidenceVerifier.includes('trustedResult:') &&
       provisioningEvidenceVerifier.includes('trustedProvider:') &&
       provisioningWrapper.includes(
@@ -3891,7 +3891,7 @@ function main() {
     verifyRelativeLinks(document);
   }
   console.log(
-    'PR12 preparation static contract: PASS (PR12-ACTION-002 PASS is linked; Action-003 v5 enablement is implemented but remains unapproved/unrun; 54 COMM gates remain NOT_RUN; staging is not authorized).'
+    'PR12 preparation static contract: PASS (PR12-ACTION-002 PASS is linked; Action-003 v6 single-action enablement is implemented but remains unapproved/unrun; 54 COMM gates remain NOT_RUN; staging is not authorized).'
   );
 }
 

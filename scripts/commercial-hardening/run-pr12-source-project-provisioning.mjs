@@ -26,6 +26,7 @@ import {
   ProvisioningContractError,
   addonResponseToSafeProjection,
   assertAllowedManagementApiRequest,
+  assertOfficialPricingSourceSemantics,
   assertProviderBodyEnvelope,
   assertSecretFreeEvidence,
   assertSourceProjectProvisioningCandidate,
@@ -92,19 +93,19 @@ const organizationIdentityVerifierPath = fileURLToPath(
   )
 );
 const CANDIDATE_BINDING_FILENAME =
-  'source-project-provisioning-binding-v5.json';
+  'source-project-provisioning-binding-v6.json';
 const CANDIDATE_CREDENTIAL_FILENAME =
   'source-project-provisioning-credential-configuration-v2.json';
-const CANDIDATE_OWNER_APPROVAL_FILENAME =
-  'source-project-provisioning-owner-approval-v4.json';
-const INITIAL_APPROVAL_RECEIPT_FILENAME =
-  'source-project-provisioning-initial-approval-receipt-v1.json';
-const FINAL_APPROVAL_RECEIPT_FILENAME =
-  'source-project-provisioning-final-approval-receipt-v1.json';
-const INITIAL_APPROVAL_RECEIPT_DIRECTORY =
-  'source-project-provisioning-initial-approval-receipt-v1';
-const FINAL_APPROVAL_RECEIPT_DIRECTORY =
-  'source-project-provisioning-final-approval-receipt-v1';
+const CANDIDATE_AUTHORIZATION_PROJECTION_FILENAME =
+  'source-project-provisioning-authorization-projection-v1.json';
+const SINGLE_ACTION_APPROVAL_RECEIPT_FILENAME =
+  'source-project-provisioning-single-action-approval-receipt-v2.json';
+const DERIVED_EXECUTION_BINDING_FILENAME =
+  'source-project-provisioning-derived-execution-binding-v1.json';
+const SINGLE_ACTION_APPROVAL_RECEIPT_DIRECTORY =
+  'source-project-provisioning-single-action-approval-receipt-v2';
+const DERIVED_EXECUTION_BINDING_DIRECTORY =
+  'source-project-provisioning-derived-execution-binding-v1';
 const EXECUTING_IMPLEMENTATION_FILES = [
   {
     key: 'wrapper',
@@ -233,16 +234,16 @@ function printHelp() {
   process.stdout.write(`PR12 Phase 1 source project provisioning wrapper
 
 This wrapper is fail-closed. It performs no action unless the current,
-hash-bound Phase 1 candidate tuple and separate final approval receipt pass
-offline validation.
+hash-bound Phase 1 candidate tuple, single owner approval, and system-derived
+exact-hash receipt pass offline validation.
 
 Offline validation only (no credential value read, no network, no journal claim):
   node scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs --offline-verify \`
     --binding <candidate-binding.json> \`
     --credential-config <candidate-credential-config.json> \`
     --approval-evidence <owner-approval-candidate.json> \`
-    --initial-approval-receipt <initial-approval-receipt.json> \`
-    --final-approval-receipt <final-approval-receipt.json> \`
+    --single-action-approval-receipt <single-action-approval-receipt.json> \`
+    --derived-execution-binding <derived-execution-binding.json> \`
     --owner-private-approval-root <owner-private-absolute-directory> \`
     --pricing-evidence <official-pricing-evidence.json> \`
     --organization-identity-evidence-directory <sealed-action-002-directory> \`
@@ -256,8 +257,8 @@ Future execution after separate explicit approval only:
     --binding <candidate-binding.json> \`
     --credential-config <candidate-credential-config.json> \`
     --approval-evidence <owner-approval-candidate.json> \`
-    --initial-approval-receipt <initial-approval-receipt.json> \`
-    --final-approval-receipt <final-approval-receipt.json> \`
+    --single-action-approval-receipt <single-action-approval-receipt.json> \`
+    --derived-execution-binding <derived-execution-binding.json> \`
     --owner-private-approval-root <owner-private-absolute-directory> \`
     --pricing-evidence <official-pricing-evidence.json> \`
     --organization-identity-evidence-directory <sealed-action-002-directory> \`
@@ -271,8 +272,8 @@ Read-only recovery after a durable POST intent and process interruption only:
     --binding <candidate-binding.json> \`
     --credential-config <candidate-credential-config.json> \`
     --approval-evidence <owner-approval-candidate.json> \`
-    --initial-approval-receipt <initial-approval-receipt.json> \`
-    --final-approval-receipt <final-approval-receipt.json> \`
+    --single-action-approval-receipt <single-action-approval-receipt.json> \`
+    --derived-execution-binding <derived-execution-binding.json> \`
     --owner-private-approval-root <owner-private-absolute-directory> \`
     --pricing-evidence <official-pricing-evidence.json> \`
     --organization-identity-evidence-directory <sealed-action-002-directory> \`
@@ -292,8 +293,8 @@ function parseArguments(argv) {
     '--binding',
     '--credential-config',
     '--approval-evidence',
-    '--initial-approval-receipt',
-    '--final-approval-receipt',
+    '--single-action-approval-receipt',
+    '--derived-execution-binding',
     '--owner-private-approval-root',
     '--pricing-evidence',
     '--organization-identity-evidence-directory',
@@ -335,8 +336,8 @@ function parseArguments(argv) {
     '--binding',
     '--credential-config',
     '--approval-evidence',
-    '--initial-approval-receipt',
-    '--final-approval-receipt',
+    '--single-action-approval-receipt',
+    '--derived-execution-binding',
     '--owner-private-approval-root',
     '--pricing-evidence',
     '--organization-identity-evidence-directory',
@@ -380,8 +381,8 @@ function fileIdentityFromStatus(status) {
   return {
     device: String(status.dev),
     inode: String(status.ino),
-    size: status.size,
-    modifiedAtMilliseconds: status.mtimeMs,
+    size: Number(status.size),
+    modifiedAtMilliseconds: Number(status.mtimeMs),
   };
 }
 
@@ -393,20 +394,20 @@ function readFileSnapshot(pathname, code) {
       realpathSync.native(pathname)
     );
     descriptor = openSync(pathname, 'r');
-    const before = fstatSync(descriptor);
+    const before = fstatSync(descriptor, { bigint: true });
     if (!before.isFile()) fail(code);
     const bytes = readFileSync(descriptor);
-    const after = fstatSync(descriptor);
+    const after = fstatSync(descriptor, { bigint: true });
     const beforeIdentity = fileIdentityFromStatus(before);
     const afterIdentity = fileIdentityFromStatus(after);
     if (
       canonicalJson(beforeIdentity) !== canonicalJson(afterIdentity) ||
-      bytes.length !== after.size ||
+      BigInt(bytes.length) !== after.size ||
       lstatSync(pathname).isSymbolicLink()
     ) {
       fail(code);
     }
-    const pathStatus = statSync(pathname);
+    const pathStatus = statSync(pathname, { bigint: true });
     const resolvedAfter = normalizedFilesystemPath(
       realpathSync.native(pathname)
     );
@@ -606,6 +607,10 @@ export function snapshotOfficialPricingSources(inputs) {
     if (snapshot.sha256 !== source.artifactSha256) {
       fail('PRICING_SOURCE_ARTIFACT_HASH_MISMATCH');
     }
+    assertOfficialPricingSourceSemantics({
+      sourceId: source.sourceId,
+      bytes: snapshot.bytes,
+    });
     const normalizedRelativePath = source.artifactPath.toLowerCase();
     const normalizedResolvedPath =
       normalizedFilesystemPath(resolvedArtifactPath);
@@ -805,8 +810,8 @@ function captureApprovalInputTopology({
   bindingPath,
   credentialPath,
   approvalPath,
-  initialApprovalReceiptPath,
-  finalApprovalReceiptPath,
+  singleActionApprovalReceiptPath,
+  derivedExecutionBindingPath,
   allowTemporaryRootForTest = false,
 }) {
   if (
@@ -821,28 +826,32 @@ function captureApprovalInputTopology({
   }
   const root = path.resolve(ownerPrivateApprovalRoot);
   const candidateDirectory = path.dirname(bindingPath);
-  const initialReceiptDirectory = path.dirname(initialApprovalReceiptPath);
-  const finalReceiptDirectory = path.dirname(finalApprovalReceiptPath);
+  const authorityReceiptDirectory = path.dirname(
+    singleActionApprovalReceiptPath
+  );
+  const executionBindingDirectory = path.dirname(derivedExecutionBindingPath);
   if (
     path.basename(bindingPath) !== CANDIDATE_BINDING_FILENAME ||
     path.basename(credentialPath) !== CANDIDATE_CREDENTIAL_FILENAME ||
-    path.basename(approvalPath) !== CANDIDATE_OWNER_APPROVAL_FILENAME ||
-    path.basename(initialApprovalReceiptPath) !==
-      INITIAL_APPROVAL_RECEIPT_FILENAME ||
-    path.basename(finalApprovalReceiptPath) !==
-      FINAL_APPROVAL_RECEIPT_FILENAME ||
-    path.basename(initialReceiptDirectory) !==
-      INITIAL_APPROVAL_RECEIPT_DIRECTORY ||
-    path.basename(finalReceiptDirectory) !== FINAL_APPROVAL_RECEIPT_DIRECTORY ||
+    path.basename(approvalPath) !==
+      CANDIDATE_AUTHORIZATION_PROJECTION_FILENAME ||
+    path.basename(singleActionApprovalReceiptPath) !==
+      SINGLE_ACTION_APPROVAL_RECEIPT_FILENAME ||
+    path.basename(derivedExecutionBindingPath) !==
+      DERIVED_EXECUTION_BINDING_FILENAME ||
+    path.basename(authorityReceiptDirectory) !==
+      SINGLE_ACTION_APPROVAL_RECEIPT_DIRECTORY ||
+    path.basename(executionBindingDirectory) !==
+      DERIVED_EXECUTION_BINDING_DIRECTORY ||
     path.dirname(credentialPath) !== candidateDirectory ||
     path.dirname(approvalPath) !== candidateDirectory ||
     path.dirname(candidateDirectory) !== root ||
-    path.dirname(initialReceiptDirectory) !== root ||
-    path.dirname(finalReceiptDirectory) !== root ||
+    path.dirname(authorityReceiptDirectory) !== root ||
+    path.dirname(executionBindingDirectory) !== root ||
     new Set([
       normalizedFilesystemPath(candidateDirectory),
-      normalizedFilesystemPath(initialReceiptDirectory),
-      normalizedFilesystemPath(finalReceiptDirectory),
+      normalizedFilesystemPath(authorityReceiptDirectory),
+      normalizedFilesystemPath(executionBindingDirectory),
     ]).size !== 3
   ) {
     fail('APPROVAL_INPUT_TOPOLOGY_INVALID');
@@ -850,8 +859,8 @@ function captureApprovalInputTopology({
   for (const directory of [
     root,
     candidateDirectory,
-    initialReceiptDirectory,
-    finalReceiptDirectory,
+    authorityReceiptDirectory,
+    executionBindingDirectory,
   ]) {
     requireNoReparseDirectoryComponents(
       directory,
@@ -863,19 +872,19 @@ function captureApprovalInputTopology({
     [
       CANDIDATE_BINDING_FILENAME,
       CANDIDATE_CREDENTIAL_FILENAME,
-      CANDIDATE_OWNER_APPROVAL_FILENAME,
+      CANDIDATE_AUTHORIZATION_PROJECTION_FILENAME,
     ],
     'APPROVAL_CANDIDATE_FILE_SET_INVALID'
   );
   requireExactDirectoryEntries(
-    initialReceiptDirectory,
-    [INITIAL_APPROVAL_RECEIPT_FILENAME],
-    'INITIAL_APPROVAL_RECEIPT_FILE_SET_INVALID'
+    authorityReceiptDirectory,
+    [SINGLE_ACTION_APPROVAL_RECEIPT_FILENAME],
+    'SINGLE_ACTION_APPROVAL_RECEIPT_FILE_SET_INVALID'
   );
   requireExactDirectoryEntries(
-    finalReceiptDirectory,
-    [FINAL_APPROVAL_RECEIPT_FILENAME],
-    'FINAL_APPROVAL_RECEIPT_FILE_SET_INVALID'
+    executionBindingDirectory,
+    [DERIVED_EXECUTION_BINDING_FILENAME],
+    'DERIVED_EXECUTION_BINDING_FILE_SET_INVALID'
   );
   const rootIdentity = directoryIdentity(
     root,
@@ -885,19 +894,19 @@ function captureApprovalInputTopology({
     candidateDirectory,
     'APPROVAL_INPUT_TOPOLOGY_INVALID'
   );
-  const initialReceiptDirectoryIdentity = directoryIdentity(
-    initialReceiptDirectory,
+  const authorityReceiptDirectoryIdentity = directoryIdentity(
+    authorityReceiptDirectory,
     'APPROVAL_INPUT_TOPOLOGY_INVALID'
   );
-  const finalReceiptDirectoryIdentity = directoryIdentity(
-    finalReceiptDirectory,
+  const executionBindingDirectoryIdentity = directoryIdentity(
+    executionBindingDirectory,
     'APPROVAL_INPUT_TOPOLOGY_INVALID'
   );
   const resolvedRoot = rootIdentity.realPath;
   for (const directoryIdentityValue of [
     candidateDirectoryIdentity,
-    initialReceiptDirectoryIdentity,
-    finalReceiptDirectoryIdentity,
+    authorityReceiptDirectoryIdentity,
+    executionBindingDirectoryIdentity,
   ]) {
     if (path.dirname(directoryIdentityValue.realPath) !== resolvedRoot) {
       fail('APPROVAL_INPUT_TOPOLOGY_INVALID');
@@ -931,9 +940,9 @@ function captureApprovalInputTopology({
     [
       ['binding', bindingPath],
       ['credentialConfiguration', credentialPath],
-      ['ownerApproval', approvalPath],
-      ['initialApprovalReceipt', initialApprovalReceiptPath],
-      ['finalApprovalReceipt', finalApprovalReceiptPath],
+      ['authorizationProjection', approvalPath],
+      ['singleActionApprovalReceipt', singleActionApprovalReceiptPath],
+      ['derivedExecutionBinding', derivedExecutionBindingPath],
     ].map(([key, pathname]) => {
       const snapshot = readFileSnapshot(
         pathname,
@@ -965,11 +974,11 @@ function captureApprovalInputTopology({
       ['candidateDirectory', candidateDirectory, 'DIRECTORY'],
       ['binding', bindingPath, 'FILE'],
       ['credentialConfiguration', credentialPath, 'FILE'],
-      ['ownerApproval', approvalPath, 'FILE'],
-      ['initialReceiptDirectory', initialReceiptDirectory, 'DIRECTORY'],
-      ['initialApprovalReceipt', initialApprovalReceiptPath, 'FILE'],
-      ['finalReceiptDirectory', finalReceiptDirectory, 'DIRECTORY'],
-      ['finalApprovalReceipt', finalApprovalReceiptPath, 'FILE'],
+      ['authorizationProjection', approvalPath, 'FILE'],
+      ['authorityReceiptDirectory', authorityReceiptDirectory, 'DIRECTORY'],
+      ['singleActionApprovalReceipt', singleActionApprovalReceiptPath, 'FILE'],
+      ['executionBindingDirectory', executionBindingDirectory, 'DIRECTORY'],
+      ['derivedExecutionBinding', derivedExecutionBindingPath, 'FILE'],
     ].map(([key, targetPath, kind]) => [
       key,
       inspectOwnerPrivatePathAcl({
@@ -982,15 +991,15 @@ function captureApprovalInputTopology({
   return {
     ownerPrivateApprovalRoot: rootIdentity,
     candidateDirectory: candidateDirectoryIdentity,
-    initialReceiptDirectory: initialReceiptDirectoryIdentity,
-    finalReceiptDirectory: finalReceiptDirectoryIdentity,
+    authorityReceiptDirectory: authorityReceiptDirectoryIdentity,
+    executionBindingDirectory: executionBindingDirectoryIdentity,
     candidateEntries: [
       CANDIDATE_BINDING_FILENAME,
       CANDIDATE_CREDENTIAL_FILENAME,
-      CANDIDATE_OWNER_APPROVAL_FILENAME,
+      CANDIDATE_AUTHORIZATION_PROJECTION_FILENAME,
     ].sort(),
-    initialReceiptEntries: [INITIAL_APPROVAL_RECEIPT_FILENAME],
-    finalReceiptEntries: [FINAL_APPROVAL_RECEIPT_FILENAME],
+    authorityReceiptEntries: [SINGLE_ACTION_APPROVAL_RECEIPT_FILENAME],
+    executionBindingEntries: [DERIVED_EXECUTION_BINDING_FILENAME],
     files: fileProofs,
     aclProofs,
   };
@@ -1006,8 +1015,8 @@ function revalidateApprovalInputTopology(
     bindingPath: inputs.bindingPath,
     credentialPath: inputs.credentialPath,
     approvalPath: inputs.approvalPath,
-    initialApprovalReceiptPath: inputs.initialApprovalReceiptPath,
-    finalApprovalReceiptPath: inputs.finalApprovalReceiptPath,
+    singleActionApprovalReceiptPath: inputs.singleActionApprovalReceiptPath,
+    derivedExecutionBindingPath: inputs.derivedExecutionBindingPath,
   });
   if (canonicalJson(current) !== canonicalJson(inputs.approvalInputTopology)) {
     fail(code);
@@ -1112,12 +1121,12 @@ export function readAndValidateJournalState(
   journalDirectory,
   expectedBindingMaterialSha256,
   expectedPayloadSha256,
-  expectedFinalApprovalReceiptSha256
+  expectedDerivedExecutionBindingSha256
 ) {
   if (
     !/^[a-f0-9]{64}$/.test(expectedBindingMaterialSha256) ||
     !/^[a-f0-9]{64}$/.test(expectedPayloadSha256) ||
-    !/^[a-f0-9]{64}$/.test(expectedFinalApprovalReceiptSha256)
+    !/^[a-f0-9]{64}$/.test(expectedDerivedExecutionBindingSha256)
   ) {
     fail('ACTION_JOURNAL_BINDING_INVALID');
   }
@@ -1136,7 +1145,7 @@ export function readAndValidateJournalState(
       'actionId',
       'bindingMaterialSha256',
       'payloadSha256',
-      'finalApprovalReceiptSha256',
+      'derivedExecutionBindingSha256',
       'claimedAt',
       'state',
     ],
@@ -1146,8 +1155,8 @@ export function readAndValidateJournalState(
     claim.record.actionId !== ACTION_ID ||
     claim.record.bindingMaterialSha256 !== expectedBindingMaterialSha256 ||
     claim.record.payloadSha256 !== expectedPayloadSha256 ||
-    claim.record.finalApprovalReceiptSha256 !==
-      expectedFinalApprovalReceiptSha256 ||
+    claim.record.derivedExecutionBindingSha256 !==
+      expectedDerivedExecutionBindingSha256 ||
     claim.record.state !== 'CLAIMED_POST_NOT_SENT' ||
     !isCanonicalTimestamp(claim.record.claimedAt)
   ) {
@@ -1162,7 +1171,7 @@ export function readAndValidateJournalState(
         'actionId',
         'bindingMaterialSha256',
         'payloadSha256',
-        'finalApprovalReceiptSha256',
+        'derivedExecutionBindingSha256',
         'postIntentAt',
         'state',
         'automaticRetryCount',
@@ -1175,8 +1184,8 @@ export function readAndValidateJournalState(
       postIntent.record.bindingMaterialSha256 !==
         expectedBindingMaterialSha256 ||
       postIntent.record.payloadSha256 !== expectedPayloadSha256 ||
-      postIntent.record.finalApprovalReceiptSha256 !==
-        expectedFinalApprovalReceiptSha256 ||
+      postIntent.record.derivedExecutionBindingSha256 !==
+        expectedDerivedExecutionBindingSha256 ||
       postIntent.record.state !== 'POST_INTENT_DURABLE' ||
       postIntent.record.automaticRetryCount !== 0 ||
       !Number.isInteger(postIntent.record.remoteContactCountBeforePost) ||
@@ -1196,7 +1205,7 @@ export function readAndValidateJournalState(
         'actionId',
         'bindingMaterialSha256',
         'payloadSha256',
-        'finalApprovalReceiptSha256',
+        'derivedExecutionBindingSha256',
         'state',
         'reasonCode',
         'completedAt',
@@ -1232,8 +1241,8 @@ export function readAndValidateJournalState(
       terminal.record.actionId !== ACTION_ID ||
       terminal.record.bindingMaterialSha256 !== expectedBindingMaterialSha256 ||
       terminal.record.payloadSha256 !== expectedPayloadSha256 ||
-      terminal.record.finalApprovalReceiptSha256 !==
-        expectedFinalApprovalReceiptSha256 ||
+      terminal.record.derivedExecutionBindingSha256 !==
+        expectedDerivedExecutionBindingSha256 ||
       !allowedTerminalStates.has(terminal.record.state) ||
       !isCanonicalTimestamp(terminal.record.completedAt) ||
       Date.parse(terminal.record.completedAt) <
@@ -1360,13 +1369,13 @@ function buildOfflineInputs(args) {
     args['--approval-evidence'],
     'APPROVAL_EVIDENCE_FILE_INVALID'
   );
-  const initialApprovalReceiptPath = resolveJsonInput(
-    args['--initial-approval-receipt'],
-    'INITIAL_APPROVAL_RECEIPT_FILE_INVALID'
+  const singleActionApprovalReceiptPath = resolveJsonInput(
+    args['--single-action-approval-receipt'],
+    'SINGLE_ACTION_APPROVAL_RECEIPT_FILE_INVALID'
   );
-  const finalApprovalReceiptPath = resolveJsonInput(
-    args['--final-approval-receipt'],
-    'FINAL_APPROVAL_RECEIPT_FILE_INVALID'
+  const derivedExecutionBindingPath = resolveJsonInput(
+    args['--derived-execution-binding'],
+    'DERIVED_EXECUTION_BINDING_FILE_INVALID'
   );
   const pricingPath = resolveJsonInput(
     args['--pricing-evidence'],
@@ -1514,13 +1523,13 @@ function buildOfflineInputs(args) {
     approvalPath,
     'APPROVAL_EVIDENCE_FILE_INVALID'
   );
-  const initialApprovalReceiptSnapshot = readFileSnapshot(
-    initialApprovalReceiptPath,
-    'INITIAL_APPROVAL_RECEIPT_FILE_INVALID'
+  const singleActionApprovalReceiptSnapshot = readFileSnapshot(
+    singleActionApprovalReceiptPath,
+    'SINGLE_ACTION_APPROVAL_RECEIPT_FILE_INVALID'
   );
-  const finalApprovalReceiptSnapshot = readFileSnapshot(
-    finalApprovalReceiptPath,
-    'FINAL_APPROVAL_RECEIPT_FILE_INVALID'
+  const derivedExecutionBindingSnapshot = readFileSnapshot(
+    derivedExecutionBindingPath,
+    'DERIVED_EXECUTION_BINDING_FILE_INVALID'
   );
   const pricingSnapshot = readFileSnapshot(
     pricingPath,
@@ -1550,13 +1559,13 @@ function buildOfflineInputs(args) {
     approvalSnapshot,
     'APPROVAL_EVIDENCE_FILE_INVALID'
   );
-  const initialApprovalReceipt = parseJsonSnapshot(
-    initialApprovalReceiptSnapshot,
-    'INITIAL_APPROVAL_RECEIPT_FILE_INVALID'
+  const singleActionApprovalReceipt = parseJsonSnapshot(
+    singleActionApprovalReceiptSnapshot,
+    'SINGLE_ACTION_APPROVAL_RECEIPT_FILE_INVALID'
   );
-  const finalApprovalReceipt = parseJsonSnapshot(
-    finalApprovalReceiptSnapshot,
-    'FINAL_APPROVAL_RECEIPT_FILE_INVALID'
+  const derivedExecutionBinding = parseJsonSnapshot(
+    derivedExecutionBindingSnapshot,
+    'DERIVED_EXECUTION_BINDING_FILE_INVALID'
   );
   const pricingEvidence = parseJsonSnapshot(
     pricingSnapshot,
@@ -1590,12 +1599,12 @@ function buildOfflineInputs(args) {
     credentialConfigurationSha256: credentialSnapshot.sha256,
     approvalEvidenceSha256: approvalSnapshot.sha256,
     bindingSha256: bindingSnapshot.sha256,
-    initialApprovalReceiptSha256: initialApprovalReceiptSnapshot.sha256,
-    finalApprovalReceiptSha256: finalApprovalReceiptSnapshot.sha256,
+    initialApprovalReceiptSha256: singleActionApprovalReceiptSnapshot.sha256,
+    derivedExecutionBindingSha256: derivedExecutionBindingSnapshot.sha256,
     pricingEvidenceSha256: pricingSnapshot.sha256,
     approvalEvidence,
-    initialApprovalReceipt,
-    finalApprovalReceipt,
+    initialApprovalReceipt: singleActionApprovalReceipt,
+    derivedExecutionBinding,
     pricingEvidence,
     organizationIdentityEvidence,
     organizationIdentitySourceGitCommitIsAncestor: isGitAncestor(
@@ -1626,26 +1635,26 @@ function buildOfflineInputs(args) {
     bindingPath,
     credentialPath,
     approvalPath,
-    initialApprovalReceiptPath,
-    finalApprovalReceiptPath,
+    singleActionApprovalReceiptPath,
+    derivedExecutionBindingPath,
   });
   if (
     approvalInputTopology.files.binding.sha256 !== bindingSnapshot.sha256 ||
     approvalInputTopology.files.credentialConfiguration.sha256 !==
       credentialSnapshot.sha256 ||
-    approvalInputTopology.files.ownerApproval.sha256 !==
+    approvalInputTopology.files.authorizationProjection.sha256 !==
       approvalSnapshot.sha256 ||
-    approvalInputTopology.files.initialApprovalReceipt.sha256 !==
-      initialApprovalReceiptSnapshot.sha256 ||
-    approvalInputTopology.files.finalApprovalReceipt.sha256 !==
-      finalApprovalReceiptSnapshot.sha256
+    approvalInputTopology.files.singleActionApprovalReceipt.sha256 !==
+      singleActionApprovalReceiptSnapshot.sha256 ||
+    approvalInputTopology.files.derivedExecutionBinding.sha256 !==
+      derivedExecutionBindingSnapshot.sha256
   ) {
     fail('APPROVAL_INPUT_TOPOLOGY_CHANGED');
   }
   return {
     approvalPath,
-    initialApprovalReceiptPath,
-    finalApprovalReceiptPath,
+    singleActionApprovalReceiptPath,
+    derivedExecutionBindingPath,
     binding,
     bindingPath,
     context,
@@ -1663,8 +1672,8 @@ function buildOfflineInputs(args) {
       binding: bindingSnapshot.sha256,
       credentialConfiguration: context.credentialConfigurationSha256,
       approvalEvidence: context.approvalEvidenceSha256,
-      initialApprovalReceipt: context.initialApprovalReceiptSha256,
-      finalApprovalReceipt: context.finalApprovalReceiptSha256,
+      singleActionApprovalReceipt: context.initialApprovalReceiptSha256,
+      derivedExecutionBinding: context.derivedExecutionBindingSha256,
       pricingEvidence: context.pricingEvidenceSha256,
       organizationIdentityTerminal: organizationIdentityTerminalSnapshot.sha256,
     },
@@ -1672,8 +1681,8 @@ function buildOfflineInputs(args) {
       binding: bindingSnapshot.identity,
       credentialConfiguration: credentialSnapshot.identity,
       approvalEvidence: approvalSnapshot.identity,
-      initialApprovalReceipt: initialApprovalReceiptSnapshot.identity,
-      finalApprovalReceipt: finalApprovalReceiptSnapshot.identity,
+      singleActionApprovalReceipt: singleActionApprovalReceiptSnapshot.identity,
+      derivedExecutionBinding: derivedExecutionBindingSnapshot.identity,
       pricingEvidence: pricingSnapshot.identity,
       organizationIdentityTerminal:
         organizationIdentityTerminalSnapshot.identity,
@@ -1833,13 +1842,13 @@ function revalidateImmutableApprovalInputs(
       inputs.approvalPath,
       'APPROVAL_EVIDENCE_FILE_INVALID'
     ),
-    initialApprovalReceipt: readFileSnapshot(
-      inputs.initialApprovalReceiptPath,
-      'INITIAL_APPROVAL_RECEIPT_FILE_INVALID'
+    singleActionApprovalReceipt: readFileSnapshot(
+      inputs.singleActionApprovalReceiptPath,
+      'SINGLE_ACTION_APPROVAL_RECEIPT_FILE_INVALID'
     ),
-    finalApprovalReceipt: readFileSnapshot(
-      inputs.finalApprovalReceiptPath,
-      'FINAL_APPROVAL_RECEIPT_FILE_INVALID'
+    derivedExecutionBinding: readFileSnapshot(
+      inputs.derivedExecutionBindingPath,
+      'DERIVED_EXECUTION_BINDING_FILE_INVALID'
     ),
     pricingEvidence: readFileSnapshot(
       inputs.pricingPath,
@@ -1854,8 +1863,9 @@ function revalidateImmutableApprovalInputs(
     binding: currentSnapshots.binding.sha256,
     credentialConfiguration: currentSnapshots.credentialConfiguration.sha256,
     approvalEvidence: currentSnapshots.approvalEvidence.sha256,
-    initialApprovalReceipt: currentSnapshots.initialApprovalReceipt.sha256,
-    finalApprovalReceipt: currentSnapshots.finalApprovalReceipt.sha256,
+    singleActionApprovalReceipt:
+      currentSnapshots.singleActionApprovalReceipt.sha256,
+    derivedExecutionBinding: currentSnapshots.derivedExecutionBinding.sha256,
     pricingEvidence: currentSnapshots.pricingEvidence.sha256,
     organizationIdentityTerminal:
       currentSnapshots.organizationIdentityTerminal.sha256,
@@ -1864,8 +1874,9 @@ function revalidateImmutableApprovalInputs(
     binding: currentSnapshots.binding.identity,
     credentialConfiguration: currentSnapshots.credentialConfiguration.identity,
     approvalEvidence: currentSnapshots.approvalEvidence.identity,
-    initialApprovalReceipt: currentSnapshots.initialApprovalReceipt.identity,
-    finalApprovalReceipt: currentSnapshots.finalApprovalReceipt.identity,
+    singleActionApprovalReceipt:
+      currentSnapshots.singleActionApprovalReceipt.identity,
+    derivedExecutionBinding: currentSnapshots.derivedExecutionBinding.identity,
     pricingEvidence: currentSnapshots.pricingEvidence.identity,
     organizationIdentityTerminal:
       currentSnapshots.organizationIdentityTerminal.identity,
@@ -2620,10 +2631,10 @@ function sealEvidence({
       status: outcome,
       actionId: ACTION_ID,
       gitCommit: binding.target.gitCommit,
-      bindingMaterialSha256: binding.approval.approvedBindingMaterialSha256,
+      bindingMaterialSha256: binding.approval.derivedBindingMaterialSha256,
       payloadSha256: binding.approvedRequest.sha256,
-      finalApprovalReceiptSha256:
-        result.approvalWindow.finalApprovalReceiptSha256,
+      derivedExecutionBindingSha256:
+        result.approvalWindow.derivedExecutionBindingSha256,
       fundingSource: binding.retentionAndCleanupDecision.fundingSource,
       artifacts: artifactMetadata,
       artifactCount: artifactMetadata.length,
@@ -2672,7 +2683,7 @@ function sealEvidence({
 
 function makeBaseResult(binding, validation, startedAt, claimSha256) {
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     phase: 'SOURCE_PROJECT_PROVISIONING_RESULT',
     resultType: 'SOURCE_PROJECT_PROVISIONING_OPERATION',
     status: 'NOT_RUN',
@@ -2681,7 +2692,7 @@ function makeBaseResult(binding, validation, startedAt, claimSha256) {
     bindingMaterialSha256: validation.bindingMaterialSha256,
     payloadSha256: validation.payloadSha256,
     operator: binding.owners.provisioningOperator,
-    approver: binding.approval.approvedBy,
+    approver: binding.approval.authorityPrincipalId,
     operatorDisplayName: binding.operatorControl.principalDisplayName,
     operatorControlMode: binding.operatorControl.mode,
     identitySeparationAvailable: false,
@@ -2733,11 +2744,12 @@ function makeBaseResult(binding, validation, startedAt, claimSha256) {
       fundedThrough: binding.retentionAndCleanupDecision.fundedThrough,
     },
     approvalWindow: {
-      approvedAt: binding.approval.approvedAt,
-      operatorReconfirmedAt: validation.operatorReconfirmedAt,
+      authorityAcceptedAt: validation.authorityAcceptedAt,
+      derivedExecutionBindingGeneratedAt:
+        validation.derivedExecutionBindingGeneratedAt,
       expiresAt: binding.approval.expiresAt,
       approvalEvidenceSha256: binding.approval.evidenceSha256,
-      finalApprovalReceiptSha256: validation.finalApprovalReceiptSha256,
+      derivedExecutionBindingSha256: validation.derivedExecutionBindingSha256,
     },
     cleanupBoundary: {
       disposition: binding.retentionAndCleanupDecision.disposition,
@@ -2777,7 +2789,7 @@ function makeTerminalRecord({
     actionId: ACTION_ID,
     bindingMaterialSha256: validation.bindingMaterialSha256,
     payloadSha256: validation.payloadSha256,
-    finalApprovalReceiptSha256: validation.finalApprovalReceiptSha256,
+    derivedExecutionBindingSha256: validation.derivedExecutionBindingSha256,
     state,
     reasonCode,
     completedAt,
@@ -2809,7 +2821,7 @@ async function executeProvisioning(inputs, validation) {
     actionId: ACTION_ID,
     bindingMaterialSha256: validation.bindingMaterialSha256,
     payloadSha256: validation.payloadSha256,
-    finalApprovalReceiptSha256: validation.finalApprovalReceiptSha256,
+    derivedExecutionBindingSha256: validation.derivedExecutionBindingSha256,
     claimedAt: startedAt,
     state: 'CLAIMED_POST_NOT_SENT',
   };
@@ -2968,7 +2980,7 @@ async function executeProvisioning(inputs, validation) {
       actionId: ACTION_ID,
       bindingMaterialSha256: validation.bindingMaterialSha256,
       payloadSha256: validation.payloadSha256,
-      finalApprovalReceiptSha256: validation.finalApprovalReceiptSha256,
+      derivedExecutionBindingSha256: validation.derivedExecutionBindingSha256,
       postIntentAt,
       state: 'POST_INTENT_DURABLE',
       automaticRetryCount: 0,
@@ -3383,14 +3395,14 @@ export function validateLocalCompletionJournalBinding(
   verified,
   journalState,
   binding,
-  finalApprovalReceipt
+  derivedExecutionBinding
 ) {
   if (
     !isRecord(result) ||
     !isRecord(verified) ||
     !isRecord(journalState) ||
     !isRecord(binding) ||
-    !isRecord(finalApprovalReceipt)
+    !isRecord(derivedExecutionBinding)
   ) {
     fail('SEALED_EVIDENCE_JOURNAL_BINDING_MISMATCH');
   }
@@ -3433,11 +3445,12 @@ export function validateLocalCompletionJournalBinding(
     fundedThrough: binding.retentionAndCleanupDecision?.fundedThrough,
   };
   const expectedApprovalWindow = {
-    approvedAt: binding.approval?.approvedAt,
-    operatorReconfirmedAt: finalApprovalReceipt.acceptedAt,
+    authorityAcceptedAt: binding.approval?.authorityAcceptedAt,
+    derivedExecutionBindingGeneratedAt: derivedExecutionBinding.generatedAt,
     expiresAt: binding.approval?.expiresAt,
     approvalEvidenceSha256: binding.approval?.evidenceSha256,
-    finalApprovalReceiptSha256: journalState.claim?.finalApprovalReceiptSha256,
+    derivedExecutionBindingSha256:
+      journalState.claim?.derivedExecutionBindingSha256,
   };
   const expectedCleanupBoundary = {
     disposition: binding.retentionAndCleanupDecision?.disposition,
@@ -3456,7 +3469,7 @@ export function validateLocalCompletionJournalBinding(
     verified.outcome !== result.status ||
     journalState.state !== expectedJournalState ||
     result.operator !== binding.owners?.provisioningOperator ||
-    result.approver !== binding.approval?.approvedBy ||
+    result.approver !== binding.approval?.authorityPrincipalId ||
     result.operatorDisplayName !==
       binding.operatorControl?.principalDisplayName ||
     result.operatorControlMode !== binding.operatorControl?.mode ||
@@ -3472,8 +3485,8 @@ export function validateLocalCompletionJournalBinding(
     canonicalJson(result.cleanupBoundary) !==
       canonicalJson(expectedCleanupBoundary) ||
     resultJournal?.claimSha256 !== journalState.claimSha256 ||
-    result.approvalWindow?.finalApprovalReceiptSha256 !==
-      journalState.claim?.finalApprovalReceiptSha256 ||
+    result.approvalWindow?.derivedExecutionBindingSha256 !==
+      journalState.claim?.derivedExecutionBindingSha256 ||
     result.actionStartedAt !== journalState.claim?.claimedAt ||
     resultJournal?.actionJournalDirectoryPathSha256 !==
       binding.duplicateAndFailurePolicy?.actionJournalDirectoryPathSha256 ||
@@ -3545,12 +3558,12 @@ function completeTerminalFromExistingEvidence(inputs, journalState) {
   if (
     bindingMaterialSha256 !== journalState.claim.bindingMaterialSha256 ||
     bindingMaterialSha256 !==
-      inputs.binding.approval?.approvedBindingMaterialSha256 ||
+      inputs.binding.approval?.derivedBindingMaterialSha256 ||
     payloadSha256 !== journalState.claim.payloadSha256 ||
     payloadSha256 !== inputs.binding.approvedRequest?.sha256 ||
-    payloadSha256 !== inputs.binding.approval?.approvedPayloadSha256 ||
-    journalState.claim.finalApprovalReceiptSha256 !==
-      inputs.context.finalApprovalReceiptSha256
+    payloadSha256 !== inputs.binding.approval?.derivedPayloadSha256 ||
+    journalState.claim.derivedExecutionBindingSha256 !==
+      inputs.context.derivedExecutionBindingSha256
   ) {
     fail('LOCAL_COMPLETION_BINDING_MISMATCH');
   }
@@ -3565,8 +3578,8 @@ function completeTerminalFromExistingEvidence(inputs, journalState) {
     verified.bindingMaterialSha256 !==
       journalState.claim.bindingMaterialSha256 ||
     verified.payloadSha256 !== journalState.claim.payloadSha256 ||
-    verified.finalApprovalReceiptSha256 !==
-      journalState.claim.finalApprovalReceiptSha256 ||
+    verified.derivedExecutionBindingSha256 !==
+      journalState.claim.derivedExecutionBindingSha256 ||
     verified.gitCommit !== inputs.binding.target?.gitCommit
   ) {
     fail('SEALED_EVIDENCE_JOURNAL_BINDING_MISMATCH');
@@ -3581,7 +3594,7 @@ function completeTerminalFromExistingEvidence(inputs, journalState) {
     verified,
     journalState,
     inputs.binding,
-    inputs.context.finalApprovalReceipt
+    inputs.context.derivedExecutionBinding
   );
   writeJournalEvent(
     inputs.journalDirectory,
@@ -3590,8 +3603,8 @@ function completeTerminalFromExistingEvidence(inputs, journalState) {
       validation: {
         bindingMaterialSha256: journalState.claim.bindingMaterialSha256,
         payloadSha256: journalState.claim.payloadSha256,
-        finalApprovalReceiptSha256:
-          journalState.claim.finalApprovalReceiptSha256,
+        derivedExecutionBindingSha256:
+          journalState.claim.derivedExecutionBindingSha256,
       },
       state:
         verified.outcome === 'PASS' ? 'PASS_EVIDENCE_SEALED' : verified.outcome,
@@ -3868,9 +3881,9 @@ async function main() {
     if (parsed['--reconcile-dispatched-action'] === ACTION_ID) {
       const journalState = readAndValidateJournalState(
         inputs.journalDirectory,
-        inputs.binding.approval?.approvedBindingMaterialSha256,
+        inputs.binding.approval?.derivedBindingMaterialSha256,
         inputs.binding.approvedRequest?.sha256,
-        inputs.context.finalApprovalReceiptSha256
+        inputs.context.derivedExecutionBindingSha256
       );
       if (journalState.state === 'TERMINAL_OUTCOME_RECORDED') {
         fail('ACTION_ALREADY_TERMINAL');

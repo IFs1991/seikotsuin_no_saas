@@ -1,5 +1,7 @@
 # PR12 isolated staging execution owner approval packet v0.2
 
+> **Historical proposal / non-authoritative for current Action-003 mechanics.** Retained for audit provenance only. Its v5, two-stage/final-reconfirmation, fixed-schedule, cooling-period, and one-hour pricing-freshness instructions are superseded by `spec-commercial-pr12-phase1-source-project-provisioning-approval-preparation-v1.0.md` (2026-07-31 revision) and must not be executed. It grants no current authority.
+
 ## Decision state
 
 - Packet state: **OWNER REVIEW REQUIRED**

@@ -100,9 +100,9 @@ function stableFileSnapshot(filename, code) {
     requireCondition(existsSync(filename), code);
     const linkStatus = lstatSync(filename);
     requireCondition(linkStatus.isFile() && !linkStatus.isSymbolicLink(), code);
-    const before = statSync(filename);
+    const before = statSync(filename, { bigint: true });
     bytes = readFileSync(filename);
-    const after = statSync(filename);
+    const after = statSync(filename, { bigint: true });
     requireCondition(
       before.isFile() &&
         after.isFile() &&
@@ -110,7 +110,7 @@ function stableFileSnapshot(filename, code) {
         before.ino === after.ino &&
         before.size === after.size &&
         before.mtimeMs === after.mtimeMs &&
-        bytes.length === after.size,
+        BigInt(bytes.length) === after.size,
       code
     );
     const sha256 = sha256Bytes(bytes);
@@ -119,8 +119,8 @@ function stableFileSnapshot(filename, code) {
       identity: {
         device: String(after.dev),
         inode: String(after.ino),
-        size: after.size,
-        modifiedAtMilliseconds: after.mtimeMs,
+        size: Number(after.size),
+        modifiedAtMilliseconds: Number(after.mtimeMs),
       },
     };
   } catch (error) {

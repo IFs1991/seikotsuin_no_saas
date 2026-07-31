@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "recordType": "PR12_SOURCE_PROJECT_PROVISIONING_DERIVED_EXECUTION_BINDING",
+  "derivationStatus": "NOT_DERIVED",
+  "derivationMethod": "SYSTEM_DERIVED_HASH_BINDING_FROM_SINGLE_APPROVAL",
+  "actionId": "PR12-ACTION-003",
+  "generatedAt": "NOT_CAPTURED",
+  "expiresAt": "NOT_CAPTURED",
+  "authorityReceiptSha256": "NOT_CAPTURED",
+  "bindingSha256": "NOT_CAPTURED",
+  "bindingMaterialSha256": "NOT_CAPTURED",
+  "payloadSha256": "NOT_CAPTURED",
+  "credentialConfigurationSha256": "NOT_CAPTURED",
+  "pricingEvidenceSha256": "NOT_CAPTURED",
+  "authorizationProjectionSha256": "NOT_CAPTURED",
+  "authorityScopeConfirmed": false,
+  "productionContactAuthorized": false,
+  "phase2AndLaterAuthorized": false,
+  "cleanupDeletionAuthorized": false,
+  "notes": "Template only. Local automation derives this exact-hash execution binding from the v2 owner authority receipt and candidate artifacts. It records no human decision, approval, approver, acceptance time, or operator reconfirmation."
+}

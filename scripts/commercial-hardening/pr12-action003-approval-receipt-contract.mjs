@@ -18,7 +18,10 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import {
   ACTION_ID,
+  FIXED_PROJECT_NAME,
+  OWNER_AUTHORIZATION_CEILING_USD_SCALED,
   PHASE1_OWNER_PRINCIPAL_ID,
+  TARGET_ORGANIZATION_SLUG,
   assertSecretFreeEvidence,
   canonicalJson,
   sha256Text,
@@ -26,29 +29,30 @@ import {
 
 const PRINCIPAL_DISPLAY_NAME = 'FUTOSHI IWASAWA';
 const INITIAL_RECEIPT_TYPE =
-  'PR12_SOURCE_PROJECT_PROVISIONING_INITIAL_APPROVAL_RECEIPT';
-const FINAL_RECEIPT_TYPE =
-  'PR12_SOURCE_PROJECT_PROVISIONING_FINAL_APPROVAL_RECEIPT';
-const INITIAL_ATTESTATION_METHOD = 'SOLE_OPERATOR_EXPLICIT_INITIAL_APPROVAL';
-const FINAL_ATTESTATION_METHOD =
-  'SOLE_OPERATOR_EXPLICIT_FINAL_HASH_RECONFIRMATION';
-const INITIAL_APPROVAL_PURPOSE = 'ACTION003_PACKET_PREPARATION_ONLY';
+  'PR12_SOURCE_PROJECT_PROVISIONING_SINGLE_ACTION_APPROVAL_RECEIPT';
+const EXECUTION_BINDING_TYPE =
+  'PR12_SOURCE_PROJECT_PROVISIONING_DERIVED_EXECUTION_BINDING';
+const INITIAL_ATTESTATION_METHOD =
+  'SOLE_OPERATOR_EXPLICIT_SINGLE_ACTION_APPROVAL';
+const EXECUTION_BINDING_DERIVATION_METHOD =
+  'SYSTEM_DERIVED_HASH_BINDING_FROM_SINGLE_APPROVAL';
+const INITIAL_APPROVAL_PURPOSE =
+  'ACTION003_PACKET_PREPARATION_AND_SOURCE_PROJECT_PROVISIONING';
 const INITIAL_RECEIPT_FILENAME =
-  'source-project-provisioning-initial-approval-receipt-v1.json';
-const FINAL_RECEIPT_FILENAME =
-  'source-project-provisioning-final-approval-receipt-v1.json';
+  'source-project-provisioning-single-action-approval-receipt-v2.json';
+const EXECUTION_BINDING_FILENAME =
+  'source-project-provisioning-derived-execution-binding-v1.json';
 const INITIAL_RECEIPT_DIRECTORY =
-  'source-project-provisioning-initial-approval-receipt-v1';
-const FINAL_RECEIPT_DIRECTORY =
-  'source-project-provisioning-final-approval-receipt-v1';
+  'source-project-provisioning-single-action-approval-receipt-v2';
+const EXECUTION_BINDING_DIRECTORY =
+  'source-project-provisioning-derived-execution-binding-v1';
 const ACL_POLICY_ID = 'WINDOWS_CURRENT_USER_AND_SYSTEM_FULL_CONTROL_V1';
 const OWNER_PRIVATE_BOUNDARY_POLICY_ID =
   'PR12_OWNER_PRIVATE_EXTERNAL_NON_REPARSE_V1';
 const SYSTEM_SID = 'S-1-5-18';
 const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
-const INITIAL_TO_FINAL_MINIMUM_MILLISECONDS = 5 * 60 * 1000;
-const INITIAL_TO_SCHEDULE_MILLISECONDS = 15 * 60 * 1000;
-const INITIAL_TO_EXPIRY_MILLISECONDS = 30 * 60 * 1000;
+const INITIAL_TO_SCHEDULE_MILLISECONDS = 0;
+const INITIAL_TO_EXPIRY_MILLISECONDS = 60 * 60 * 1000;
 const REPOSITORY_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -71,7 +75,24 @@ const INITIAL_RECEIPT_KEYS = Object.freeze([
   'approvedByPrincipalId',
   'approvedByDisplayName',
   'acceptedAt',
+  'expiresAt',
+  'approvalTtlSeconds',
   'approvalPurpose',
+  'gitCommit',
+  'organizationId',
+  'organizationSlug',
+  'projectName',
+  'region',
+  'tier',
+  'ownerAuthorizationCeilingUsdScaled',
+  'authorizedDurationHours',
+  'maximumPostAttempts',
+  'credentialConfigurationSha256',
+  'pricingEvidenceSha256',
+  'actionJournalDirectoryPathSha256',
+  'actionJournalDirectoryFingerprint',
+  'evidenceParentDirectoryPathSha256',
+  'evidenceParentDirectoryFingerprint',
   'soleOperatorRiskAccepted',
   'sameUserDpapiCredentialExposureRiskAccepted',
   'providerSpendCapLimitationAcknowledged',
@@ -88,33 +109,22 @@ const INITIAL_RECEIPT_KEYS = Object.freeze([
   'cleanupDeletionAuthorized',
   'notes',
 ]);
-const FINAL_RECEIPT_KEYS = Object.freeze([
+const EXECUTION_BINDING_KEYS = Object.freeze([
   'schemaVersion',
   'recordType',
-  'decision',
-  'attestationStatus',
-  'attestationMethod',
+  'derivationStatus',
+  'derivationMethod',
   'actionId',
-  'approvedByPrincipalId',
-  'approvedByDisplayName',
-  'acceptedAt',
+  'generatedAt',
   'expiresAt',
-  'initialApprovalReceiptSha256',
+  'authorityReceiptSha256',
   'bindingSha256',
   'bindingMaterialSha256',
   'payloadSha256',
   'credentialConfigurationSha256',
   'pricingEvidenceSha256',
-  'ownerApprovalSha256',
-  'soleOperatorRiskAccepted',
-  'sameUserDpapiCredentialExposureRiskAccepted',
-  'providerSpendCapLimitationAcknowledged',
-  'sameOrganizationExceptionRiskAccepted',
-  'organizationListProductionRefObservationAccepted',
-  'sharedOrganizationIamBillingControlPlaneRiskAccepted',
-  'productionDirectContactProhibitionAcknowledged',
-  'unknownChargesAcknowledged',
-  'sourceProjectProvisioningAuthorized',
+  'authorizationProjectionSha256',
+  'authorityScopeConfirmed',
   'productionContactAuthorized',
   'phase2AndLaterAuthorized',
   'cleanupDeletionAuthorized',
@@ -183,6 +193,26 @@ function requireSha256(value, code) {
   return value;
 }
 
+function requireDirectoryFingerprint(value, expectedPathSha256, code) {
+  const fingerprint = requireExactKeys(
+    cloneJson(value),
+    ['pathSha256', 'resolvedPathSha256', 'device', 'inode', 'snapshotSha256'],
+    code
+  );
+  requireCondition(
+    fingerprint.pathSha256 === expectedPathSha256 &&
+      fingerprint.resolvedPathSha256 === fingerprint.pathSha256 &&
+      typeof fingerprint.device === 'string' &&
+      /^\d+$/u.test(fingerprint.device) &&
+      typeof fingerprint.inode === 'string' &&
+      /^\d+$/u.test(fingerprint.inode) &&
+      typeof fingerprint.snapshotSha256 === 'string' &&
+      SHA256_PATTERN.test(fingerprint.snapshotSha256),
+    code
+  );
+  return fingerprint;
+}
+
 function parseCanonicalTimestamp(value, code) {
   requireCondition(typeof value === 'string', code);
   const milliseconds = Date.parse(value);
@@ -222,13 +252,35 @@ function requireInitialReceiptShape(receiptInput) {
     INITIAL_RECEIPT_KEYS,
     'INITIAL_APPROVAL_RECEIPT_INVALID'
   );
-  parseCanonicalTimestamp(
+  const acceptedAt = parseCanonicalTimestamp(
     receipt.acceptedAt,
+    'INITIAL_APPROVAL_RECEIPT_INVALID'
+  );
+  const expiresAt = parseCanonicalTimestamp(
+    receipt.expiresAt,
+    'INITIAL_APPROVAL_RECEIPT_INVALID'
+  );
+  for (const key of [
+    'credentialConfigurationSha256',
+    'pricingEvidenceSha256',
+    'actionJournalDirectoryPathSha256',
+    'evidenceParentDirectoryPathSha256',
+  ]) {
+    requireSha256(receipt[key], 'INITIAL_APPROVAL_RECEIPT_INVALID');
+  }
+  const actionJournalDirectoryFingerprint = requireDirectoryFingerprint(
+    receipt.actionJournalDirectoryFingerprint,
+    receipt.actionJournalDirectoryPathSha256,
+    'INITIAL_APPROVAL_RECEIPT_INVALID'
+  );
+  const evidenceParentDirectoryFingerprint = requireDirectoryFingerprint(
+    receipt.evidenceParentDirectoryFingerprint,
+    receipt.evidenceParentDirectoryPathSha256,
     'INITIAL_APPROVAL_RECEIPT_INVALID'
   );
   requireConcreteNotes(receipt.notes, 'INITIAL_APPROVAL_RECEIPT_INVALID');
   requireCondition(
-    receipt.schemaVersion === 1 &&
+    receipt.schemaVersion === 2 &&
       receipt.recordType === INITIAL_RECEIPT_TYPE &&
       receipt.decision === 'APPROVED' &&
       receipt.attestationStatus === 'VERIFIED' &&
@@ -236,10 +288,23 @@ function requireInitialReceiptShape(receiptInput) {
       receipt.actionId === ACTION_ID &&
       receipt.approvedByPrincipalId === PHASE1_OWNER_PRINCIPAL_ID &&
       receipt.approvedByDisplayName === PRINCIPAL_DISPLAY_NAME &&
+      expiresAt === acceptedAt + INITIAL_TO_EXPIRY_MILLISECONDS &&
+      receipt.approvalTtlSeconds === 3600 &&
       receipt.approvalPurpose === INITIAL_APPROVAL_PURPOSE &&
+      typeof receipt.gitCommit === 'string' &&
+      /^[a-f0-9]{40}$/u.test(receipt.gitCommit) &&
+      receipt.organizationId === TARGET_ORGANIZATION_SLUG &&
+      receipt.organizationSlug === TARGET_ORGANIZATION_SLUG &&
+      receipt.projectName === FIXED_PROJECT_NAME &&
+      receipt.region === 'ap-northeast-1' &&
+      receipt.tier === 'LARGE' &&
+      receipt.ownerAuthorizationCeilingUsdScaled ===
+        OWNER_AUTHORIZATION_CEILING_USD_SCALED &&
+      receipt.authorizedDurationHours === 72 &&
+      receipt.maximumPostAttempts === 1 &&
       receipt.action003PacketPreparationAuthorized === true &&
       receipt.databasePasswordBootstrapAuthorized === false &&
-      receipt.sourceProjectProvisioningAuthorized === false &&
+      receipt.sourceProjectProvisioningAuthorized === true &&
       receipt.productionContactAuthorized === false &&
       receipt.phase2AndLaterAuthorized === false &&
       receipt.cleanupDeletionAuthorized === false,
@@ -265,7 +330,30 @@ export function validateInitialAction003ApprovalReceipt(receiptInput) {
       principalId: PHASE1_OWNER_PRINCIPAL_ID,
       principalDisplayName: PRINCIPAL_DISPLAY_NAME,
       approvedAt: receipt.acceptedAt,
+      expiresAt: receipt.expiresAt,
       initialApprovalReceiptSha256: receiptSha256,
+      authorizationScope: {
+        gitCommit: receipt.gitCommit,
+        organizationId: receipt.organizationId,
+        organizationSlug: receipt.organizationSlug,
+        projectName: receipt.projectName,
+        region: receipt.region,
+        tier: receipt.tier,
+        ownerAuthorizationCeilingUsdScaled:
+          receipt.ownerAuthorizationCeilingUsdScaled,
+        authorizedDurationHours: receipt.authorizedDurationHours,
+        maximumPostAttempts: receipt.maximumPostAttempts,
+        credentialConfigurationSha256: receipt.credentialConfigurationSha256,
+        pricingEvidenceSha256: receipt.pricingEvidenceSha256,
+        actionJournalDirectoryPathSha256:
+          receipt.actionJournalDirectoryPathSha256,
+        actionJournalDirectoryFingerprint:
+          receipt.actionJournalDirectoryFingerprint,
+        evidenceParentDirectoryPathSha256:
+          receipt.evidenceParentDirectoryPathSha256,
+        evidenceParentDirectoryFingerprint:
+          receipt.evidenceParentDirectoryFingerprint,
+      },
       riskAcceptances: riskAcceptances(receipt),
     },
     remoteContactPerformed: false,
@@ -273,64 +361,67 @@ export function validateInitialAction003ApprovalReceipt(receiptInput) {
   };
 }
 
-function requireFinalReceiptShape(receiptInput) {
-  const receipt = requireExactKeys(
-    cloneJson(receiptInput),
-    FINAL_RECEIPT_KEYS,
-    'FINAL_APPROVAL_RECEIPT_INVALID'
+function requireExecutionBindingShape(bindingInput) {
+  const binding = requireExactKeys(
+    cloneJson(bindingInput),
+    EXECUTION_BINDING_KEYS,
+    'DERIVED_EXECUTION_BINDING_INVALID'
   );
-  parseCanonicalTimestamp(receipt.acceptedAt, 'FINAL_APPROVAL_RECEIPT_INVALID');
-  parseCanonicalTimestamp(receipt.expiresAt, 'FINAL_APPROVAL_RECEIPT_INVALID');
+  parseCanonicalTimestamp(
+    binding.generatedAt,
+    'DERIVED_EXECUTION_BINDING_INVALID'
+  );
+  parseCanonicalTimestamp(
+    binding.expiresAt,
+    'DERIVED_EXECUTION_BINDING_INVALID'
+  );
   for (const key of [
-    'initialApprovalReceiptSha256',
+    'authorityReceiptSha256',
     'bindingSha256',
     'bindingMaterialSha256',
     'payloadSha256',
     'credentialConfigurationSha256',
     'pricingEvidenceSha256',
-    'ownerApprovalSha256',
+    'authorizationProjectionSha256',
   ]) {
-    requireSha256(receipt[key], 'FINAL_APPROVAL_RECEIPT_INVALID');
+    requireSha256(binding[key], 'DERIVED_EXECUTION_BINDING_INVALID');
   }
-  requireConcreteNotes(receipt.notes, 'FINAL_APPROVAL_RECEIPT_INVALID');
+  requireConcreteNotes(binding.notes, 'DERIVED_EXECUTION_BINDING_INVALID');
   requireCondition(
-    receipt.schemaVersion === 1 &&
-      receipt.recordType === FINAL_RECEIPT_TYPE &&
-      receipt.decision === 'APPROVED' &&
-      receipt.attestationStatus === 'VERIFIED' &&
-      receipt.attestationMethod === FINAL_ATTESTATION_METHOD &&
-      receipt.actionId === ACTION_ID &&
-      receipt.approvedByPrincipalId === PHASE1_OWNER_PRINCIPAL_ID &&
-      receipt.approvedByDisplayName === PRINCIPAL_DISPLAY_NAME &&
-      receipt.sourceProjectProvisioningAuthorized === true &&
-      receipt.productionContactAuthorized === false &&
-      receipt.phase2AndLaterAuthorized === false &&
-      receipt.cleanupDeletionAuthorized === false,
-    'FINAL_APPROVAL_RECEIPT_INVALID'
+    binding.schemaVersion === 1 &&
+      binding.recordType === EXECUTION_BINDING_TYPE &&
+      binding.derivationStatus === 'VERIFIED_LOCAL_DERIVATION' &&
+      binding.derivationMethod === EXECUTION_BINDING_DERIVATION_METHOD &&
+      binding.actionId === ACTION_ID &&
+      binding.authorityScopeConfirmed === true &&
+      binding.productionContactAuthorized === false &&
+      binding.phase2AndLaterAuthorized === false &&
+      binding.cleanupDeletionAuthorized === false,
+    'DERIVED_EXECUTION_BINDING_INVALID'
   );
-  requireAllRisksAccepted(receipt, 'FINAL_APPROVAL_RECEIPT_INVALID');
-  assertSecretFreeEvidence(receipt, []);
-  return receipt;
+  assertSecretFreeEvidence(binding, []);
+  return binding;
 }
 
-function requireFinalExpectedBinding(expectedInput) {
+function requireExpectedExecutionBinding(expectedInput) {
   const expected = requireExactKeys(
     cloneJson(expectedInput),
     [
-      'initialApprovalReceipt',
+      'authorityReceipt',
       'bindingSha256',
       'bindingMaterialSha256',
       'payloadSha256',
       'credentialConfigurationSha256',
       'pricingEvidenceSha256',
-      'ownerApprovalSha256',
+      'authorizationProjectionSha256',
       'scheduledExecutionAt',
       'expiresAt',
+      'generatedAt',
     ],
-    'FINAL_APPROVAL_RECEIPT_INVALID'
+    'DERIVED_EXECUTION_BINDING_INVALID'
   );
   const initial = validateInitialAction003ApprovalReceipt(
-    expected.initialApprovalReceipt
+    expected.authorityReceipt
   );
   for (const key of [
     'bindingSha256',
@@ -338,27 +429,37 @@ function requireFinalExpectedBinding(expectedInput) {
     'payloadSha256',
     'credentialConfigurationSha256',
     'pricingEvidenceSha256',
-    'ownerApprovalSha256',
+    'authorizationProjectionSha256',
   ]) {
-    requireSha256(expected[key], 'FINAL_APPROVAL_RECEIPT_INVALID');
+    requireSha256(expected[key], 'DERIVED_EXECUTION_BINDING_INVALID');
   }
   const initialAcceptedAt = parseCanonicalTimestamp(
     initial.acceptedAt,
-    'FINAL_APPROVAL_RECEIPT_INVALID'
+    'DERIVED_EXECUTION_BINDING_INVALID'
   );
   const scheduledExecutionAt = parseCanonicalTimestamp(
     expected.scheduledExecutionAt,
-    'FINAL_APPROVAL_RECEIPT_INVALID'
+    'DERIVED_EXECUTION_BINDING_INVALID'
   );
   const expiresAt = parseCanonicalTimestamp(
     expected.expiresAt,
-    'FINAL_APPROVAL_RECEIPT_INVALID'
+    'DERIVED_EXECUTION_BINDING_INVALID'
+  );
+  const generatedAt = parseCanonicalTimestamp(
+    expected.generatedAt,
+    'DERIVED_EXECUTION_BINDING_INVALID'
   );
   requireCondition(
     scheduledExecutionAt ===
       initialAcceptedAt + INITIAL_TO_SCHEDULE_MILLISECONDS &&
-      expiresAt === initialAcceptedAt + INITIAL_TO_EXPIRY_MILLISECONDS,
-    'FINAL_APPROVAL_RECEIPT_INVALID'
+      expiresAt === initialAcceptedAt + INITIAL_TO_EXPIRY_MILLISECONDS &&
+      generatedAt >= initialAcceptedAt &&
+      generatedAt < expiresAt &&
+      initial.receipt.expiresAt === expected.expiresAt &&
+      initial.receipt.credentialConfigurationSha256 ===
+        expected.credentialConfigurationSha256 &&
+      initial.receipt.pricingEvidenceSha256 === expected.pricingEvidenceSha256,
+    'DERIVED_EXECUTION_BINDING_INVALID'
   );
   return {
     expected,
@@ -366,48 +467,86 @@ function requireFinalExpectedBinding(expectedInput) {
     initialAcceptedAt,
     scheduledExecutionAt,
     expiresAt,
+    generatedAt,
   };
 }
 
-export function validateFinalAction003ApprovalReceipt(
-  receiptInput,
+export function deriveAction003ExecutionBinding(expectedInput) {
+  const expectedBinding = requireExpectedExecutionBinding(expectedInput);
+  const binding = {
+    schemaVersion: 1,
+    recordType: EXECUTION_BINDING_TYPE,
+    derivationStatus: 'VERIFIED_LOCAL_DERIVATION',
+    derivationMethod: EXECUTION_BINDING_DERIVATION_METHOD,
+    actionId: ACTION_ID,
+    generatedAt: expectedBinding.expected.generatedAt,
+    expiresAt: expectedBinding.expected.expiresAt,
+    authorityReceiptSha256: expectedBinding.initial.receiptSha256,
+    bindingSha256: expectedBinding.expected.bindingSha256,
+    bindingMaterialSha256: expectedBinding.expected.bindingMaterialSha256,
+    payloadSha256: expectedBinding.expected.payloadSha256,
+    credentialConfigurationSha256:
+      expectedBinding.expected.credentialConfigurationSha256,
+    pricingEvidenceSha256: expectedBinding.expected.pricingEvidenceSha256,
+    authorizationProjectionSha256:
+      expectedBinding.expected.authorizationProjectionSha256,
+    authorityScopeConfirmed: true,
+    productionContactAuthorized: false,
+    phase2AndLaterAuthorized: false,
+    cleanupDeletionAuthorized: false,
+    notes:
+      'System-derived exact-hash execution binding. Authority remains exclusively in the single owner receipt; this artifact records no human decision or reconfirmation.',
+  };
+  assertSecretFreeEvidence(binding, []);
+  return {
+    binding,
+    bindingSha256: canonicalFileSha256(binding),
+    generatedAt: binding.generatedAt,
+    remoteContactPerformed: false,
+    credentialReadPerformed: false,
+  };
+}
+
+export function validateAction003ExecutionBinding(
+  bindingInput,
   expectedInput,
   nowInput
 ) {
-  const receipt = requireFinalReceiptShape(receiptInput);
-  const binding = requireFinalExpectedBinding(expectedInput);
-  const acceptedAt = parseCanonicalTimestamp(
-    receipt.acceptedAt,
-    'FINAL_APPROVAL_RECEIPT_INVALID'
+  const derived = requireExecutionBindingShape(bindingInput);
+  const expectedBinding = requireExpectedExecutionBinding(expectedInput);
+  const generatedAt = parseCanonicalTimestamp(
+    derived.generatedAt,
+    'DERIVED_EXECUTION_BINDING_INVALID'
   );
   const now = parseCanonicalTimestamp(
     nowInput,
-    'FINAL_APPROVAL_RECEIPT_INVALID'
+    'DERIVED_EXECUTION_BINDING_INVALID'
   );
   requireCondition(
-    acceptedAt >=
-      binding.initialAcceptedAt + INITIAL_TO_FINAL_MINIMUM_MILLISECONDS &&
-      acceptedAt <= binding.scheduledExecutionAt &&
-      acceptedAt < binding.expiresAt &&
-      now >= acceptedAt &&
-      now < binding.expiresAt &&
-      receipt.expiresAt === binding.expected.expiresAt &&
-      receipt.initialApprovalReceiptSha256 === binding.initial.receiptSha256 &&
-      receipt.bindingSha256 === binding.expected.bindingSha256 &&
-      receipt.bindingMaterialSha256 ===
-        binding.expected.bindingMaterialSha256 &&
-      receipt.payloadSha256 === binding.expected.payloadSha256 &&
-      receipt.credentialConfigurationSha256 ===
-        binding.expected.credentialConfigurationSha256 &&
-      receipt.pricingEvidenceSha256 ===
-        binding.expected.pricingEvidenceSha256 &&
-      receipt.ownerApprovalSha256 === binding.expected.ownerApprovalSha256,
-    'FINAL_APPROVAL_RECEIPT_INVALID'
+    generatedAt === expectedBinding.generatedAt &&
+      generatedAt >= expectedBinding.initialAcceptedAt &&
+      generatedAt < expectedBinding.expiresAt &&
+      now >= generatedAt &&
+      now < expectedBinding.expiresAt &&
+      derived.expiresAt === expectedBinding.expected.expiresAt &&
+      derived.authorityReceiptSha256 ===
+        expectedBinding.initial.receiptSha256 &&
+      derived.bindingSha256 === expectedBinding.expected.bindingSha256 &&
+      derived.bindingMaterialSha256 ===
+        expectedBinding.expected.bindingMaterialSha256 &&
+      derived.payloadSha256 === expectedBinding.expected.payloadSha256 &&
+      derived.credentialConfigurationSha256 ===
+        expectedBinding.expected.credentialConfigurationSha256 &&
+      derived.pricingEvidenceSha256 ===
+        expectedBinding.expected.pricingEvidenceSha256 &&
+      derived.authorizationProjectionSha256 ===
+        expectedBinding.expected.authorizationProjectionSha256,
+    'DERIVED_EXECUTION_BINDING_INVALID'
   );
   return {
-    receipt,
-    receiptSha256: canonicalFileSha256(receipt),
-    acceptedAt: receipt.acceptedAt,
+    binding: derived,
+    bindingSha256: canonicalFileSha256(derived),
+    generatedAt: derived.generatedAt,
     remoteContactPerformed: false,
     credentialReadPerformed: false,
   };
@@ -436,8 +575,8 @@ function receiptDirectoryName(receiptFilename) {
   if (receiptFilename === INITIAL_RECEIPT_FILENAME) {
     return INITIAL_RECEIPT_DIRECTORY;
   }
-  if (receiptFilename === FINAL_RECEIPT_FILENAME) {
-    return FINAL_RECEIPT_DIRECTORY;
+  if (receiptFilename === EXECUTION_BINDING_FILENAME) {
+    return EXECUTION_BINDING_DIRECTORY;
   }
   fail('RECEIPT_OUTPUT_BOUNDARY_INVALID');
 }
@@ -691,10 +830,10 @@ function stableFileSnapshot(filename, expectedReceipt, code) {
     );
     const resolvedBefore = realpathSync.native(filename);
     descriptor = openSync(filename, 'r');
-    const before = fstatSync(descriptor);
+    const before = fstatSync(descriptor, { bigint: true });
     const bytes = readFileSync(descriptor);
-    const after = fstatSync(descriptor);
-    const pathStatus = statSync(filename);
+    const after = fstatSync(descriptor, { bigint: true });
+    const pathStatus = statSync(filename, { bigint: true });
     const resolvedAfter = realpathSync.native(filename);
     const expectedBytes = Buffer.from(
       `${canonicalJson(expectedReceipt)}\n`,
@@ -706,7 +845,7 @@ function stableFileSnapshot(filename, expectedReceipt, code) {
         String(before.ino) === String(after.ino) &&
         before.size === after.size &&
         before.mtimeMs === after.mtimeMs &&
-        bytes.length === after.size &&
+        BigInt(bytes.length) === after.size &&
         pathStatus.isFile() &&
         String(pathStatus.dev) === String(after.dev) &&
         String(pathStatus.ino) === String(after.ino) &&
@@ -719,8 +858,8 @@ function stableFileSnapshot(filename, expectedReceipt, code) {
       resolvedPathSha256: pathFingerprint(resolvedAfter),
       device: String(after.dev),
       inode: String(after.ino),
-      size: after.size,
-      modifiedAtMilliseconds: after.mtimeMs,
+      size: Number(after.size),
+      modifiedAtMilliseconds: Number(after.mtimeMs),
       contentSha256: sha256Text(bytes.toString('utf8')),
     };
   } catch (error) {
@@ -737,10 +876,10 @@ function stableGenericFileIdentity(filename, code) {
     requireEveryExistingPathComponentNonReparse(filename, code);
     const resolvedBefore = realpathSync.native(filename);
     descriptor = openSync(filename, 'r');
-    const before = fstatSync(descriptor);
+    const before = fstatSync(descriptor, { bigint: true });
     const bytes = readFileSync(descriptor);
-    const after = fstatSync(descriptor);
-    const pathStatus = statSync(filename);
+    const after = fstatSync(descriptor, { bigint: true });
+    const pathStatus = statSync(filename, { bigint: true });
     const resolvedAfter = realpathSync.native(filename);
     requireCondition(
       before.isFile() &&
@@ -748,7 +887,7 @@ function stableGenericFileIdentity(filename, code) {
         String(before.ino) === String(after.ino) &&
         before.size === after.size &&
         before.mtimeMs === after.mtimeMs &&
-        bytes.length === after.size &&
+        BigInt(bytes.length) === after.size &&
         pathStatus.isFile() &&
         String(pathStatus.dev) === String(after.dev) &&
         String(pathStatus.ino) === String(after.ino) &&
@@ -760,8 +899,8 @@ function stableGenericFileIdentity(filename, code) {
       resolvedPathSha256: pathFingerprint(resolvedAfter),
       device: String(after.dev),
       inode: String(after.ino),
-      size: after.size,
-      modifiedAtMilliseconds: after.mtimeMs,
+      size: Number(after.size),
+      modifiedAtMilliseconds: Number(after.mtimeMs),
       contentSha256: sha256Text(bytes.toString('utf8')),
     };
   } catch (error) {
@@ -782,9 +921,9 @@ function stableDirectoryIdentity(directory, code) {
       code
     );
     const resolvedBefore = realpathSync.native(directory);
-    const before = statSync(directory);
+    const before = statSync(directory, { bigint: true });
     const resolvedAfter = realpathSync.native(directory);
-    const after = statSync(directory);
+    const after = statSync(directory, { bigint: true });
     requireCondition(
       before.isDirectory() &&
         after.isDirectory() &&
@@ -799,7 +938,7 @@ function stableDirectoryIdentity(directory, code) {
       resolvedPathSha256: pathFingerprint(resolvedAfter),
       device: String(after.dev),
       inode: String(after.ino),
-      modifiedAtMilliseconds: after.mtimeMs,
+      modifiedAtMilliseconds: Number(after.mtimeMs),
     };
   } catch (error) {
     if (error instanceof Action003ApprovalReceiptError) throw error;
@@ -924,6 +1063,31 @@ export function inspectOwnerPrivatePathAcl(inputValue) {
   return inspectExistingOwnerPrivatePath(inputValue);
 }
 
+export function protectOwnerPrivatePath(inputValue) {
+  requireCondition(
+    process.platform === 'win32',
+    'WINDOWS_ACL_CAPTURE_REQUIRED'
+  );
+  const input = requireExactKeys(
+    inputValue,
+    ['ownerPrivateRoot', 'targetPath', 'kind'],
+    'OWNER_PRIVATE_BOUNDARY_INVALID'
+  );
+  const boundary = requireExistingOwnerPrivateTarget(
+    input.ownerPrivateRoot,
+    input.targetPath,
+    input.kind,
+    'OWNER_PRIVATE_BOUNDARY_INVALID'
+  );
+  windowsAclProof(
+    boundary.targetPath,
+    boundary.kind,
+    'PROTECT_AND_CAPTURE',
+    'OWNER_PRIVATE_TARGET_ACL_INVALID'
+  );
+  return inspectExistingOwnerPrivatePath(input);
+}
+
 function writeCanonicalReceiptCreateNew(filename, receipt) {
   let descriptor;
   try {
@@ -946,6 +1110,15 @@ function recordReceiptCreateNew(
   validation,
   receiptFilename
 ) {
+  const artifact = validation.receipt ?? validation.binding;
+  const artifactSha256 = validation.receiptSha256 ?? validation.bindingSha256;
+  const recordedAt = validation.acceptedAt ?? validation.generatedAt;
+  requireCondition(
+    isRecord(artifact) &&
+      typeof artifactSha256 === 'string' &&
+      typeof recordedAt === 'string',
+    'RECEIPT_RECORD_INPUT_INVALID'
+  );
   const boundary = requireOwnerPrivateOutputBoundary(
     ownerPrivateRoot,
     outputDirectory,
@@ -970,7 +1143,7 @@ function recordReceiptCreateNew(
     'RECEIPT_DIRECTORY_ACL_INVALID'
   );
   const receiptPath = path.join(boundary.outputDirectory, receiptFilename);
-  writeCanonicalReceiptCreateNew(receiptPath, validation.receipt);
+  writeCanonicalReceiptCreateNew(receiptPath, artifact);
   requireEveryExistingPathComponentNonReparse(
     receiptPath,
     'RECEIPT_OUTPUT_BOUNDARY_INVALID'
@@ -989,7 +1162,7 @@ function recordReceiptCreateNew(
   requireStableAcl(receiptPath, 'FILE', fileAcl, 'RECEIPT_FILE_ACL_DRIFT');
   const fileIdentity = stableFileSnapshot(
     receiptPath,
-    validation.receipt,
+    artifact,
     'RECEIPT_READBACK_INVALID'
   );
   requireStableAcl(receiptPath, 'FILE', fileAcl, 'RECEIPT_FILE_ACL_DRIFT');
@@ -1020,7 +1193,7 @@ function recordReceiptCreateNew(
     'OWNER_PRIVATE_ROOT_ACL_DRIFT'
   );
   requireCondition(
-    fileIdentity.contentSha256 === validation.receiptSha256,
+    fileIdentity.contentSha256 === artifactSha256,
     'RECEIPT_READBACK_INVALID'
   );
   requireStableIdentity(
@@ -1034,10 +1207,19 @@ function recordReceiptCreateNew(
 
   const result = {
     status: 'RECORDED',
-    recordType: validation.receipt.recordType,
+    recordType: artifact.recordType,
     fileCount: 1,
-    receiptSha256: validation.receiptSha256,
-    acceptedAt: validation.acceptedAt,
+    artifactSha256,
+    recordedAt,
+    ...(artifact.recordType === INITIAL_RECEIPT_TYPE
+      ? {
+          receiptSha256: artifactSha256,
+          acceptedAt: recordedAt,
+        }
+      : {
+          executionBindingSha256: artifactSha256,
+          generatedAt: recordedAt,
+        }),
     ownerPrivateRootPathSha256: pathFingerprint(boundary.ownerPrivateRoot),
     ownerPrivateRootIdentity,
     ownerPrivateRootAcl,
@@ -1072,18 +1254,18 @@ export function recordInitialAction003ApprovalReceiptCreateNew(inputValue) {
   );
 }
 
-export function recordFinalAction003ApprovalReceiptCreateNew(inputValue) {
+export function recordAction003ExecutionBindingCreateNew(inputValue) {
   requireCondition(
     process.platform === 'win32',
     'WINDOWS_ACL_CAPTURE_REQUIRED'
   );
   const input = requireExactKeys(
     inputValue,
-    ['ownerPrivateRoot', 'outputDirectory', 'receipt', 'expected'],
+    ['ownerPrivateRoot', 'outputDirectory', 'binding', 'expected'],
     'RECEIPT_RECORD_INPUT_INVALID'
   );
-  const validation = validateFinalAction003ApprovalReceipt(
-    input.receipt,
+  const validation = validateAction003ExecutionBinding(
+    input.binding,
     input.expected,
     new Date().toISOString()
   );
@@ -1091,7 +1273,7 @@ export function recordFinalAction003ApprovalReceiptCreateNew(inputValue) {
     input.ownerPrivateRoot,
     input.outputDirectory,
     validation,
-    FINAL_RECEIPT_FILENAME
+    EXECUTION_BINDING_FILENAME
   );
 }
 
@@ -1241,14 +1423,14 @@ export function verifyInitialAction003ApprovalReceiptStable(inputValue) {
   );
 }
 
-export function verifyFinalAction003ApprovalReceiptStable(inputValue) {
+export function verifyAction003ExecutionBindingStable(inputValue) {
   requireCondition(
     process.platform === 'win32',
     'WINDOWS_ACL_CAPTURE_REQUIRED'
   );
   return verifyReceiptStable(
     inputValue,
-    FINAL_RECEIPT_FILENAME,
-    requireFinalReceiptShape
+    EXECUTION_BINDING_FILENAME,
+    requireExecutionBindingShape
   );
 }

@@ -4,7 +4,7 @@
   "actionId": "PR12-ACTION-003",
   "bindingMaterialSha256": "NOT_CAPTURED",
   "payloadSha256": "NOT_CAPTURED",
-  "finalApprovalReceiptSha256": "NOT_CAPTURED",
+  "derivedExecutionBindingSha256": "NOT_CAPTURED",
   "claim": {
     "claimedAt": "NOT_CAPTURED",
     "state": "NOT_RUN",
@@ -54,5 +54,5 @@
   "destructiveRecoveryAuthorized": false,
   "sealedEvidenceRequiredBeforePassTerminal": true,
   "automaticResealAllowed": false,
-  "notes": "The executable wrapper stores claim, durable POST-intent, and terminal records as separate create-once files in the owner-approved journal directory. Every record binds the exact final-approval receipt SHA-256. POST_INTENT_DURABLE permanently consumes the action identity even if the final synchronous guard prevents transmission. This combined template documents their union; it is not overwritten at runtime."
+  "notes": "The executable wrapper stores claim, durable POST-intent, and terminal records as separate create-once files in the owner-approved journal directory. Every record binds the exact system-derived execution-binding SHA-256 and therefore the one human single-action authority receipt. POST_INTENT_DURABLE permanently consumes the action identity even if the final synchronous guard prevents transmission. This combined template documents their union; it is not overwritten at runtime."
 }
