@@ -3467,7 +3467,10 @@ export function organizationProjectPageToSafeProjection(
     );
     const projectRef = requireString(project.ref, 'PROVIDER_RESPONSE_INVALID');
     requireCondition(
-      PROJECT_REF_PATTERN.test(projectRef) && typeof project.name === 'string',
+      PROJECT_REF_PATTERN.test(projectRef) &&
+        typeof project.name === 'string' &&
+        typeof project.is_branch === 'boolean' &&
+        Array.isArray(project.databases),
       'PROVIDER_RESPONSE_INVALID'
     );
     if (prohibitedProjectRefs.includes(projectRef)) {
@@ -3486,63 +3489,18 @@ export function organizationProjectPageToSafeProjection(
         protectedProductionProject: true,
       };
     }
-    const databases = requireArray(
-      project.databases,
-      'PROVIDER_RESPONSE_INVALID'
-    );
-    databases.forEach(database => {
-      const projectedDatabase = assertAllowedKeys(
-        database,
-        [
-          'infra_compute_size',
-          'region',
-          'status',
-          'cloud_provider',
-          'identifier',
-          'type',
-          'disk_volume_size_gb',
-          'disk_type',
-          'disk_throughput_mbps',
-          'disk_last_modified_at',
-        ],
-        'PROVIDER_RESPONSE_UNEXPECTED_FIELD'
-      );
-      requireCondition(
-        typeof projectedDatabase.region === 'string' &&
-          typeof projectedDatabase.status === 'string' &&
-          typeof projectedDatabase.cloud_provider === 'string' &&
-          typeof projectedDatabase.identifier === 'string' &&
-          ['PRIMARY', 'READ_REPLICA'].includes(projectedDatabase.type),
-        'PROVIDER_RESPONSE_INVALID'
-      );
-      for (const optionalStringField of [
-        'infra_compute_size',
-        'disk_type',
-        'disk_last_modified_at',
-      ]) {
-        requireCondition(
-          !Object.hasOwn(projectedDatabase, optionalStringField) ||
-            typeof projectedDatabase[optionalStringField] === 'string',
-          'PROVIDER_RESPONSE_INVALID'
-        );
-      }
-      for (const optionalNumberField of [
-        'disk_volume_size_gb',
-        'disk_throughput_mbps',
-      ]) {
-        requireCondition(
-          !Object.hasOwn(projectedDatabase, optionalNumberField) ||
-            (typeof projectedDatabase[optionalNumberField] === 'number' &&
-              Number.isFinite(projectedDatabase[optionalNumberField]) &&
-              projectedDatabase[optionalNumberField] >= 0),
-          'PROVIDER_RESPONSE_INVALID'
-        );
-      }
-    });
+    const isIsolatedTarget =
+      project.name === environment.projectName && project.is_branch === false;
+    if (!isIsolatedTarget) {
+      return {
+        projectRef,
+        projectName: project.name,
+        isBranch: project.is_branch,
+      };
+    }
     requireCondition(
       typeof project.cloud_provider === 'string' &&
-        typeof project.region === 'string' &&
-        typeof project.is_branch === 'boolean' &&
+        project.region === environment.region &&
         PROJECT_STATUSES.has(project.status),
       'PROVIDER_RESPONSE_INVALID'
     );

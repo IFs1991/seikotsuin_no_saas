@@ -4405,10 +4405,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         {
           projectRef: 'bcdefghijklmnopqrstu',
           projectName: 'unrelated-project',
-          region: 'ap-northeast-1',
           isBranch: false,
-          status: 'ACTIVE_HEALTHY',
-          insertedAt: '2026-07-02T00:00:00.000Z',
         },
       ],
       pagination: { count: 2, limit: 100, offset: 0 },
@@ -4434,6 +4431,187 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
         fixture.binding,
       ],
       'PRODUCTION_PROJECT_IDENTITY_MISMATCH'
+    );
+  });
+
+  test('redacts unrelated project metadata that is not needed for duplicate detection', () => {
+    const fixture = makeValidFixture();
+    const response = {
+      projects: [
+        {
+          ref: 'qnanuoqveidwvacvbhqp',
+          name: 'seikotsuin-management',
+          cloud_provider: 'AWS',
+          region: 'ap-northeast-1',
+          is_branch: false,
+          status: 'ACTIVE_HEALTHY',
+          inserted_at: '2026-07-01T00:00:00.000Z',
+          databases: [],
+        },
+        {
+          ref: 'bcdefghijklmnopqrstu',
+          name: 'unrelated-project',
+          cloud_provider: null,
+          region: null,
+          is_branch: false,
+          status: 'PROVIDER_ADDED_STATE',
+          inserted_at: null,
+          databases: [
+            {
+              identifier: null,
+              region: null,
+              status: 'PROVIDER_ADDED_STATE',
+              cloud_provider: null,
+              type: 'PROVIDER_ADDED_DATABASE_TYPE',
+            },
+          ],
+        },
+      ],
+      pagination: { count: 2, limit: 100, offset: 0 },
+    };
+
+    const result = invokeContract('organizationProjectPageToSafeProjection', [
+      response,
+      fixture.binding,
+    ]);
+
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        projects: [
+          {
+            projectRef: 'qnanuoqveidwvacvbhqp',
+            protectedProductionProject: true,
+          },
+          {
+            projectRef: 'bcdefghijklmnopqrstu',
+            projectName: 'unrelated-project',
+            isBranch: false,
+          },
+        ],
+        pagination: { count: 2, limit: 100, offset: 0 },
+        duplicateProjectRefs: [],
+        protectedProductionProjectCount: 1,
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain('PROVIDER_ADDED_STATE');
+    expect(JSON.stringify(result)).not.toContain(
+      'PROVIDER_ADDED_DATABASE_TYPE'
+    );
+  });
+
+  test('continues to reject invalid readiness metadata for the isolated target', () => {
+    const fixture = makeValidFixture();
+    expectRejected(
+      'organizationProjectPageToSafeProjection',
+      [
+        {
+          projects: [
+            {
+              ref: 'bcdefghijklmnopqrstu',
+              name: 'seikotsuin-pr12-isolated-qualification-20260719',
+              cloud_provider: 'AWS',
+              region: 'ap-northeast-1',
+              is_branch: false,
+              status: 'PROVIDER_ADDED_STATE',
+              inserted_at: '2026-08-01T00:00:00.000Z',
+              databases: [],
+            },
+          ],
+          pagination: { count: 1, limit: 100, offset: 0 },
+        },
+        fixture.binding,
+      ],
+      'PROVIDER_RESPONSE_INVALID'
+    );
+  });
+
+  test('keeps isolated-target region, timestamp, and duplicate identity fail-closed', () => {
+    const fixture = makeValidFixture();
+    const targetProject = {
+      ref: 'bcdefghijklmnopqrstu',
+      name: 'seikotsuin-pr12-isolated-qualification-20260719',
+      cloud_provider: 'AWS',
+      region: 'ap-northeast-1',
+      is_branch: false,
+      status: 'ACTIVE_HEALTHY',
+      inserted_at: '2026-08-01T00:00:00.000Z',
+      databases: [],
+    };
+
+    expectRejected(
+      'organizationProjectPageToSafeProjection',
+      [
+        {
+          projects: [{ ...targetProject, region: 'us-east-1' }],
+          pagination: { count: 1, limit: 100, offset: 0 },
+        },
+        fixture.binding,
+      ],
+      'PROVIDER_RESPONSE_INVALID'
+    );
+    expectRejected(
+      'organizationProjectPageToSafeProjection',
+      [
+        {
+          projects: [{ ...targetProject, inserted_at: '2026-02-31T00:00:00Z' }],
+          pagination: { count: 1, limit: 100, offset: 0 },
+        },
+        fixture.binding,
+      ],
+      'PROVIDER_RESPONSE_INVALID'
+    );
+
+    const result = invokeContract('organizationProjectPageToSafeProjection', [
+      {
+        projects: [targetProject],
+        pagination: { count: 1, limit: 100, offset: 0 },
+      },
+      fixture.binding,
+    ]);
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        duplicateProjectRefs: ['bcdefghijklmnopqrstu'],
+      },
+    });
+  });
+
+  test('continues to reject missing or added project response keys', () => {
+    const fixture = makeValidFixture();
+    const project = {
+      ref: 'bcdefghijklmnopqrstu',
+      name: 'unrelated-project',
+      cloud_provider: null,
+      region: null,
+      is_branch: false,
+      status: null,
+      inserted_at: null,
+      databases: [],
+    };
+    const { databases: _omittedDatabases, ...missingDatabases } = project;
+
+    expectRejected(
+      'organizationProjectPageToSafeProjection',
+      [
+        {
+          projects: [missingDatabases],
+          pagination: { count: 1, limit: 100, offset: 0 },
+        },
+        fixture.binding,
+      ],
+      'PROVIDER_RESPONSE_UNEXPECTED_FIELD'
+    );
+    expectRejected(
+      'organizationProjectPageToSafeProjection',
+      [
+        {
+          projects: [{ ...project, unexpected: true }],
+          pagination: { count: 1, limit: 100, offset: 0 },
+        },
+        fixture.binding,
+      ],
+      'PROVIDER_RESPONSE_UNEXPECTED_FIELD'
     );
   });
 
