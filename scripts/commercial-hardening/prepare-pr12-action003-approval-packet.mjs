@@ -61,6 +61,7 @@ const WINDOWS_ABSOLUTE_PATH_PATTERN = /^[A-Za-z]:[\\/]/u;
 const MAXIMUM_DESCRIPTOR_BYTES = 262_144;
 const MAXIMUM_JSON_ARTIFACT_BYTES = 1_048_576;
 const MAXIMUM_PRICING_SOURCE_BYTES = 16 * 1_048_576;
+const LOCAL_PREFLIGHT_TIMEOUT_MILLISECONDS = 180_000;
 const MODULE_REPOSITORY_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -967,7 +968,8 @@ function assertOperationalClock(
   requireCondition(
     Number.isFinite(now) &&
       now >= builtAt - 5_000 &&
-      (requireRecentBuild === false || now - builtAt <= 60_000) &&
+      (requireRecentBuild === false ||
+        now - builtAt <= LOCAL_PREFLIGHT_TIMEOUT_MILLISECONDS) &&
       now < expiresAt,
     now >= expiresAt ? 'APPROVAL_EXPIRED' : 'BUILT_AT_CLOCK_MISMATCH'
   );

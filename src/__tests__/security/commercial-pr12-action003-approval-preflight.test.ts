@@ -909,6 +909,39 @@ describe('PR12 ACTION-003 operational approval preflight', () => {
     }
   });
 
+  test('allows the fixed 180-second local preflight window and rejects later completion', () => {
+    const builtAt = Date.parse('2026-07-27T00:05:01.000Z');
+    const acceptedFixture = makeFixture();
+    let acceptedWallClockCalls = 0;
+    let acceptedMonotonicCalls = 0;
+    expect(
+      preflight.validateAction003ApprovalPreflightForTest(
+        acceptedFixture.descriptorPath,
+        makeRuntime({
+          now: () =>
+            acceptedWallClockCalls++ === 0 ? builtAt : builtAt + 180_000,
+          monotonicNow: () =>
+            acceptedMonotonicCalls++ === 0 ? 1_000 : 181_000,
+        })
+      )
+    ).toMatchObject({ status: 'VALIDATED_NOT_WRITTEN' });
+
+    const rejectedFixture = makeFixture();
+    let rejectedWallClockCalls = 0;
+    let rejectedMonotonicCalls = 0;
+    expect(() =>
+      preflight.validateAction003ApprovalPreflightForTest(
+        rejectedFixture.descriptorPath,
+        makeRuntime({
+          now: () =>
+            rejectedWallClockCalls++ === 0 ? builtAt : builtAt + 180_001,
+          monotonicNow: () =>
+            rejectedMonotonicCalls++ === 0 ? 1_000 : 181_001,
+        })
+      )
+    ).toThrow('BUILT_AT_CLOCK_MISMATCH');
+  });
+
   test('rejects an ACL boundary failure before packet creation', () => {
     const fixture = makeFixture();
     expect(() =>
