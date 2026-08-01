@@ -19,6 +19,17 @@ const ORGANIZATION_IDENTITY_CAPTURE_CLAIM_FILE =
 const PROVIDER_ID = 'WINDOWS_DPAPI_CURRENT_USER_V1';
 const REQUEST_PROTOCOL = 'PR12_DPAPI_BROKER_REQUEST_V1';
 const RESPONSE_MAGIC = Buffer.from('PR12DPB1', 'ascii');
+const BROKER_REJECTION_CODES = Object.freeze({
+  70: 'CREDENTIAL_BROKER_REJECTED',
+  71: 'CREDENTIAL_BROKER_REQUEST_REJECTED',
+  72: 'CREDENTIAL_BROKER_BOUNDARY_REJECTED',
+  73: 'MANAGEMENT_ACCESS_TOKEN_ENVELOPE_REJECTED',
+  74: 'DATABASE_PASSWORD_ENVELOPE_REJECTED',
+  75: 'CREDENTIAL_BROKER_RESPONSE_REJECTED',
+  76: 'MANAGEMENT_ACCESS_TOKEN_DPAPI_REJECTED',
+  77: 'DATABASE_PASSWORD_DPAPI_REJECTED',
+  78: 'CREDENTIAL_LENGTH_REJECTED',
+});
 const BROKER_RELATIVE_PATH =
   'scripts/commercial-hardening/pr12-windows-dpapi-credential-broker.ps1';
 const BOOTSTRAP_RELATIVE_PATH =
@@ -752,6 +763,7 @@ export function revalidateDpapiOrganizationIdentityCaptureResources(
 export function buildCredentialBrokerRequest({
   mode,
   bindingMaterialSha256,
+  derivedExecutionBindingSha256,
   payloadSha256,
   claimSha256,
   credentialConfigurationSha256,
@@ -768,6 +780,14 @@ export function buildCredentialBrokerRequest({
       mode === 'RECOVERY' ||
       mode === 'ORGANIZATION_IDENTITY_CAPTURE',
     'DPAPI_BROKER_MODE_INVALID'
+  );
+  const isIdentityCapture = mode === 'ORGANIZATION_IDENTITY_CAPTURE';
+  requireCondition(
+    isIdentityCapture
+      ? derivedExecutionBindingSha256 === undefined
+      : typeof derivedExecutionBindingSha256 === 'string' &&
+          /^[a-f0-9]{64}$/.test(derivedExecutionBindingSha256),
+    'DPAPI_BROKER_DERIVED_BINDING_INVALID'
   );
   const { provider, secrets } = credentialConfiguration;
   const entries = [
@@ -790,11 +810,11 @@ export function buildCredentialBrokerRequest({
     schemaVersion: 1,
     protocol: REQUEST_PROTOCOL,
     mode,
-    actionId:
-      mode === 'ORGANIZATION_IDENTITY_CAPTURE'
-        ? ORGANIZATION_IDENTITY_CAPTURE_ACTION_ID
-        : ACTION_ID,
+    actionId: isIdentityCapture
+      ? ORGANIZATION_IDENTITY_CAPTURE_ACTION_ID
+      : ACTION_ID,
     bindingMaterialSha256,
+    ...(isIdentityCapture ? {} : { derivedExecutionBindingSha256 }),
     payloadSha256,
     claimSha256,
     credentialConfigurationSha256,
@@ -935,6 +955,7 @@ export function parseCredentialBrokerFrame(
 export function retrieveClaimBoundCredentials({
   mode,
   bindingMaterialSha256,
+  derivedExecutionBindingSha256,
   payloadSha256,
   claimSha256,
   credentialConfigurationSha256,
@@ -949,6 +970,7 @@ export function retrieveClaimBoundCredentials({
   const request = buildCredentialBrokerRequest({
     mode,
     bindingMaterialSha256,
+    derivedExecutionBindingSha256,
     payloadSha256,
     claimSha256,
     credentialConfigurationSha256,
@@ -989,6 +1011,16 @@ export function retrieveClaimBoundCredentials({
       result.error.code === 'ETIMEDOUT'
     ) {
       fail('CREDENTIAL_BROKER_TIMEOUT');
+    }
+    if (
+      result.error === undefined &&
+      result.signal === null &&
+      Number.isInteger(result.status) &&
+      result.status !== 0
+    ) {
+      fail(
+        BROKER_REJECTION_CODES[result.status] ?? 'CREDENTIAL_BROKER_REJECTED'
+      );
     }
     requireCondition(
       result.error === undefined &&

@@ -3066,6 +3066,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     const fixture = makeValidFixture();
     const common = {
       bindingMaterialSha256: 'a'.repeat(64),
+      derivedExecutionBindingSha256: '2'.repeat(64),
       payloadSha256: 'b'.repeat(64),
       claimSha256: 'c'.repeat(64),
       credentialConfigurationSha256: 'd'.repeat(64),
@@ -3083,6 +3084,11 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     const recovery = invokeDpapiMethod('buildCredentialBrokerRequest', [
       { ...common, mode: 'RECOVERY' },
     ]);
+    const identityCommon = { ...common };
+    Reflect.deleteProperty(identityCommon, 'derivedExecutionBindingSha256');
+    const identityCapture = invokeDpapiMethod('buildCredentialBrokerRequest', [
+      { ...identityCommon, mode: 'ORGANIZATION_IDENTITY_CAPTURE' },
+    ]);
     expect(execute.ok).toBe(true);
     expect(JSON.stringify(execute.value)).toContain('MANAGEMENT_ACCESS_TOKEN');
     expect(JSON.stringify(execute.value)).toContain('DATABASE_PASSWORD');
@@ -3094,6 +3100,32 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     expect(recovery.ok).toBe(true);
     expect(JSON.stringify(recovery.value)).toContain('MANAGEMENT_ACCESS_TOKEN');
     expect(JSON.stringify(recovery.value)).not.toContain('DATABASE_PASSWORD');
+    expect(JSON.stringify(execute.value)).toContain(
+      'derivedExecutionBindingSha256'
+    );
+    expect(identityCapture.ok).toBe(true);
+    expect(JSON.stringify(identityCapture.value)).not.toContain(
+      'derivedExecutionBindingSha256'
+    );
+    expect(
+      invokeDpapiMethod('buildCredentialBrokerRequest', [
+        { ...identityCommon, mode: 'EXECUTE' },
+      ])
+    ).toEqual({
+      ok: false,
+      code: 'DPAPI_BROKER_DERIVED_BINDING_INVALID',
+    });
+    expect(
+      invokeDpapiMethod('buildCredentialBrokerRequest', [
+        {
+          ...common,
+          mode: 'ORGANIZATION_IDENTITY_CAPTURE',
+        },
+      ])
+    ).toEqual({
+      ok: false,
+      code: 'DPAPI_BROKER_DERIVED_BINDING_INVALID',
+    });
   });
 
   test('requires the exact 30-second broker deadline', () => {
@@ -3125,6 +3157,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
           claimSha256: 'c'.repeat(64),
           credentialConfiguration,
           credentialConfigurationSha256: 'd'.repeat(64),
+          derivedExecutionBindingSha256: '2'.repeat(64),
           evidenceParentDirectory: 'C:\\PR12\\evidence',
           evidenceParentDirectoryPathSha256: '1'.repeat(64),
           journalDirectory: 'C:\\PR12\\journal',
@@ -3142,6 +3175,66 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       code: 'CREDENTIAL_BROKER_TIMEOUT',
     });
   });
+
+  testOnWindows(
+    'maps broker rejection stages to secret-free stable reason codes',
+    () => {
+      const temporaryRoot = fs.mkdtempSync(
+        path.join(os.tmpdir(), 'pr12-dpapi-broker-rejection-')
+      );
+      const fixture = makeValidFixture();
+      const cases = [
+        [70, 'CREDENTIAL_BROKER_REJECTED'],
+        [71, 'CREDENTIAL_BROKER_REQUEST_REJECTED'],
+        [72, 'CREDENTIAL_BROKER_BOUNDARY_REJECTED'],
+        [73, 'MANAGEMENT_ACCESS_TOKEN_ENVELOPE_REJECTED'],
+        [74, 'DATABASE_PASSWORD_ENVELOPE_REJECTED'],
+        [75, 'CREDENTIAL_BROKER_RESPONSE_REJECTED'],
+        [76, 'MANAGEMENT_ACCESS_TOKEN_DPAPI_REJECTED'],
+        [77, 'DATABASE_PASSWORD_DPAPI_REJECTED'],
+        [78, 'CREDENTIAL_LENGTH_REJECTED'],
+        [79, 'CREDENTIAL_BROKER_REJECTED'],
+      ] as const;
+      try {
+        for (const [exitCode, expectedCode] of cases) {
+          const brokerPath = path.join(
+            temporaryRoot,
+            `broker-exit-${exitCode}.ps1`
+          );
+          fs.writeFileSync(brokerPath, `exit ${exitCode}\n`, {
+            encoding: 'utf8',
+            flag: 'wx',
+          });
+          expect(
+            invokeDpapiMethod('retrieveClaimBoundCredentials', [
+              {
+                approvalExpiresAt: new Date(
+                  Date.now() + 5 * 60_000
+                ).toISOString(),
+                bindingMaterialSha256: 'a'.repeat(64),
+                claimSha256: 'c'.repeat(64),
+                credentialConfiguration: fixture.credentialConfiguration,
+                credentialConfigurationSha256: 'd'.repeat(64),
+                derivedExecutionBindingSha256: '2'.repeat(64),
+                evidenceParentDirectory: 'C:\\PR12\\evidence',
+                evidenceParentDirectoryPathSha256: '1'.repeat(64),
+                journalDirectory: 'C:\\PR12\\journal',
+                journalDirectoryPathSha256: 'e'.repeat(64),
+                mode: 'EXECUTE',
+                payloadSha256: 'b'.repeat(64),
+                resources: {
+                  brokerPath,
+                  powershellPath: 'C:\\Program Files\\PowerShell\\7\\pwsh.exe',
+                },
+              },
+            ])
+          ).toEqual({ ok: false, code: expectedCode });
+        }
+      } finally {
+        fs.rmSync(temporaryRoot, { recursive: true, force: true });
+      }
+    }
+  );
 
   test('rejects the former 15-second broker deadline before remote contact', () => {
     const fixture = makeValidFixture();
@@ -3429,6 +3522,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       const evidenceParentDirectory = path.join(temporaryRoot, 'evidence');
       const configurationId = 'pr12-synthetic-broker-canary-v1';
       const bindingMaterialSha256 = 'a'.repeat(64);
+      const derivedExecutionBindingSha256 = 'd'.repeat(64);
       const payloadSha256 = 'b'.repeat(64);
       const bootstrapScriptSha256 = createHash('sha256')
         .update(fs.readFileSync(dpapiBootstrapPath))
@@ -3456,6 +3550,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
               bindingMaterialSha256,
               bootstrapScriptSha256,
               configurationId,
+              derivedExecutionBindingSha256,
               evidenceParentDirectory,
               journalDirectory,
               payloadSha256,
@@ -3526,6 +3621,32 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
             claimSha256: setupResult.claimSha256,
             credentialConfiguration,
             credentialConfigurationSha256: 'c'.repeat(64),
+            derivedExecutionBindingSha256: 'e'.repeat(64),
+            evidenceParentDirectory,
+            evidenceParentDirectoryPathSha256: pathFingerprint(
+              evidenceParentDirectory
+            ),
+            journalDirectory,
+            journalDirectoryPathSha256: pathFingerprint(journalDirectory),
+            mode: 'EXECUTE',
+            payloadSha256,
+            resources: {
+              brokerPath: dpapiBrokerPath,
+              powershellPath: setupResult.powershellPath,
+            },
+          })
+        ).toEqual({
+          ok: false,
+          code: 'CREDENTIAL_BROKER_BOUNDARY_REJECTED',
+        });
+        expect(
+          invokeDpapiCredentialCanary({
+            approvalExpiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+            bindingMaterialSha256,
+            claimSha256: setupResult.claimSha256,
+            credentialConfiguration,
+            credentialConfigurationSha256: 'c'.repeat(64),
+            derivedExecutionBindingSha256,
             evidenceParentDirectory,
             evidenceParentDirectoryPathSha256: pathFingerprint(
               evidenceParentDirectory
@@ -3570,6 +3691,7 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
 
     const channelSource = fs.readFileSync(dpapiChannelPath, 'utf8');
     expect(channelSource).toContain('stdio');
+    expect(channelSource).toContain('BROKER_REJECTION_CODES');
     expect(channelSource).toContain('stdout?.fill(0)');
     expect(channelSource).toContain('stderr?.fill(0)');
     expect(channelSource).not.toContain('process.stdout.write');
@@ -3584,6 +3706,20 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       'ConvertFrom-Json -Depth 20 -DateKind String'
     );
     expect(brokerSource).toContain('$envelope.bootstrapScriptSha256 -cne');
+    for (const safeStage of [
+      "'REQUEST' { 71 }",
+      "'BOUNDARY' { 72 }",
+      "'MANAGEMENT_ACCESS_TOKEN' { 73 }",
+      "'DATABASE_PASSWORD' { 74 }",
+      "'RESPONSE' { 75 }",
+      "'MANAGEMENT_ACCESS_TOKEN_DPAPI' { 76 }",
+      "'DATABASE_PASSWORD_DPAPI' { 77 }",
+      "'CREDENTIAL_LENGTH' { 78 }",
+    ]) {
+      expect(brokerSource).toContain(safeStage);
+    }
+    expect(brokerSource).not.toContain('$_.Exception');
+    expect(brokerSource).not.toContain('$PSItem.Exception');
     expect(bootstrapSource).toContain('[IO.FileMode]::CreateNew');
     expect(bootstrapSource).toContain('realSecretInteractiveReadAuthorized');
     expect(bootstrapSource).toContain('Assert-NoReparsePathComponents');

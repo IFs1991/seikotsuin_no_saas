@@ -2904,6 +2904,7 @@ async function executeProvisioning(inputs, validation) {
     const credentials = retrieveClaimBoundCredentials({
       mode: 'EXECUTE',
       bindingMaterialSha256: validation.bindingMaterialSha256,
+      derivedExecutionBindingSha256: validation.derivedExecutionBindingSha256,
       payloadSha256: validation.payloadSha256,
       claimSha256: claimResult.claimSha256,
       credentialConfigurationSha256:
@@ -3727,6 +3728,7 @@ async function executeReadOnlyRecovery(inputs, validation, journalState) {
     const credentials = retrieveClaimBoundCredentials({
       mode: 'RECOVERY',
       bindingMaterialSha256: validation.bindingMaterialSha256,
+      derivedExecutionBindingSha256: validation.derivedExecutionBindingSha256,
       payloadSha256: validation.payloadSha256,
       claimSha256: journalState.claimSha256,
       credentialConfigurationSha256:

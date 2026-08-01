@@ -208,6 +208,9 @@ try {
       'yyyy-MM-ddTHH:mm:ss.fffZ',
       [Globalization.CultureInfo]::InvariantCulture
     )
+    derivedExecutionBindingSha256 = (
+      $inputRecord.derivedExecutionBindingSha256
+    )
     payloadSha256 = $inputRecord.payloadSha256
     state = 'CLAIMED_POST_NOT_SENT'
   }

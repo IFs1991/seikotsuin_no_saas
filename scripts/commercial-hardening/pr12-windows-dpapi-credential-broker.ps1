@@ -19,6 +19,7 @@ $PlaintextBuffers = [System.Collections.Generic.List[byte[]]]::new()
 $ResponseBuffer = $null
 $RequestBytes = $null
 $ExitCode = 70
+$FailureStage = 'REQUEST'
 
 function Get-Sha256Hex {
   param([Parameter(Mandatory)][byte[]]$Bytes)
@@ -382,6 +383,12 @@ function Unprotect-Envelope {
         if ((Get-Sha256Hex -Bytes $entropy) -cne $envelope.entropy.contextSha256) {
           throw 'ENTROPY_BINDING_INVALID'
         }
+        $script:FailureStage = if ($Entry.role -ceq 'MANAGEMENT_ACCESS_TOKEN') {
+          'MANAGEMENT_ACCESS_TOKEN_DPAPI'
+        }
+        else {
+          'DATABASE_PASSWORD_DPAPI'
+        }
         $plaintext = [Security.Cryptography.ProtectedData]::Unprotect(
           $ciphertext,
           $entropy,
@@ -449,7 +456,11 @@ try {
     $RequestBytes.Length - 1
   )
   $request = $requestText | ConvertFrom-Json -Depth 20 -DateKind String
-  Assert-ExactProperties -Value $request -Expected @(
+  $isIdentityCapture = (
+    $request.PSObject.Properties.Name -ccontains 'mode' -and
+    $request.mode -ceq 'ORGANIZATION_IDENTITY_CAPTURE'
+  )
+  $requestProperties = @(
     'actionId',
     'approvalExpiresAt',
     'bindingMaterialSha256',
@@ -472,7 +483,11 @@ try {
     'requestNonce',
     'schemaVersion'
   )
-  foreach ($property in @(
+  if (-not $isIdentityCapture) {
+    $requestProperties += 'derivedExecutionBindingSha256'
+  }
+  Assert-ExactProperties -Value $request -Expected $requestProperties
+  $sha256Properties = @(
       'bindingMaterialSha256',
       'bootstrapScriptSha256',
       'claimSha256',
@@ -483,11 +498,13 @@ try {
       'providerRootPathSha256',
       'providerRootResolvedPathSha256',
       'requestNonce'
-    )) {
+  )
+  if (-not $isIdentityCapture) {
+    $sha256Properties += 'derivedExecutionBindingSha256'
+  }
+  foreach ($property in $sha256Properties) {
     Assert-LowerSha256 -Value $request.$property
   }
-  $isIdentityCapture =
-    $request.mode -ceq 'ORGANIZATION_IDENTITY_CAPTURE'
   $expectedActionId = if ($isIdentityCapture) {
     $OrganizationIdentityCaptureActionId
   }
@@ -523,6 +540,7 @@ try {
   if ($expiresAt -le [DateTimeOffset]::UtcNow) {
     throw 'REQUEST_EXPIRED'
   }
+  $FailureStage = 'BOUNDARY'
   Assert-NoReparsePathComponents -Value $request.providerRoot
   $resolvedProviderRoot = Get-ResolvedDirectoryPath -Value $request.providerRoot
   $normalizedProviderRoot = Get-NormalizedPath -Value $request.providerRoot
@@ -604,13 +622,17 @@ try {
     }
     $claim = ($Utf8Strict.GetString($claimBytes)) |
       ConvertFrom-Json -Depth 10 -DateKind String
-    Assert-ExactProperties -Value $claim -Expected @(
+    $claimProperties = @(
       'actionId',
       'bindingMaterialSha256',
       'claimedAt',
       'payloadSha256',
       'state'
     )
+    if (-not $isIdentityCapture) {
+      $claimProperties += 'derivedExecutionBindingSha256'
+    }
+    Assert-ExactProperties -Value $claim -Expected $claimProperties
     $expectedClaimState = if ($isIdentityCapture) {
       'CLAIMED_GET_NOT_SENT'
     }
@@ -621,6 +643,9 @@ try {
       $claim.actionId -cne $expectedActionId -or
       $claim.bindingMaterialSha256 -cne $request.bindingMaterialSha256 -or
       $claim.payloadSha256 -cne $request.payloadSha256 -or
+      (-not $isIdentityCapture -and
+        $claim.derivedExecutionBindingSha256 -cne
+          $request.derivedExecutionBindingSha256) -or
       $claim.state -cne $expectedClaimState
     ) {
       throw 'CLAIM_BINDING_MISMATCH'
@@ -633,6 +658,12 @@ try {
 
   $values = [System.Collections.Generic.List[byte[]]]::new()
   foreach ($entry in $entries) {
+    $FailureStage = if ($entry.role -ceq 'MANAGEMENT_ACCESS_TOKEN') {
+      'MANAGEMENT_ACCESS_TOKEN'
+    }
+    else {
+      'DATABASE_PASSWORD'
+    }
     $values.Add(
       (Unprotect-Envelope `
           -Entry $entry `
@@ -642,6 +673,7 @@ try {
           -MachineNameSha256 $machineNameSha256)
     )
   }
+  $FailureStage = 'CREDENTIAL_LENGTH'
   if (
     $values[0].Length -lt 20 -or
     $values[0].Length -gt 4096 -or
@@ -651,6 +683,7 @@ try {
     throw 'CREDENTIAL_LENGTH_INVALID'
   }
 
+  $FailureStage = 'RESPONSE'
   $responseLength = 44
   foreach ($value in $values) {
     $responseLength += 5 + $value.Length
@@ -696,7 +729,17 @@ try {
   $ExitCode = 0
 }
 catch {
-  $ExitCode = 70
+  $ExitCode = switch ($FailureStage) {
+    'REQUEST' { 71 }
+    'BOUNDARY' { 72 }
+    'MANAGEMENT_ACCESS_TOKEN' { 73 }
+    'DATABASE_PASSWORD' { 74 }
+    'RESPONSE' { 75 }
+    'MANAGEMENT_ACCESS_TOKEN_DPAPI' { 76 }
+    'DATABASE_PASSWORD_DPAPI' { 77 }
+    'CREDENTIAL_LENGTH' { 78 }
+    default { 70 }
+  }
 }
 finally {
   foreach ($buffer in $PlaintextBuffers) {

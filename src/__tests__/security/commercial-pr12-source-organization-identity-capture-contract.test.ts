@@ -1625,7 +1625,7 @@ describe('PR12 source Organization identity capture contract', () => {
         }
       );
       expect(brokerResult.error).toBeUndefined();
-      expect(brokerResult.status).toBe(70);
+      expect(brokerResult.status).toBe(71);
       expect(brokerResult.stdout).toHaveLength(0);
       expect(brokerResult.stderr).toHaveLength(0);
     }

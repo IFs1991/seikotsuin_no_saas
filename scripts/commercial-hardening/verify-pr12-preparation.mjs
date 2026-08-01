@@ -3891,7 +3891,7 @@ function main() {
     verifyRelativeLinks(document);
   }
   console.log(
-    'PR12 preparation static contract: PASS (PR12-ACTION-002 PASS is linked; Action-003 v6 single-action enablement is implemented but remains unapproved/unrun; 54 COMM gates remain NOT_RUN; staging is not authorized).'
+    'PR12 preparation static contract: PASS (PR12-ACTION-002 PASS is linked; Action-003 local enablement is implemented; this static verifier does not infer external approval or execution state; 54 COMM gates remain NOT_RUN; staging is not authorized).'
   );
 }
 
