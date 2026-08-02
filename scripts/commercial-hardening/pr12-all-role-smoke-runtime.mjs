@@ -25,6 +25,30 @@ const MAX_SERVER_LOG_BYTES = 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 30_000;
 const BROWSER_LOGIN_NAVIGATION_TIMEOUT_MS = 120_000;
 const BROWSER_REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+const BROWSER_DIAGNOSTIC_CODES = Object.freeze({
+  ROUTE_FETCH: 'ISOLATED_BROWSER_ROUTE_FETCH_FAILED',
+  RESPONSE_READ: 'ISOLATED_BROWSER_RESPONSE_READ_FAILED',
+  FULFILL: 'ISOLATED_BROWSER_FULFILL_FAILED',
+  NAVIGATION: 'ISOLATED_BROWSER_NAVIGATION_FAILED',
+  AUTH_SESSION: 'ISOLATED_BROWSER_AUTH_SESSION_FAILED',
+});
+const BROWSER_DIAGNOSTIC_HEADER_NAMES = new Set([
+  'content-length',
+  'content-type',
+  'location',
+  'x-request-id',
+  'x-correlation-id',
+  'sb-request-id',
+  'cf-ray',
+  'x-vercel-id',
+]);
+const BROWSER_CORRELATION_HEADER_NAMES = new Set([
+  'x-request-id',
+  'x-correlation-id',
+  'sb-request-id',
+  'cf-ray',
+  'x-vercel-id',
+]);
 const LOCAL_BROWSER_GET_PATHS = new Set([
   '/',
   '/admin',
@@ -50,15 +74,16 @@ const LOCAL_BROWSER_GET_PATHS = new Set([
 ]);
 
 export class Pr12AllRoleSmokeRuntimeError extends Error {
-  constructor(code) {
+  constructor(code, diagnostic = null) {
     super(code);
     this.name = 'Pr12AllRoleSmokeRuntimeError';
     this.code = code;
+    this.diagnostic = diagnostic;
   }
 }
 
-function fail(code) {
-  throw new Pr12AllRoleSmokeRuntimeError(code);
+function fail(code, diagnostic = null) {
+  throw new Pr12AllRoleSmokeRuntimeError(code, diagnostic);
 }
 
 function isRecord(value) {
@@ -67,6 +92,244 @@ function isRecord(value) {
 
 function sha256Bytes(value) {
   return createHash('sha256').update(value).digest('hex');
+}
+
+export function browserDiagnosticCodeForStage(stage) {
+  const code = BROWSER_DIAGNOSTIC_CODES[stage];
+  if (typeof code !== 'string') fail('BROWSER_DIAGNOSTIC_STAGE_INVALID');
+  return code;
+}
+
+function sanitizeBrowserDiagnosticUrl(rawUrl, baseUrl, projectRef) {
+  let url;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return '[INVALID_URL]';
+  }
+  let localOrigin;
+  try {
+    localOrigin = new URL(baseUrl).origin;
+  } catch {
+    return '[INVALID_URL]';
+  }
+  const isolatedOrigin = `https://${projectRef}.supabase.co`;
+  if (![localOrigin, isolatedOrigin].includes(url.origin)) {
+    return '[REDACTED_URL]';
+  }
+  url.username = '';
+  url.password = '';
+  const originalPathname = url.pathname;
+  const safePathname =
+    LOCAL_BROWSER_GET_PATHS.has(originalPathname) ||
+    [
+      '/auth/v1/token',
+      '/auth/v1/user',
+      '/auth/v1/factors',
+      '/rest/v1/staff',
+    ].includes(originalPathname)
+      ? originalPathname
+      : originalPathname.startsWith('/_next/')
+        ? '/_next/[REDACTED_PATH]'
+        : '/[REDACTED_PATH]';
+  url.pathname = safePathname;
+  const queryEntries = [...url.searchParams.entries()]
+    .map(([name, value]) => {
+      if (
+        originalPathname === '/auth/v1/token' &&
+        name === 'grant_type' &&
+        ['password', 'refresh_token'].includes(value)
+      ) {
+        return [name, value];
+      }
+      if (originalPathname === '/rest/v1/staff' && name === 'select') {
+        return [name, value === 'id' ? value : '[REDACTED]'];
+      }
+      if (originalPathname === '/rest/v1/staff' && name === 'clinic_id') {
+        return [name, '[REDACTED]'];
+      }
+      return ['[REDACTED_NAME]', '[REDACTED]'];
+    })
+    .sort(([leftName, leftValue], [rightName, rightValue]) => {
+      if (leftName !== rightName) return leftName < rightName ? -1 : 1;
+      if (leftValue === rightValue) return 0;
+      return leftValue < rightValue ? -1 : 1;
+    });
+  url.search = '';
+  for (const [name, value] of queryEntries)
+    url.searchParams.append(name, value);
+  url.hash = '';
+  return url.toString();
+}
+
+function browserDiagnosticValueFingerprint(value) {
+  const bytes = Buffer.from(typeof value === 'string' ? value : '', 'utf8');
+  try {
+    return {
+      present: typeof value === 'string',
+      sha256: sha256Bytes(bytes),
+      byteLength: bytes.length,
+    };
+  } finally {
+    bytes.fill(0);
+  }
+}
+
+function projectSafeDiagnosticHeaderValue(name, value, baseUrl, projectRef) {
+  if (name === 'content-type') {
+    const mediaType =
+      typeof value === 'string'
+        ? value.split(';', 1)[0].trim().toLowerCase()
+        : '';
+    const category =
+      mediaType === 'application/json'
+        ? 'APPLICATION_JSON'
+        : mediaType === 'text/html'
+          ? 'TEXT_HTML'
+          : mediaType === 'text/plain'
+            ? 'TEXT_PLAIN'
+            : mediaType === 'text/css'
+              ? 'TEXT_CSS'
+              : ['application/javascript', 'text/javascript'].includes(
+                    mediaType
+                  )
+                ? 'JAVASCRIPT'
+                : mediaType.startsWith('image/')
+                  ? 'IMAGE'
+                  : 'OTHER';
+    return { category };
+  }
+  if (name === 'content-length') {
+    return {
+      present: typeof value === 'string',
+      numeric: typeof value === 'string' && /^[0-9]{1,20}$/u.test(value.trim()),
+    };
+  }
+  if (name === 'location') {
+    return sanitizeBrowserDiagnosticUrl(value, baseUrl, projectRef);
+  }
+  return browserDiagnosticValueFingerprint(value);
+}
+
+function safeRedactedHeaderName(name) {
+  return [
+    'apikey',
+    'authorization',
+    'cookie',
+    'proxy-authenticate',
+    'set-cookie',
+    'www-authenticate',
+  ].includes(name)
+    ? name
+    : '[REDACTED_NAME]';
+}
+
+export function projectBrowserFailureDiagnostic(input) {
+  if (!isRecord(input)) fail('BROWSER_DIAGNOSTIC_INPUT_INVALID');
+  const stage = input.stage;
+  const code = browserDiagnosticCodeForStage(stage);
+  const responseHeaderValues = {};
+  const responseHeaderRedactedNames = [];
+  const correlationIds = {};
+  const responseHeaders = isRecord(input.responseHeaders)
+    ? input.responseHeaders
+    : {};
+  for (const rawName of Object.keys(responseHeaders).sort()) {
+    const name = rawName.toLowerCase();
+    const value = responseHeaders[rawName];
+    if (!BROWSER_DIAGNOSTIC_HEADER_NAMES.has(name)) {
+      responseHeaderRedactedNames.push(safeRedactedHeaderName(name));
+      continue;
+    }
+    const safeValue = projectSafeDiagnosticHeaderValue(
+      name,
+      value,
+      input.baseUrl,
+      input.projectRef
+    );
+    responseHeaderValues[name] = safeValue;
+    if (BROWSER_CORRELATION_HEADER_NAMES.has(name)) {
+      correlationIds[name] = safeValue;
+    }
+  }
+  const errorClass =
+    typeof input.errorClass === 'string' &&
+    /^[A-Za-z][A-Za-z0-9_.-]{0,79}$/u.test(input.errorClass)
+      ? input.errorClass
+      : null;
+  const browserConsoleErrors = Array.isArray(input.browserConsoleErrors)
+    ? input.browserConsoleErrors.slice(0, 20).map(item => ({
+        category:
+          isRecord(item) &&
+          typeof item.category === 'string' &&
+          /^[A-Z][A-Z0-9_]{0,63}$/u.test(item.category)
+            ? item.category
+            : 'UNCLASSIFIED',
+        messageSha256:
+          isRecord(item) &&
+          typeof item.messageSha256 === 'string' &&
+          /^[a-f0-9]{64}$/u.test(item.messageSha256)
+            ? item.messageSha256
+            : null,
+        byteLength:
+          isRecord(item) &&
+          Number.isSafeInteger(item.byteLength) &&
+          item.byteLength >= 0
+            ? item.byteLength
+            : 0,
+      }))
+    : [];
+  return {
+    stage,
+    code,
+    request: {
+      method:
+        typeof input.requestMethod === 'string' &&
+        /^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS)$/u.test(input.requestMethod)
+          ? input.requestMethod
+          : 'UNKNOWN',
+      url: sanitizeBrowserDiagnosticUrl(
+        input.requestUrl,
+        input.baseUrl,
+        input.projectRef
+      ),
+    },
+    httpStatus: Number.isInteger(input.httpStatus) ? input.httpStatus : null,
+    redirectChain: Array.isArray(input.redirectChain)
+      ? input.redirectChain.slice(0, 10).map(item => ({
+          status:
+            isRecord(item) && Number.isInteger(item.status)
+              ? item.status
+              : null,
+          location:
+            isRecord(item) && typeof item.location === 'string'
+              ? sanitizeBrowserDiagnosticUrl(
+                  (() => {
+                    try {
+                      return new URL(
+                        item.location,
+                        input.requestUrl
+                      ).toString();
+                    } catch {
+                      return item.location;
+                    }
+                  })(),
+                  input.baseUrl,
+                  input.projectRef
+                )
+              : null,
+        }))
+      : [],
+    responseHeaders: {
+      values: responseHeaderValues,
+      redactedNames: [...new Set(responseHeaderRedactedNames)].sort(),
+    },
+    errorClass,
+    timedOut: errorClass === 'TimeoutError',
+    browserConsoleErrors,
+    correlationIds,
+    sensitiveValuesCaptured: false,
+  };
 }
 
 function requireSecret(value, code) {
@@ -789,22 +1052,92 @@ function recordServiceRoleBoundaryScan(state, serverApiKey, values) {
   state.fingerprints.push(result.fingerprintSha256);
 }
 
-function setBrowserSandboxFailure(state, error) {
+function errorClassName(error) {
+  return error instanceof Error && typeof error.name === 'string'
+    ? error.name
+    : null;
+}
+
+function setBrowserSandboxFailure(state, error, stage, input = {}) {
   if (state.failureCode !== null) return;
-  state.failureCode =
-    error instanceof Pr12AllRoleSmokeRuntimeError
-      ? error.code
-      : 'ISOLATED_BROWSER_CONTACT_FAILED';
+  if (error instanceof Pr12AllRoleSmokeRuntimeError) {
+    state.failureCode = error.code;
+    state.failureDiagnostic = error.diagnostic;
+    return;
+  }
+  state.failureCode = browserDiagnosticCodeForStage(stage);
+  state.failureDiagnostic = projectBrowserFailureDiagnostic({
+    ...input,
+    stage,
+    errorClass: errorClassName(error),
+    browserConsoleErrors: state.browserConsoleErrors,
+  });
 }
 
 function assertBrowserSandboxHealthy(state) {
-  if (state.failureCode !== null) fail(state.failureCode);
+  if (state.failureCode !== null) {
+    fail(state.failureCode, state.failureDiagnostic);
+  }
 }
 
-function rethrowBrowserRuntimeFailure(error, state, fallbackCode) {
+function rethrowBrowserRuntimeFailure(
+  error,
+  state,
+  fallbackCode,
+  stage,
+  input = {}
+) {
   assertBrowserSandboxHealthy(state);
   if (error instanceof Pr12AllRoleSmokeRuntimeError) throw error;
+  if (stage !== undefined) {
+    fail(
+      browserDiagnosticCodeForStage(stage),
+      projectBrowserFailureDiagnostic({
+        ...input,
+        stage,
+        errorClass: errorClassName(error),
+        browserConsoleErrors: state.browserConsoleErrors,
+      })
+    );
+  }
   fail(fallbackCode);
+}
+
+function attachBrowserConsoleDiagnostics(page, state, forbiddenValues) {
+  page.on('console', message => {
+    if (message.type() !== 'error' || state.browserConsoleErrors.length >= 20)
+      return;
+    const text = message.text();
+    const containsSensitiveValue = forbiddenValues.some(
+      secret => secret.length > 0 && text.includes(secret)
+    );
+    const bytes = Buffer.from(text, 'utf8');
+    try {
+      state.browserConsoleErrors.push({
+        category: containsSensitiveValue
+          ? 'SENSITIVE_VALUE_REDACTED'
+          : 'CONSOLE_ERROR',
+        messageSha256: containsSensitiveValue ? null : sha256Bytes(bytes),
+        byteLength: bytes.length,
+      });
+    } finally {
+      bytes.fill(0);
+    }
+  });
+}
+
+async function runBrowserDiagnosticStage(operation, state, stage, input) {
+  try {
+    return await operation();
+  } catch (error) {
+    rethrowBrowserRuntimeFailure(
+      error,
+      state,
+      browserDiagnosticCodeForStage(stage),
+      stage,
+      input
+    );
+  }
 }
 
 async function finalizeBrowserResource(
@@ -838,7 +1171,10 @@ async function installWebSocketBoundary(
           }
           serverSocket.send(message);
         } catch (error) {
-          setBrowserSandboxFailure(state, error);
+          setBrowserSandboxFailure(state, error, 'FULFILL', {
+            requestMethod: 'GET',
+            requestUrl: socket.url(),
+          });
         }
       });
       serverSocket = socket.connectToServer();
@@ -849,11 +1185,17 @@ async function installWebSocketBoundary(
           recordServiceRoleBoundaryScan(state, serverApiKey, [payload]);
           socket.send(message);
         } catch (error) {
-          setBrowserSandboxFailure(state, error);
+          setBrowserSandboxFailure(state, error, 'FULFILL', {
+            requestMethod: 'GET',
+            requestUrl: socket.url(),
+          });
         }
       });
     } catch (error) {
-      setBrowserSandboxFailure(state, error);
+      setBrowserSandboxFailure(state, error, 'FULFILL', {
+        requestMethod: 'GET',
+        requestUrl: socket.url(),
+      });
       await socket
         .close({ code: 1008, reason: 'PR12 browser WebSocket denied' })
         .catch(() => undefined);
@@ -866,8 +1208,17 @@ async function installBrowserRequestBoundary(
   { baseUrl, projectRef, serverApiKey, state }
 ) {
   await context.route('**/*', async route => {
+    const request = route.request();
+    const diagnosticInput = {
+      requestMethod: request.method(),
+      requestUrl: request.url(),
+      baseUrl,
+      projectRef,
+      redirectChain: [],
+      responseHeaders: {},
+      httpStatus: null,
+    };
     try {
-      const request = route.request();
       assertIsolatedBrowserRequest(
         request.method(),
         request.url(),
@@ -879,16 +1230,43 @@ async function installBrowserRequestBoundary(
         JSON.stringify(request.headers()),
         request.postData() ?? '',
       ]);
-      const response = await route.fetch({
-        timeout: 120_000,
-        maxRedirects: 0,
-        maxRetries: 0,
-      });
+      let response;
+      try {
+        response = await route.fetch({
+          timeout: 120_000,
+          maxRedirects: 0,
+          maxRetries: 0,
+        });
+      } catch (error) {
+        setBrowserSandboxFailure(state, error, 'ROUTE_FETCH', diagnosticInput);
+        throw error;
+      }
+      diagnosticInput.httpStatus = response.status();
+      let responseHeaders;
+      let redirectLocation = null;
+      try {
+        responseHeaders = await response.allHeaders();
+        if (BROWSER_REDIRECT_STATUSES.has(response.status())) {
+          redirectLocation = await response.headerValue('location');
+          diagnosticInput.redirectChain = [
+            { status: response.status(), location: redirectLocation },
+          ];
+        }
+        diagnosticInput.responseHeaders = responseHeaders;
+      } catch (error) {
+        setBrowserSandboxFailure(
+          state,
+          error,
+          'RESPONSE_READ',
+          diagnosticInput
+        );
+        throw error;
+      }
       if (BROWSER_REDIRECT_STATUSES.has(response.status())) {
         assertIsolatedBrowserRedirect(
           request.method(),
           response.status(),
-          await response.headerValue('location'),
+          redirectLocation,
           response.url(),
           baseUrl,
           projectRef
@@ -900,21 +1278,39 @@ async function installBrowserRequestBoundary(
       ) {
         fail('ISOLATED_BROWSER_REDIRECT_DENIED');
       }
-      const responseBytes = Buffer.from(await response.body());
+      let responseBytes;
+      try {
+        responseBytes = Buffer.from(await response.body());
+      } catch (error) {
+        setBrowserSandboxFailure(
+          state,
+          error,
+          'RESPONSE_READ',
+          diagnosticInput
+        );
+        throw error;
+      }
       try {
         if (responseBytes.length > MAX_BROWSER_RESPONSE_BYTES) {
           fail('ISOLATED_BROWSER_RESPONSE_TOO_LARGE');
         }
         recordServiceRoleBoundaryScan(state, serverApiKey, [
-          JSON.stringify(await response.allHeaders()),
+          JSON.stringify(responseHeaders),
           responseBytes.toString('utf8'),
         ]);
-        await route.fulfill({ response, body: responseBytes });
+        try {
+          await route.fulfill({ response, body: responseBytes });
+        } catch (error) {
+          setBrowserSandboxFailure(state, error, 'FULFILL', diagnosticInput);
+          throw error;
+        }
       } finally {
         responseBytes.fill(0);
       }
     } catch (error) {
-      setBrowserSandboxFailure(state, error);
+      if (state.failureCode === null) {
+        setBrowserSandboxFailure(state, error, 'ROUTE_FETCH', diagnosticInput);
+      }
       await route.abort('blockedbyclient').catch(() => undefined);
     }
   });
@@ -1046,6 +1442,8 @@ async function runBrowserAndProfileSmoke({
     scannedByteCount: 0,
     fingerprints: [],
     failureCode: null,
+    failureDiagnostic: null,
+    browserConsoleErrors: [],
   };
   try {
     await waitForLocalApp(baseUrl, child);
@@ -1086,47 +1484,92 @@ async function runBrowserAndProfileSmoke({
       let actorOperationFailed = false;
       try {
         const page = await context.newPage();
+        attachBrowserConsoleDiagnostics(page, boundaryState, forbiddenValues);
         page.setDefaultTimeout(60_000);
         page.setDefaultNavigationTimeout(120_000);
         const loginPath = actor.role === 'admin' ? '/admin/login' : '/login';
-        await page.goto(loginPath, {
-          waitUntil: 'domcontentloaded',
-          timeout: 120_000,
-        });
-        await page.locator('#login-email').fill(actor.email);
-        await page
-          .locator('#login-password')
-          .fill(actorPasswords[actor.actorId]);
-        let profileOperationFailed = false;
-        try {
-          await Promise.all([
-            page.waitForURL(
-              url => !['/login', '/admin/login'].includes(url.pathname),
-              {
-                timeout: BROWSER_LOGIN_NAVIGATION_TIMEOUT_MS,
-                waitUntil: 'domcontentloaded',
-              }
-            ),
-            page.getByRole('button', { name: 'ログイン' }).click(),
-          ]);
-        } catch (error) {
-          rethrowBrowserRuntimeFailure(
-            error,
-            boundaryState,
-            'BROWSER_LOGIN_NAVIGATION_FAILED'
-          );
-        }
-        assertBrowserSandboxHealthy(boundaryState);
-        const profileResponse = await context.request.get(
-          `${baseUrl}/api/auth/profile`,
+        await runBrowserDiagnosticStage(
+          () =>
+            page.goto(loginPath, {
+              waitUntil: 'domcontentloaded',
+              timeout: 120_000,
+            }),
+          boundaryState,
+          'NAVIGATION',
           {
-            timeout: REQUEST_TIMEOUT_MS,
-            failOnStatusCode: false,
-            maxRedirects: 0,
-            maxRetries: 0,
+            requestMethod: 'GET',
+            requestUrl: new URL(loginPath, baseUrl).toString(),
+            baseUrl,
+            projectRef,
           }
         );
-        const profileBytes = Buffer.from(await profileResponse.body());
+        await runBrowserDiagnosticStage(
+          async () => {
+            await page.locator('#login-email').fill(actor.email);
+            await page
+              .locator('#login-password')
+              .fill(actorPasswords[actor.actorId]);
+          },
+          boundaryState,
+          'AUTH_SESSION',
+          {
+            requestMethod: 'POST',
+            requestUrl: new URL(loginPath, baseUrl).toString(),
+            baseUrl,
+            projectRef,
+          }
+        );
+        let profileOperationFailed = false;
+        await runBrowserDiagnosticStage(
+          () =>
+            Promise.all([
+              page.waitForURL(
+                url => !['/login', '/admin/login'].includes(url.pathname),
+                {
+                  timeout: BROWSER_LOGIN_NAVIGATION_TIMEOUT_MS,
+                  waitUntil: 'domcontentloaded',
+                }
+              ),
+              page.getByRole('button', { name: 'ログイン' }).click(),
+            ]),
+          boundaryState,
+          'AUTH_SESSION',
+          {
+            requestMethod: 'POST',
+            requestUrl: new URL(loginPath, baseUrl).toString(),
+            baseUrl,
+            projectRef,
+          }
+        );
+        assertBrowserSandboxHealthy(boundaryState);
+        const profileUrl = `${baseUrl}/api/auth/profile`;
+        const profileResponse = await runBrowserDiagnosticStage(
+          () =>
+            context.request.get(profileUrl, {
+              timeout: REQUEST_TIMEOUT_MS,
+              failOnStatusCode: false,
+              maxRedirects: 0,
+              maxRetries: 0,
+            }),
+          boundaryState,
+          'AUTH_SESSION',
+          { requestMethod: 'GET', requestUrl: profileUrl, baseUrl, projectRef }
+        );
+        const profileBytes = Buffer.from(
+          await runBrowserDiagnosticStage(
+            () => profileResponse.body(),
+            boundaryState,
+            'AUTH_SESSION',
+            {
+              requestMethod: 'GET',
+              requestUrl: profileUrl,
+              baseUrl,
+              projectRef,
+              httpStatus: profileResponse.status(),
+              responseHeaders: profileResponse.headers(),
+            }
+          )
+        );
         try {
           if (
             profileBytes.length > MAX_HTTP_BYTES ||
@@ -1174,16 +1617,37 @@ async function runBrowserAndProfileSmoke({
           fail('BROWSER_ROLE_CASE_MATRIX_INVALID');
         }
         for (const browserCase of actorBrowserCases) {
-          const response = await page.goto(browserCase.route, {
-            waitUntil: 'domcontentloaded',
-            timeout: 120_000,
-          });
+          const browserCaseUrl = new URL(browserCase.route, baseUrl).toString();
+          const response = await runBrowserDiagnosticStage(
+            () =>
+              page.goto(browserCase.route, {
+                waitUntil: 'domcontentloaded',
+                timeout: 120_000,
+              }),
+            boundaryState,
+            'NAVIGATION',
+            {
+              requestMethod: 'GET',
+              requestUrl: browserCaseUrl,
+              baseUrl,
+              projectRef,
+            }
+          );
           if (response !== null && response.status() >= 500) {
             fail('BROWSER_ROUTE_SERVER_ERROR');
           }
-          const observed = await observeCanonicalBrowserOutcome(
-            page,
-            browserCase
+          const observed = await runBrowserDiagnosticStage(
+            () => observeCanonicalBrowserOutcome(page, browserCase),
+            boundaryState,
+            'NAVIGATION',
+            {
+              requestMethod: 'GET',
+              requestUrl: browserCaseUrl,
+              baseUrl,
+              projectRef,
+              httpStatus: response?.status() ?? null,
+              responseHeaders: response === null ? {} : response.headers(),
+            }
           );
           assertBrowserSandboxHealthy(boundaryState);
           const content = await page.content();
@@ -1239,13 +1703,35 @@ async function runBrowserAndProfileSmoke({
     let anonymousOperationFailed = false;
     try {
       const page = await anonymousContext.newPage();
-      await page.goto(anonymousCase.route, {
-        waitUntil: 'domcontentloaded',
-        timeout: 120_000,
-      });
-      const observed = await observeCanonicalBrowserOutcome(
-        page,
-        anonymousCase
+      attachBrowserConsoleDiagnostics(page, boundaryState, forbiddenValues);
+      const anonymousUrl = new URL(anonymousCase.route, baseUrl).toString();
+      const response = await runBrowserDiagnosticStage(
+        () =>
+          page.goto(anonymousCase.route, {
+            waitUntil: 'domcontentloaded',
+            timeout: 120_000,
+          }),
+        boundaryState,
+        'NAVIGATION',
+        {
+          requestMethod: 'GET',
+          requestUrl: anonymousUrl,
+          baseUrl,
+          projectRef,
+        }
+      );
+      const observed = await runBrowserDiagnosticStage(
+        () => observeCanonicalBrowserOutcome(page, anonymousCase),
+        boundaryState,
+        'NAVIGATION',
+        {
+          requestMethod: 'GET',
+          requestUrl: anonymousUrl,
+          baseUrl,
+          projectRef,
+          httpStatus: response?.status() ?? null,
+          responseHeaders: response === null ? {} : response.headers(),
+        }
       );
       recordServiceRoleBoundaryScan(boundaryState, serverApiKey, [
         await page.content(),

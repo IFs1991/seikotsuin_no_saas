@@ -593,7 +593,10 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(runtimeSource).not.toContain(
       'fail(`ISOLATED_DATA_HTTP_${response.status}`)'
     );
-    expect(runtimeSource).toContain("'BROWSER_LOGIN_NAVIGATION_FAILED'");
+    expect(runtimeSource).toContain(
+      "AUTH_SESSION: 'ISOLATED_BROWSER_AUTH_SESSION_FAILED'"
+    );
+    expect(runtimeSource).not.toContain("'ISOLATED_BROWSER_CONTACT_FAILED'");
     expect(runtimeSource).toContain(
       'const BROWSER_LOGIN_NAVIGATION_TIMEOUT_MS = 120_000;'
     );
@@ -644,6 +647,95 @@ console.log(JSON.stringify({ accepted, failures }));
     `);
     expect(wrongRelation.status).not.toBe(0);
     expect(wrongRelation.stderr).toContain('ROLE_SMOKE_RELATION_INVALID');
+  });
+
+  test.each([
+    ['ROUTE_FETCH', 'ISOLATED_BROWSER_ROUTE_FETCH_FAILED'],
+    ['RESPONSE_READ', 'ISOLATED_BROWSER_RESPONSE_READ_FAILED'],
+    ['FULFILL', 'ISOLATED_BROWSER_FULFILL_FAILED'],
+    ['NAVIGATION', 'ISOLATED_BROWSER_NAVIGATION_FAILED'],
+    ['AUTH_SESSION', 'ISOLATED_BROWSER_AUTH_SESSION_FAILED'],
+  ])('maps browser diagnostic stage %s to stable code %s', (stage, code) => {
+    const result = evaluateAllRole(`
+      process.stdout.write(subject.browserDiagnosticCodeForStage(${JSON.stringify(stage)}));
+    `);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe(code);
+  });
+
+  test('projects browser diagnostic evidence without URL or header secrets', () => {
+    const secret = 'runtime-sensitive-value-must-not-retain';
+    const result = evaluateAllRole(`
+      const diagnostic = subject.projectBrowserFailureDiagnostic({
+        stage: 'ROUTE_FETCH',
+        requestMethod: 'POST',
+        requestUrl: 'https://${PROJECT_REF}.supabase.co/auth/v1/token?grant_type=password&${secret}=must-not-retain',
+        baseUrl: 'http://127.0.0.1:32145',
+        projectRef: ${JSON.stringify(PROJECT_REF)},
+        httpStatus: 503,
+        redirectChain: [{
+          status: 302,
+          location: 'http://127.0.0.1:32145/${secret}?${secret}=must-not-retain'
+        }],
+        responseHeaders: {
+          'content-type': 'application/json; boundary=${secret}',
+          'set-cookie': 'session=must-not-retain',
+          'x-request-id': '${secret}'
+        },
+        errorClass: 'TimeoutError',
+        browserConsoleErrors: [{
+          category: 'NETWORK_ERROR',
+          messageSha256: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          byteLength: 42
+        }]
+      });
+      process.stdout.write(JSON.stringify(diagnostic));
+    `);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).not.toContain(secret);
+    expect(result.stdout).not.toContain('must-not-retain');
+    expect(result.stdout).not.toContain('session=');
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      stage: 'ROUTE_FETCH',
+      code: 'ISOLATED_BROWSER_ROUTE_FETCH_FAILED',
+      request: {
+        method: 'POST',
+        url: `https://${PROJECT_REF}.supabase.co/auth/v1/token?%5BREDACTED_NAME%5D=%5BREDACTED%5D&grant_type=password`,
+      },
+      httpStatus: 503,
+      responseHeaders: {
+        values: {
+          'content-type': { category: 'APPLICATION_JSON' },
+          'x-request-id': {
+            present: true,
+            sha256: expect.stringMatching(/^[a-f0-9]{64}$/u),
+            byteLength: Buffer.byteLength(secret, 'utf8'),
+          },
+        },
+        redactedNames: ['set-cookie'],
+      },
+      errorClass: 'TimeoutError',
+      timedOut: true,
+      correlationIds: {
+        'x-request-id': {
+          present: true,
+          sha256: expect.stringMatching(/^[a-f0-9]{64}$/u),
+          byteLength: Buffer.byteLength(secret, 'utf8'),
+        },
+      },
+      sensitiveValuesCaptured: false,
+    });
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      redirectChain: [
+        {
+          status: 302,
+          location:
+            'http://127.0.0.1:32145/[REDACTED_PATH]?%5BREDACTED_NAME%5D=%5BREDACTED%5D',
+        },
+      ],
+    });
   });
 
   test('fail-closes browser traffic and proves service-role non-exposure', () => {
@@ -1005,10 +1097,10 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(activeMain).not.toContain('executeRepresentativeDataValidation({');
     expect(activeMain).not.toContain('executeAdvisorAfterScan({');
     expect(activeMain).toContain(
-      'STEP06_BROWSER_UNEXPECTED_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE]'
+      'STEP06_BROWSER_CONTACT_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE]'
     );
     expect(activeMain).toContain(
-      'path.join(step06BrowserUnexpectedEvidenceDirectory, CA_FILE)'
+      'path.join(step06BrowserContactEvidenceDirectory, CA_FILE)'
     );
     expect(activeMain).not.toContain(
       'path.join(step06UnexpectedEvidenceDirectory, CA_FILE)'
