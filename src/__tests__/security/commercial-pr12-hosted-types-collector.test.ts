@@ -105,6 +105,52 @@ console.log(JSON.stringify({ drift, internal }));
     });
   });
 
+  it('produces a secret-free structural drift diagnostic before failing closed', () => {
+    const result = runPr12Module(
+      typesModule,
+      `
+const committed = ${JSON.stringify(generatedTypes)};
+const generated = committed.replace('Tables: {}', 'Tables: { hosted_only: true }');
+const diagnostic = subject.diagnoseHostedTypesParity({
+  generatedTypes: generated,
+  committedTypes: committed
+});
+console.log(JSON.stringify(diagnostic));
+`
+    );
+
+    expect(result.status).toBe(0);
+    const diagnostic = JSON.parse(result.stdout) as {
+      status: string;
+      parity: boolean;
+      firstDifference: {
+        generatedLineNumber: number;
+        committedLineNumber: number;
+        generatedLineSha256: string;
+        committedLineSha256: string;
+      };
+      generatedSha256: string;
+      committedSha256: string;
+    };
+    expect(diagnostic).toMatchObject({
+      status: 'GENERATED_TYPES_DRIFT',
+      parity: false,
+      firstDifference: {
+        generatedLineNumber: 8,
+        committedLineNumber: 8,
+      },
+    });
+    expect(diagnostic.generatedSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(diagnostic.committedSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(diagnostic.firstDifference.generatedLineSha256).toMatch(
+      /^[a-f0-9]{64}$/
+    );
+    expect(diagnostic.firstDifference.committedLineSha256).toMatch(
+      /^[a-f0-9]{64}$/
+    );
+    expect(result.stdout).not.toContain('hosted_only');
+  });
+
   it('uses the isolated management-token runtime with one dispatch and fail-closed outcomes', () => {
     const result = runPr12Module(
       typesModule,

@@ -329,6 +329,84 @@ describe('PR12 existing isolated project recovery', () => {
     });
   });
 
+  test('rejects a broken cycle4-to-Step03 evidence chain even when individual hashes look valid', () => {
+    const sha = (character: string) => character.repeat(64);
+    const base = {
+      catalogGapAttempt: {
+        linkSha256: sha('a'),
+        step02EvidenceSha256: sha('b'),
+      },
+      step02: {
+        projectRef: PROJECT_REF,
+        databaseSystemIdentifier: '7666052913346410626',
+        postApplyRecovery: {
+          predecessorLinkSha256: sha('a'),
+          predecessorStep02EvidenceSha256: sha('b'),
+          migrationApplyDispatchCount: 1,
+          migrationApplyOutcome: 'SUCCEEDED',
+          migrationApplyRedispatched: false,
+        },
+        catalogSnapshot: { snapshotSha256: sha('c') },
+      },
+      step03: {
+        projectRef: PROJECT_REF,
+        explicitRows: 83,
+        derivedRows: 12,
+        verifiedRows: 95,
+        mutationJournal: {
+          intentArtifactSha256: sha('d'),
+          resultArtifactSha256: sha('e'),
+          durableOutcome: 'SUCCEEDED',
+        },
+        snapshot: { aggregateSchemaHash: sha('c') },
+      },
+      fixtureIntentFileSha256: sha('d'),
+      fixtureResultFileSha256: sha('e'),
+      fixtureResult: {
+        commandId: 'PR12-CMD-008',
+        intentArtifactSha256: sha('d'),
+        dispatchCount: 1,
+        wrapperRetryCount: 0,
+        timedOut: false,
+        outcome: 'SUCCEEDED',
+      },
+    };
+    const result = evaluate(`
+const base = ${JSON.stringify(base)};
+const accepted = subject.assertTypesDriftRecoveryCrossReferences(base);
+const failures = [];
+for (const mutate of [
+  value => { value.step02.postApplyRecovery.predecessorLinkSha256 = '${'f'.repeat(64)}'; },
+  value => { value.step03.mutationJournal.intentArtifactSha256 = '${'f'.repeat(64)}'; },
+  value => { value.step03.snapshot.aggregateSchemaHash = '${'f'.repeat(64)}'; }
+]) {
+  const candidate = structuredClone(base);
+  mutate(candidate);
+  try {
+    subject.assertTypesDriftRecoveryCrossReferences(candidate);
+    failures.push('NOT_REJECTED');
+  } catch (error) {
+    failures.push(error.message);
+  }
+}
+console.log(JSON.stringify({ accepted, failures }));
+`);
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({
+      accepted: {
+        status: 'TYPES_DRIFT_RECOVERY_CHAIN_VERIFIED',
+        migrationApplyRedispatched: false,
+        representativeFixtureRedispatched: false,
+      },
+      failures: [
+        'TYPES_DRIFT_RECOVERY_CHAIN_INVALID',
+        'TYPES_DRIFT_RECOVERY_CHAIN_INVALID',
+        'TYPES_DRIFT_RECOVERY_CHAIN_INVALID',
+      ],
+    });
+  });
+
   test('uses canonical Windows TEMP and TMP when the child environment has no ambient values', () => {
     const result = evaluate(`
       process.stdout.write(JSON.stringify(
@@ -690,7 +768,6 @@ describe('PR12 existing isolated project recovery', () => {
     expect(source).toContain("stdio: ['ignore', 'pipe', 'pipe']");
     expect(source).toContain("mode: 'ISOLATED_PROJECT_CONTINUATION'");
     expect(source).not.toContain("mode: 'EXECUTE'");
-    expect(source).toContain("flag: 'wx'");
     expect(source).toContain("openSync(filename, 'wx')");
     expect(source).toContain('fsyncSync(descriptor)');
     expect(source).toContain('PINNED_CA_SHA256');
@@ -724,10 +801,18 @@ describe('PR12 existing isolated project recovery', () => {
     expect(source).toContain(
       "'pr12-existing-project-recovery-replay-workdir-cycle5'"
     );
+    expect(source).toContain("'pr12-existing-project-recovery-journal-cycle6'");
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-evidence-cycle6'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-replay-workdir-cycle6'"
+    );
     expect(source).toContain('assertPredecessorPreContactAbort(');
     expect(source).toContain('assertPredecessorCredentialBrokerAbort(');
     expect(source).toContain('assertPredecessorAdvisorParserAbort(');
     expect(source).toContain('assertPredecessorCatalogGapAbort(');
+    expect(source).toContain('assertPredecessorTypesDriftAbort(');
     expect(source).toContain("status: 'PRE_CONTACT_TOOLING_ABORT_VERIFIED'");
     expect(source).toContain(
       "status: 'PRE_PROVIDER_CREDENTIAL_BROKER_ABORT_VERIFIED'"
@@ -745,10 +830,20 @@ describe('PR12 existing isolated project recovery', () => {
     expect(source).toContain('mutationOutcomeUnknown: false');
     expect(source).toContain('migrationApplyRedispatchAllowed: false');
     expect(source).toContain('migrationApplyRedispatched: false');
+    expect(source).toContain('representativeFixtureRedispatched: false');
+    expect(source).toContain('refreshRepresentativeActorCredentials({');
+    expect(source).toContain("operation: 'RUNTIME_AUTH_FIXTURE_REBIND'");
+    expect(source).toContain(
+      'fixtureResult = refreshRepresentativeActorCredentials({'
+    );
+    expect(source).toContain("credentialTransport: 'STDIN_ONLY'");
+    expect(source).toContain('actorPasswordValuesPersisted: false');
+    expect(source).toContain('generated-types-diagnostic.json');
+    expect(source).toContain('generated-types-hosted.ts');
     expect(source).toContain('resumeFullMigrationReplayAfterCatalogGap(');
     expect(source).toContain('buildRecoveryOperatingSystemValues({');
     expect(source).toContain(
-      'bindingSha256: replay.advisorBefore.bindingSha256'
+      'bindingSha256: predecessorStep02.advisorBefore.bindingSha256'
     );
     expect(source).toContain('predecessorAttempts');
     expect(source).not.toContain('rmSync');

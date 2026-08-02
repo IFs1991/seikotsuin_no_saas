@@ -116,6 +116,56 @@ export function normalizeHostedTypes(typesInput) {
   );
 }
 
+export function diagnoseHostedTypesParity(input) {
+  const request = requireExactKeys(
+    input,
+    ['generatedTypes', 'committedTypes'],
+    'GENERATED_TYPES_DIAGNOSTIC_INVALID'
+  );
+  const generated = assertTypeText(
+    request.generatedTypes,
+    'GENERATED_TYPES_OUTPUT_INVALID'
+  );
+  const committed = assertTypeText(
+    request.committedTypes,
+    'COMMITTED_TYPES_INVALID'
+  );
+  const normalizedGenerated = normalizeHostedTypes(generated);
+  const normalizedCommitted = normalizeHostedTypes(committed);
+  const generatedLines = normalizedGenerated.split('\n');
+  const committedLines = normalizedCommitted.split('\n');
+  const maximumLines = Math.max(generatedLines.length, committedLines.length);
+  let firstDifference = null;
+  for (let index = 0; index < maximumLines; index += 1) {
+    const generatedLine = generatedLines[index] ?? '';
+    const committedLine = committedLines[index] ?? '';
+    if (generatedLine !== committedLine) {
+      firstDifference = {
+        generatedLineNumber: index + 1,
+        committedLineNumber: index + 1,
+        generatedLineSha256: sha256(generatedLine),
+        committedLineSha256: sha256(committedLine),
+      };
+      break;
+    }
+  }
+  const parity = firstDifference === null;
+  return {
+    status: parity ? 'GENERATED_TYPES_PARITY' : 'GENERATED_TYPES_DRIFT',
+    parity,
+    generatedByteLength: Buffer.byteLength(generated, 'utf8'),
+    generatedSha256: sha256(generated),
+    committedByteLength: Buffer.byteLength(committed, 'utf8'),
+    committedSha256: sha256(committed),
+    normalizedGeneratedSha256: sha256(normalizedGenerated),
+    normalizedCommittedSha256: sha256(normalizedCommitted),
+    generatedLineCount: generatedLines.length,
+    committedLineCount: committedLines.length,
+    firstDifference,
+    rawTypeTextRetained: false,
+  };
+}
+
 export function compareHostedTypes(input) {
   const request = requireExactKeys(
     input,
@@ -155,9 +205,11 @@ export function compareHostedTypes(input) {
     request.committedTypes,
     'COMMITTED_TYPES_INVALID'
   );
-  const normalizedGenerated = normalizeHostedTypes(generated);
-  const normalizedCommitted = normalizeHostedTypes(committed);
-  if (normalizedGenerated !== normalizedCommitted) {
+  const diagnostic = diagnoseHostedTypesParity({
+    generatedTypes: generated,
+    committedTypes: committed,
+  });
+  if (!diagnostic.parity) {
     fail('GENERATED_TYPES_DRIFT');
   }
   return {
@@ -172,7 +224,7 @@ export function compareHostedTypes(input) {
     generatedSha256: sha256(generated),
     committedByteLength: Buffer.byteLength(committed, 'utf8'),
     committedSha256: sha256(committed),
-    normalizedSha256: sha256(normalizedGenerated),
+    normalizedSha256: diagnostic.normalizedGeneratedSha256,
     committedFileMutated: false,
   };
 }

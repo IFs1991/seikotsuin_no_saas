@@ -183,6 +183,65 @@ export function assertPostApplyReplayCommandEvidence(input) {
   return verified;
 }
 
+export function assertTypesDriftRecoveryCrossReferences(input) {
+  const code = 'TYPES_DRIFT_RECOVERY_CHAIN_INVALID';
+  const request = requireRecord(input, code);
+  const catalogGapAttempt = requireRecord(request.catalogGapAttempt, code);
+  const step02 = requireRecord(request.step02, code);
+  const step03 = requireRecord(request.step03, code);
+  const postApply = requireRecord(step02.postApplyRecovery, code);
+  const catalogSnapshot = requireRecord(step02.catalogSnapshot, code);
+  const mutationJournal = requireRecord(step03.mutationJournal, code);
+  const representativeSnapshot = requireRecord(step03.snapshot, code);
+  const fixtureResult = requireRecord(request.fixtureResult, code);
+  const hashes = [
+    catalogGapAttempt.linkSha256,
+    catalogGapAttempt.step02EvidenceSha256,
+    postApply.predecessorLinkSha256,
+    postApply.predecessorStep02EvidenceSha256,
+    catalogSnapshot.snapshotSha256,
+    mutationJournal.intentArtifactSha256,
+    mutationJournal.resultArtifactSha256,
+    representativeSnapshot.aggregateSchemaHash,
+    request.fixtureIntentFileSha256,
+    request.fixtureResultFileSha256,
+    fixtureResult.intentArtifactSha256,
+  ];
+  if (
+    hashes.some(value => !SHA256_PATTERN.test(value ?? '')) ||
+    step02.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    !SYSTEM_IDENTIFIER_PATTERN.test(step02.databaseSystemIdentifier ?? '') ||
+    postApply.predecessorLinkSha256 !== catalogGapAttempt.linkSha256 ||
+    postApply.predecessorStep02EvidenceSha256 !==
+      catalogGapAttempt.step02EvidenceSha256 ||
+    postApply.migrationApplyDispatchCount !== 1 ||
+    postApply.migrationApplyOutcome !== 'SUCCEEDED' ||
+    postApply.migrationApplyRedispatched !== false ||
+    step03.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    step03.explicitRows !== 83 ||
+    step03.derivedRows !== 12 ||
+    step03.verifiedRows !== 95 ||
+    mutationJournal.intentArtifactSha256 !== request.fixtureIntentFileSha256 ||
+    mutationJournal.resultArtifactSha256 !== request.fixtureResultFileSha256 ||
+    mutationJournal.durableOutcome !== 'SUCCEEDED' ||
+    representativeSnapshot.aggregateSchemaHash !==
+      catalogSnapshot.snapshotSha256 ||
+    fixtureResult.commandId !== 'PR12-CMD-008' ||
+    fixtureResult.intentArtifactSha256 !== request.fixtureIntentFileSha256 ||
+    fixtureResult.dispatchCount !== 1 ||
+    fixtureResult.wrapperRetryCount !== 0 ||
+    fixtureResult.timedOut !== false ||
+    fixtureResult.outcome !== 'SUCCEEDED'
+  ) {
+    fail(code);
+  }
+  return {
+    status: 'TYPES_DRIFT_RECOVERY_CHAIN_VERIFIED',
+    migrationApplyRedispatched: false,
+    representativeFixtureRedispatched: false,
+  };
+}
+
 export function buildRecoveryOperatingSystemValues(input) {
   const value = requireRecord(input, 'RECOVERY_CHILD_ENVIRONMENT_INVALID');
   const expectedKeys = ['PATH', 'SystemRoot', 'TEMP', 'TMP'].sort();

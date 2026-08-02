@@ -19,13 +19,11 @@ import { fileURLToPath } from 'node:url';
 
 import {
   PR12_RECOVERY_TARGET,
-  addonResponseToRecoveryComputeProjection,
   assertAllowedRecoveryProviderRequest,
   assertPostApplyReplayCommandEvidence,
   assertRecoveredStep01ContactCounts,
+  assertTypesDriftRecoveryCrossReferences,
   buildRecoveryOperatingSystemValues,
-  determineRecoveredStep01Result,
-  projectResponseToRecoverySafeProjection,
   sha256Canonical,
 } from './pr12-existing-project-recovery-contract.mjs';
 import { isForbiddenAmbientCredentialName } from './pr12-source-project-provisioning-contract.mjs';
@@ -62,6 +60,7 @@ import {
 } from './pr12-representative-fixture-contract.mjs';
 import {
   compareHostedTypes,
+  diagnoseHostedTypesParity,
   extractGeneratedTypes,
 } from './pr12-hosted-types-parity.mjs';
 import {
@@ -91,8 +90,6 @@ const TERMINAL_FILE = 'pr12-existing-project-recovery-terminal.json';
 const RUNTIME_CREDENTIAL_CONFIG_FILE =
   'pr12-existing-project-recovery-credential-configuration-v2.json';
 const CA_FILE = 'prod-ca-2021.crt';
-const CA_URL =
-  'https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt';
 const PINNED_CA_SHA256 =
   '700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7';
 const EXPECTED_ACTION003_MANIFEST_SHA256 =
@@ -205,6 +202,53 @@ const CATALOG_GAP_CMD_FILE_SHA256 = Object.freeze({
 });
 const CATALOG_GAP_EXECUTION_BINDING_SHA256 =
   'ede63dc657f8f3b44b0f4ed65d29a66da634f60e8f9ea6d126aff742fb48319a';
+const TYPES_DRIFT_RECOVERY_HEAD = 'dcd54c780f3bb56491f2f8ac9768f2908b387aee';
+const TYPES_DRIFT_RUNTIME_CREDENTIAL_FILE_SHA256 =
+  'bb811504736409c7e177ba858bcd1c0773b57b8324bda1c0314b680da2f55069';
+const TYPES_DRIFT_CLAIM_FILE_SHA256 =
+  '1dc1acfcabb998d719b38d68e3cfa4d83c4044263e53b644588e79664310cfe5';
+const TYPES_DRIFT_CONSUMED_FILE_SHA256 =
+  '436ade3ed520e35e5e39a7b8abc8b3b2c49830f371d3f1582c09e60bb10019cd';
+const TYPES_DRIFT_TERMINAL_FILE_SHA256 =
+  '45e02925f066180b023b978dd5a5ddb43ace86210b500742b482dfefe66038f7';
+const TYPES_DRIFT_TERMINAL_SHA256 =
+  '11fae173499610945cbc03ace7348c980ae1f5892d0a2be661a2da9568be76cd';
+const TYPES_DRIFT_STEP_FILE_SHA256 = Object.freeze({
+  [STEP01_EVIDENCE_FILE]:
+    '308fd78552c69327e90e2cd602e5d3656578b7097d92936717b8e41bab29a9f2',
+  [STEP02_EVIDENCE_FILE]:
+    'ea12d1201fa1d607e9bed634b641db6242cd060df86cce2b7366b8044ce9b8b7',
+  [STEP03_EVIDENCE_FILE]:
+    'd7d4e5fca50f5cef329d13cf2bfe21727470d5b5f5c08479f6442921d0e00af1',
+  [STEP04_EVIDENCE_FILE]:
+    'feed7a7cbe19b205f017f68ddb8a4e88c644915965ce342b662db40977706887',
+});
+const TYPES_DRIFT_EVIDENCE_SHA256 = Object.freeze({
+  [STEP01_EVIDENCE_FILE]:
+    '1c1e989ab92d4835c2cedffeaa859abac53383801de8afd014a1ceebd4ddbb5d',
+  [STEP02_EVIDENCE_FILE]:
+    'ed46277e4924bf51c4c2a41f4d7276e1e4b7d653e03824d9018e451b32a7ef49',
+  [STEP03_EVIDENCE_FILE]:
+    '688d5a2e4a603db9614c9eb8c59cab78980ce01f563158d74df98d86fb460506',
+  [STEP04_EVIDENCE_FILE]:
+    'dba47eecd0c36c3c1724329c9dd790438777b8f9838b07bbfed1a9009bf70aac',
+});
+const TYPES_DRIFT_CMD_FILE_SHA256 = Object.freeze({
+  'pr12-cmd-007a-intent.json':
+    'b46a69a7b41e53166f8986342d163cd590395f31af7bcade062f6ec7a7ac516c',
+  'pr12-cmd-007a-result.json':
+    '0bc3ce4b6f13a5bc24cdda239f805e716ee1ce6a698e24ac35c075e48aff0846',
+  'pr12-cmd-008-intent.json':
+    'cb11653dc968c1b02d4f0fa063b72aeb94df1805a95cd1386d8b626f1ab8408a',
+  'pr12-cmd-008-result.json':
+    '36e4da095e6662a9c4a621bd211eb5840f3fb575ec609b83e737e025b2e14a11',
+  'pr12-cmd-008a-intent.json':
+    '65995c812c916a443b6eeda4db68b049da7f825e5e76af63aae717a8bdb37d4e',
+  'pr12-cmd-008a-result.json':
+    'c3030a80af84df872c6ffbbbc8128b24499071dbdba1a8c623a2838354b3591d',
+});
+const TYPES_DRIFT_EXECUTION_BINDING_SHA256 =
+  '87f95fbad0ad307e81eb1d42689c187c22a3180cd34e733499f2ec8e0cc873a3';
 
 class RecoveryExecutionError extends Error {
   constructor(code) {
@@ -368,6 +412,21 @@ function writeCanonicalCreateNew(filename, value, code) {
   return sha256Bytes(readFileSync(filename));
 }
 
+function writeBytesCreateNew(filename, bytes, code) {
+  if (!Buffer.isBuffer(bytes)) fail(code);
+  let descriptor;
+  try {
+    descriptor = openSync(filename, 'wx');
+    writeFileSync(descriptor, bytes);
+    fsyncSync(descriptor);
+  } catch {
+    fail(code);
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
+  return sha256Bytes(readFileSync(filename));
+}
+
 function captureCleanGitHead(repositoryRoot) {
   const runGit = args =>
     spawnSync('git.exe', args, {
@@ -466,17 +525,29 @@ function assertExternalSiblingPaths(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle4'
     ),
-    recoveryJournal: path.join(
+    typesDriftRecoveryJournal: path.join(
       actionBase,
       'pr12-existing-project-recovery-journal-cycle5'
     ),
-    recoveryEvidence: path.join(
+    typesDriftRecoveryEvidence: path.join(
       actionBase,
       'pr12-existing-project-recovery-evidence-cycle5'
     ),
-    replayWorkdir: path.join(
+    typesDriftReplayWorkdir: path.join(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle5'
+    ),
+    recoveryJournal: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-journal-cycle6'
+    ),
+    recoveryEvidence: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-evidence-cycle6'
+    ),
+    replayWorkdir: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-replay-workdir-cycle6'
     ),
   };
 }
@@ -1333,10 +1404,263 @@ function assertPredecessorCatalogGapAbort(
   };
 }
 
+function assertPredecessorTypesDriftAbort(
+  repositoryRoot,
+  paths,
+  predecessorAttempts
+) {
+  const code = 'TYPES_DRIFT_RECOVERY_EVIDENCE_INVALID';
+  const journal = resolveExistingDirectory(
+    paths.typesDriftRecoveryJournal,
+    code
+  );
+  const evidence = resolveExistingDirectory(
+    paths.typesDriftRecoveryEvidence,
+    code
+  );
+  resolveExistingDirectory(paths.typesDriftReplayWorkdir, code);
+  const commandFilenames = Object.keys(TYPES_DRIFT_CMD_FILE_SHA256);
+  assertExactDirectoryEntries(
+    journal,
+    [
+      ...commandFilenames,
+      RUNTIME_CREDENTIAL_CONFIG_FILE,
+      'pr12-existing-project-recovery-credential-consumed.json',
+      TERMINAL_FILE,
+      CLAIM_FILE,
+    ],
+    code
+  );
+  assertExactDirectoryEntries(
+    evidence,
+    [...Object.keys(TYPES_DRIFT_STEP_FILE_SHA256), CA_FILE],
+    code
+  );
+  captureOwnerPrivatePath(repositoryRoot, journal, 'DIRECTORY');
+  captureOwnerPrivatePath(repositoryRoot, evidence, 'DIRECTORY');
+
+  const journalFiles = {
+    runtimeCredential: path.join(journal, RUNTIME_CREDENTIAL_CONFIG_FILE),
+    claim: path.join(journal, CLAIM_FILE),
+    consumed: path.join(
+      journal,
+      'pr12-existing-project-recovery-credential-consumed.json'
+    ),
+    terminal: path.join(journal, TERMINAL_FILE),
+  };
+  const evidenceFiles = Object.fromEntries(
+    Object.keys(TYPES_DRIFT_STEP_FILE_SHA256).map(filename => [
+      filename,
+      path.join(evidence, filename),
+    ])
+  );
+  const allFiles = [
+    ...Object.values(journalFiles),
+    ...Object.values(evidenceFiles),
+    path.join(evidence, CA_FILE),
+    ...commandFilenames.map(filename => path.join(journal, filename)),
+  ];
+  for (const filename of allFiles) {
+    resolveExistingFile(filename, code);
+    captureOwnerPrivatePath(repositoryRoot, filename, 'FILE');
+  }
+
+  const runtimeCredential = readCanonicalJson(
+    journalFiles.runtimeCredential,
+    code
+  );
+  const claim = readCanonicalJson(journalFiles.claim, code);
+  const consumed = readCanonicalJson(journalFiles.consumed, code);
+  const terminal = readCanonicalJson(journalFiles.terminal, code);
+  const steps = Object.fromEntries(
+    Object.entries(evidenceFiles).map(([filename, artifactPath]) => [
+      filename,
+      readCanonicalJson(artifactPath, code),
+    ])
+  );
+  const commandArtifacts = Object.fromEntries(
+    commandFilenames.map(filename => [
+      filename,
+      readCanonicalJson(path.join(journal, filename), code),
+    ])
+  );
+  if (
+    runtimeCredential.sha256 !== TYPES_DRIFT_RUNTIME_CREDENTIAL_FILE_SHA256 ||
+    claim.sha256 !== TYPES_DRIFT_CLAIM_FILE_SHA256 ||
+    consumed.sha256 !== TYPES_DRIFT_CONSUMED_FILE_SHA256 ||
+    terminal.sha256 !== TYPES_DRIFT_TERMINAL_FILE_SHA256 ||
+    sha256Bytes(readFileSync(path.join(evidence, CA_FILE))) !==
+      PINNED_CA_SHA256 ||
+    Object.entries(steps).some(
+      ([filename, snapshot]) =>
+        snapshot.sha256 !== TYPES_DRIFT_STEP_FILE_SHA256[filename]
+    ) ||
+    Object.entries(commandArtifacts).some(
+      ([filename, snapshot]) =>
+        snapshot.sha256 !== TYPES_DRIFT_CMD_FILE_SHA256[filename]
+    )
+  ) {
+    fail(code);
+  }
+  assertCanonicalEmbeddedSha(
+    terminal.value,
+    'terminalSha256',
+    TYPES_DRIFT_TERMINAL_SHA256,
+    code
+  );
+  for (const [filename, snapshot] of Object.entries(steps)) {
+    assertCanonicalEmbeddedSha(
+      snapshot.value,
+      'evidenceSha256',
+      TYPES_DRIFT_EVIDENCE_SHA256[filename],
+      code
+    );
+  }
+  const step01 = steps[STEP01_EVIDENCE_FILE].value;
+  const step02 = steps[STEP02_EVIDENCE_FILE].value;
+  const step03 = steps[STEP03_EVIDENCE_FILE].value;
+  const step04 = steps[STEP04_EVIDENCE_FILE].value;
+  const fixtureIntent = commandArtifacts['pr12-cmd-008-intent.json'].value;
+  const fixtureResult = commandArtifacts['pr12-cmd-008-result.json'].value;
+  const catalogGapAttempt = predecessorAttempts.at(-1);
+  const verifiedRecoveryChain = assertTypesDriftRecoveryCrossReferences({
+    catalogGapAttempt,
+    step02,
+    step03,
+    fixtureIntentFileSha256:
+      TYPES_DRIFT_CMD_FILE_SHA256['pr12-cmd-008-intent.json'],
+    fixtureResultFileSha256:
+      TYPES_DRIFT_CMD_FILE_SHA256['pr12-cmd-008-result.json'],
+    fixtureResult,
+  });
+  if (
+    claim.value.actionId !== RECOVERY_ACTION_ID ||
+    claim.value.state !== 'CLAIMED_CONTINUATION_NOT_STARTED' ||
+    claim.value.derivedExecutionBindingSha256 !==
+      TYPES_DRIFT_EXECUTION_BINDING_SHA256 ||
+    consumed.value.actionId !== RECOVERY_ACTION_ID ||
+    consumed.value.state !== 'CREDENTIAL_CONSUMED_CONTINUATION_STARTED' ||
+    consumed.value.claimSha256 !== claim.sha256 ||
+    terminal.value.gitHead !== TYPES_DRIFT_RECOVERY_HEAD ||
+    terminal.value.status !== 'BLOCK' ||
+    terminal.value.reasonCode !== 'GENERATED_TYPES_DRIFT' ||
+    canonicalJson(terminal.value.completedCanonicalSteps) !==
+      canonicalJson(['01', '02', '03']) ||
+    terminal.value.blockedCanonicalStep !== '04' ||
+    canonicalJson(terminal.value.predecessorAttempts) !==
+      canonicalJson(predecessorAttempts) ||
+    terminal.value.newProjectPostAttemptCount !== 0 ||
+    terminal.value.productionContactCount !== 0 ||
+    step01.status !== 'PASS' ||
+    step01.decision?.result !== 'PASS' ||
+    step01.database?.status !== 'REACHABLE' ||
+    step01.database?.systemIdentifier !== '7666052913346410626' ||
+    step02.status !== 'PASS' ||
+    step02.postApplyRecovery?.migrationApplyDispatchCount !== 1 ||
+    step02.postApplyRecovery?.migrationApplyOutcome !== 'SUCCEEDED' ||
+    step02.postApplyRecovery?.migrationApplyRedispatched !== false ||
+    step03.status !== 'PASS' ||
+    step03.explicitRows !== 83 ||
+    step03.derivedRows !== 12 ||
+    step03.verifiedRows !== 95 ||
+    step04.status !== 'BLOCK' ||
+    step04.reasonCode !== 'GENERATED_TYPES_DRIFT' ||
+    fixtureIntent.commandId !== 'PR12-CMD-008' ||
+    fixtureIntent.targetProjectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    fixtureIntent.targetDirectHost !== PR12_RECOVERY_TARGET.directHost ||
+    fixtureIntent.mutation !== true ||
+    fixtureIntent.dispatchMaximum !== 1 ||
+    fixtureIntent.wrapperRetryCount !== 0 ||
+    fixtureResult.commandId !== 'PR12-CMD-008' ||
+    fixtureResult.intentArtifactSha256 !==
+      TYPES_DRIFT_CMD_FILE_SHA256['pr12-cmd-008-intent.json'] ||
+    fixtureResult.dispatchCount !== 1 ||
+    fixtureResult.wrapperRetryCount !== 0 ||
+    fixtureResult.outcome !== 'SUCCEEDED' ||
+    fixtureResult.timedOut !== false
+  ) {
+    fail(code);
+  }
+
+  const linkWithoutHash = {
+    status: 'POST_FIXTURE_TYPES_DRIFT_VERIFIED',
+    gitHead: TYPES_DRIFT_RECOVERY_HEAD,
+    reasonCode: 'GENERATED_TYPES_DRIFT',
+    completedCanonicalSteps: ['01', '02', '03'],
+    blockedCanonicalStep: '04',
+    step01FileSha256: TYPES_DRIFT_STEP_FILE_SHA256[STEP01_EVIDENCE_FILE],
+    step01EvidenceSha256: TYPES_DRIFT_EVIDENCE_SHA256[STEP01_EVIDENCE_FILE],
+    step02FileSha256: TYPES_DRIFT_STEP_FILE_SHA256[STEP02_EVIDENCE_FILE],
+    step02EvidenceSha256: TYPES_DRIFT_EVIDENCE_SHA256[STEP02_EVIDENCE_FILE],
+    step03FileSha256: TYPES_DRIFT_STEP_FILE_SHA256[STEP03_EVIDENCE_FILE],
+    step03EvidenceSha256: TYPES_DRIFT_EVIDENCE_SHA256[STEP03_EVIDENCE_FILE],
+    step04FileSha256: TYPES_DRIFT_STEP_FILE_SHA256[STEP04_EVIDENCE_FILE],
+    step04EvidenceSha256: TYPES_DRIFT_EVIDENCE_SHA256[STEP04_EVIDENCE_FILE],
+    executionBindingSha256: TYPES_DRIFT_EXECUTION_BINDING_SHA256,
+    migrationApplyDispatchCount: 1,
+    migrationApplyRedispatchAllowed: false,
+    migrationApplyRedispatched: false,
+    representativeFixtureDispatchCount: 1,
+    representativeFixtureRedispatchAllowed: false,
+    representativeFixtureRedispatched: false,
+    verifiedRecoveryChain,
+    newProjectPostAttemptCount: 0,
+    productionContactCount: 0,
+    rawPathsRetained: false,
+    secretValuesCaptured: false,
+  };
+  return {
+    link: {
+      ...linkWithoutHash,
+      linkSha256: sha256Canonical(linkWithoutHash),
+    },
+    sourceDirectory: evidence,
+    step02,
+  };
+}
+
 function createOwnerPrivateDirectory(repositoryRoot, directory) {
   if (existsSync(directory)) fail('RECOVERY_OUTPUT_ALREADY_EXISTS');
   mkdirSync(directory, { recursive: false });
   return hardenPath(repositoryRoot, directory, 'DIRECTORY');
+}
+
+function copyExactCanonicalArtifact({
+  repositoryRoot,
+  source,
+  destination,
+  expectedSha256,
+  code,
+}) {
+  const snapshot = readCanonicalJson(source, code);
+  if (snapshot.sha256 !== expectedSha256) fail(code);
+  const writtenSha256 = writeCanonicalCreateNew(
+    destination,
+    snapshot.value,
+    code
+  );
+  if (writtenSha256 !== expectedSha256) fail(code);
+  hardenPath(repositoryRoot, destination, 'FILE');
+  return snapshot.value;
+}
+
+function copyExactBytesArtifact({
+  repositoryRoot,
+  source,
+  destination,
+  expectedSha256,
+  maximumBytes,
+  code,
+}) {
+  const bytes = readStableBytes(source, maximumBytes, code);
+  try {
+    if (sha256Bytes(bytes) !== expectedSha256) fail(code);
+    const writtenSha256 = writeBytesCreateNew(destination, bytes, code);
+    if (writtenSha256 !== expectedSha256) fail(code);
+    hardenPath(repositoryRoot, destination, 'FILE');
+  } finally {
+    bytes.fill(0);
+  }
 }
 
 function createRuntimeCredentialConfiguration(
@@ -1568,47 +1892,6 @@ async function fetchProviderJson(url, accessToken) {
   } catch (error) {
     if (error instanceof RecoveryExecutionError) throw error;
     fail('PROVIDER_RESPONSE_INVALID');
-  } finally {
-    bytes.fill(0);
-  }
-}
-
-async function captureCaBundle(caPath) {
-  let response;
-  try {
-    response = await fetch(CA_URL, {
-      method: 'GET',
-      headers: { Accept: 'application/x-pem-file,text/plain' },
-      redirect: 'error',
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-  } catch {
-    fail('CA_BUNDLE_CONTACT_FAILED');
-  }
-  const bytes = await readBoundedResponse(response, [
-    'application/',
-    'text/plain',
-  ]);
-  try {
-    if (response.status !== 200) fail(`CA_BUNDLE_HTTP_${response.status}`);
-    const sha256 = sha256Bytes(bytes);
-    if (sha256 !== PINNED_CA_SHA256) fail('CA_BUNDLE_HASH_MISMATCH');
-    const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-    if (
-      !text.startsWith('-----BEGIN CERTIFICATE-----\n') ||
-      !text.trimEnd().endsWith('-----END CERTIFICATE-----') ||
-      text.includes('\0')
-    ) {
-      fail('CA_BUNDLE_INVALID');
-    }
-    writeFileSync(caPath, bytes, { flag: 'wx' });
-    return {
-      source: CA_URL,
-      sha256,
-      bytes: bytes.length,
-      capturedAt: new Date().toISOString(),
-      rawPathRetained: false,
-    };
   } finally {
     bytes.fill(0);
   }
@@ -2423,7 +2706,7 @@ function executePsqlInput({
   return { stdout, observation };
 }
 
-function buildRepresentativeFixtureSql(actorPasswords) {
+function buildRepresentativeActorRuntime(actorPasswords) {
   const payloadIdentity = createRepresentativeFixturePayloadIdentity();
   const payloadFingerprints =
     fingerprintRepresentativeFixturePayloadIdentity(payloadIdentity);
@@ -2437,17 +2720,39 @@ function buildRepresentativeFixtureSql(actorPasswords) {
   const clinics = clinicRows.map(
     clinic => clinicIdByFixtureId[clinic.clinicId]
   );
-  const actorDefinitions = payloadIdentity['auth.users'].map(
-    (actor, index) => ({
+  const actorDefinitions = payloadIdentity['auth.users'].map((actor, index) => {
+    const password = actorPasswords[actor.actorId];
+    if (typeof password !== 'string' || password.length < 32) {
+      fail('REPRESENTATIVE_ACTOR_PASSWORD_INVALID');
+    }
+    return {
       actorId: actor.actorId,
       role: actor.role,
       clinicId:
         actor.clinicId === null ? null : clinicIdByFixtureId[actor.clinicId],
       id: deterministicUuid('20000000-', index + 1),
       email: `pr12+${actor.actorId}@invalid.example`,
-      password: actorPasswords[actor.actorId],
-    })
-  );
+      password,
+    };
+  });
+  return {
+    payloadIdentity,
+    payloadFingerprints,
+    clinicIdByFixtureId,
+    clinics,
+    actorDefinitions,
+  };
+}
+
+function buildRepresentativeFixtureSql(actorPasswords) {
+  const runtime = buildRepresentativeActorRuntime(actorPasswords);
+  const {
+    payloadIdentity,
+    payloadFingerprints,
+    clinicIdByFixtureId,
+    clinics,
+    actorDefinitions,
+  } = runtime;
   const actorById = Object.fromEntries(
     actorDefinitions.map(actor => [actor.actorId, actor])
   );
@@ -2895,9 +3200,196 @@ function executeRepresentativeDataValidation({
   }
 }
 
+function refreshRepresentativeActorCredentials({
+  repositoryRoot,
+  replayWorkdir,
+  psqlPath,
+  caPath,
+  databasePassword,
+  journalDirectory,
+  fixtureEvidence,
+}) {
+  const actorPasswords = Object.fromEntries(
+    [
+      'tenant-a-admin',
+      'tenant-a-clinic-admin',
+      'tenant-a-manager',
+      'tenant-a-therapist',
+      'tenant-a-staff',
+      'tenant-b-staff',
+      'no-clinic-staff',
+    ].map(actorId => [actorId, randomBytes(36).toString('base64url')])
+  );
+  const runtime = buildRepresentativeActorRuntime(actorPasswords);
+  const actorTopologySha256 = runtime.payloadFingerprints.actorTopologySha256;
+  const identityRows = runtime.actorDefinitions.map(
+    actor =>
+      `(${sqlLiteral(actor.id)},${sqlLiteral(actor.email)},${sqlLiteral(actor.role)},${actor.clinicId === null ? 'null' : sqlLiteral(actor.clinicId)})`
+  );
+  const credentialRows = runtime.actorDefinitions.map(
+    actor =>
+      `(${sqlLiteral(actor.id)},${sqlLiteral(actor.email)},${sqlLiteral(actor.password)})`
+  );
+  const sql = `
+\\set ON_ERROR_STOP on
+BEGIN;
+SET LOCAL statement_timeout = '120s';
+DO $pr12_precondition$
+DECLARE matched_users integer;
+DECLARE matched_profiles integer;
+BEGIN
+  SELECT count(*) INTO matched_users
+  FROM auth.users AS users
+  JOIN (VALUES ${identityRows.join(',')}) AS expected(id,email,role,clinic_id)
+    ON users.id=expected.id::uuid AND users.email=expected.email
+  WHERE users.email LIKE 'pr12+%@invalid.example';
+  SELECT count(*) INTO matched_profiles
+  FROM public.profiles AS profiles
+  JOIN (VALUES ${identityRows.join(',')}) AS expected(id,email,role,clinic_id)
+    ON profiles.id=expected.id::uuid
+   AND profiles.user_id=expected.id::uuid
+   AND profiles.email=expected.email
+   AND profiles.role=expected.role
+   AND profiles.clinic_id IS NOT DISTINCT FROM expected.clinic_id::uuid;
+  IF matched_users <> 7
+     OR matched_profiles <> 7
+     OR (SELECT count(*) FROM auth.users WHERE email LIKE 'pr12+%@invalid.example') <> 7
+  THEN RAISE EXCEPTION 'PR12_AUTH_FIXTURE_PRECONDITION_FAILED'; END IF;
+END $pr12_precondition$;
+DO $pr12_update$
+DECLARE updated_users integer;
+BEGIN
+  UPDATE auth.users AS users
+  SET encrypted_password=extensions.crypt(expected.password,extensions.gen_salt('bf')),
+      updated_at=clock_timestamp()
+  FROM (VALUES ${credentialRows.join(',')}) AS expected(id,email,password)
+  WHERE users.id=expected.id::uuid AND users.email=expected.email;
+  GET DIAGNOSTICS updated_users = ROW_COUNT;
+  IF updated_users <> 7
+  THEN RAISE EXCEPTION 'PR12_AUTH_FIXTURE_REBIND_COUNT_MISMATCH'; END IF;
+END $pr12_update$;
+SELECT json_build_object(
+  'actorCount',(SELECT count(*) FROM auth.users WHERE email LIKE 'pr12+%@invalid.example'),
+  'profileCount',(SELECT count(*) FROM public.profiles WHERE email LIKE 'pr12+%@invalid.example')
+)::text;
+COMMIT;
+`;
+  let intentArtifactSha256 = null;
+  let resultArtifactSha256 = null;
+  let durableOutcome = null;
+  try {
+    const intentWithoutHash = {
+      schemaVersion: 1,
+      recordType: 'PR12_ALL_ROLE_SMOKE_AUTH_FIXTURE_REBIND_INTENT',
+      commandId: 'PR12-CMD-013',
+      operation: 'RUNTIME_AUTH_FIXTURE_REBIND',
+      targetProjectRef: PR12_RECOVERY_TARGET.projectRef,
+      targetDirectHost: PR12_RECOVERY_TARGET.directHost,
+      fixtureEvidenceSha256: fixtureEvidence.evidenceSha256,
+      fixturePlanSha256: fixtureEvidence.fixturePlanSha256,
+      actorTopologySha256,
+      actorCount: 7,
+      mutation: true,
+      isolatedSyntheticActorsOnly: true,
+      dispatchMaximum: 1,
+      wrapperRetryCount: 0,
+      credentialTransport: 'STDIN_ONLY',
+      rawSqlRetained: false,
+      actorPasswordValuesPersisted: false,
+      secretValuesCaptured: false,
+      createdAt: new Date().toISOString(),
+    };
+    const intentPath = path.join(
+      journalDirectory,
+      'pr12-cmd-013-auth-rebind-intent.json'
+    );
+    intentArtifactSha256 = writeCanonicalCreateNew(
+      intentPath,
+      {
+        ...intentWithoutHash,
+        intentSha256: sha256Canonical(intentWithoutHash),
+      },
+      'STEP06_AUTH_REBIND_INTENT_CREATE_FAILED'
+    );
+    hardenPath(repositoryRoot, intentPath, 'FILE');
+    const dispatched = executePsqlInput({
+      psqlPath,
+      databaseUrl: directDatabaseUrl(caPath),
+      databasePassword,
+      cwd: replayWorkdir,
+      sql,
+      timeoutMs: 120_000,
+      forbiddenValues: [databasePassword, ...Object.values(actorPasswords)],
+    });
+    durableOutcome = dispatched.observation.outcome;
+    const resultWithoutHash = {
+      ...dispatched.observation,
+      commandId: 'PR12-CMD-013',
+      operation: 'RUNTIME_AUTH_FIXTURE_REBIND',
+      intentArtifactSha256,
+      actorPasswordValuesPersisted: false,
+      secretValuesCaptured: false,
+    };
+    const resultPath = path.join(
+      journalDirectory,
+      'pr12-cmd-013-auth-rebind-result.json'
+    );
+    resultArtifactSha256 = writeCanonicalCreateNew(
+      resultPath,
+      {
+        ...resultWithoutHash,
+        observationSha256: sha256Canonical(resultWithoutHash),
+      },
+      'STEP06_AUTH_REBIND_RESULT_CREATE_FAILED'
+    );
+    hardenPath(repositoryRoot, resultPath, 'FILE');
+    if (durableOutcome !== 'SUCCEEDED') {
+      fail(
+        durableOutcome === 'UNKNOWN_REMOTE_OUTCOME'
+          ? 'UNKNOWN_REMOTE_OUTCOME'
+          : 'STEP06_AUTH_REBIND_FAILED'
+      );
+    }
+    const counts = lastJsonLine(
+      dispatched.stdout,
+      'STEP06_AUTH_REBIND_RESULT_INVALID'
+    );
+    if (counts.actorCount !== 7 || counts.profileCount !== 7) {
+      fail('STEP06_AUTH_REBIND_RESULT_INVALID');
+    }
+    return {
+      evidence: fixtureEvidence,
+      actors: runtime.actorDefinitions.map(actor => ({
+        actorId: actor.actorId,
+        role: actor.role,
+        clinicId: actor.clinicId,
+        id: actor.id,
+        email: actor.email,
+      })),
+      actorPasswords,
+      credentialRebind: {
+        commandId: 'PR12-CMD-013',
+        operation: 'RUNTIME_AUTH_FIXTURE_REBIND',
+        actorCount: 7,
+        actorTopologySha256,
+        intentArtifactSha256,
+        resultArtifactSha256,
+        dispatch: dispatched.observation,
+        actorPasswordValuesPersisted: false,
+      },
+    };
+  } catch (error) {
+    for (const actorId of Object.keys(actorPasswords)) {
+      actorPasswords[actorId] = '';
+    }
+    throw error;
+  }
+}
+
 function executeHostedTypesParity({
   repositoryRoot,
   evidenceDirectory,
+  journalDirectory,
   replayWorkdir,
   supabasePath,
   managementAccessToken,
@@ -2957,12 +3449,115 @@ function executeHostedTypesParity({
   }
   if (child.status !== 0) fail('HOSTED_TYPES_GENERATION_FAILED');
   const generatedTypes = extractGeneratedTypes(stdout);
+  const committedTypes = readFileSync(
+    path.join(repositoryRoot, 'src/types/supabase.ts'),
+    'utf8'
+  );
+  const diagnostic = diagnoseHostedTypesParity({
+    generatedTypes,
+    committedTypes,
+  });
+  const generatedTypesPath = path.join(
+    runtimeRoot,
+    'generated-types-hosted.ts'
+  );
+  const generatedTypesSha256 = writeBytesCreateNew(
+    generatedTypesPath,
+    Buffer.from(generatedTypes, 'utf8'),
+    'HOSTED_TYPES_OUTPUT_CREATE_FAILED'
+  );
+  hardenPath(repositoryRoot, generatedTypesPath, 'FILE');
+  const diagnosticWithoutHash = {
+    schemaVersion: 1,
+    recordType: 'PR12_HOSTED_TYPES_PARITY_DIAGNOSTIC',
+    commandId: 'PR12-CMD-010',
+    projectRef: PR12_RECOVERY_TARGET.projectRef,
+    gitHead,
+    databaseSystemIdentifier: databaseIdentity.systemIdentifier,
+    bindingSha256,
+    diagnostic,
+    generatedTypesArtifact: {
+      artifactSha256: generatedTypesSha256,
+      byteLength: Buffer.byteLength(generatedTypes, 'utf8'),
+      pathFingerprint: windowsPathFingerprint(generatedTypesPath),
+      ownerPrivate: true,
+      repositoryTracked: false,
+      containsSchemaOnlyNoDataRows: true,
+    },
+    committedFileMutated: false,
+    secretValuesCaptured: false,
+  };
+  assertSecretFreeEvidence(diagnosticWithoutHash, [managementAccessToken]);
+  const diagnosticArtifact = {
+    ...diagnosticWithoutHash,
+    diagnosticArtifactSha256: sha256Canonical(diagnosticWithoutHash),
+  };
+  const diagnosticPath = path.join(
+    journalDirectory,
+    'generated-types-diagnostic.json'
+  );
+  const diagnosticFileSha256 = writeCanonicalCreateNew(
+    diagnosticPath,
+    diagnosticArtifact,
+    'HOSTED_TYPES_DIAGNOSTIC_CREATE_FAILED'
+  );
+  hardenPath(repositoryRoot, diagnosticPath, 'FILE');
+  if (!diagnostic.parity) {
+    const blockedWithoutHash = {
+      schemaVersion: 1,
+      recordType: 'PR12_HOSTED_TYPES_PARITY_RESULT',
+      canonicalStep: { step: '04', name: 'types parity' },
+      status: 'BLOCK',
+      reasonCode: 'GENERATED_TYPES_DRIFT',
+      startedAt,
+      completedAt: new Date().toISOString(),
+      projectRef: PR12_RECOVERY_TARGET.projectRef,
+      diagnostic: {
+        artifactSha256: diagnosticArtifact.diagnosticArtifactSha256,
+        fileSha256: diagnosticFileSha256,
+        parity: false,
+        firstDifference: diagnostic.firstDifference,
+        generatedSha256: diagnostic.generatedSha256,
+        committedSha256: diagnostic.committedSha256,
+      },
+      generatedTypesArtifact: {
+        artifactSha256: generatedTypesSha256,
+        byteLength: Buffer.byteLength(generatedTypes, 'utf8'),
+        ownerPrivateExternalTemporaryOutput: true,
+        repositoryTracked: false,
+      },
+      dispatch: {
+        dispatchCount: 1,
+        wrapperRetryCount: 0,
+        exitCode: child.status,
+        stdoutBytes: Buffer.byteLength(stdout, 'utf8'),
+        stdoutSha256: sha256Bytes(Buffer.from(stdout, 'utf8')),
+        stderrBytes: Buffer.byteLength(stderr, 'utf8'),
+        stderrSha256: sha256Bytes(Buffer.from(stderr, 'utf8')),
+        rawOutputRetainedOnlyAsSchemaArtifact: true,
+      },
+      managementCredentialPassedViaChildEnvironmentOnly: true,
+      committedFileMutated: false,
+      productionContactCount: 0,
+      secretValuesCaptured: false,
+    };
+    assertSecretFreeEvidence(blockedWithoutHash, [managementAccessToken]);
+    const blocked = {
+      ...blockedWithoutHash,
+      evidenceSha256: sha256Canonical(blockedWithoutHash),
+    };
+    const filename = path.join(evidenceDirectory, STEP04_EVIDENCE_FILE);
+    writeCanonicalCreateNew(
+      filename,
+      blocked,
+      'STEP04_BLOCK_EVIDENCE_CREATE_FAILED'
+    );
+    hardenPath(repositoryRoot, filename, 'FILE');
+    fail('GENERATED_TYPES_DRIFT');
+  }
   const comparison = compareHostedTypes({
     generatedTypes,
-    committedTypes: readFileSync(
-      path.join(repositoryRoot, 'src/types/supabase.ts'),
-      'utf8'
-    ),
+    committedTypes,
     projectRef: PR12_RECOVERY_TARGET.projectRef,
     bindingSha256,
     gitCommit: gitHead,
@@ -2985,6 +3580,13 @@ function executeHostedTypesParity({
       stderrBytes: Buffer.byteLength(stderr, 'utf8'),
       stderrSha256: sha256Bytes(Buffer.from(stderr, 'utf8')),
       rawOutputRetained: false,
+    },
+    generatedTypesArtifact: {
+      artifactSha256: generatedTypesSha256,
+      diagnosticArtifactSha256: diagnosticArtifact.diagnosticArtifactSha256,
+      diagnosticFileSha256,
+      ownerPrivateExternalTemporaryOutput: true,
+      repositoryTracked: false,
     },
     managementCredentialPassedViaChildEnvironmentOnly: true,
     committedFileMutated: false,
@@ -3252,6 +3854,7 @@ ROLLBACK;`;
       rawResponseRetained: false,
       runtimeValuesPersisted: false,
     },
+    authFixtureCredentialRebind: fixtureResult.credentialRebind,
     databaseRlsCases: {
       caseCount: cases.length,
       passCount: cases.length,
@@ -3387,17 +3990,24 @@ async function main() {
     paths,
     [predecessorAttempt, brokerAbortAttempt, advisorAbortAttempt]
   );
-  const predecessorAttempts = [
+  const priorAttempts = [
     predecessorAttempt,
     brokerAbortAttempt,
     advisorAbortAttempt,
     catalogGapAttempt,
   ];
-  createOwnerPrivateDirectory(repositoryRoot, paths.recoveryJournal);
-  const evidenceAcl = createOwnerPrivateDirectory(
+  const typesDriftSnapshot = assertPredecessorTypesDriftAbort(
     repositoryRoot,
-    paths.recoveryEvidence
+    paths,
+    priorAttempts
   );
+  const typesDriftEvidenceDirectory = typesDriftSnapshot.sourceDirectory;
+  const predecessorStep02 = typesDriftSnapshot.step02;
+  const typesDriftAttempt = typesDriftSnapshot.link;
+  const predecessorAttempts = [...priorAttempts, typesDriftAttempt];
+  createOwnerPrivateDirectory(repositoryRoot, paths.recoveryJournal);
+  createOwnerPrivateDirectory(repositoryRoot, paths.recoveryEvidence);
+  createOwnerPrivateDirectory(repositoryRoot, paths.replayWorkdir);
   recoveryFailureContext = {
     repositoryRoot,
     journalDirectory: paths.recoveryJournal,
@@ -3442,7 +4052,6 @@ async function main() {
   let managementAccessToken = '';
   let databasePassword = '';
   let fixtureResult = null;
-  const startedAt = new Date().toISOString();
   try {
     const credentials = retrieveClaimBoundCredentials({
       mode: 'ISOLATED_PROJECT_CONTINUATION',
@@ -3471,175 +4080,103 @@ async function main() {
       fail('RUNTIME_CREDENTIAL_INVALID');
     }
 
-    const projectUrl = `https://api.supabase.com/v1/projects/${PR12_RECOVERY_TARGET.projectRef}`;
-    recoveryFailureContext.projectStateGetCount = 1;
-    const projectResponse = await fetchProviderJson(
-      projectUrl,
-      managementAccessToken
-    );
-    recoveryFailureContext.providerBodySha256 = projectResponse.bodySha256;
-    const providerProject = projectResponseToRecoverySafeProjection(
-      projectResponse.body
-    );
-
-    let compute = { verification: 'UNVERIFIED', tier: null };
-    let computeObservation = {
-      verification: 'UNVERIFIED',
-      tier: null,
-      reason: 'NOT_OBSERVED',
-    };
-    try {
-      const addonUrl = `${projectUrl}/billing/addons`;
-      recoveryFailureContext.computeAddonGetCount = 1;
-      const addonResponse = await fetchProviderJson(
-        addonUrl,
-        managementAccessToken
-      );
-      const addon = addonResponseToRecoveryComputeProjection(
-        addonResponse.body
-      );
-      compute = { verification: addon.verification, tier: addon.tier };
-      computeObservation = {
-        ...compute,
-        variantId: addon.variantId,
-        bodySha256: addonResponse.bodySha256,
-        httpStatus: addonResponse.httpStatus,
-      };
-    } catch (error) {
-      computeObservation = {
-        ...compute,
-        reason:
-          error instanceof Error && typeof error.message === 'string'
-            ? error.message
-            : 'COMPUTE_OBSERVATION_FAILED',
-      };
-    }
-
     const caPath = path.join(paths.recoveryEvidence, CA_FILE);
-    recoveryFailureContext.publicCaGetCount = 1;
-    const caBundle = await captureCaBundle(caPath);
-    hardenPath(repositoryRoot, caPath, 'FILE');
+    copyExactBytesArtifact({
+      repositoryRoot,
+      source: path.join(typesDriftEvidenceDirectory, CA_FILE),
+      destination: caPath,
+      expectedSha256: PINNED_CA_SHA256,
+      maximumBytes: 16 * 1024,
+      code: 'CA_BUNDLE_HASH_MISMATCH',
+    });
     recoveryFailureContext.directDatabaseConnectionCount = 1;
     const database = captureDatabaseIdentity({
       psqlPath,
       caPath,
       databasePassword,
     });
-    const decision = determineRecoveredStep01Result({
-      providerProject,
-      database,
-      compute,
-    });
-    const completedAt = new Date().toISOString();
-    const evidenceWithoutHash = {
+    if (
+      database.status !== 'REACHABLE' ||
+      database.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+      database.systemIdentifier !== '7666052913346410626' ||
+      database.connectionMode !== 'DIRECT' ||
+      database.tls?.verifiedMode !== 'verify-full'
+    ) {
+      fail('RECOVERY_DATABASE_IDENTITY_MISMATCH');
+    }
+    const identityWithoutHash = {
       schemaVersion: 1,
-      recordType: 'PR12_EXISTING_ISOLATED_PROJECT_RECOVERY_RESULT',
-      canonicalStep: {
-        step: '01',
-        name: 'staging clone/isolated project',
-      },
-      status: 'PASS',
-      ownerDecision: EXECUTION_CONFIRMATION,
-      startedAt,
-      completedAt,
-      credentialBoundary: {
-        provider: 'WINDOWS_DPAPI_CURRENT_USER_V1',
-        retrieval: 'RUNTIME_ONLY_CAPTURED_BINARY_CHILD_ENV_ONLY',
-        brokerProtocolMode: 'ISOLATED_PROJECT_CONTINUATION',
-        oldAction003WrapperInvoked: false,
-        action003Reissued: false,
-        newProjectPostAttemptCount: 0,
-        credentialLeaseExpiresAt,
-        secretValuesCaptured: false,
-      },
-      provider: {
-        httpStatus: projectResponse.httpStatus,
-        bodySha256: projectResponse.bodySha256,
-        projection: providerProject,
-        rawBodyRetained: false,
-      },
-      compute: computeObservation,
-      caBundle: {
-        ...caBundle,
-        aclPolicy: evidenceAcl.policy,
-      },
+      recordType: 'PR12_EXISTING_PROJECT_CYCLE6_DATABASE_IDENTITY',
+      projectRef: PR12_RECOVERY_TARGET.projectRef,
       database,
-      psql: toolchainProjection.tools.psql,
+      predecessorStep01EvidenceSha256:
+        TYPES_DRIFT_EVIDENCE_SHA256[STEP01_EVIDENCE_FILE],
+      predecessorTypesDriftLinkSha256: typesDriftAttempt.linkSha256,
       toolchain: toolchainProjection,
-      historicalAction003: {
-        outcome: historical.outcome,
-        manifestSha256: historical.manifestSha256,
-        bindingMaterialSha256: historical.bindingMaterialSha256,
-        payloadSha256: historical.payloadSha256,
-        createPostAttemptCount: 1,
-        terminalReason: 'PROVIDER_RESPONSE_INVALID',
+      credentialBoundary: {
+        brokerProtocolMode: 'ISOLATED_PROJECT_CONTINUATION',
+        retrieval: 'RUNTIME_ONLY_CAPTURED_BINARY_CHILD_ENV_ONLY',
+        credentialLeaseExpiresAt,
       },
-      predecessorAttempts,
-      decision,
       productionBoundary: {
         productionProjectRef: 'qnanuoqveidwvacvbhqp',
-        directProductionContactCount: 0,
         productionCredentialAccessCount: 0,
         productionDatabaseContactCount: 0,
       },
-      remoteContacts: {
-        projectStateGetCount: 1,
-        computeAddonGetCount: 1,
-        publicCaGetCount: 1,
-        directDatabaseConnectionCount: 1,
-        postCount: 0,
-        retryCount: 0,
-      },
-      externalSideEffects: {
-        enabled: false,
-        mutationCount: 0,
-      },
-      rawPathsRetained: false,
       rawOutputsRetained: false,
       secretValuesCaptured: false,
     };
-    const evidence = {
-      ...evidenceWithoutHash,
-      evidenceSha256: sha256Canonical(evidenceWithoutHash),
-    };
-    assertSecretFreeEvidence(evidence, [
+    assertSecretFreeEvidence(identityWithoutHash, [
       managementAccessToken,
       databasePassword,
     ]);
-    const evidencePath = path.join(
-      paths.recoveryEvidence,
-      STEP01_EVIDENCE_FILE
+    const identity = {
+      ...identityWithoutHash,
+      identityEvidenceSha256: sha256Canonical(identityWithoutHash),
+    };
+    const identityPath = path.join(
+      paths.recoveryJournal,
+      'pr12-cycle6-database-identity.json'
     );
     writeCanonicalCreateNew(
-      evidencePath,
-      evidence,
-      'STEP01_EVIDENCE_CREATE_FAILED'
+      identityPath,
+      identity,
+      'CYCLE6_DATABASE_IDENTITY_CREATE_FAILED'
     );
-    hardenPath(repositoryRoot, evidencePath, 'FILE');
+    hardenPath(repositoryRoot, identityPath, 'FILE');
+    const evidence = copyExactCanonicalArtifact({
+      repositoryRoot,
+      source: path.join(typesDriftEvidenceDirectory, STEP01_EVIDENCE_FILE),
+      destination: path.join(paths.recoveryEvidence, STEP01_EVIDENCE_FILE),
+      expectedSha256: TYPES_DRIFT_STEP_FILE_SHA256[STEP01_EVIDENCE_FILE],
+      code: 'STEP01_PREDECESSOR_COPY_INVALID',
+    });
+    const replay = copyExactCanonicalArtifact({
+      repositoryRoot,
+      source: path.join(typesDriftEvidenceDirectory, STEP02_EVIDENCE_FILE),
+      destination: path.join(paths.recoveryEvidence, STEP02_EVIDENCE_FILE),
+      expectedSha256: TYPES_DRIFT_STEP_FILE_SHA256[STEP02_EVIDENCE_FILE],
+      code: 'STEP02_PREDECESSOR_COPY_INVALID',
+    });
+    const fixtureEvidence = copyExactCanonicalArtifact({
+      repositoryRoot,
+      source: path.join(typesDriftEvidenceDirectory, STEP03_EVIDENCE_FILE),
+      destination: path.join(paths.recoveryEvidence, STEP03_EVIDENCE_FILE),
+      expectedSha256: TYPES_DRIFT_STEP_FILE_SHA256[STEP03_EVIDENCE_FILE],
+      code: 'STEP03_PREDECESSOR_COPY_INVALID',
+    });
     process.stdout.write(
       `${canonicalJson({
         step: '01',
         canonicalStep: 'staging clone/isolated project',
         result: 'PASS',
-        projectRef: decision.projectRef,
-        computeTier: decision.computeTier,
-        performanceQualificationDeferred:
-          decision.productionEquivalentPerformanceQualificationDeferred,
+        projectRef: PR12_RECOVERY_TARGET.projectRef,
+        computeTier: evidence.decision.computeTier,
+        performanceQualificationDeferred: true,
+        predecessorEvidenceLinked: true,
         nextStep: '02',
       })}\n`
     );
-    const replay = resumeFullMigrationReplayAfterCatalogGap({
-      repositoryRoot,
-      replayWorkdir: paths.replayWorkdir,
-      evidenceDirectory: paths.recoveryEvidence,
-      databasePassword,
-      databaseIdentity: database,
-      caPath,
-      supabasePath,
-      psqlPath,
-      journalDirectory: paths.recoveryJournal,
-      catalogGapAttempt,
-    });
     process.stdout.write(
       `${canonicalJson({
         step: '02',
@@ -3647,33 +4184,25 @@ async function main() {
         result: 'PASS',
         nextStep: '03',
         evidenceSha256: replay.evidenceSha256,
+        migrationApplyRedispatched: false,
         productionContactCount: 0,
         postCount: 0,
       })}\n`
     );
-    fixtureResult = executeRepresentativeDataValidation({
-      repositoryRoot,
-      evidenceDirectory: paths.recoveryEvidence,
-      replayWorkdir: paths.replayWorkdir,
-      psqlPath,
-      caPath,
-      databasePassword,
-      journalDirectory: paths.recoveryJournal,
-      databaseIdentity: database,
-      schemaHash: replay.catalogSnapshot.snapshotSha256,
-    });
     process.stdout.write(
       `${canonicalJson({
         step: '03',
         canonicalStep: 'anonymized/representative data validation',
         result: 'PASS',
         nextStep: '04',
-        evidenceSha256: fixtureResult.evidence.evidenceSha256,
+        evidenceSha256: fixtureEvidence.evidenceSha256,
+        representativeFixtureRedispatched: false,
       })}\n`
     );
     const types = executeHostedTypesParity({
       repositoryRoot,
       evidenceDirectory: paths.recoveryEvidence,
+      journalDirectory: paths.recoveryJournal,
       replayWorkdir: paths.replayWorkdir,
       supabasePath,
       managementAccessToken,
@@ -3699,8 +4228,8 @@ async function main() {
       caPath,
       databasePassword,
       databaseIdentity: database,
-      bindingSha256: replay.advisorBefore.bindingSha256,
-      advisorBefore: replay.advisorBefore,
+      bindingSha256: predecessorStep02.advisorBefore.bindingSha256,
+      advisorBefore: predecessorStep02.advisorBefore,
       journalDirectory: paths.recoveryJournal,
     });
     process.stdout.write(
@@ -3712,6 +4241,15 @@ async function main() {
         evidenceSha256: advisor.evidenceSha256,
       })}\n`
     );
+    fixtureResult = refreshRepresentativeActorCredentials({
+      repositoryRoot,
+      replayWorkdir: paths.replayWorkdir,
+      psqlPath,
+      caPath,
+      databasePassword,
+      journalDirectory: paths.recoveryJournal,
+      fixtureEvidence,
+    });
     const smoke = await executeAllRoleSmoke({
       repositoryRoot,
       evidenceDirectory: paths.recoveryEvidence,
