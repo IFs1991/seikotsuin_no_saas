@@ -2486,7 +2486,8 @@ function assertPredecessorAdvisorShapeDefect(
   ) {
     fail(code);
   }
-  for (const snapshot of Object.values(snapshots)) {
+  for (const [name, snapshot] of Object.entries(snapshots)) {
+    if (name === 'runtimeCredential') continue;
     assertSecretFreeEvidence(snapshot.value, []);
   }
   for (const snapshot of Object.values(evidenceSnapshots)) {

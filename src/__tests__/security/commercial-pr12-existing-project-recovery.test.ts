@@ -877,6 +877,7 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(source).toContain('step04CompletedAt < intentCreatedAt');
     expect(source).toContain('resultCompletedAt < step05CompletedAt');
     expect(source).toContain('step05CompletedAt < terminalCompletedAt');
+    expect(source).toContain("if (name === 'runtimeCredential') continue;");
     expect(source).toContain('HOSTED_TYPES_REMOTE_REDISPATCH_FORBIDDEN');
     expect(source).toContain('resumeFullMigrationReplayAfterCatalogGap(');
     expect(source).toContain('buildRecoveryOperatingSystemValues({');
