@@ -1203,7 +1203,7 @@ async function installWebSocketBoundary(
   });
 }
 
-async function installBrowserRequestBoundary(
+export async function installBrowserRequestBoundary(
   context,
   { baseUrl, projectRef, serverApiKey, state }
 ) {

@@ -664,6 +664,105 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(result.stdout).toBe(code);
   });
 
+  test.each([
+    ['redirect location', 302, { location: '/admin/login' }],
+    ['missing location', 200, {}],
+  ])(
+    'reads %s through the Playwright APIResponse headers() contract',
+    (_caseName, status, headers) => {
+      const result = evaluateAllRole(`
+        let handler = null;
+        let fulfilled = false;
+        let aborted = false;
+        let headersCallCount = 0;
+        const requestUrl = 'http://127.0.0.1:43210/admin/login';
+        const response = {
+          status() { return ${JSON.stringify(status)}; },
+          headers() {
+            headersCallCount += 1;
+            return ${JSON.stringify(headers)};
+          },
+          body() { return Promise.resolve(Buffer.from('ok', 'utf8')); },
+          url() { return requestUrl; }
+        };
+        if ('allHeaders' in response || 'headerValue' in response) {
+          throw new Error('APIRESPONSE_DOUBLE_EXPOSES_BROWSER_RESPONSE_METHOD');
+        }
+        const context = {
+          async route(pattern, callback) {
+            if (pattern !== '**/*') throw new Error('ROUTE_PATTERN_INVALID');
+            handler = callback;
+          }
+        };
+        const state = {
+          scannedValueCount: 0,
+          scannedByteCount: 0,
+          fingerprints: [],
+          failureCode: null,
+          failureDiagnostic: null,
+          browserConsoleErrors: []
+        };
+        await subject.installBrowserRequestBoundary(context, {
+          baseUrl: 'http://127.0.0.1:43210',
+          projectRef: ${JSON.stringify(PROJECT_REF)},
+          serverApiKey: 'server-runtime-api-key-for-red-green-test',
+          state
+        });
+        if (typeof handler !== 'function') {
+          throw new Error('ROUTE_HANDLER_NOT_REGISTERED');
+        }
+        await handler({
+          request() {
+            return {
+              method() { return 'GET'; },
+              url() { return requestUrl; },
+              headers() { return { accept: 'text/html' }; },
+              postData() { return null; }
+            };
+          },
+          fetch() { return Promise.resolve(response); },
+          fulfill() {
+            fulfilled = true;
+            return Promise.resolve();
+          },
+          abort() {
+            aborted = true;
+            return Promise.resolve();
+          }
+        });
+        process.stdout.write(JSON.stringify({
+          fulfilled,
+          aborted,
+          headersCallCount,
+          failureCode: state.failureCode,
+          errorClass: state.failureDiagnostic?.errorClass ?? null
+        }));
+      `);
+
+      expect(result.status).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual({
+        fulfilled: true,
+        aborted: false,
+        headersCallCount: 1,
+        failureCode: null,
+        errorClass: null,
+      });
+
+      const runtimeSource = fs.readFileSync(
+        path.join(repoRoot, ...ALL_ROLE_MODULE.split('/')),
+        'utf8'
+      );
+      expect(runtimeSource).toContain(
+        'const responseHeaders = response.headers();'
+      );
+      expect(runtimeSource).toContain(
+        'const redirectLocation = responseHeaders.location ?? null;'
+      );
+      expect(runtimeSource).not.toContain('response.allHeaders()');
+      expect(runtimeSource).not.toContain('response.headerValue(');
+    }
+  );
+
   test('projects browser diagnostic evidence without URL or header secrets', () => {
     const secret = 'runtime-sensitive-value-must-not-retain';
     const result = evaluateAllRole(`
