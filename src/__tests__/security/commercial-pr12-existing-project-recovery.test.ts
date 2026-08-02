@@ -1236,9 +1236,6 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(source).toContain(
       "identityFilename: 'pr12-cycle14-database-identity.json'"
     );
-    expect(source).toContain(
-      "recordType: 'PR12_EXISTING_PROJECT_CYCLE15_DATABASE_IDENTITY'"
-    );
     expect(source).toContain("'pr12-cycle15-database-identity.json'");
     expect(source).toContain(
       "const STEP06_BROWSER_TOOLCHAIN_FAILURE_RECOVERY_HEAD =\n  '3b13eef8dd55d9e5535d04966cf14af5498466d1';"
@@ -1267,11 +1264,11 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(activeMain).not.toContain('executeHostedTypesParity({');
     expect(activeMain).not.toContain('executeRepresentativeDataValidation({');
     expect(activeMain).not.toContain('executeAdvisorAfterScan({');
-    expect(activeMain).toContain(
-      'STEP06_BROWSER_TOOLCHAIN_FAILURE_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE]'
+    expect(activeMain).toMatch(
+      /STEP06_BROWSER_TOOLCHAIN_FAILURE_EVIDENCE_FILE_SHA256\[\s*STEP05_EVIDENCE_FILE\s*\]/u
     );
-    expect(activeMain).toContain(
-      'path.join(step06BrowserToolchainFailureEvidenceDirectory, CA_FILE)'
+    expect(activeMain).toMatch(
+      /path\.join\(\s*step06BrowserToolchainFailureEvidenceDirectory,\s*CA_FILE\s*\)/u
     );
     expect(activeMain).toContain(
       'predecessorStep06ApiResponseFailureLinkSha256:'

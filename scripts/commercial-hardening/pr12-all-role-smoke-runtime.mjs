@@ -841,7 +841,49 @@ const BROWSER_ROOT_FILES = Object.freeze([
   'tsconfig.json',
 ]);
 
+export function assertPr12BrowserRuntimeToolchain({
+  nodeExecutable = process.execPath,
+  nodeVersion = process.versions.node,
+} = {}) {
+  if (
+    typeof nodeExecutable !== 'string' ||
+    !path.win32.isAbsolute(nodeExecutable) ||
+    typeof nodeVersion !== 'string' ||
+    !/^24\.[0-9]+\.[0-9]+$/u.test(nodeVersion) ||
+    !existsSync(nodeExecutable)
+  ) {
+    fail('BROWSER_NODE_RUNTIME_INVALID');
+  }
+  const nodeSnapshot = lstatSync(nodeExecutable);
+  if (!nodeSnapshot.isFile() || nodeSnapshot.isSymbolicLink()) {
+    fail('BROWSER_NODE_RUNTIME_INVALID');
+  }
+  const npmCli = path.win32.join(
+    path.win32.dirname(nodeExecutable),
+    'node_modules',
+    'npm',
+    'bin',
+    'npm-cli.js'
+  );
+  if (!existsSync(npmCli)) fail('BROWSER_NPM_CLI_MISSING');
+  const npmCliSnapshot = lstatSync(npmCli);
+  if (!npmCliSnapshot.isFile() || npmCliSnapshot.isSymbolicLink()) {
+    fail('BROWSER_NPM_CLI_INVALID');
+  }
+  return {
+    npmCli,
+    evidence: {
+      nodeVersion,
+      nodeExecutableSha256: sha256Bytes(readFileSync(nodeExecutable)),
+      npmCliSha256: sha256Bytes(readFileSync(npmCli)),
+      rawPathsRetained: false,
+      status: 'READY',
+    },
+  };
+}
+
 export function preparePr12BrowserRuntime({ repositoryRoot, runtimeRoot }) {
+  const browserToolchain = assertPr12BrowserRuntimeToolchain();
   if (existsSync(runtimeRoot)) fail('BROWSER_RUNTIME_ALREADY_EXISTS');
   mkdirSync(runtimeRoot, { recursive: false });
   for (const directory of ['src', 'public']) {
@@ -914,14 +956,7 @@ export function preparePr12BrowserRuntime({ repositoryRoot, runtimeRoot }) {
   ) {
     fail('BROWSER_PACKAGE_LOCK_DEPENDENCY_BOUNDARY_INVALID');
   }
-  const npmCli = path.join(
-    path.dirname(process.execPath),
-    'node_modules',
-    'npm',
-    'bin',
-    'npm-cli.js'
-  );
-  if (!statSync(npmCli).isFile()) fail('BROWSER_NPM_CLI_MISSING');
+  const npmCli = browserToolchain.npmCli;
   const localAppData = process.env.LOCALAPPDATA;
   if (
     typeof localAppData !== 'string' ||
@@ -992,6 +1027,7 @@ export function preparePr12BrowserRuntime({ repositoryRoot, runtimeRoot }) {
       dependencyLifecycleScriptsEnabled: false,
       lockedPackageCount: lockedPackages.length,
       npmExitCode: install.status,
+      browserToolchain: browserToolchain.evidence,
       nextExecutableSha256: sha256Bytes(readFileSync(nextExecutable)),
       packageLockSha256: sha256Bytes(
         readFileSync(path.join(runtimeRoot, 'package-lock.json'))

@@ -70,6 +70,7 @@ import {
   parseAdvisorCliJsonOutput,
 } from './pr12-advisor-diff.mjs';
 import {
+  assertPr12BrowserRuntimeToolchain,
   executePr12AllRoleSmokeRuntime,
   preparePr12BrowserRuntime,
   Pr12AllRoleSmokeRuntimeError,
@@ -707,6 +708,60 @@ const STEP06_API_RESPONSE_FAILURE_AUTH_INTENT_SHA256 =
   'ed76f547a8bec34c8e2eb4149239cc45699d6d0f34cc525be4d0e8c4b773be43';
 const STEP06_API_RESPONSE_FAILURE_AUTH_OBSERVATION_SHA256 =
   '4af2ca5d8351edb24578a2c12ff8c4dd7ffcb12eee0c9dca58ba8f4f9db5643c';
+const STEP06_BROWSER_TOOLCHAIN_FAILURE_RECOVERY_HEAD =
+  '3b13eef8dd55d9e5535d04966cf14af5498466d1';
+const STEP06_BROWSER_TOOLCHAIN_FAILURE_JOURNAL_FILE_SHA256 = Object.freeze({
+  'pr12-cmd-013-auth-rebind-intent.json':
+    '959fca842c25de1d3368453811fc76ed6b6d28176858985ddc2ebf502594265a',
+  'pr12-cmd-013-auth-rebind-result.json':
+    '70146b05cb27e9ab048b8e1751625b544b6669a97dfe56f1159792cc77ada7fe',
+  'pr12-cycle15-database-identity.json':
+    '1f1e86c4b388048166f497d5c7633d0550432a8e4487ea86149e007c5c3e8516',
+  [RUNTIME_CREDENTIAL_CONFIG_FILE]:
+    'bb811504736409c7e177ba858bcd1c0773b57b8324bda1c0314b680da2f55069',
+  'pr12-existing-project-recovery-credential-consumed.json':
+    '7d92a70f2e17c55b6a70a07041d286ea20122706e33ac8e70b13764ec5a248e3',
+  [TERMINAL_FILE]:
+    '0ca8e74e5355996b46cc97741d4eb0fc3a4c7d4ae335b57c6f5a93e476649854',
+  [CLAIM_FILE]:
+    'cfd29e997c1ffe8aa031bab413aa58bc9af57955908f1125e13cb881b02bf0db',
+});
+const STEP06_BROWSER_TOOLCHAIN_FAILURE_EVIDENCE_FILE_SHA256 = Object.freeze({
+  [STEP01_EVIDENCE_FILE]:
+    '308fd78552c69327e90e2cd602e5d3656578b7097d92936717b8e41bab29a9f2',
+  [STEP02_EVIDENCE_FILE]:
+    'ea12d1201fa1d607e9bed634b641db6242cd060df86cce2b7366b8044ce9b8b7',
+  [STEP03_EVIDENCE_FILE]:
+    'd7d4e5fca50f5cef329d13cf2bfe21727470d5b5f5c08479f6442921d0e00af1',
+  [STEP04_EVIDENCE_FILE]:
+    '5da18834414b6ff6a3e5107294aa6157545a39b8d7c73ecfad8f3eba549f635d',
+  [STEP05_EVIDENCE_FILE]:
+    '307b10b3b0d2f6704d041dce46d55714931a6ccc783eb493da50f3c404a65737',
+  [STEP06_EVIDENCE_FILE]:
+    'e0e3a1c18c61f603aae9429f1ff6f7929cdf85c328531b16676890bc8b2c5f05',
+});
+const STEP06_BROWSER_TOOLCHAIN_FAILURE_EVIDENCE_SHA256 = Object.freeze({
+  [STEP01_EVIDENCE_FILE]:
+    '1c1e989ab92d4835c2cedffeaa859abac53383801de8afd014a1ceebd4ddbb5d',
+  [STEP02_EVIDENCE_FILE]:
+    'ed46277e4924bf51c4c2a41f4d7276e1e4b7d653e03824d9018e451b32a7ef49',
+  [STEP03_EVIDENCE_FILE]:
+    '688d5a2e4a603db9614c9eb8c59cab78980ce01f563158d74df98d86fb460506',
+  [STEP04_EVIDENCE_FILE]:
+    '1ea039b794ef0dd0b2648367b85412d5fc3aeee262e823998082416b2b3e8c81',
+  [STEP05_EVIDENCE_FILE]:
+    '4a31b5584260dc95f3eb28bff1ae4a8fa786eb2f2ef644d502c4b3d4d687d553',
+  [STEP06_EVIDENCE_FILE]:
+    '30f3308e44b55c03be44eb6a6415e03d49ed72c2f1050d74b092020c60cbe387',
+});
+const STEP06_BROWSER_TOOLCHAIN_FAILURE_TERMINAL_SHA256 =
+  '3d5b3a122294df57a032addc9f03cd166b02c25011f6ec6d12bbf511c31cdbb6';
+const STEP06_BROWSER_TOOLCHAIN_FAILURE_IDENTITY_SHA256 =
+  '840df28c49fc3586224e87548fdf8621d6315309d9f81fb35819336fa1fadd5c';
+const STEP06_BROWSER_TOOLCHAIN_FAILURE_AUTH_INTENT_SHA256 =
+  'caf252d1f33b80d950d26783e8b8dab94e6a9d758e61989834b191eb543b9448';
+const STEP06_BROWSER_TOOLCHAIN_FAILURE_AUTH_OBSERVATION_SHA256 =
+  'b62d6f65749de1a7b6c3bba0486f5f3c41de2373b1b37906883a1204921da4ed';
 const ADVISOR_SHAPE_DEFECT_EVIDENCE_SHA256 = Object.freeze({
   [STEP01_EVIDENCE_FILE]:
     '1c1e989ab92d4835c2cedffeaa859abac53383801de8afd014a1ceebd4ddbb5d',
@@ -1158,17 +1213,29 @@ function assertExternalSiblingPaths(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle14'
     ),
-    recoveryJournal: path.join(
+    step06BrowserToolchainFailureRecoveryJournal: path.join(
       actionBase,
       'pr12-existing-project-recovery-journal-cycle15'
     ),
-    recoveryEvidence: path.join(
+    step06BrowserToolchainFailureRecoveryEvidence: path.join(
       actionBase,
       'pr12-existing-project-recovery-evidence-cycle15'
     ),
-    replayWorkdir: path.join(
+    step06BrowserToolchainFailureReplayWorkdir: path.join(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle15'
+    ),
+    recoveryJournal: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-journal-cycle16'
+    ),
+    recoveryEvidence: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-evidence-cycle16'
+    ),
+    replayWorkdir: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-replay-workdir-cycle16'
     ),
   };
 }
@@ -3310,6 +3377,7 @@ function assertPredecessorStep06Failure(
   spec
 ) {
   const code = spec.code;
+  const runtimeApiKeysGetCount = spec.runtimeApiKeysGetCount ?? 1;
   const journal = resolveExistingDirectory(spec.journal, code);
   const evidence = resolveExistingDirectory(spec.evidence, code);
   const workdir = resolveExistingDirectory(spec.workdir, code);
@@ -3443,7 +3511,7 @@ function assertPredecessorStep06Failure(
     step05.status !== 'PASS' ||
     step06.status !== 'BLOCK' ||
     step06.reasonCode !== spec.reasonCode ||
-    step06.runtimeApiKeysGetCount !== 1 ||
+    step06.runtimeApiKeysGetCount !== runtimeApiKeysGetCount ||
     step06.productionContactCount !== 0 ||
     step06.secretValuesCaptured !== false ||
     step06.rawOutputsRetained !== false ||
@@ -3619,6 +3687,32 @@ function assertPredecessorStep06ApiResponseFailure(
     authIntentSha256: STEP06_API_RESPONSE_FAILURE_AUTH_INTENT_SHA256,
     authObservationSha256: STEP06_API_RESPONSE_FAILURE_AUTH_OBSERVATION_SHA256,
     linkStatus: 'STEP06_API_RESPONSE_FAILURE_VERIFIED',
+  });
+}
+
+function assertPredecessorStep06BrowserToolchainFailure(
+  repositoryRoot,
+  paths,
+  predecessorAttempts
+) {
+  return assertPredecessorStep06Failure(repositoryRoot, predecessorAttempts, {
+    code: 'STEP06_BROWSER_TOOLCHAIN_FAILURE_PREDECESSOR_INVALID',
+    journal: paths.step06BrowserToolchainFailureRecoveryJournal,
+    evidence: paths.step06BrowserToolchainFailureRecoveryEvidence,
+    workdir: paths.step06BrowserToolchainFailureReplayWorkdir,
+    journalFileSha256: STEP06_BROWSER_TOOLCHAIN_FAILURE_JOURNAL_FILE_SHA256,
+    evidenceFileSha256: STEP06_BROWSER_TOOLCHAIN_FAILURE_EVIDENCE_FILE_SHA256,
+    evidenceSha256: STEP06_BROWSER_TOOLCHAIN_FAILURE_EVIDENCE_SHA256,
+    identityFilename: 'pr12-cycle15-database-identity.json',
+    expectedHead: STEP06_BROWSER_TOOLCHAIN_FAILURE_RECOVERY_HEAD,
+    reasonCode: 'UNEXPECTED_RECOVERY_FAILURE',
+    runtimeApiKeysGetCount: 0,
+    terminalSha256: STEP06_BROWSER_TOOLCHAIN_FAILURE_TERMINAL_SHA256,
+    identitySha256: STEP06_BROWSER_TOOLCHAIN_FAILURE_IDENTITY_SHA256,
+    authIntentSha256: STEP06_BROWSER_TOOLCHAIN_FAILURE_AUTH_INTENT_SHA256,
+    authObservationSha256:
+      STEP06_BROWSER_TOOLCHAIN_FAILURE_AUTH_OBSERVATION_SHA256,
+    linkStatus: 'STEP06_BROWSER_TOOLCHAIN_FAILURE_VERIFIED',
   });
 }
 
@@ -6084,6 +6178,7 @@ async function main() {
   const args = parseArguments(process.argv.slice(2));
   if (process.platform !== 'win32') fail('WINDOWS_REQUIRED');
   assertNoAmbientCredentials();
+  assertPr12BrowserRuntimeToolchain();
   const repositoryRoot = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
     '../..'
@@ -6254,11 +6349,23 @@ async function main() {
       preStep06ApiResponseFailureAttempts
     );
   const step06ApiResponseFailureAttempt = step06ApiResponseFailureSnapshot.link;
-  const step06ApiResponseFailureEvidenceDirectory =
-    step06ApiResponseFailureSnapshot.sourceDirectory;
-  const predecessorAttempts = [
+  const preStep06BrowserToolchainFailureAttempts = [
     ...preStep06ApiResponseFailureAttempts,
     step06ApiResponseFailureAttempt,
+  ];
+  const step06BrowserToolchainFailureSnapshot =
+    assertPredecessorStep06BrowserToolchainFailure(
+      repositoryRoot,
+      paths,
+      preStep06BrowserToolchainFailureAttempts
+    );
+  const step06BrowserToolchainFailureAttempt =
+    step06BrowserToolchainFailureSnapshot.link;
+  const step06BrowserToolchainFailureEvidenceDirectory =
+    step06BrowserToolchainFailureSnapshot.sourceDirectory;
+  const predecessorAttempts = [
+    ...preStep06BrowserToolchainFailureAttempts,
+    step06BrowserToolchainFailureAttempt,
   ];
   createOwnerPrivateDirectory(repositoryRoot, paths.recoveryJournal);
   createOwnerPrivateDirectory(repositoryRoot, paths.recoveryEvidence);
@@ -6338,7 +6445,10 @@ async function main() {
     const caPath = path.join(paths.recoveryEvidence, CA_FILE);
     copyExactBytesArtifact({
       repositoryRoot,
-      source: path.join(step06ApiResponseFailureEvidenceDirectory, CA_FILE),
+      source: path.join(
+        step06BrowserToolchainFailureEvidenceDirectory,
+        CA_FILE
+      ),
       destination: caPath,
       expectedSha256: PINNED_CA_SHA256,
       maximumBytes: 16 * 1024,
@@ -6361,7 +6471,7 @@ async function main() {
     }
     const identityWithoutHash = {
       schemaVersion: 1,
-      recordType: 'PR12_EXISTING_PROJECT_CYCLE15_DATABASE_IDENTITY',
+      recordType: 'PR12_EXISTING_PROJECT_CYCLE16_DATABASE_IDENTITY',
       projectRef: PR12_RECOVERY_TARGET.projectRef,
       database,
       predecessorStep01EvidenceSha256:
@@ -6372,6 +6482,8 @@ async function main() {
         step06BrowserContactAttempt.linkSha256,
       predecessorStep06ApiResponseFailureLinkSha256:
         step06ApiResponseFailureAttempt.linkSha256,
+      predecessorStep06BrowserToolchainFailureLinkSha256:
+        step06BrowserToolchainFailureAttempt.linkSha256,
       toolchain: toolchainProjection,
       credentialBoundary: {
         brokerProtocolMode: 'ISOLATED_PROJECT_CONTINUATION',
@@ -6396,45 +6508,51 @@ async function main() {
     };
     const identityPath = path.join(
       paths.recoveryJournal,
-      'pr12-cycle15-database-identity.json'
+      'pr12-cycle16-database-identity.json'
     );
     writeCanonicalCreateNew(
       identityPath,
       identity,
-      'CYCLE15_DATABASE_IDENTITY_CREATE_FAILED'
+      'CYCLE16_DATABASE_IDENTITY_CREATE_FAILED'
     );
     hardenPath(repositoryRoot, identityPath, 'FILE');
     const evidence = copyExactCanonicalArtifact({
       repositoryRoot,
       source: path.join(
-        step06ApiResponseFailureEvidenceDirectory,
+        step06BrowserToolchainFailureEvidenceDirectory,
         STEP01_EVIDENCE_FILE
       ),
       destination: path.join(paths.recoveryEvidence, STEP01_EVIDENCE_FILE),
       expectedSha256:
-        STEP06_API_RESPONSE_FAILURE_EVIDENCE_FILE_SHA256[STEP01_EVIDENCE_FILE],
+        STEP06_BROWSER_TOOLCHAIN_FAILURE_EVIDENCE_FILE_SHA256[
+          STEP01_EVIDENCE_FILE
+        ],
       code: 'STEP01_PREDECESSOR_COPY_INVALID',
     });
     const replay = copyExactCanonicalArtifact({
       repositoryRoot,
       source: path.join(
-        step06ApiResponseFailureEvidenceDirectory,
+        step06BrowserToolchainFailureEvidenceDirectory,
         STEP02_EVIDENCE_FILE
       ),
       destination: path.join(paths.recoveryEvidence, STEP02_EVIDENCE_FILE),
       expectedSha256:
-        STEP06_API_RESPONSE_FAILURE_EVIDENCE_FILE_SHA256[STEP02_EVIDENCE_FILE],
+        STEP06_BROWSER_TOOLCHAIN_FAILURE_EVIDENCE_FILE_SHA256[
+          STEP02_EVIDENCE_FILE
+        ],
       code: 'STEP02_PREDECESSOR_COPY_INVALID',
     });
     const fixtureEvidence = copyExactCanonicalArtifact({
       repositoryRoot,
       source: path.join(
-        step06ApiResponseFailureEvidenceDirectory,
+        step06BrowserToolchainFailureEvidenceDirectory,
         STEP03_EVIDENCE_FILE
       ),
       destination: path.join(paths.recoveryEvidence, STEP03_EVIDENCE_FILE),
       expectedSha256:
-        STEP06_API_RESPONSE_FAILURE_EVIDENCE_FILE_SHA256[STEP03_EVIDENCE_FILE],
+        STEP06_BROWSER_TOOLCHAIN_FAILURE_EVIDENCE_FILE_SHA256[
+          STEP03_EVIDENCE_FILE
+        ],
       code: 'STEP03_PREDECESSOR_COPY_INVALID',
     });
     process.stdout.write(
@@ -6474,12 +6592,14 @@ async function main() {
     const types = copyExactCanonicalArtifact({
       repositoryRoot,
       source: path.join(
-        step06ApiResponseFailureEvidenceDirectory,
+        step06BrowserToolchainFailureEvidenceDirectory,
         STEP04_EVIDENCE_FILE
       ),
       destination: path.join(paths.recoveryEvidence, STEP04_EVIDENCE_FILE),
       expectedSha256:
-        STEP06_API_RESPONSE_FAILURE_EVIDENCE_FILE_SHA256[STEP04_EVIDENCE_FILE],
+        STEP06_BROWSER_TOOLCHAIN_FAILURE_EVIDENCE_FILE_SHA256[
+          STEP04_EVIDENCE_FILE
+        ],
       code: 'STEP04_PREDECESSOR_COPY_INVALID',
     });
     process.stdout.write(
@@ -6496,12 +6616,14 @@ async function main() {
     const advisor = copyExactCanonicalArtifact({
       repositoryRoot,
       source: path.join(
-        step06ApiResponseFailureEvidenceDirectory,
+        step06BrowserToolchainFailureEvidenceDirectory,
         STEP05_EVIDENCE_FILE
       ),
       destination: path.join(paths.recoveryEvidence, STEP05_EVIDENCE_FILE),
       expectedSha256:
-        STEP06_API_RESPONSE_FAILURE_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE],
+        STEP06_BROWSER_TOOLCHAIN_FAILURE_EVIDENCE_FILE_SHA256[
+          STEP05_EVIDENCE_FILE
+        ],
       code: 'STEP05_PREDECESSOR_COPY_INVALID',
     });
     process.stdout.write(
