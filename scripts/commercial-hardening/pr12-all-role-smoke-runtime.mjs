@@ -1203,6 +1203,12 @@ async function installWebSocketBoundary(
   });
 }
 
+function readApiResponseHeaders(response) {
+  const responseHeaders = response.headers();
+  const redirectLocation = responseHeaders.location ?? null;
+  return { responseHeaders, redirectLocation };
+}
+
 export async function installBrowserRequestBoundary(
   context,
   { baseUrl, projectRef, serverApiKey, state }
@@ -1245,9 +1251,9 @@ export async function installBrowserRequestBoundary(
       let responseHeaders;
       let redirectLocation = null;
       try {
-        responseHeaders = await response.allHeaders();
+        ({ responseHeaders, redirectLocation } =
+          readApiResponseHeaders(response));
         if (BROWSER_REDIRECT_STATUSES.has(response.status())) {
-          redirectLocation = await response.headerValue('location');
           diagnosticInput.redirectChain = [
             { status: response.status(), location: redirectLocation },
           ];
