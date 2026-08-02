@@ -842,6 +842,7 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(source).toContain('generated-types-hosted.ts');
     expect(source).toContain('formatGeneratedTypesWithPinnedPrettier({');
     expect(source).toContain('assertPredecessorTypesNormalizationDefect(');
+    expect(source).toContain('assertPredecessorAdvisorShapeDefect(');
     expect(source).toContain(
       "status: 'GENERATED_TYPES_NORMALIZATION_RECHECK_PENDING'"
     );
@@ -852,7 +853,30 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(source).toContain(
       "'pr12-existing-project-recovery-evidence-cycle7'"
     );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-replay-workdir-cycle7'"
+    );
+    expect(source).toContain("'pr12-existing-project-recovery-journal-cycle8'");
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-evidence-cycle8'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-replay-workdir-cycle8'"
+    );
     expect(source).toContain('hostedTypesRemoteRedispatched: false');
+    expect(source).toContain('advisorScanReadOnlyRedispatchMaximum: 1');
+    expect(source).toContain(
+      "status: 'POST_TYPES_ADVISOR_SHAPE_TOOLING_DEFECT_VERIFIED'"
+    );
+    expect(source).toContain('pr12-cmd-016-shape-diagnostic.json');
+    expect(source).toContain('const protectedCycle7Candidates = [');
+    expect(source).toContain('const inheritedCycle7Candidates = [');
+    expect(source).toContain('verifyPinnedPrettierRuntime({');
+    expect(source).toContain('ADVISOR_SHAPE_DEFECT_CHRONOLOGY_INVALID');
+    expect(source).toContain('claimClaimedAt < consumedAt');
+    expect(source).toContain('step04CompletedAt < intentCreatedAt');
+    expect(source).toContain('resultCompletedAt < step05CompletedAt');
+    expect(source).toContain('step05CompletedAt < terminalCompletedAt');
     expect(source).toContain('HOSTED_TYPES_REMOTE_REDISPATCH_FORBIDDEN');
     expect(source).toContain('resumeFullMigrationReplayAfterCatalogGap(');
     expect(source).toContain('buildRecoveryOperatingSystemValues({');
@@ -860,6 +884,10 @@ console.log(JSON.stringify({ accepted, failures }));
       'bindingSha256: predecessorStep02.advisorBefore.bindingSha256'
     );
     expect(source).toContain('predecessorAttempts');
+    const activeMain = source.slice(source.indexOf('async function main()'));
+    expect(activeMain).not.toContain('executeHostedTypesParity({');
+    expect(activeMain).not.toContain('executeRepresentativeDataValidation({');
+    expect(activeMain).toContain('localNormalizationRedispatched: false');
     expect(source).not.toContain('rmSync');
     expect(source).not.toContain('unlinkSync');
 

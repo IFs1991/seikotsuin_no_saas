@@ -182,6 +182,57 @@ function assertPinnedPackageTree(observation, code) {
   }
 }
 
+export function verifyPinnedPrettierRuntime(input) {
+  const request = requireExactKeys(
+    input,
+    ['prettierRoot', 'prettierConfigPath'],
+    'PINNED_PRETTIER_RUNTIME_INVALID'
+  );
+  const prettierRoot = requireString(
+    request.prettierRoot,
+    'PINNED_PRETTIER_RUNTIME_INVALID'
+  );
+  if (
+    !path.isAbsolute(prettierRoot) ||
+    !existsSync(prettierRoot) ||
+    lstatSync(prettierRoot).isSymbolicLink() ||
+    !statSync(prettierRoot).isDirectory()
+  ) {
+    fail('PINNED_PRETTIER_RUNTIME_INVALID');
+  }
+  const prettierConfigPath = resolveRegularFile(
+    requireString(
+      request.prettierConfigPath,
+      'PINNED_PRETTIER_RUNTIME_INVALID'
+    ),
+    'PINNED_PRETTIER_RUNTIME_INVALID'
+  );
+  const tree = collectPackageTreeManifest(
+    prettierRoot,
+    'PINNED_PRETTIER_RUNTIME_INVALID'
+  );
+  assertPinnedPackageTree(tree, 'PINNED_PRETTIER_RUNTIME_INVALID');
+  const configBytes = readStableFile(
+    prettierConfigPath,
+    'PINNED_PRETTIER_RUNTIME_INVALID'
+  );
+  try {
+    const configSha256 = sha256(configBytes);
+    if (configSha256 !== PINNED_PRETTIER_CONFIG_SHA256) {
+      fail('PINNED_PRETTIER_RUNTIME_INVALID');
+    }
+    return {
+      status: 'PINNED_PRETTIER_RUNTIME_VERIFIED',
+      treeSha256: tree.treeSha256,
+      fileCount: tree.fileCount,
+      totalBytes: tree.totalBytes,
+      configSha256,
+    };
+  } finally {
+    configBytes.fill(0);
+  }
+}
+
 function copyPackageTreeCreateNew(sourceRoot, destinationRoot, code) {
   if (existsSync(destinationRoot)) fail(code);
   mkdirSync(destinationRoot, { recursive: false });

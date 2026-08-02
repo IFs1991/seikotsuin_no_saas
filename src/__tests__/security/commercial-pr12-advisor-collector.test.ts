@@ -138,7 +138,7 @@ const baseFinding = {
   detail: 'public.example',
   remediation: 'Enable RLS',
   metadata: { schema: 'public', table: 'example' },
-  cache_key: 'public.example'
+  cacheKey: 'public.example'
 };
 const before = subject.normalizeAdvisorSnapshot({
   ...common,
@@ -159,7 +159,7 @@ const after = subject.normalizeAdvisorSnapshot({
       level: 'INFO',
       categories: ['PERFORMANCE'],
       detail: 'public.example_idx',
-      cache_key: 'public.example_idx'
+      cacheKey: 'public.example_idx'
     }
   ]
 });
@@ -186,6 +186,128 @@ console.log(JSON.stringify({ before, diff }));
     expect(output.diff.unchanged).toHaveLength(1);
   });
 
+  it('accepts the pinned CLI 2.109.0 machine finding shape with optional metadata', () => {
+    const result = runPr12Module(
+      advisorModule,
+      `
+const common = {
+  schemaVersion: 1,
+  bindingSha256: '${'b'.repeat(64)}',
+  projectRef: 'abcdefghijklmnopqrst',
+  databaseSystemIdentifier: 'source-system-001',
+  category: 'all',
+  capturedAt: '2026-08-02T00:00:00.000Z',
+  commandId: 'PR12-CMD-016'
+};
+const accepted = subject.normalizeAdvisorSnapshot({
+  ...common,
+  findings: [{
+    name: 'unindexed_foreign_keys',
+    title: 'Unindexed foreign keys',
+    level: 'INFO',
+    facing: 'EXTERNAL',
+    categories: ['PERFORMANCE'],
+    description: '',
+    detail: 'public.example',
+    remediation: '',
+    cacheKey: 'unindexed_foreign_keys_public_example'
+  }]
+});
+const rejected = {};
+for (const [name, finding] of Object.entries({
+  legacySnakeCase: {
+    name: 'x', title: 'x', level: 'INFO', facing: 'EXTERNAL',
+    categories: ['PERFORMANCE'], description: '', detail: '', remediation: '',
+    cache_key: 'x'
+  },
+  unknownKey: {
+    name: 'x', title: 'x', level: 'INFO', facing: 'EXTERNAL',
+    categories: ['PERFORMANCE'], description: '', detail: '', remediation: '',
+    cacheKey: 'x', surprise: true
+  }
+})) {
+  try {
+    subject.normalizeAdvisorSnapshot({ ...common, findings: [finding] });
+  } catch (error) {
+    rejected[name] = error.message;
+  }
+}
+console.log(JSON.stringify({ accepted, rejected }));
+`
+    );
+
+    expect(result.status).toBe(0);
+    const output = JSON.parse(result.stdout) as {
+      accepted: {
+        findings: ReadonlyArray<{
+          cacheKey: string;
+          metadata: unknown;
+          description: string;
+          remediation: string;
+        }>;
+      };
+      rejected: Record<string, string>;
+    };
+    expect(output.accepted.findings).toHaveLength(1);
+    expect(output.accepted.findings[0]).toMatchObject({
+      cacheKey: 'unindexed_foreign_keys_public_example',
+      metadata: null,
+      description: '',
+      remediation: '',
+    });
+    expect(output.rejected).toEqual({
+      legacySnakeCase: 'ADVISOR_FINDING_SHAPE_INVALID',
+      unknownKey: 'ADVISOR_FINDING_SHAPE_INVALID',
+    });
+  });
+
+  it('records only secret-free Advisor finding shape diagnostics', () => {
+    const result = runPr12Module(
+      advisorModule,
+      `
+const diagnostic = subject.buildAdvisorFindingShapeDiagnostic([
+  {
+    name: 'first-secret-value',
+    title: '',
+    level: 'INFO',
+    facing: 'EXTERNAL',
+    categories: ['PERFORMANCE'],
+    description: 'second-secret-value',
+    detail: 'third-secret-value',
+    remediation: '',
+    cacheKey: 'fourth-secret-value'
+  },
+  { surprise: 'fifth-secret-value' }
+]);
+console.log(JSON.stringify(diagnostic));
+`
+    );
+
+    expect(result.status).toBe(0);
+    const output = JSON.parse(result.stdout) as {
+      findingCount: number;
+      distinctShapeCount: number;
+      shapes: ReadonlyArray<{
+        fields: ReadonlyArray<{ field: string; type: string; empty?: boolean }>;
+      }>;
+      diagnosticSha256: string;
+      rawFindingValuesRetained: boolean;
+    };
+    expect(output).toMatchObject({
+      findingCount: 2,
+      distinctShapeCount: 2,
+      rawFindingValuesRetained: false,
+    });
+    expect(output.diagnosticSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.stdout).not.toContain('secret-value');
+    expect(result.stdout).not.toContain('surprise');
+    expect(
+      output.shapes
+        .flatMap(shape => shape.fields)
+        .some(field => field.field.startsWith('UNKNOWN_KEY_SHA256:'))
+    ).toBe(true);
+  });
+
   it('rejects new errors, duplicate keys, unknown shapes, and binding mismatch', () => {
     const result = runPr12Module(
       advisorModule,
@@ -209,7 +331,7 @@ const errorFinding = {
   detail: 'public.example',
   remediation: 'Use security_invoker',
   metadata: { schema: 'public', view: 'example' },
-  cache_key: 'public.example'
+  cacheKey: 'public.example'
 };
 const before = subject.normalizeAdvisorSnapshot({
   ...base,

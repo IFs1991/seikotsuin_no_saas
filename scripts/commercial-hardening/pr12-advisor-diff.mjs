@@ -4,7 +4,7 @@ import path from 'node:path';
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const PROJECT_REF_PATTERN = /^[a-z]{20}$/;
 const PRODUCTION_PROJECT_REF = 'qnanuoqveidwvacvbhqp';
-const FINDING_KEYS = Object.freeze([
+const FINDING_REQUIRED_KEYS = Object.freeze([
   'name',
   'title',
   'level',
@@ -13,8 +13,7 @@ const FINDING_KEYS = Object.freeze([
   'description',
   'detail',
   'remediation',
-  'metadata',
-  'cache_key',
+  'cacheKey',
 ]);
 const SNAPSHOT_KEYS = Object.freeze([
   'schemaVersion',
@@ -74,6 +73,25 @@ function requireExactKeys(value, keys, code) {
     fail(code);
   }
   return record;
+}
+
+function requireFindingRecord(valueInput) {
+  const value = requireRecord(valueInput, 'ADVISOR_FINDING_SHAPE_INVALID');
+  const actual = Object.keys(value).sort();
+  const withoutMetadata = [...FINDING_REQUIRED_KEYS].sort();
+  const withMetadata = [...FINDING_REQUIRED_KEYS, 'metadata'].sort();
+  const matches = expected =>
+    actual.length === expected.length &&
+    actual.every((key, index) => key === expected[index]);
+  if (!matches(withoutMetadata) && !matches(withMetadata)) {
+    fail('ADVISOR_FINDING_SHAPE_INVALID');
+  }
+  return value;
+}
+
+function requireFindingString(value, code = 'ADVISOR_FINDING_SHAPE_INVALID') {
+  if (typeof value !== 'string') fail(code);
+  return value;
 }
 
 function canonicalize(value) {
@@ -242,11 +260,7 @@ export function parseAdvisorCliJsonOutput(outputInput) {
 }
 
 function normalizeFinding(valueInput) {
-  const value = requireExactKeys(
-    valueInput,
-    FINDING_KEYS,
-    'ADVISOR_FINDING_SHAPE_INVALID'
-  );
+  const value = requireFindingRecord(valueInput);
   const level = requireString(
     value.level,
     'ADVISOR_FINDING_SHAPE_INVALID'
@@ -271,26 +285,22 @@ function normalizeFinding(valueInput) {
   }
   const normalized = {
     name: requireString(value.name, 'ADVISOR_FINDING_SHAPE_INVALID'),
-    title: requireString(value.title, 'ADVISOR_FINDING_SHAPE_INVALID'),
+    title: requireFindingString(value.title),
     level,
     facing: requireString(
       value.facing,
       'ADVISOR_FINDING_SHAPE_INVALID'
     ).toUpperCase(),
     categories,
-    description: requireString(
-      value.description,
-      'ADVISOR_FINDING_SHAPE_INVALID'
-    ),
-    detail: requireString(value.detail, 'ADVISOR_FINDING_SHAPE_INVALID'),
-    remediation: requireString(
-      value.remediation,
-      'ADVISOR_FINDING_SHAPE_INVALID'
-    ),
-    metadata: canonicalize(
-      requireRecord(value.metadata, 'ADVISOR_FINDING_SHAPE_INVALID')
-    ),
-    cacheKey: requireString(value.cache_key, 'ADVISOR_FINDING_SHAPE_INVALID'),
+    description: requireFindingString(value.description),
+    detail: requireFindingString(value.detail),
+    remediation: requireFindingString(value.remediation),
+    metadata: Object.hasOwn(value, 'metadata')
+      ? canonicalize(
+          requireRecord(value.metadata, 'ADVISOR_FINDING_SHAPE_INVALID')
+        )
+      : null,
+    cacheKey: requireString(value.cacheKey, 'ADVISOR_FINDING_SHAPE_INVALID'),
   };
   if (!['EXTERNAL', 'INTERNAL'].includes(normalized.facing)) {
     fail('ADVISOR_FINDING_SHAPE_INVALID');
@@ -299,6 +309,91 @@ function normalizeFinding(valueInput) {
   return {
     ...normalized,
     stableKey: sha256Canonical(normalized),
+  };
+}
+
+function diagnosticFieldName(key) {
+  return [...FINDING_REQUIRED_KEYS, 'metadata'].includes(key)
+    ? key
+    : `UNKNOWN_KEY_SHA256:${createHash('sha256').update(key, 'utf8').digest('hex')}`;
+}
+
+function diagnosticValueShape(key, value) {
+  if (value === null) return { field: diagnosticFieldName(key), type: 'null' };
+  if (Array.isArray(value)) {
+    return {
+      field: diagnosticFieldName(key),
+      type: 'array',
+      elementCount: value.length,
+      elementTypes: [
+        ...new Set(
+          value.map(element =>
+            element === null
+              ? 'null'
+              : Array.isArray(element)
+                ? 'array'
+                : typeof element
+          )
+        ),
+      ].sort((left, right) => left.localeCompare(right, 'en')),
+      emptyStringElementCount: value.filter(element => element === '').length,
+    };
+  }
+  if (isRecord(value)) {
+    return {
+      field: diagnosticFieldName(key),
+      type: 'object',
+      memberCount: Object.keys(value).length,
+    };
+  }
+  return {
+    field: diagnosticFieldName(key),
+    type: typeof value,
+    ...(typeof value === 'string' ? { empty: value.length === 0 } : {}),
+  };
+}
+
+export function buildAdvisorFindingShapeDiagnostic(findingsInput) {
+  if (!Array.isArray(findingsInput)) fail('ADVISOR_OUTPUT_INVALID');
+  const grouped = new Map();
+  for (const finding of findingsInput) {
+    const shape = isRecord(finding)
+      ? Object.keys(finding)
+          .sort((left, right) => left.localeCompare(right, 'en'))
+          .map(key => diagnosticValueShape(key, finding[key]))
+      : [
+          {
+            field: 'NON_OBJECT_FINDING',
+            type:
+              finding === null
+                ? 'null'
+                : Array.isArray(finding)
+                  ? 'array'
+                  : typeof finding,
+          },
+        ];
+    const shapeSha256 = sha256Canonical(shape);
+    const current = grouped.get(shapeSha256);
+    grouped.set(shapeSha256, {
+      shapeSha256,
+      count: (current?.count ?? 0) + 1,
+      fields: shape,
+    });
+  }
+  const withoutHash = {
+    schemaVersion: 1,
+    recordType: 'PR12_ADVISOR_FINDING_SHAPE_DIAGNOSTIC',
+    findingCount: findingsInput.length,
+    distinctShapeCount: grouped.size,
+    shapes: [...grouped.values()].sort((left, right) =>
+      left.shapeSha256.localeCompare(right.shapeSha256, 'en')
+    ),
+    rawFindingValuesRetained: false,
+  };
+  assertSecretFree(withoutHash);
+  return {
+    ...withoutHash,
+    diagnosticSha256: sha256Canonical(withoutHash),
   };
 }
 
@@ -388,8 +483,8 @@ function validateNormalizedAdvisorSnapshot(input) {
       description: finding.description,
       detail: finding.detail,
       remediation: finding.remediation,
-      metadata: finding.metadata,
-      cache_key: finding.cacheKey,
+      ...(finding.metadata === null ? {} : { metadata: finding.metadata }),
+      cacheKey: finding.cacheKey,
     });
     if (JSON.stringify(finding) !== JSON.stringify(recomputed)) {
       fail('ADVISOR_SNAPSHOT_INTEGRITY_MISMATCH');

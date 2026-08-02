@@ -3132,7 +3132,7 @@ function verifyProposalContracts() {
     'scripts/commercial-hardening/pr12-windows-owner-private-acl.ps1'
   );
   for (const requiredAclBoundary of [
-    "ValidateSet('PROTECT_AND_CAPTURE', 'CAPTURE')",
+    "ValidateSet('PROTECT_AND_CAPTURE', 'CAPTURE', 'CAPTURE_EFFECTIVE')",
     "ValidateSet('FILE', 'DIRECTORY')",
     'FileAttributes]::ReparsePoint',
     'SetAccessRuleProtection($true, $false)',

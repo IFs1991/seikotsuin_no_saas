@@ -61,8 +61,10 @@ import {
 import {
   compareHostedTypes,
   formatGeneratedTypesWithPinnedPrettier,
+  verifyPinnedPrettierRuntime,
 } from './pr12-hosted-types-parity.mjs';
 import {
+  buildAdvisorFindingShapeDiagnostic,
   diffAdvisorSnapshots,
   normalizeAdvisorSnapshot,
   parseAdvisorCliJsonOutput,
@@ -301,6 +303,66 @@ const NORMALIZATION_DEFECT_EVIDENCE_SHA256 = Object.freeze({
   [STEP04_EVIDENCE_FILE]:
     '4221454f1beb88420cc6e7cb9af41e96d46b7c3ddd4c758b325fbdfa206dbd99',
 });
+const ADVISOR_SHAPE_DEFECT_RECOVERY_HEAD =
+  '4052572bb67c9b937fc4d9ae3f53ee37510f27d2';
+const ADVISOR_SHAPE_DEFECT_RUNTIME_CREDENTIAL_FILE_SHA256 =
+  'bb811504736409c7e177ba858bcd1c0773b57b8324bda1c0314b680da2f55069';
+const ADVISOR_SHAPE_DEFECT_CLAIM_FILE_SHA256 =
+  'f22d699feeab5985ccb601ec5f24cbf1c630e75cea39d4b9c20f5c4442cdce1a';
+const ADVISOR_SHAPE_DEFECT_CONSUMED_FILE_SHA256 =
+  '4b8c09611edc0648962435148c47a3453b462ccfc6f791d032844276c0228ed5';
+const ADVISOR_SHAPE_DEFECT_TERMINAL_FILE_SHA256 =
+  '56e85aac08507f5fe599b1c4ea117d3beb3d522955cd57d47013d70d4db0cd6b';
+const ADVISOR_SHAPE_DEFECT_TERMINAL_SHA256 =
+  'dd52083cc0cbd026d2bcb0d431d9e36eb2422a781af30dbf57f076c4b96ebebe';
+const ADVISOR_SHAPE_DEFECT_DATABASE_IDENTITY_FILE_SHA256 =
+  '8037b8f770f1fd567eb9b61bd321781c772410ce7e8034598eaa9cd17a3b0251';
+const ADVISOR_SHAPE_DEFECT_DATABASE_IDENTITY_SHA256 =
+  'e98be433b1feb0412ea39139e2ad4ece3396566963d2bb8f72348f7ff6b2a7db';
+const ADVISOR_SHAPE_DEFECT_NORMALIZATION_FILE_SHA256 =
+  '4cc0048ec7e852e0212804cd53618968c18890c7e8b3cd743f88ad09683fd993';
+const ADVISOR_SHAPE_DEFECT_NORMALIZATION_SHA256 =
+  '95d8fabbebfaaaae721339b128bed7b07591d0f1da99d91082fa76a024fd8665';
+const ADVISOR_SHAPE_DEFECT_CMD016_INTENT_FILE_SHA256 =
+  '59fe2a98ad0793dedec7e1dd621a918797d8dd13a473d502ccc1d22fee48c192';
+const ADVISOR_SHAPE_DEFECT_CMD016_INTENT_SHA256 =
+  '473c38b9618f4d7f93e37b956b84af4b3bf1d359d2d23936c5e2f91ea8635e34';
+const ADVISOR_SHAPE_DEFECT_CMD016_RESULT_FILE_SHA256 =
+  '43e4f181e60572681e7d52bcb8a2dc7df3226ed14fde619c75cf6cf1ec4d128b';
+const ADVISOR_SHAPE_DEFECT_CMD016_OBSERVATION_SHA256 =
+  'c19914cdd019ade86bbb5df07b2e71f98b19c3d732cf79af25e405059f92ef08';
+const ADVISOR_SHAPE_DEFECT_EXECUTION_BINDING_SHA256 =
+  '87021e582b53e4462652adf2cfec719eb7771ba4ac28a885ec048510a71c5f9e';
+const ADVISOR_SHAPE_DEFECT_BINDING_MATERIAL_SHA256 =
+  '0bf99a505e26f66174078b353c2be3fb223ab04a14f73a4920eb7ff8b210eda7';
+const ADVISOR_SHAPE_DEFECT_PAYLOAD_SHA256 =
+  'f5e5183e62253946d84cf8719a2d21bbab6df72300354b989b62cdffa2f48771';
+const ADVISOR_SHAPE_DEFECT_TELEMETRY_FILE_SHA256 =
+  'd2b32d6ee5488fe6891c4f344f7cd56c8e332f7e80e0e4f57b6f4387c17969f9';
+const ADVISOR_SHAPE_DEFECT_STEP_FILE_SHA256 = Object.freeze({
+  [STEP01_EVIDENCE_FILE]:
+    '308fd78552c69327e90e2cd602e5d3656578b7097d92936717b8e41bab29a9f2',
+  [STEP02_EVIDENCE_FILE]:
+    'ea12d1201fa1d607e9bed634b641db6242cd060df86cce2b7366b8044ce9b8b7',
+  [STEP03_EVIDENCE_FILE]:
+    'd7d4e5fca50f5cef329d13cf2bfe21727470d5b5f5c08479f6442921d0e00af1',
+  [STEP04_EVIDENCE_FILE]:
+    '5da18834414b6ff6a3e5107294aa6157545a39b8d7c73ecfad8f3eba549f635d',
+  [STEP05_EVIDENCE_FILE]:
+    '2a3de8734a804c3330456377877874a2f245c3cd86ce6708e04e091e02395c02',
+});
+const ADVISOR_SHAPE_DEFECT_EVIDENCE_SHA256 = Object.freeze({
+  [STEP01_EVIDENCE_FILE]:
+    '1c1e989ab92d4835c2cedffeaa859abac53383801de8afd014a1ceebd4ddbb5d',
+  [STEP02_EVIDENCE_FILE]:
+    'ed46277e4924bf51c4c2a41f4d7276e1e4b7d653e03824d9018e451b32a7ef49',
+  [STEP03_EVIDENCE_FILE]:
+    '688d5a2e4a603db9614c9eb8c59cab78980ce01f563158d74df98d86fb460506',
+  [STEP04_EVIDENCE_FILE]:
+    '1ea039b794ef0dd0b2648367b85412d5fc3aeee262e823998082416b2b3e8c81',
+  [STEP05_EVIDENCE_FILE]:
+    'a9ae78ebf0ba6d6874571f478ae8f597a5885f4c596390778d66abe0682a7f8a',
+});
 
 class RecoveryExecutionError extends Error {
   constructor(code) {
@@ -347,6 +409,18 @@ function canonicalJson(value) {
 
 function sha256Bytes(value) {
   return createHash('sha256').update(value).digest('hex');
+}
+
+function parseCanonicalUtcTimestamp(value, code) {
+  if (typeof value !== 'string' || !value.endsWith('Z')) fail(code);
+  const milliseconds = Date.parse(value);
+  if (
+    !Number.isFinite(milliseconds) ||
+    new Date(milliseconds).toISOString() !== value
+  ) {
+    fail(code);
+  }
+  return milliseconds;
 }
 
 function parseArguments(argv) {
@@ -632,17 +706,29 @@ function assertExternalSiblingPaths(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle6'
     ),
-    recoveryJournal: path.join(
+    advisorShapeDefectRecoveryJournal: path.join(
       actionBase,
       'pr12-existing-project-recovery-journal-cycle7'
     ),
-    recoveryEvidence: path.join(
+    advisorShapeDefectRecoveryEvidence: path.join(
       actionBase,
       'pr12-existing-project-recovery-evidence-cycle7'
     ),
-    replayWorkdir: path.join(
+    advisorShapeDefectReplayWorkdir: path.join(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle7'
+    ),
+    recoveryJournal: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-journal-cycle8'
+    ),
+    recoveryEvidence: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-evidence-cycle8'
+    ),
+    replayWorkdir: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-replay-workdir-cycle8'
     ),
   };
 }
@@ -2036,6 +2122,446 @@ function assertPredecessorTypesNormalizationDefect(
     },
     sourceDirectory: evidence,
     generatedTypesPath: files.generatedTypes,
+    step02,
+  };
+}
+
+function assertPredecessorAdvisorShapeDefect(
+  repositoryRoot,
+  paths,
+  predecessorAttempts
+) {
+  const code = 'ADVISOR_SHAPE_DEFECT_EVIDENCE_INVALID';
+  const journal = resolveExistingDirectory(
+    paths.advisorShapeDefectRecoveryJournal,
+    code
+  );
+  const evidence = resolveExistingDirectory(
+    paths.advisorShapeDefectRecoveryEvidence,
+    code
+  );
+  const workdir = resolveExistingDirectory(
+    paths.advisorShapeDefectReplayWorkdir,
+    code
+  );
+  const runtime = resolveExistingDirectory(
+    path.join(workdir, '.pr12-runtime'),
+    code
+  );
+  const supabaseHome = resolveExistingDirectory(
+    path.join(runtime, 'supabase-home'),
+    code
+  );
+  const typesRuntime = resolveExistingDirectory(
+    path.join(workdir, '.pr12-types-runtime'),
+    code
+  );
+  const formatterRuntime = resolveExistingDirectory(
+    path.join(typesRuntime, 'formatter-runtime'),
+    code
+  );
+  const prettierRoot = resolveExistingDirectory(
+    path.join(formatterRuntime, 'prettier'),
+    code
+  );
+  const telemetryPath = resolveExistingFile(
+    path.join(supabaseHome, 'telemetry.json'),
+    code
+  );
+  const generatedTypesPath = resolveExistingFile(
+    path.join(typesRuntime, 'generated-types-hosted.ts'),
+    code
+  );
+  const formatterConfigPath = resolveExistingFile(
+    path.join(formatterRuntime, '.prettierrc'),
+    code
+  );
+  assertExactDirectoryEntries(
+    journal,
+    [
+      'generated-types-normalization-recovery.json',
+      'pr12-cmd-016-intent.json',
+      'pr12-cmd-016-result.json',
+      'pr12-cycle7-database-identity.json',
+      RUNTIME_CREDENTIAL_CONFIG_FILE,
+      'pr12-existing-project-recovery-credential-consumed.json',
+      TERMINAL_FILE,
+      CLAIM_FILE,
+    ],
+    code
+  );
+  assertExactDirectoryEntries(
+    evidence,
+    [...Object.keys(ADVISOR_SHAPE_DEFECT_STEP_FILE_SHA256), CA_FILE],
+    code
+  );
+  assertExactDirectoryEntries(
+    workdir,
+    ['.pr12-runtime', '.pr12-types-runtime'],
+    code
+  );
+  assertExactDirectoryEntries(runtime, ['supabase-home'], code);
+  assertExactDirectoryEntries(supabaseHome, ['telemetry.json'], code);
+  assertExactDirectoryEntries(
+    typesRuntime,
+    ['formatter-runtime', 'generated-types-hosted.ts'],
+    code
+  );
+  assertExactDirectoryEntries(
+    formatterRuntime,
+    ['.prettierrc', 'prettier'],
+    code
+  );
+  for (const directory of [journal, evidence, workdir]) {
+    captureOwnerPrivatePath(repositoryRoot, directory, 'DIRECTORY');
+  }
+  const protectedCycle7Candidates = [
+    typesRuntime,
+    formatterRuntime,
+    generatedTypesPath,
+  ];
+  const inheritedCycle7Candidates = [
+    runtime,
+    supabaseHome,
+    prettierRoot,
+    telemetryPath,
+    formatterConfigPath,
+  ];
+  for (const candidate of [
+    ...protectedCycle7Candidates,
+    ...inheritedCycle7Candidates,
+  ]) {
+    assertNoReparsePathIdentity(workdir, candidate, code);
+  }
+  for (const candidate of protectedCycle7Candidates) {
+    captureOwnerPrivatePath(
+      repositoryRoot,
+      candidate,
+      statSync(candidate).isDirectory() ? 'DIRECTORY' : 'FILE'
+    );
+  }
+  for (const candidate of inheritedCycle7Candidates) {
+    captureInheritedOwnerPrivatePath(
+      repositoryRoot,
+      candidate,
+      statSync(candidate).isDirectory() ? 'DIRECTORY' : 'FILE'
+    );
+  }
+  const pinnedPrettierRuntime = verifyPinnedPrettierRuntime({
+    prettierRoot,
+    prettierConfigPath: formatterConfigPath,
+  });
+
+  const files = {
+    runtimeCredential: path.join(journal, RUNTIME_CREDENTIAL_CONFIG_FILE),
+    claim: path.join(journal, CLAIM_FILE),
+    consumed: path.join(
+      journal,
+      'pr12-existing-project-recovery-credential-consumed.json'
+    ),
+    terminal: path.join(journal, TERMINAL_FILE),
+    identity: path.join(journal, 'pr12-cycle7-database-identity.json'),
+    normalization: path.join(
+      journal,
+      'generated-types-normalization-recovery.json'
+    ),
+    cmd016Intent: path.join(journal, 'pr12-cmd-016-intent.json'),
+    cmd016Result: path.join(journal, 'pr12-cmd-016-result.json'),
+  };
+  const evidenceFiles = Object.fromEntries(
+    Object.keys(ADVISOR_SHAPE_DEFECT_STEP_FILE_SHA256).map(filename => [
+      filename,
+      path.join(evidence, filename),
+    ])
+  );
+  const actionBase = path.dirname(journal);
+  for (const candidate of [
+    ...Object.values(files),
+    ...Object.values(evidenceFiles),
+    path.join(evidence, CA_FILE),
+  ]) {
+    assertNoReparsePathIdentity(actionBase, candidate, code);
+    captureOwnerPrivatePath(repositoryRoot, candidate, 'FILE');
+  }
+  const snapshots = Object.fromEntries(
+    Object.entries(files).map(([name, filename]) => [
+      name,
+      readCanonicalJson(filename, code),
+    ])
+  );
+  const evidenceSnapshots = Object.fromEntries(
+    Object.entries(evidenceFiles).map(([filename, artifactPath]) => [
+      filename,
+      readCanonicalJson(artifactPath, code),
+    ])
+  );
+  if (
+    snapshots.runtimeCredential.sha256 !==
+      ADVISOR_SHAPE_DEFECT_RUNTIME_CREDENTIAL_FILE_SHA256 ||
+    snapshots.claim.sha256 !== ADVISOR_SHAPE_DEFECT_CLAIM_FILE_SHA256 ||
+    snapshots.consumed.sha256 !== ADVISOR_SHAPE_DEFECT_CONSUMED_FILE_SHA256 ||
+    snapshots.terminal.sha256 !== ADVISOR_SHAPE_DEFECT_TERMINAL_FILE_SHA256 ||
+    snapshots.identity.sha256 !==
+      ADVISOR_SHAPE_DEFECT_DATABASE_IDENTITY_FILE_SHA256 ||
+    snapshots.normalization.sha256 !==
+      ADVISOR_SHAPE_DEFECT_NORMALIZATION_FILE_SHA256 ||
+    snapshots.cmd016Intent.sha256 !==
+      ADVISOR_SHAPE_DEFECT_CMD016_INTENT_FILE_SHA256 ||
+    snapshots.cmd016Result.sha256 !==
+      ADVISOR_SHAPE_DEFECT_CMD016_RESULT_FILE_SHA256 ||
+    Object.entries(evidenceSnapshots).some(
+      ([filename, snapshot]) =>
+        snapshot.sha256 !== ADVISOR_SHAPE_DEFECT_STEP_FILE_SHA256[filename]
+    )
+  ) {
+    fail(code);
+  }
+  assertCanonicalEmbeddedSha(
+    snapshots.terminal.value,
+    'terminalSha256',
+    ADVISOR_SHAPE_DEFECT_TERMINAL_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    snapshots.identity.value,
+    'identityEvidenceSha256',
+    ADVISOR_SHAPE_DEFECT_DATABASE_IDENTITY_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    snapshots.normalization.value,
+    'normalizationArtifactSha256',
+    ADVISOR_SHAPE_DEFECT_NORMALIZATION_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    snapshots.cmd016Intent.value,
+    'intentSha256',
+    ADVISOR_SHAPE_DEFECT_CMD016_INTENT_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    snapshots.cmd016Result.value,
+    'observationSha256',
+    ADVISOR_SHAPE_DEFECT_CMD016_OBSERVATION_SHA256,
+    code
+  );
+  for (const [filename, snapshot] of Object.entries(evidenceSnapshots)) {
+    assertCanonicalEmbeddedSha(
+      snapshot.value,
+      'evidenceSha256',
+      ADVISOR_SHAPE_DEFECT_EVIDENCE_SHA256[filename],
+      code
+    );
+  }
+
+  const claim = snapshots.claim.value;
+  const consumed = snapshots.consumed.value;
+  const terminal = snapshots.terminal.value;
+  const identity = snapshots.identity.value;
+  const normalization = snapshots.normalization.value;
+  const intent = snapshots.cmd016Intent.value;
+  const result = snapshots.cmd016Result.value;
+  const step01 = evidenceSnapshots[STEP01_EVIDENCE_FILE].value;
+  const step02 = evidenceSnapshots[STEP02_EVIDENCE_FILE].value;
+  const step03 = evidenceSnapshots[STEP03_EVIDENCE_FILE].value;
+  const step04 = evidenceSnapshots[STEP04_EVIDENCE_FILE].value;
+  const step05 = evidenceSnapshots[STEP05_EVIDENCE_FILE].value;
+  const chronologyCode = 'ADVISOR_SHAPE_DEFECT_CHRONOLOGY_INVALID';
+  const claimClaimedAt = parseCanonicalUtcTimestamp(
+    claim.claimedAt,
+    chronologyCode
+  );
+  const consumedAt = parseCanonicalUtcTimestamp(
+    consumed.consumedAt,
+    chronologyCode
+  );
+  const databaseObservedAt = parseCanonicalUtcTimestamp(
+    identity.database?.databaseUtc,
+    chronologyCode
+  );
+  const step04StartedAt = parseCanonicalUtcTimestamp(
+    step04.startedAt,
+    chronologyCode
+  );
+  const step04CompletedAt = parseCanonicalUtcTimestamp(
+    step04.completedAt,
+    chronologyCode
+  );
+  const intentCreatedAt = parseCanonicalUtcTimestamp(
+    intent.createdAt,
+    chronologyCode
+  );
+  const resultStartedAt = parseCanonicalUtcTimestamp(
+    result.startedAt,
+    chronologyCode
+  );
+  const resultCompletedAt = parseCanonicalUtcTimestamp(
+    result.completedAt,
+    chronologyCode
+  );
+  const step05CompletedAt = parseCanonicalUtcTimestamp(
+    step05.completedAt,
+    chronologyCode
+  );
+  const terminalCompletedAt = parseCanonicalUtcTimestamp(
+    terminal.completedAt,
+    chronologyCode
+  );
+  if (
+    !(
+      claimClaimedAt < consumedAt &&
+      consumedAt < databaseObservedAt &&
+      databaseObservedAt < step04StartedAt &&
+      step04StartedAt < step04CompletedAt &&
+      step04CompletedAt < intentCreatedAt &&
+      intentCreatedAt === resultStartedAt &&
+      resultStartedAt < resultCompletedAt &&
+      resultCompletedAt < step05CompletedAt &&
+      step05CompletedAt < terminalCompletedAt
+    )
+  ) {
+    fail(chronologyCode);
+  }
+  if (
+    claim.actionId !== RECOVERY_ACTION_ID ||
+    claim.bindingMaterialSha256 !==
+      ADVISOR_SHAPE_DEFECT_BINDING_MATERIAL_SHA256 ||
+    claim.derivedExecutionBindingSha256 !==
+      ADVISOR_SHAPE_DEFECT_EXECUTION_BINDING_SHA256 ||
+    claim.payloadSha256 !== ADVISOR_SHAPE_DEFECT_PAYLOAD_SHA256 ||
+    consumed.actionId !== RECOVERY_ACTION_ID ||
+    consumed.claimSha256 !== ADVISOR_SHAPE_DEFECT_CLAIM_FILE_SHA256 ||
+    terminal.gitHead !== ADVISOR_SHAPE_DEFECT_RECOVERY_HEAD ||
+    terminal.status !== 'BLOCK' ||
+    terminal.reasonCode !== 'ADVISOR_FINDING_SHAPE_INVALID' ||
+    terminal.blockedCanonicalStep !== '05' ||
+    JSON.stringify(terminal.completedCanonicalSteps) !==
+      JSON.stringify(['01', '02', '03', '04']) ||
+    JSON.stringify(terminal.predecessorAttempts) !==
+      JSON.stringify(predecessorAttempts) ||
+    terminal.newProjectPostAttemptCount !== 0 ||
+    terminal.productionContactCount !== 0 ||
+    identity.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    identity.database?.status !== 'REACHABLE' ||
+    identity.database?.connectionMode !== 'DIRECT' ||
+    identity.database?.systemIdentifier !== '7666052913346410626' ||
+    identity.database?.tls?.verifiedMode !== 'verify-full' ||
+    normalization.recordType !== 'PR12_HOSTED_TYPES_NORMALIZATION_RECOVERY' ||
+    normalization.comparison?.status !== 'GENERATED_TYPES_PARITY' ||
+    normalization.comparison?.parity !== true ||
+    normalization.gitHead !== ADVISOR_SHAPE_DEFECT_RECOVERY_HEAD ||
+    normalization.bindingSha256 !==
+      ADVISOR_SHAPE_DEFECT_EXECUTION_BINDING_SHA256 ||
+    normalization.hostedTypesRemoteRedispatched !== false ||
+    normalization.formatter?.prettierPackageTreeSha256 !==
+      pinnedPrettierRuntime.treeSha256 ||
+    normalization.formatter?.prettierPackageFileCount !==
+      pinnedPrettierRuntime.fileCount ||
+    normalization.formatter?.prettierPackageTotalBytes !==
+      pinnedPrettierRuntime.totalBytes ||
+    normalization.formatter?.prettierConfigSha256 !==
+      pinnedPrettierRuntime.configSha256 ||
+    intent.commandId !== 'PR12-CMD-016' ||
+    intent.mutation !== false ||
+    intent.dispatchMaximum !== 1 ||
+    intent.wrapperRetryCount !== 0 ||
+    result.commandId !== 'PR12-CMD-016' ||
+    result.dispatchCount !== 1 ||
+    result.wrapperRetryCount !== 0 ||
+    result.outcome !== 'SUCCEEDED' ||
+    result.timedOut !== false ||
+    result.rawOutputRetained !== false ||
+    result.intentArtifactSha256 !==
+      ADVISOR_SHAPE_DEFECT_CMD016_INTENT_FILE_SHA256 ||
+    step01.status !== 'PASS' ||
+    step02.status !== 'PASS' ||
+    step03.status !== 'PASS' ||
+    step04.status !== 'PASS' ||
+    step04.hostedTypesRemoteRedispatched !== false ||
+    step05.status !== 'BLOCK' ||
+    step05.reasonCode !== 'ADVISOR_FINDING_SHAPE_INVALID' ||
+    step05.rawOutputsRetained !== false ||
+    step05.productionContactCount !== 0
+  ) {
+    fail(code);
+  }
+  for (const snapshot of Object.values(snapshots)) {
+    assertSecretFreeEvidence(snapshot.value, []);
+  }
+  for (const snapshot of Object.values(evidenceSnapshots)) {
+    assertSecretFreeEvidence(snapshot.value, []);
+  }
+  const caBytes = readStableBytes(
+    path.join(evidence, CA_FILE),
+    16 * 1024,
+    code
+  );
+  const generatedTypesBytes = readStableBytes(
+    generatedTypesPath,
+    512 * 1024,
+    code
+  );
+  const telemetryBytes = readStableBytes(telemetryPath, 64 * 1024, code);
+  try {
+    if (
+      sha256Bytes(caBytes) !== PINNED_CA_SHA256 ||
+      sha256Bytes(generatedTypesBytes) !==
+        NORMALIZATION_DEFECT_GENERATED_TYPES_SHA256 ||
+      sha256Bytes(telemetryBytes) !== ADVISOR_SHAPE_DEFECT_TELEMETRY_FILE_SHA256
+    ) {
+      fail(code);
+    }
+  } finally {
+    caBytes.fill(0);
+    generatedTypesBytes.fill(0);
+    telemetryBytes.fill(0);
+  }
+
+  const linkWithoutHash = {
+    status: 'POST_TYPES_ADVISOR_SHAPE_TOOLING_DEFECT_VERIFIED',
+    gitHead: ADVISOR_SHAPE_DEFECT_RECOVERY_HEAD,
+    completedCanonicalSteps: ['01', '02', '03', '04'],
+    blockedCanonicalStep: '05',
+    reasonCode: 'ADVISOR_FINDING_SHAPE_INVALID',
+    executionBindingSha256: ADVISOR_SHAPE_DEFECT_EXECUTION_BINDING_SHA256,
+    step01FileSha256:
+      ADVISOR_SHAPE_DEFECT_STEP_FILE_SHA256[STEP01_EVIDENCE_FILE],
+    step01EvidenceSha256:
+      ADVISOR_SHAPE_DEFECT_EVIDENCE_SHA256[STEP01_EVIDENCE_FILE],
+    step02FileSha256:
+      ADVISOR_SHAPE_DEFECT_STEP_FILE_SHA256[STEP02_EVIDENCE_FILE],
+    step02EvidenceSha256:
+      ADVISOR_SHAPE_DEFECT_EVIDENCE_SHA256[STEP02_EVIDENCE_FILE],
+    step03FileSha256:
+      ADVISOR_SHAPE_DEFECT_STEP_FILE_SHA256[STEP03_EVIDENCE_FILE],
+    step03EvidenceSha256:
+      ADVISOR_SHAPE_DEFECT_EVIDENCE_SHA256[STEP03_EVIDENCE_FILE],
+    step04FileSha256:
+      ADVISOR_SHAPE_DEFECT_STEP_FILE_SHA256[STEP04_EVIDENCE_FILE],
+    step04EvidenceSha256:
+      ADVISOR_SHAPE_DEFECT_EVIDENCE_SHA256[STEP04_EVIDENCE_FILE],
+    step05FileSha256:
+      ADVISOR_SHAPE_DEFECT_STEP_FILE_SHA256[STEP05_EVIDENCE_FILE],
+    step05EvidenceSha256:
+      ADVISOR_SHAPE_DEFECT_EVIDENCE_SHA256[STEP05_EVIDENCE_FILE],
+    advisorScanHistoricalDispatchCount: 1,
+    advisorScanHistoricalMutationCount: 0,
+    advisorScanReadOnlyRedispatchMaximum: 1,
+    migrationApplyRedispatched: false,
+    representativeFixtureRedispatched: false,
+    hostedTypesRemoteRedispatched: false,
+    newProjectPostAttemptCount: 0,
+    productionContactCount: 0,
+    rawAdvisorOutputRetained: false,
+    secretValuesCaptured: false,
+  };
+  return {
+    link: {
+      ...linkWithoutHash,
+      linkSha256: sha256Canonical(linkWithoutHash),
+    },
+    sourceDirectory: evidence,
     step02,
   };
 }
@@ -4056,6 +4582,17 @@ function executeAdvisorAfterScan({
     fail('PR12_CMD_016_FAILED');
   }
   const findings = parseAdvisorCliJsonOutput(dispatched.stdout);
+  const shapeDiagnostic = buildAdvisorFindingShapeDiagnostic(findings);
+  const shapeDiagnosticPath = path.join(
+    journalDirectory,
+    'pr12-cmd-016-shape-diagnostic.json'
+  );
+  const shapeDiagnosticFileSha256 = writeCanonicalCreateNew(
+    shapeDiagnosticPath,
+    shapeDiagnostic,
+    'ADVISOR_SHAPE_DIAGNOSTIC_CREATE_FAILED'
+  );
+  hardenPath(repositoryRoot, shapeDiagnosticPath, 'FILE');
   const after = normalizeAdvisorSnapshot({
     schemaVersion: 1,
     commandId: 'PR12-CMD-016',
@@ -4076,6 +4613,11 @@ function executeAdvisorAfterScan({
     after,
     diff,
     dispatch: dispatched.observation,
+    shapeDiagnostic: {
+      diagnosticSha256: shapeDiagnostic.diagnosticSha256,
+      fileSha256: shapeDiagnosticFileSha256,
+      rawFindingValuesRetained: false,
+    },
     rawOutputRetained: false,
     nextStep: '06',
   };
@@ -4400,13 +4942,23 @@ async function main() {
     paths,
     preNormalizationAttempts
   );
-  const normalizationDefectEvidenceDirectory =
-    normalizationDefectSnapshot.sourceDirectory;
-  const predecessorStep02 = normalizationDefectSnapshot.step02;
   const normalizationDefectAttempt = normalizationDefectSnapshot.link;
-  const predecessorAttempts = [
+  const preAdvisorShapeAttempts = [
     ...preNormalizationAttempts,
     normalizationDefectAttempt,
+  ];
+  const advisorShapeDefectSnapshot = assertPredecessorAdvisorShapeDefect(
+    repositoryRoot,
+    paths,
+    preAdvisorShapeAttempts
+  );
+  const advisorShapeDefectAttempt = advisorShapeDefectSnapshot.link;
+  const advisorShapeDefectEvidenceDirectory =
+    advisorShapeDefectSnapshot.sourceDirectory;
+  const predecessorStep02 = advisorShapeDefectSnapshot.step02;
+  const predecessorAttempts = [
+    ...preAdvisorShapeAttempts,
+    advisorShapeDefectAttempt,
   ];
   createOwnerPrivateDirectory(repositoryRoot, paths.recoveryJournal);
   createOwnerPrivateDirectory(repositoryRoot, paths.recoveryEvidence);
@@ -4486,7 +5038,7 @@ async function main() {
     const caPath = path.join(paths.recoveryEvidence, CA_FILE);
     copyExactBytesArtifact({
       repositoryRoot,
-      source: path.join(normalizationDefectEvidenceDirectory, CA_FILE),
+      source: path.join(advisorShapeDefectEvidenceDirectory, CA_FILE),
       destination: caPath,
       expectedSha256: PINNED_CA_SHA256,
       maximumBytes: 16 * 1024,
@@ -4509,13 +5061,13 @@ async function main() {
     }
     const identityWithoutHash = {
       schemaVersion: 1,
-      recordType: 'PR12_EXISTING_PROJECT_CYCLE7_DATABASE_IDENTITY',
+      recordType: 'PR12_EXISTING_PROJECT_CYCLE8_DATABASE_IDENTITY',
       projectRef: PR12_RECOVERY_TARGET.projectRef,
       database,
       predecessorStep01EvidenceSha256:
         TYPES_DRIFT_EVIDENCE_SHA256[STEP01_EVIDENCE_FILE],
-      predecessorNormalizationDefectLinkSha256:
-        normalizationDefectAttempt.linkSha256,
+      predecessorAdvisorShapeDefectLinkSha256:
+        advisorShapeDefectAttempt.linkSha256,
       toolchain: toolchainProjection,
       credentialBoundary: {
         brokerProtocolMode: 'ISOLATED_PROJECT_CONTINUATION',
@@ -4540,42 +5092,45 @@ async function main() {
     };
     const identityPath = path.join(
       paths.recoveryJournal,
-      'pr12-cycle7-database-identity.json'
+      'pr12-cycle8-database-identity.json'
     );
     writeCanonicalCreateNew(
       identityPath,
       identity,
-      'CYCLE7_DATABASE_IDENTITY_CREATE_FAILED'
+      'CYCLE8_DATABASE_IDENTITY_CREATE_FAILED'
     );
     hardenPath(repositoryRoot, identityPath, 'FILE');
     const evidence = copyExactCanonicalArtifact({
       repositoryRoot,
       source: path.join(
-        normalizationDefectEvidenceDirectory,
+        advisorShapeDefectEvidenceDirectory,
         STEP01_EVIDENCE_FILE
       ),
       destination: path.join(paths.recoveryEvidence, STEP01_EVIDENCE_FILE),
-      expectedSha256: TYPES_DRIFT_STEP_FILE_SHA256[STEP01_EVIDENCE_FILE],
+      expectedSha256:
+        ADVISOR_SHAPE_DEFECT_STEP_FILE_SHA256[STEP01_EVIDENCE_FILE],
       code: 'STEP01_PREDECESSOR_COPY_INVALID',
     });
     const replay = copyExactCanonicalArtifact({
       repositoryRoot,
       source: path.join(
-        normalizationDefectEvidenceDirectory,
+        advisorShapeDefectEvidenceDirectory,
         STEP02_EVIDENCE_FILE
       ),
       destination: path.join(paths.recoveryEvidence, STEP02_EVIDENCE_FILE),
-      expectedSha256: TYPES_DRIFT_STEP_FILE_SHA256[STEP02_EVIDENCE_FILE],
+      expectedSha256:
+        ADVISOR_SHAPE_DEFECT_STEP_FILE_SHA256[STEP02_EVIDENCE_FILE],
       code: 'STEP02_PREDECESSOR_COPY_INVALID',
     });
     const fixtureEvidence = copyExactCanonicalArtifact({
       repositoryRoot,
       source: path.join(
-        normalizationDefectEvidenceDirectory,
+        advisorShapeDefectEvidenceDirectory,
         STEP03_EVIDENCE_FILE
       ),
       destination: path.join(paths.recoveryEvidence, STEP03_EVIDENCE_FILE),
-      expectedSha256: TYPES_DRIFT_STEP_FILE_SHA256[STEP03_EVIDENCE_FILE],
+      expectedSha256:
+        ADVISOR_SHAPE_DEFECT_STEP_FILE_SHA256[STEP03_EVIDENCE_FILE],
       code: 'STEP03_PREDECESSOR_COPY_INVALID',
     });
     process.stdout.write(
@@ -4612,17 +5167,16 @@ async function main() {
         representativeFixtureRedispatched: false,
       })}\n`
     );
-    const types = executeHostedTypesParity({
+    const types = copyExactCanonicalArtifact({
       repositoryRoot,
-      evidenceDirectory: paths.recoveryEvidence,
-      journalDirectory: paths.recoveryJournal,
-      replayWorkdir: paths.replayWorkdir,
-      gitHead,
-      bindingSha256: claim.derivedExecutionBindingSha256,
-      databaseIdentity: database,
-      predecessorAttempt: normalizationDefectAttempt,
-      predecessorGeneratedTypesPath:
-        normalizationDefectSnapshot.generatedTypesPath,
+      source: path.join(
+        advisorShapeDefectEvidenceDirectory,
+        STEP04_EVIDENCE_FILE
+      ),
+      destination: path.join(paths.recoveryEvidence, STEP04_EVIDENCE_FILE),
+      expectedSha256:
+        ADVISOR_SHAPE_DEFECT_STEP_FILE_SHA256[STEP04_EVIDENCE_FILE],
+      code: 'STEP04_PREDECESSOR_COPY_INVALID',
     });
     process.stdout.write(
       `${canonicalJson({
@@ -4631,6 +5185,8 @@ async function main() {
         result: 'PASS',
         nextStep: '05',
         evidenceSha256: types.evidenceSha256,
+        hostedTypesRemoteRedispatched: false,
+        localNormalizationRedispatched: false,
       })}\n`
     );
     const advisor = executeAdvisorAfterScan({
