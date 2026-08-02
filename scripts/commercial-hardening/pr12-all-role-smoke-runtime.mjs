@@ -389,6 +389,7 @@ async function readBoundedJsonResponse(response, forbiddenValues) {
 }
 
 async function isolatedJsonRequest({
+  operation,
   method,
   url,
   projectRef,
@@ -397,6 +398,9 @@ async function isolatedJsonRequest({
   body,
   forbiddenValues,
 }) {
+  if (!['AUTH_SIGN_IN', 'AUTH_REFRESH', 'REST_READ'].includes(operation)) {
+    fail('ISOLATED_DATA_OPERATION_INVALID');
+  }
   assertIsolatedDataRequest(method, url, projectRef);
   let bodyText = body === null ? undefined : JSON.stringify(body);
   let response;
@@ -420,7 +424,9 @@ async function isolatedJsonRequest({
   } finally {
     bodyText = undefined;
   }
-  if (response.status !== 200) fail(`ISOLATED_DATA_HTTP_${response.status}`);
+  if (response.status !== 200) {
+    fail(`ISOLATED_${operation}_HTTP_${response.status}`);
+  }
   return await readBoundedJsonResponse(response, forbiddenValues);
 }
 
@@ -452,6 +458,7 @@ async function runAuthRefreshAndRest({
     let refreshToken = '';
     try {
       const signedIn = await isolatedJsonRequest({
+        operation: 'AUTH_SIGN_IN',
         method: 'POST',
         url: `${origin}/auth/v1/token?grant_type=password`,
         projectRef,
@@ -472,6 +479,7 @@ async function runAuthRefreshAndRest({
       accessToken = signedIn.value.access_token;
       refreshToken = signedIn.value.refresh_token;
       const refreshed = await isolatedJsonRequest({
+        operation: 'AUTH_REFRESH',
         method: 'POST',
         url: `${origin}/auth/v1/token?grant_type=refresh_token`,
         projectRef,
@@ -511,6 +519,7 @@ async function runAuthRefreshAndRest({
         url.searchParams.set('select', 'id');
         url.searchParams.set('clinic_id', `eq.${clinicId}`);
         const result = await isolatedJsonRequest({
+          operation: 'REST_READ',
           method: 'GET',
           url: url.toString(),
           projectRef,

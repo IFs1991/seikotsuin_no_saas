@@ -584,6 +584,23 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(runtimeSource).not.toContain('classifyBrowserRoute');
     expect(runnerSource).toContain('ALL_ROLE_SMOKE_REST_CASES');
     expect(runnerSource).toContain('const userMetadata = JSON.stringify({});');
+    expect(runtimeSource).toContain("operation: 'AUTH_SIGN_IN'");
+    expect(runtimeSource).toContain("operation: 'AUTH_REFRESH'");
+    expect(runtimeSource).toContain("operation: 'REST_READ'");
+    expect(runtimeSource).toContain(
+      'fail(`ISOLATED_${operation}_HTTP_${response.status}`)'
+    );
+    expect(runtimeSource).not.toContain(
+      'fail(`ISOLATED_DATA_HTTP_${response.status}`)'
+    );
+    expect(runnerSource).toContain(
+      "instance_id='00000000-0000-0000-0000-000000000000'::uuid"
+    );
+    expect(runnerSource).toContain('is_sso_user=false');
+    expect(runnerSource).toContain("'authLookupReadyCount'");
+    expect(runnerSource).toContain(
+      'UUID_NIL_INSTANCE_AUTHENTICATED_AUDIENCE_NON_SSO_CONFIRMED_PASSWORD'
+    );
 
     const relation = evaluateAllRole(`
       process.stdout.write(JSON.stringify(
@@ -863,6 +880,18 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(source).toContain(
       "'pr12-existing-project-recovery-replay-workdir-cycle8'"
     );
+    expect(source).toContain("'pr12-existing-project-recovery-journal-cycle9'");
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-evidence-cycle9'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-replay-workdir-cycle9'"
+    );
+    expect(source).toContain('assertPredecessorStep06Http400(');
+    expect(source).toContain(
+      "status: 'POST_ADVISOR_STEP06_AUTH_HTTP400_VERIFIED'"
+    );
+    expect(source).toContain('allRoleSmokeRetryMaximum: 1');
     expect(source).toContain('hostedTypesRemoteRedispatched: false');
     expect(source).toContain('advisorScanReadOnlyRedispatchMaximum: 1');
     expect(source).toContain(
@@ -900,13 +929,15 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(source).toContain('HOSTED_TYPES_REMOTE_REDISPATCH_FORBIDDEN');
     expect(source).toContain('resumeFullMigrationReplayAfterCatalogGap(');
     expect(source).toContain('buildRecoveryOperatingSystemValues({');
-    expect(source).toContain(
-      'bindingSha256: predecessorStep02.advisorBefore.bindingSha256'
-    );
     expect(source).toContain('predecessorAttempts');
     const activeMain = source.slice(source.indexOf('async function main()'));
     expect(activeMain).not.toContain('executeHostedTypesParity({');
     expect(activeMain).not.toContain('executeRepresentativeDataValidation({');
+    expect(activeMain).not.toContain('executeAdvisorAfterScan({');
+    expect(activeMain).toContain(
+      'STEP06_HTTP400_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE]'
+    );
+    expect(activeMain).toContain('advisorScanRedispatched: false');
     expect(activeMain).toContain('localNormalizationRedispatched: false');
     expect(source).not.toContain('rmSync');
     expect(source).not.toContain('unlinkSync');

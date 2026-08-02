@@ -351,6 +351,73 @@ const ADVISOR_SHAPE_DEFECT_STEP_FILE_SHA256 = Object.freeze({
   [STEP05_EVIDENCE_FILE]:
     '2a3de8734a804c3330456377877874a2f245c3cd86ce6708e04e091e02395c02',
 });
+const STEP06_HTTP400_RECOVERY_HEAD = '169fd5ffc902aa498776f890d67d975c319c5302';
+const STEP06_HTTP400_JOURNAL_FILE_SHA256 = Object.freeze({
+  'pr12-cmd-013-auth-rebind-intent.json':
+    '01975ae5416413becb64029a04f635517073e50efb9edc6bbbfe576cd88c85b9',
+  'pr12-cmd-013-auth-rebind-result.json':
+    '02c13b16aafc5ccca2b1d27671b57818c4adbd9fadf5dd3ef2ebc49d1700cb31',
+  'pr12-cmd-016-intent.json':
+    'bc4233a1a16806666ba88455ef11b341e9ca5873352d461fa2ec7a97aee0ec4d',
+  'pr12-cmd-016-result.json':
+    'a52760308658d8651e630b8b2f54611174d23170814db46b16953c6c8d2660a3',
+  'pr12-cmd-016-shape-diagnostic.json':
+    'ae742be8014a2e8824acb5a15f0c13d17fdaa19723f52b9f86cb56ff4d4df760',
+  'pr12-cycle8-database-identity.json':
+    'cbbec57e45d548b45e0e71f9d437703477b37b9b527a0763cc2add82ec5a2648',
+  [RUNTIME_CREDENTIAL_CONFIG_FILE]:
+    'bb811504736409c7e177ba858bcd1c0773b57b8324bda1c0314b680da2f55069',
+  'pr12-existing-project-recovery-credential-consumed.json':
+    '4c11a2edb66ad6e74e5aea622e39a02658a5ae844263c13b740a0cd81a9c321c',
+  [TERMINAL_FILE]:
+    '7982f89333b85633ff1b51a0818b048b3b3cbee5feeb147a8c1f25472c64caab',
+  [CLAIM_FILE]:
+    'b257071c56698db9d85a1f8aca865558742d94b454e017f7c01a418bcdbd72b8',
+});
+const STEP06_HTTP400_EVIDENCE_FILE_SHA256 = Object.freeze({
+  [STEP01_EVIDENCE_FILE]:
+    '308fd78552c69327e90e2cd602e5d3656578b7097d92936717b8e41bab29a9f2',
+  [STEP02_EVIDENCE_FILE]:
+    'ea12d1201fa1d607e9bed634b641db6242cd060df86cce2b7366b8044ce9b8b7',
+  [STEP03_EVIDENCE_FILE]:
+    'd7d4e5fca50f5cef329d13cf2bfe21727470d5b5f5c08479f6442921d0e00af1',
+  [STEP04_EVIDENCE_FILE]:
+    '5da18834414b6ff6a3e5107294aa6157545a39b8d7c73ecfad8f3eba549f635d',
+  [STEP05_EVIDENCE_FILE]:
+    '307b10b3b0d2f6704d041dce46d55714931a6ccc783eb493da50f3c404a65737',
+  [STEP06_EVIDENCE_FILE]:
+    '080cce599fb0fc069102c189ebf7ef8d691b67b582b6ca9d71b804d2dec4fcad',
+});
+const STEP06_HTTP400_EVIDENCE_SHA256 = Object.freeze({
+  [STEP01_EVIDENCE_FILE]:
+    '1c1e989ab92d4835c2cedffeaa859abac53383801de8afd014a1ceebd4ddbb5d',
+  [STEP02_EVIDENCE_FILE]:
+    'ed46277e4924bf51c4c2a41f4d7276e1e4b7d653e03824d9018e451b32a7ef49',
+  [STEP03_EVIDENCE_FILE]:
+    '688d5a2e4a603db9614c9eb8c59cab78980ce01f563158d74df98d86fb460506',
+  [STEP04_EVIDENCE_FILE]:
+    '1ea039b794ef0dd0b2648367b85412d5fc3aeee262e823998082416b2b3e8c81',
+  [STEP05_EVIDENCE_FILE]:
+    '4a31b5584260dc95f3eb28bff1ae4a8fa786eb2f2ef644d502c4b3d4d687d553',
+  [STEP06_EVIDENCE_FILE]:
+    'a0696b2727f36c5f13f95aefc35669d740f4b08d63500aa73257e8a8132094f2',
+});
+const STEP06_HTTP400_TERMINAL_SHA256 =
+  'fab87674b673f978e159391e82ad7dcd23ab30c60aa9a459b3a9d49ba62fa5cc';
+const STEP06_HTTP400_IDENTITY_SHA256 =
+  'ffe34a9af89675a4a8da2b4ab2a405986d27a5e307a1c5ba53823d909af255f2';
+const STEP06_HTTP400_CMD016_INTENT_SHA256 =
+  '2da96a4063decbe61c6dbd76907f4880894f56e1d613076e18810897629e9c61';
+const STEP06_HTTP400_CMD016_OBSERVATION_SHA256 =
+  '5af241a840134abce6afd9d22bb1bbaaf62460b8c752cc150aac056bc547714f';
+const STEP06_HTTP400_SHAPE_DIAGNOSTIC_SHA256 =
+  'fe82c71a6c9c8925763c62b4fafaf49f10c08956987b76fb9b972f46635c6139';
+const STEP06_HTTP400_AUTH_INTENT_SHA256 =
+  '8433d660d4246e8cce14d561ecc6b9a7bc7c4154c9cb2e2fc67c7fd478a9e909';
+const STEP06_HTTP400_AUTH_OBSERVATION_SHA256 =
+  '074a6c8a78921deed20c9484bb66a55f3d28df6c72a332e4d5f0c0a600350465';
+const STEP06_HTTP400_TELEMETRY_FILE_SHA256 =
+  '4a99f31406a3ca623b675c634abfbf3f2b34e4173b31b377ccfa02611da024e5';
 const ADVISOR_SHAPE_DEFECT_EVIDENCE_SHA256 = Object.freeze({
   [STEP01_EVIDENCE_FILE]:
     '1c1e989ab92d4835c2cedffeaa859abac53383801de8afd014a1ceebd4ddbb5d',
@@ -718,17 +785,29 @@ function assertExternalSiblingPaths(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle7'
     ),
-    recoveryJournal: path.join(
+    step06Http400RecoveryJournal: path.join(
       actionBase,
       'pr12-existing-project-recovery-journal-cycle8'
     ),
-    recoveryEvidence: path.join(
+    step06Http400RecoveryEvidence: path.join(
       actionBase,
       'pr12-existing-project-recovery-evidence-cycle8'
     ),
-    replayWorkdir: path.join(
+    step06Http400ReplayWorkdir: path.join(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle8'
+    ),
+    recoveryJournal: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-journal-cycle9'
+    ),
+    recoveryEvidence: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-evidence-cycle9'
+    ),
+    replayWorkdir: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-replay-workdir-cycle9'
     ),
   };
 }
@@ -2592,6 +2671,278 @@ function assertPredecessorAdvisorShapeDefect(
   };
 }
 
+function assertPredecessorStep06Http400(
+  repositoryRoot,
+  paths,
+  predecessorAttempts
+) {
+  const code = 'STEP06_HTTP400_PREDECESSOR_INVALID';
+  const journal = resolveExistingDirectory(
+    paths.step06Http400RecoveryJournal,
+    code
+  );
+  const evidence = resolveExistingDirectory(
+    paths.step06Http400RecoveryEvidence,
+    code
+  );
+  const workdir = resolveExistingDirectory(
+    paths.step06Http400ReplayWorkdir,
+    code
+  );
+  const runtime = resolveExistingDirectory(
+    path.join(workdir, '.pr12-runtime'),
+    code
+  );
+  const supabaseHome = resolveExistingDirectory(
+    path.join(runtime, 'supabase-home'),
+    code
+  );
+  const browserRuntime = resolveExistingDirectory(
+    path.join(workdir, '.pr12-browser-runtime'),
+    code
+  );
+  const telemetryPath = resolveExistingFile(
+    path.join(supabaseHome, 'telemetry.json'),
+    code
+  );
+  assertExactDirectoryEntries(
+    journal,
+    Object.keys(STEP06_HTTP400_JOURNAL_FILE_SHA256),
+    code
+  );
+  assertExactDirectoryEntries(
+    evidence,
+    [...Object.keys(STEP06_HTTP400_EVIDENCE_FILE_SHA256), CA_FILE],
+    code
+  );
+  assertExactDirectoryEntries(
+    workdir,
+    ['.pr12-browser-runtime', '.pr12-runtime'],
+    code
+  );
+  assertExactDirectoryEntries(runtime, ['supabase-home'], code);
+  assertExactDirectoryEntries(supabaseHome, ['telemetry.json'], code);
+  for (const directory of [journal, evidence, workdir]) {
+    captureOwnerPrivatePath(repositoryRoot, directory, 'DIRECTORY');
+  }
+  for (const directory of [runtime, supabaseHome, browserRuntime]) {
+    assertNoReparsePathIdentity(workdir, directory, code);
+    captureInheritedOwnerPrivatePath(repositoryRoot, directory, 'DIRECTORY');
+  }
+  const journalFiles = Object.fromEntries(
+    Object.keys(STEP06_HTTP400_JOURNAL_FILE_SHA256).map(filename => [
+      filename,
+      path.join(journal, filename),
+    ])
+  );
+  const evidenceFiles = Object.fromEntries(
+    Object.keys(STEP06_HTTP400_EVIDENCE_FILE_SHA256).map(filename => [
+      filename,
+      path.join(evidence, filename),
+    ])
+  );
+  for (const candidate of [
+    ...Object.values(journalFiles),
+    ...Object.values(evidenceFiles),
+    path.join(evidence, CA_FILE),
+  ]) {
+    assertNoReparsePathIdentity(path.dirname(journal), candidate, code);
+    captureOwnerPrivatePath(repositoryRoot, candidate, 'FILE');
+  }
+  assertNoReparsePathIdentity(workdir, telemetryPath, code);
+  captureInheritedOwnerPrivatePath(repositoryRoot, telemetryPath, 'FILE');
+  const journalSnapshots = Object.fromEntries(
+    Object.entries(journalFiles).map(([filename, artifactPath]) => [
+      filename,
+      readCanonicalJson(artifactPath, code),
+    ])
+  );
+  const evidenceSnapshots = Object.fromEntries(
+    Object.entries(evidenceFiles).map(([filename, artifactPath]) => [
+      filename,
+      readCanonicalJson(artifactPath, code),
+    ])
+  );
+  if (
+    Object.entries(journalSnapshots).some(
+      ([filename, snapshot]) =>
+        snapshot.sha256 !== STEP06_HTTP400_JOURNAL_FILE_SHA256[filename]
+    ) ||
+    Object.entries(evidenceSnapshots).some(
+      ([filename, snapshot]) =>
+        snapshot.sha256 !== STEP06_HTTP400_EVIDENCE_FILE_SHA256[filename]
+    )
+  ) {
+    fail(code);
+  }
+  const terminal = journalSnapshots[TERMINAL_FILE].value;
+  const identity = journalSnapshots['pr12-cycle8-database-identity.json'].value;
+  const cmd016Intent = journalSnapshots['pr12-cmd-016-intent.json'].value;
+  const cmd016Result = journalSnapshots['pr12-cmd-016-result.json'].value;
+  const shapeDiagnostic =
+    journalSnapshots['pr12-cmd-016-shape-diagnostic.json'].value;
+  const authIntent =
+    journalSnapshots['pr12-cmd-013-auth-rebind-intent.json'].value;
+  const authResult =
+    journalSnapshots['pr12-cmd-013-auth-rebind-result.json'].value;
+  assertCanonicalEmbeddedSha(
+    terminal,
+    'terminalSha256',
+    STEP06_HTTP400_TERMINAL_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    identity,
+    'identityEvidenceSha256',
+    STEP06_HTTP400_IDENTITY_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    cmd016Intent,
+    'intentSha256',
+    STEP06_HTTP400_CMD016_INTENT_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    cmd016Result,
+    'observationSha256',
+    STEP06_HTTP400_CMD016_OBSERVATION_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    shapeDiagnostic,
+    'diagnosticSha256',
+    STEP06_HTTP400_SHAPE_DIAGNOSTIC_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    authIntent,
+    'intentSha256',
+    STEP06_HTTP400_AUTH_INTENT_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    authResult,
+    'observationSha256',
+    STEP06_HTTP400_AUTH_OBSERVATION_SHA256,
+    code
+  );
+  for (const [filename, snapshot] of Object.entries(evidenceSnapshots)) {
+    assertCanonicalEmbeddedSha(
+      snapshot.value,
+      'evidenceSha256',
+      STEP06_HTTP400_EVIDENCE_SHA256[filename],
+      code
+    );
+  }
+  const step01 = evidenceSnapshots[STEP01_EVIDENCE_FILE].value;
+  const step02 = evidenceSnapshots[STEP02_EVIDENCE_FILE].value;
+  const step03 = evidenceSnapshots[STEP03_EVIDENCE_FILE].value;
+  const step04 = evidenceSnapshots[STEP04_EVIDENCE_FILE].value;
+  const step05 = evidenceSnapshots[STEP05_EVIDENCE_FILE].value;
+  const step06 = evidenceSnapshots[STEP06_EVIDENCE_FILE].value;
+  if (
+    terminal.gitHead !== STEP06_HTTP400_RECOVERY_HEAD ||
+    terminal.status !== 'BLOCK' ||
+    terminal.reasonCode !== 'ISOLATED_DATA_HTTP_400' ||
+    terminal.blockedCanonicalStep !== '06' ||
+    canonicalJson(terminal.completedCanonicalSteps) !==
+      canonicalJson(['01', '02', '03', '04', '05']) ||
+    canonicalJson(terminal.predecessorAttempts) !==
+      canonicalJson(predecessorAttempts) ||
+    terminal.newProjectPostAttemptCount !== 0 ||
+    terminal.productionContactCount !== 0 ||
+    identity.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    identity.database?.status !== 'REACHABLE' ||
+    identity.database?.systemIdentifier !== '7666052913346410626' ||
+    step01.status !== 'PASS' ||
+    step02.status !== 'PASS' ||
+    step03.status !== 'PASS' ||
+    step04.status !== 'PASS' ||
+    step05.status !== 'PASS' ||
+    step05.rawOutputRetained !== false ||
+    step05.dispatch?.dispatchCount !== 1 ||
+    step05.dispatch?.wrapperRetryCount !== 0 ||
+    step05.dispatch?.outcome !== 'SUCCEEDED' ||
+    step06.status !== 'BLOCK' ||
+    step06.reasonCode !== 'ISOLATED_DATA_HTTP_400' ||
+    step06.runtimeApiKeysGetCount !== 1 ||
+    step06.productionContactCount !== 0 ||
+    step06.secretValuesCaptured !== false ||
+    step06.rawOutputsRetained !== false ||
+    cmd016Intent.mutation !== false ||
+    cmd016Intent.dispatchMaximum !== 1 ||
+    cmd016Result.dispatchCount !== 1 ||
+    cmd016Result.wrapperRetryCount !== 0 ||
+    cmd016Result.outcome !== 'SUCCEEDED' ||
+    cmd016Result.rawOutputRetained !== false ||
+    shapeDiagnostic.rawFindingValuesRetained !== false ||
+    authIntent.mutation !== true ||
+    authIntent.isolatedSyntheticActorsOnly !== true ||
+    authIntent.dispatchMaximum !== 1 ||
+    authResult.dispatchCount !== 1 ||
+    authResult.wrapperRetryCount !== 0 ||
+    authResult.outcome !== 'SUCCEEDED' ||
+    authResult.actorPasswordValuesPersisted !== false ||
+    authResult.secretValuesCaptured !== false
+  ) {
+    fail(code);
+  }
+  for (const [filename, snapshot] of Object.entries(journalSnapshots)) {
+    if (filename === RUNTIME_CREDENTIAL_CONFIG_FILE) continue;
+    assertSecretFreeEvidence(snapshot.value, []);
+  }
+  for (const snapshot of Object.values(evidenceSnapshots)) {
+    assertSecretFreeEvidence(snapshot.value, []);
+  }
+  const caBytes = readStableBytes(
+    path.join(evidence, CA_FILE),
+    16 * 1024,
+    code
+  );
+  const telemetryBytes = readStableBytes(telemetryPath, 64 * 1024, code);
+  try {
+    if (
+      sha256Bytes(caBytes) !== PINNED_CA_SHA256 ||
+      sha256Bytes(telemetryBytes) !== STEP06_HTTP400_TELEMETRY_FILE_SHA256
+    ) {
+      fail(code);
+    }
+  } finally {
+    caBytes.fill(0);
+    telemetryBytes.fill(0);
+  }
+  const linkWithoutHash = {
+    status: 'POST_ADVISOR_STEP06_AUTH_HTTP400_VERIFIED',
+    gitHead: STEP06_HTTP400_RECOVERY_HEAD,
+    completedCanonicalSteps: ['01', '02', '03', '04', '05'],
+    blockedCanonicalStep: '06',
+    reasonCode: 'ISOLATED_DATA_HTTP_400',
+    step01FileSha256: STEP06_HTTP400_EVIDENCE_FILE_SHA256[STEP01_EVIDENCE_FILE],
+    step02FileSha256: STEP06_HTTP400_EVIDENCE_FILE_SHA256[STEP02_EVIDENCE_FILE],
+    step03FileSha256: STEP06_HTTP400_EVIDENCE_FILE_SHA256[STEP03_EVIDENCE_FILE],
+    step04FileSha256: STEP06_HTTP400_EVIDENCE_FILE_SHA256[STEP04_EVIDENCE_FILE],
+    step05FileSha256: STEP06_HTTP400_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE],
+    step06FileSha256: STEP06_HTTP400_EVIDENCE_FILE_SHA256[STEP06_EVIDENCE_FILE],
+    advisorScanRedispatched: false,
+    advisorScanHistoricalDispatchCount: 1,
+    allRoleSmokeRetryMaximum: 1,
+    newProjectPostAttemptCount: 0,
+    productionContactCount: 0,
+    secretValuesCaptured: false,
+  };
+  return {
+    link: {
+      ...linkWithoutHash,
+      linkSha256: sha256Canonical(linkWithoutHash),
+    },
+    sourceDirectory: evidence,
+    step02,
+    step03,
+    step05,
+  };
+}
+
 function createOwnerPrivateDirectory(repositoryRoot, directory) {
   if (existsSync(directory)) fail('RECOVERY_OUTPUT_ALREADY_EXISTS');
   mkdirSync(directory, { recursive: false });
@@ -4248,8 +4599,12 @@ END $pr12_precondition$;
 DO $pr12_update$
 DECLARE updated_users integer;
 BEGIN
+  -- Supabase Auth FindUserByEmailAndAudience requires UUID nil instance_id,
+  -- authenticated audience, and is_sso_user=false for password grants.
   UPDATE auth.users AS users
-  SET encrypted_password=extensions.crypt(expected.password,extensions.gen_salt('bf')),
+  SET instance_id='00000000-0000-0000-0000-000000000000'::uuid,
+      is_sso_user=false,
+      encrypted_password=extensions.crypt(expected.password,extensions.gen_salt('bf')),
       updated_at=clock_timestamp()
   FROM (VALUES ${credentialRows.join(',')}) AS expected(id,email,password)
   WHERE users.id=expected.id::uuid AND users.email=expected.email;
@@ -4259,7 +4614,8 @@ BEGIN
 END $pr12_update$;
 SELECT json_build_object(
   'actorCount',(SELECT count(*) FROM auth.users WHERE email LIKE 'pr12+%@invalid.example'),
-  'profileCount',(SELECT count(*) FROM public.profiles WHERE email LIKE 'pr12+%@invalid.example')
+  'profileCount',(SELECT count(*) FROM public.profiles WHERE email LIKE 'pr12+%@invalid.example'),
+  'authLookupReadyCount',(SELECT count(*) FROM auth.users WHERE email LIKE 'pr12+%@invalid.example' AND instance_id='00000000-0000-0000-0000-000000000000'::uuid AND aud='authenticated' AND is_sso_user=false AND email_confirmed_at IS NOT NULL AND encrypted_password IS NOT NULL)
 )::text;
 COMMIT;
 `;
@@ -4343,7 +4699,11 @@ COMMIT;
       dispatched.stdout,
       'STEP06_AUTH_REBIND_RESULT_INVALID'
     );
-    if (counts.actorCount !== 7 || counts.profileCount !== 7) {
+    if (
+      counts.actorCount !== 7 ||
+      counts.profileCount !== 7 ||
+      counts.authLookupReadyCount !== 7
+    ) {
       fail('STEP06_AUTH_REBIND_RESULT_INVALID');
     }
     return {
@@ -4361,6 +4721,9 @@ COMMIT;
         operation: 'RUNTIME_AUTH_FIXTURE_REBIND',
         actorCount: 7,
         actorTopologySha256,
+        authLookupReadyCount: counts.authLookupReadyCount,
+        authLookupContract:
+          'UUID_NIL_INSTANCE_AUTHENTICATED_AUDIENCE_NON_SSO_CONFIRMED_PASSWORD',
         intentArtifactSha256,
         resultArtifactSha256,
         dispatch: dispatched.observation,
@@ -4979,12 +5342,20 @@ async function main() {
     preAdvisorShapeAttempts
   );
   const advisorShapeDefectAttempt = advisorShapeDefectSnapshot.link;
-  const advisorShapeDefectEvidenceDirectory =
-    advisorShapeDefectSnapshot.sourceDirectory;
-  const predecessorStep02 = advisorShapeDefectSnapshot.step02;
-  const predecessorAttempts = [
+  const preStep06Http400Attempts = [
     ...preAdvisorShapeAttempts,
     advisorShapeDefectAttempt,
+  ];
+  const step06Http400Snapshot = assertPredecessorStep06Http400(
+    repositoryRoot,
+    paths,
+    preStep06Http400Attempts
+  );
+  const step06Http400Attempt = step06Http400Snapshot.link;
+  const step06Http400EvidenceDirectory = step06Http400Snapshot.sourceDirectory;
+  const predecessorAttempts = [
+    ...preStep06Http400Attempts,
+    step06Http400Attempt,
   ];
   createOwnerPrivateDirectory(repositoryRoot, paths.recoveryJournal);
   createOwnerPrivateDirectory(repositoryRoot, paths.recoveryEvidence);
@@ -5064,7 +5435,7 @@ async function main() {
     const caPath = path.join(paths.recoveryEvidence, CA_FILE);
     copyExactBytesArtifact({
       repositoryRoot,
-      source: path.join(advisorShapeDefectEvidenceDirectory, CA_FILE),
+      source: path.join(step06Http400EvidenceDirectory, CA_FILE),
       destination: caPath,
       expectedSha256: PINNED_CA_SHA256,
       maximumBytes: 16 * 1024,
@@ -5087,13 +5458,12 @@ async function main() {
     }
     const identityWithoutHash = {
       schemaVersion: 1,
-      recordType: 'PR12_EXISTING_PROJECT_CYCLE8_DATABASE_IDENTITY',
+      recordType: 'PR12_EXISTING_PROJECT_CYCLE9_DATABASE_IDENTITY',
       projectRef: PR12_RECOVERY_TARGET.projectRef,
       database,
       predecessorStep01EvidenceSha256:
         TYPES_DRIFT_EVIDENCE_SHA256[STEP01_EVIDENCE_FILE],
-      predecessorAdvisorShapeDefectLinkSha256:
-        advisorShapeDefectAttempt.linkSha256,
+      predecessorStep06Http400LinkSha256: step06Http400Attempt.linkSha256,
       toolchain: toolchainProjection,
       credentialBoundary: {
         brokerProtocolMode: 'ISOLATED_PROJECT_CONTINUATION',
@@ -5118,45 +5488,33 @@ async function main() {
     };
     const identityPath = path.join(
       paths.recoveryJournal,
-      'pr12-cycle8-database-identity.json'
+      'pr12-cycle9-database-identity.json'
     );
     writeCanonicalCreateNew(
       identityPath,
       identity,
-      'CYCLE8_DATABASE_IDENTITY_CREATE_FAILED'
+      'CYCLE9_DATABASE_IDENTITY_CREATE_FAILED'
     );
     hardenPath(repositoryRoot, identityPath, 'FILE');
     const evidence = copyExactCanonicalArtifact({
       repositoryRoot,
-      source: path.join(
-        advisorShapeDefectEvidenceDirectory,
-        STEP01_EVIDENCE_FILE
-      ),
+      source: path.join(step06Http400EvidenceDirectory, STEP01_EVIDENCE_FILE),
       destination: path.join(paths.recoveryEvidence, STEP01_EVIDENCE_FILE),
-      expectedSha256:
-        ADVISOR_SHAPE_DEFECT_STEP_FILE_SHA256[STEP01_EVIDENCE_FILE],
+      expectedSha256: STEP06_HTTP400_EVIDENCE_FILE_SHA256[STEP01_EVIDENCE_FILE],
       code: 'STEP01_PREDECESSOR_COPY_INVALID',
     });
     const replay = copyExactCanonicalArtifact({
       repositoryRoot,
-      source: path.join(
-        advisorShapeDefectEvidenceDirectory,
-        STEP02_EVIDENCE_FILE
-      ),
+      source: path.join(step06Http400EvidenceDirectory, STEP02_EVIDENCE_FILE),
       destination: path.join(paths.recoveryEvidence, STEP02_EVIDENCE_FILE),
-      expectedSha256:
-        ADVISOR_SHAPE_DEFECT_STEP_FILE_SHA256[STEP02_EVIDENCE_FILE],
+      expectedSha256: STEP06_HTTP400_EVIDENCE_FILE_SHA256[STEP02_EVIDENCE_FILE],
       code: 'STEP02_PREDECESSOR_COPY_INVALID',
     });
     const fixtureEvidence = copyExactCanonicalArtifact({
       repositoryRoot,
-      source: path.join(
-        advisorShapeDefectEvidenceDirectory,
-        STEP03_EVIDENCE_FILE
-      ),
+      source: path.join(step06Http400EvidenceDirectory, STEP03_EVIDENCE_FILE),
       destination: path.join(paths.recoveryEvidence, STEP03_EVIDENCE_FILE),
-      expectedSha256:
-        ADVISOR_SHAPE_DEFECT_STEP_FILE_SHA256[STEP03_EVIDENCE_FILE],
+      expectedSha256: STEP06_HTTP400_EVIDENCE_FILE_SHA256[STEP03_EVIDENCE_FILE],
       code: 'STEP03_PREDECESSOR_COPY_INVALID',
     });
     process.stdout.write(
@@ -5195,13 +5553,9 @@ async function main() {
     );
     const types = copyExactCanonicalArtifact({
       repositoryRoot,
-      source: path.join(
-        advisorShapeDefectEvidenceDirectory,
-        STEP04_EVIDENCE_FILE
-      ),
+      source: path.join(step06Http400EvidenceDirectory, STEP04_EVIDENCE_FILE),
       destination: path.join(paths.recoveryEvidence, STEP04_EVIDENCE_FILE),
-      expectedSha256:
-        ADVISOR_SHAPE_DEFECT_STEP_FILE_SHA256[STEP04_EVIDENCE_FILE],
+      expectedSha256: STEP06_HTTP400_EVIDENCE_FILE_SHA256[STEP04_EVIDENCE_FILE],
       code: 'STEP04_PREDECESSOR_COPY_INVALID',
     });
     process.stdout.write(
@@ -5215,18 +5569,12 @@ async function main() {
         localNormalizationRedispatched: false,
       })}\n`
     );
-    const advisor = executeAdvisorAfterScan({
+    const advisor = copyExactCanonicalArtifact({
       repositoryRoot,
-      evidenceDirectory: paths.recoveryEvidence,
-      replayWorkdir: paths.replayWorkdir,
-      supabasePath,
-      psqlPath,
-      caPath,
-      databasePassword,
-      databaseIdentity: database,
-      bindingSha256: predecessorStep02.advisorBefore.bindingSha256,
-      advisorBefore: predecessorStep02.advisorBefore,
-      journalDirectory: paths.recoveryJournal,
+      source: path.join(step06Http400EvidenceDirectory, STEP05_EVIDENCE_FILE),
+      destination: path.join(paths.recoveryEvidence, STEP05_EVIDENCE_FILE),
+      expectedSha256: STEP06_HTTP400_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE],
+      code: 'STEP05_PREDECESSOR_COPY_INVALID',
     });
     process.stdout.write(
       `${canonicalJson({
@@ -5235,6 +5583,7 @@ async function main() {
         result: 'PASS',
         nextStep: '06',
         evidenceSha256: advisor.evidenceSha256,
+        advisorScanRedispatched: false,
       })}\n`
     );
     fixtureResult = refreshRepresentativeActorCredentials({
