@@ -26,6 +26,7 @@ const REQUEST_TIMEOUT_MS = 30_000;
 const BROWSER_REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const LOCAL_BROWSER_GET_PATHS = new Set([
   '/',
+  '/admin',
   '/admin/login',
   '/admin/mfa-setup',
   '/api/auth/profile',
@@ -1075,13 +1076,20 @@ async function runBrowserAndProfileSmoke({
         await page
           .locator('#login-password')
           .fill(actorPasswords[actor.actorId]);
-        await Promise.all([
-          page.waitForURL(
-            url => !['/login', '/admin/login'].includes(url.pathname),
-            { timeout: 30_000, waitUntil: 'domcontentloaded' }
-          ),
-          page.getByRole('button', { name: 'ログイン' }).click(),
-        ]);
+        try {
+          await Promise.all([
+            page.waitForURL(
+              url => !['/login', '/admin/login'].includes(url.pathname),
+              { timeout: 30_000, waitUntil: 'domcontentloaded' }
+            ),
+            page.getByRole('button', { name: 'ログイン' }).click(),
+          ]);
+        } catch (error) {
+          assertBrowserSandboxHealthy(boundaryState);
+          if (error instanceof Pr12AllRoleSmokeRuntimeError) throw error;
+          fail('BROWSER_LOGIN_NAVIGATION_FAILED');
+        }
+        assertBrowserSandboxHealthy(boundaryState);
         const profileResponse = await context.request.get(
           `${baseUrl}/api/auth/profile`,
           {

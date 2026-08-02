@@ -593,6 +593,7 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(runtimeSource).not.toContain(
       'fail(`ISOLATED_DATA_HTTP_${response.status}`)'
     );
+    expect(runtimeSource).toContain("fail('BROWSER_LOGIN_NAVIGATION_FAILED')");
     expect(runnerSource).toContain(
       "instance_id='00000000-0000-0000-0000-000000000000'::uuid"
     );
@@ -634,6 +635,7 @@ console.log(JSON.stringify({ accepted, failures }));
       const baseUrl = 'http://127.0.0.1:43123';
       const ref = ${JSON.stringify(PROJECT_REF)};
       for (const [method, url] of [
+        ['GET', baseUrl + '/admin'],
         ['GET', baseUrl + '/dashboard'],
         ['POST', baseUrl + '/login'],
         ['GET', baseUrl + '/_next/static/chunks/app.js'],
@@ -906,8 +908,18 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(source).toContain(
       "'pr12-existing-project-recovery-replay-workdir-cycle10'"
     );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-journal-cycle11'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-evidence-cycle11'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-replay-workdir-cycle11'"
+    );
     expect(source).toContain('assertPredecessorStep06Http400(');
     expect(source).toContain('assertPredecessorStep06AuthHttp500(');
+    expect(source).toContain('assertPredecessorStep06UnexpectedFailure(');
     expect(source).toContain(
       "status: 'POST_ADVISOR_STEP06_AUTH_HTTP400_VERIFIED'"
     );
@@ -955,7 +967,7 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(activeMain).not.toContain('executeRepresentativeDataValidation({');
     expect(activeMain).not.toContain('executeAdvisorAfterScan({');
     expect(activeMain).toContain(
-      'STEP06_AUTH_HTTP500_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE]'
+      'STEP06_UNEXPECTED_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE]'
     );
     expect(activeMain).toContain('advisorScanRedispatched: false');
     expect(activeMain).toContain('localNormalizationRedispatched: false');
