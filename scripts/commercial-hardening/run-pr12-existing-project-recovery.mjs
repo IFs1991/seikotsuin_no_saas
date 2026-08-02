@@ -105,6 +105,21 @@ const PREDECESSOR_TERMINAL_SHA256 =
   'ce5f0b7e1ac12a985549c270444aba794cef578ba921ce287575b0b97c60bba2';
 const PREDECESSOR_STEP01_EVIDENCE_SHA256 =
   '87c206d50515748ff31c37e808f1d9cc6e6d3547de26da753abee620d3bd4e58';
+const BROKER_ABORT_RECOVERY_HEAD = 'bf4e6c9a75bab70b531680338fcbd0d7ceff51ad';
+const BROKER_ABORT_RUNTIME_CREDENTIAL_FILE_SHA256 =
+  '32a061bc72c9b79e90c13a16694a61299856a8d63a5e4f1e4d86b49e51eb7cd2';
+const BROKER_ABORT_CLAIM_FILE_SHA256 =
+  'f537baedd35d684b18277564adf49c61be7ef07765dbe794e3656d6e41e731ca';
+const BROKER_ABORT_CONSUMED_FILE_SHA256 =
+  'fb86373760ae50bac9699e6594d0aab326abd968cbfbe5c5460c51887c18fbf2';
+const BROKER_ABORT_TERMINAL_FILE_SHA256 =
+  'e1cac238244e793a32f75bea31314e95bb16d427b9ea791fc6155907a28fc090';
+const BROKER_ABORT_STEP01_FILE_SHA256 =
+  '8f7806798ab3b61ece8eb95f6314748db3eb575f4f093526b96f96dd3e6fd53b';
+const BROKER_ABORT_TERMINAL_SHA256 =
+  '5e2825b85faad85cac82af92235c95b0c5dde2cd53bd578334e8ce466ff30ae4';
+const BROKER_ABORT_STEP01_EVIDENCE_SHA256 =
+  '72293d11823c91d61639a9ef4d75f69b33df1b6db848db059397c736c660166c';
 
 class RecoveryExecutionError extends Error {
   constructor(code) {
@@ -330,17 +345,29 @@ function assertExternalSiblingPaths(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir'
     ),
-    recoveryJournal: path.join(
+    brokerAbortRecoveryJournal: path.join(
       actionBase,
       'pr12-existing-project-recovery-journal-cycle2'
     ),
-    recoveryEvidence: path.join(
+    brokerAbortRecoveryEvidence: path.join(
       actionBase,
       'pr12-existing-project-recovery-evidence-cycle2'
     ),
-    replayWorkdir: path.join(
+    brokerAbortReplayWorkdir: path.join(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle2'
+    ),
+    recoveryJournal: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-journal-cycle3'
+    ),
+    recoveryEvidence: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-evidence-cycle3'
+    ),
+    replayWorkdir: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-replay-workdir-cycle3'
     ),
   };
 }
@@ -480,6 +507,179 @@ function assertPredecessorPreContactAbort(repositoryRoot, paths) {
   };
 }
 
+function assertPredecessorCredentialBrokerAbort(
+  repositoryRoot,
+  paths,
+  preContactAbort
+) {
+  const journal = resolveExistingDirectory(
+    paths.brokerAbortRecoveryJournal,
+    'BROKER_ABORT_RECOVERY_EVIDENCE_INVALID'
+  );
+  const evidence = resolveExistingDirectory(
+    paths.brokerAbortRecoveryEvidence,
+    'BROKER_ABORT_RECOVERY_EVIDENCE_INVALID'
+  );
+  if (existsSync(paths.brokerAbortReplayWorkdir)) {
+    fail('BROKER_ABORT_RECOVERY_EVIDENCE_INVALID');
+  }
+  assertExactDirectoryEntries(
+    journal,
+    [
+      RUNTIME_CREDENTIAL_CONFIG_FILE,
+      CLAIM_FILE,
+      'pr12-existing-project-recovery-credential-consumed.json',
+      TERMINAL_FILE,
+    ],
+    'BROKER_ABORT_RECOVERY_EVIDENCE_INVALID'
+  );
+  assertExactDirectoryEntries(
+    evidence,
+    [STEP01_EVIDENCE_FILE],
+    'BROKER_ABORT_RECOVERY_EVIDENCE_INVALID'
+  );
+  captureOwnerPrivatePath(repositoryRoot, journal, 'DIRECTORY');
+  captureOwnerPrivatePath(repositoryRoot, evidence, 'DIRECTORY');
+  const runtimeCredentialPath = resolveExistingFile(
+    path.join(journal, RUNTIME_CREDENTIAL_CONFIG_FILE),
+    'BROKER_ABORT_RECOVERY_EVIDENCE_INVALID'
+  );
+  const claimPath = resolveExistingFile(
+    path.join(journal, CLAIM_FILE),
+    'BROKER_ABORT_RECOVERY_EVIDENCE_INVALID'
+  );
+  const consumedPath = resolveExistingFile(
+    path.join(
+      journal,
+      'pr12-existing-project-recovery-credential-consumed.json'
+    ),
+    'BROKER_ABORT_RECOVERY_EVIDENCE_INVALID'
+  );
+  const terminalPath = resolveExistingFile(
+    path.join(journal, TERMINAL_FILE),
+    'BROKER_ABORT_RECOVERY_EVIDENCE_INVALID'
+  );
+  const step01Path = resolveExistingFile(
+    path.join(evidence, STEP01_EVIDENCE_FILE),
+    'BROKER_ABORT_RECOVERY_EVIDENCE_INVALID'
+  );
+  for (const filePath of [
+    runtimeCredentialPath,
+    claimPath,
+    terminalPath,
+    step01Path,
+  ]) {
+    captureOwnerPrivatePath(repositoryRoot, filePath, 'FILE');
+  }
+  const runtimeCredential = readCanonicalJson(
+    runtimeCredentialPath,
+    'BROKER_ABORT_RECOVERY_EVIDENCE_INVALID'
+  );
+  const claim = readCanonicalJson(
+    claimPath,
+    'BROKER_ABORT_RECOVERY_EVIDENCE_INVALID'
+  );
+  const consumed = readCanonicalJson(
+    consumedPath,
+    'BROKER_ABORT_RECOVERY_EVIDENCE_INVALID'
+  );
+  const terminal = readCanonicalJson(
+    terminalPath,
+    'BROKER_ABORT_RECOVERY_EVIDENCE_INVALID'
+  );
+  const step01 = readCanonicalJson(
+    step01Path,
+    'BROKER_ABORT_RECOVERY_EVIDENCE_INVALID'
+  );
+  if (
+    runtimeCredential.sha256 !== BROKER_ABORT_RUNTIME_CREDENTIAL_FILE_SHA256 ||
+    claim.sha256 !== BROKER_ABORT_CLAIM_FILE_SHA256 ||
+    consumed.sha256 !== BROKER_ABORT_CONSUMED_FILE_SHA256 ||
+    terminal.sha256 !== BROKER_ABORT_TERMINAL_FILE_SHA256 ||
+    step01.sha256 !== BROKER_ABORT_STEP01_FILE_SHA256
+  ) {
+    fail('BROKER_ABORT_RECOVERY_EVIDENCE_INVALID');
+  }
+  assertCanonicalEmbeddedSha(
+    terminal.value,
+    'terminalSha256',
+    BROKER_ABORT_TERMINAL_SHA256,
+    'BROKER_ABORT_RECOVERY_EVIDENCE_INVALID'
+  );
+  assertCanonicalEmbeddedSha(
+    step01.value,
+    'evidenceSha256',
+    BROKER_ABORT_STEP01_EVIDENCE_SHA256,
+    'BROKER_ABORT_RECOVERY_EVIDENCE_INVALID'
+  );
+  const contactCounts = isRecord(step01.value.remoteContacts)
+    ? step01.value.remoteContacts
+    : null;
+  if (
+    claim.value.actionId !== RECOVERY_ACTION_ID ||
+    claim.value.state !== 'CLAIMED_CONTINUATION_NOT_STARTED' ||
+    consumed.value.actionId !== RECOVERY_ACTION_ID ||
+    consumed.value.state !== 'CREDENTIAL_CONSUMED_CONTINUATION_STARTED' ||
+    consumed.value.claimSha256 !== claim.sha256 ||
+    terminal.value.status !== 'BLOCK' ||
+    terminal.value.reasonCode !== 'CREDENTIAL_BROKER_RESPONSE_REJECTED' ||
+    terminal.value.gitHead !== BROKER_ABORT_RECOVERY_HEAD ||
+    terminal.value.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    !Array.isArray(terminal.value.completedCanonicalSteps) ||
+    terminal.value.completedCanonicalSteps.length !== 0 ||
+    terminal.value.blockedCanonicalStep !== '01' ||
+    terminal.value.newProjectPostAttemptCount !== 0 ||
+    terminal.value.productionContactCount !== 0 ||
+    terminal.value.secretValuesCaptured !== false ||
+    canonicalJson(terminal.value.predecessorAttempt) !==
+      canonicalJson(preContactAbort) ||
+    step01.value.status !== 'BLOCK' ||
+    step01.value.reasonCode !== 'CREDENTIAL_BROKER_RESPONSE_REJECTED' ||
+    step01.value.providerBodySha256 !== null ||
+    step01.value.productionContactCount !== 0 ||
+    step01.value.secretValuesCaptured !== false ||
+    canonicalJson(step01.value.predecessorAttempt) !==
+      canonicalJson(preContactAbort) ||
+    contactCounts === null ||
+    Object.values(contactCounts).some(value => value !== 0)
+  ) {
+    fail('BROKER_ABORT_RECOVERY_EVIDENCE_INVALID');
+  }
+  hardenPath(repositoryRoot, consumedPath, 'FILE');
+  const consumedAfterAclHardening = readCanonicalJson(
+    consumedPath,
+    'BROKER_ABORT_RECOVERY_EVIDENCE_INVALID'
+  );
+  if (consumedAfterAclHardening.sha256 !== consumed.sha256) {
+    fail('BROKER_ABORT_RECOVERY_EVIDENCE_INVALID');
+  }
+  const linkWithoutHash = {
+    status: 'PRE_PROVIDER_CREDENTIAL_BROKER_ABORT_VERIFIED',
+    gitHead: BROKER_ABORT_RECOVERY_HEAD,
+    reasonCode: 'CREDENTIAL_BROKER_RESPONSE_REJECTED',
+    runtimeCredentialConfigurationFileSha256:
+      BROKER_ABORT_RUNTIME_CREDENTIAL_FILE_SHA256,
+    claimFileSha256: BROKER_ABORT_CLAIM_FILE_SHA256,
+    consumedReceiptFileSha256: BROKER_ABORT_CONSUMED_FILE_SHA256,
+    terminalFileSha256: BROKER_ABORT_TERMINAL_FILE_SHA256,
+    terminalSha256: BROKER_ABORT_TERMINAL_SHA256,
+    step01FileSha256: BROKER_ABORT_STEP01_FILE_SHA256,
+    step01EvidenceSha256: BROKER_ABORT_STEP01_EVIDENCE_SHA256,
+    credentialBrokerInvocationCount: 1,
+    credentialDecryptionCompletedBeforeResponseAbort: true,
+    consumedReceiptAclRemediatedWithoutContentMutation: true,
+    allProviderAndDatabaseContactCountsZero: true,
+    newProjectPostAttemptCount: 0,
+    productionContactCount: 0,
+    rawPathsRetained: false,
+    secretValuesCaptured: false,
+  };
+  return {
+    ...linkWithoutHash,
+    linkSha256: sha256Canonical(linkWithoutHash),
+  };
+}
+
 function createOwnerPrivateDirectory(repositoryRoot, directory) {
   if (existsSync(directory)) fail('RECOVERY_OUTPUT_ALREADY_EXISTS');
   mkdirSync(directory, { recursive: false });
@@ -515,7 +715,7 @@ function createRecoveryClaim({
   action003Evidence,
   action003Verification,
   credentialConfigurationSha256,
-  predecessorAttempt,
+  predecessorAttempts,
 }) {
   const ownerDecision = {
     schemaVersion: 1,
@@ -545,7 +745,7 @@ function createRecoveryClaim({
     action003ManifestSha256: action003Verification.manifestSha256,
     action003EvidencePathSha256: windowsPathFingerprint(action003Evidence),
     credentialConfigurationSha256,
-    predecessorAttempt,
+    predecessorAttempts,
   };
   const bindingMaterialSha256 = sha256Canonical(ownerDecision);
   const payloadSha256 = sha256Canonical({
@@ -2287,6 +2487,12 @@ async function main() {
     repositoryRoot,
     paths
   );
+  const brokerAbortAttempt = assertPredecessorCredentialBrokerAbort(
+    repositoryRoot,
+    paths,
+    predecessorAttempt
+  );
+  const predecessorAttempts = [predecessorAttempt, brokerAbortAttempt];
   createOwnerPrivateDirectory(repositoryRoot, paths.recoveryJournal);
   const evidenceAcl = createOwnerPrivateDirectory(
     repositoryRoot,
@@ -2304,7 +2510,7 @@ async function main() {
     runtimeApiKeysGetCount: 0,
     directDatabaseConnectionCount: 0,
     providerBodySha256: null,
-    predecessorAttempt,
+    predecessorAttempts,
   };
   const runtimeCredential = createRuntimeCredentialConfiguration(
     repositoryRoot,
@@ -2327,7 +2533,7 @@ async function main() {
     action003Evidence: action003EvidenceDirectory,
     action003Verification: historical,
     credentialConfigurationSha256: runtimeCredential.sha256,
-    predecessorAttempt,
+    predecessorAttempts,
   });
   const claim = claimSnapshot.claim;
   const credentialLeaseExpiresAt = new Date(
@@ -2468,7 +2674,7 @@ async function main() {
         createPostAttemptCount: 1,
         terminalReason: 'PROVIDER_RESPONSE_INVALID',
       },
-      predecessorAttempt,
+      predecessorAttempts,
       decision,
       productionBoundary: {
         productionProjectRef: 'qnanuoqveidwvacvbhqp',
@@ -2634,7 +2840,7 @@ async function main() {
       step04EvidenceSha256: types.evidenceSha256,
       step05EvidenceSha256: advisor.evidenceSha256,
       step06EvidenceSha256: smoke.evidenceSha256,
-      predecessorAttempt,
+      predecessorAttempts,
       newProjectPostAttemptCount: 0,
       productionContactCount: 0,
       secretValuesCaptured: false,
@@ -2704,7 +2910,7 @@ main().catch(error => {
             region: PR12_RECOVERY_TARGET.region,
           },
           providerBodySha256: context.providerBodySha256,
-          predecessorAttempt: context.predecessorAttempt,
+          predecessorAttempts: context.predecessorAttempts,
           remoteContacts: {
             projectStateGetCount: context.projectStateGetCount,
             computeAddonGetCount: context.computeAddonGetCount,
@@ -2798,7 +3004,7 @@ main().catch(error => {
           projectRef: PR12_RECOVERY_TARGET.projectRef,
           completedCanonicalSteps,
           blockedCanonicalStep: blockedCanonicalStep ?? '01',
-          predecessorAttempt: context.predecessorAttempt,
+          predecessorAttempts: context.predecessorAttempts,
           newProjectPostAttemptCount: 0,
           productionContactCount: 0,
           secretValuesCaptured: false,

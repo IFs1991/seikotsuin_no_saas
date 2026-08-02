@@ -195,6 +195,32 @@ function Assert-StrictAcl {
   }
 }
 
+function Protect-StrictFileAcl {
+  param(
+    [Parameter(Mandatory)][string]$Value,
+    [Parameter(Mandatory)][string]$CurrentSid
+  )
+  $current = [Security.Principal.SecurityIdentifier]::new($CurrentSid)
+  $system = [Security.Principal.SecurityIdentifier]::new('S-1-5-18')
+  $security = [Security.AccessControl.FileSecurity]::new()
+  $security.SetAccessRuleProtection($true, $false)
+  $security.SetOwner($current)
+  foreach ($sid in @($current, $system)) {
+    $rule = [Security.AccessControl.FileSystemAccessRule]::new(
+      $sid,
+      [Security.AccessControl.FileSystemRights]::FullControl,
+      [Security.AccessControl.InheritanceFlags]::None,
+      [Security.AccessControl.PropagationFlags]::None,
+      [Security.AccessControl.AccessControlType]::Allow
+    )
+    $null = $security.AddAccessRule($rule)
+  }
+  [IO.FileSystemAclExtensions]::SetAccessControl(
+    [IO.FileInfo]::new($Value),
+    $security
+  )
+}
+
 function Read-BoundedStandardInput {
   $stream = [Console]::OpenStandardInput()
   $memory = [IO.MemoryStream]::new()
@@ -752,6 +778,9 @@ try {
       finally {
         $stream.Dispose()
       }
+      Protect-StrictFileAcl `
+        -Value $consumedPath `
+        -CurrentSid $ownerSid
       Assert-StrictAcl `
         -Value $consumedPath `
         -Directory $false `

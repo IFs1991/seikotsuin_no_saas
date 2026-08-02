@@ -1,6 +1,8 @@
 /** @jest-environment node */
 
+import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 
 import { repoRoot, runPr12Module } from './pr12-local-module-test-helpers';
@@ -519,10 +521,25 @@ describe('PR12 existing isolated project recovery', () => {
     expect(source).toContain(
       "'pr12-existing-project-recovery-replay-workdir-cycle2'"
     );
+    expect(source).toContain("'pr12-existing-project-recovery-journal-cycle3'");
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-evidence-cycle3'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-replay-workdir-cycle3'"
+    );
     expect(source).toContain('assertPredecessorPreContactAbort(');
+    expect(source).toContain('assertPredecessorCredentialBrokerAbort(');
     expect(source).toContain("status: 'PRE_CONTACT_TOOLING_ABORT_VERIFIED'");
+    expect(source).toContain(
+      "status: 'PRE_PROVIDER_CREDENTIAL_BROKER_ABORT_VERIFIED'"
+    );
     expect(source).toContain('allRemoteContactCountsZero: true');
-    expect(source).toContain('predecessorAttempt');
+    expect(source).toContain('allProviderAndDatabaseContactCountsZero: true');
+    expect(source).toContain(
+      'consumedReceiptAclRemediatedWithoutContentMutation: true'
+    );
+    expect(source).toContain('predecessorAttempts');
     expect(source).not.toContain('rmSync');
     expect(source).not.toContain('unlinkSync');
 
@@ -539,6 +556,145 @@ describe('PR12 existing isolated project recovery', () => {
       'pr12-existing-project-recovery-credential-consumed.json'
     );
     expect(broker).toContain('[IO.FileMode]::CreateNew');
+    expect(broker).toContain('function Protect-StrictFileAcl');
+    expect(broker).toContain(
+      'Protect-StrictFileAcl `\n        -Value $consumedPath `'
+    );
+    expect(broker.indexOf('Protect-StrictFileAcl `')).toBeLessThan(
+      broker.indexOf('Assert-StrictAcl `\n        -Value $consumedPath `')
+    );
+  });
+
+  test('behaviorally rejects an inherited receipt ACL and protects it before acceptance', () => {
+    if (process.platform !== 'win32') return;
+    const powershell = 'C:\\Program Files\\PowerShell\\7\\pwsh.exe';
+    const aclHelper = path.join(
+      repoRoot,
+      'scripts/commercial-hardening/pr12-windows-owner-private-acl.ps1'
+    );
+    const brokerPath = path.join(
+      repoRoot,
+      'scripts/commercial-hardening/pr12-windows-dpapi-credential-broker.ps1'
+    );
+    const temporaryRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'pr12-broker-receipt-acl-')
+    );
+    const protectedParent = path.join(temporaryRoot, 'journal');
+    const receiptPath = path.join(
+      protectedParent,
+      'pr12-existing-project-recovery-credential-consumed.json'
+    );
+    const harnessPath = path.join(temporaryRoot, 'acl-harness.ps1');
+    try {
+      fs.mkdirSync(protectedParent);
+      const parentProtection = spawnSync(
+        powershell,
+        [
+          '-NoLogo',
+          '-NoProfile',
+          '-NonInteractive',
+          '-File',
+          aclHelper,
+          '-Mode',
+          'PROTECT_AND_CAPTURE',
+          '-Kind',
+          'DIRECTORY',
+          '-LiteralPath',
+          protectedParent,
+        ],
+        { cwd: repoRoot, encoding: 'utf8', windowsHide: true }
+      );
+      expect(parentProtection.status).toBe(0);
+      fs.writeFileSync(receiptPath, '{"safe":true}\n', {
+        encoding: 'utf8',
+        flag: 'wx',
+      });
+      const beforeBytes = fs.readFileSync(receiptPath);
+      const inheritedReceipt = spawnSync(
+        powershell,
+        [
+          '-NoLogo',
+          '-NoProfile',
+          '-NonInteractive',
+          '-File',
+          aclHelper,
+          '-Mode',
+          'CAPTURE',
+          '-Kind',
+          'FILE',
+          '-LiteralPath',
+          receiptPath,
+        ],
+        { cwd: repoRoot, encoding: 'utf8', windowsHide: true }
+      );
+      expect(inheritedReceipt.status).not.toBe(0);
+      expect(inheritedReceipt.stderr).toContain('ACCESS_RULES_NOT_PROTECTED');
+
+      const brokerSource = fs.readFileSync(brokerPath, 'utf8');
+      const functionsStart = brokerSource.indexOf(
+        'function Assert-StrictAcl {'
+      );
+      const functionsEnd = brokerSource.indexOf(
+        'function Read-BoundedStandardInput {'
+      );
+      expect(functionsStart).toBeGreaterThanOrEqual(0);
+      expect(functionsEnd).toBeGreaterThan(functionsStart);
+      const harness = `${brokerSource.slice(functionsStart, functionsEnd)}
+$ownerSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+Protect-StrictFileAcl -Value $args[0] -CurrentSid $ownerSid
+Assert-StrictAcl -Value $args[0] -Directory $false -CurrentSid $ownerSid
+`;
+      fs.writeFileSync(harnessPath, harness, { encoding: 'utf8', flag: 'wx' });
+      const protectedReceipt = spawnSync(
+        powershell,
+        [
+          '-NoLogo',
+          '-NoProfile',
+          '-NonInteractive',
+          '-File',
+          harnessPath,
+          receiptPath,
+        ],
+        { cwd: repoRoot, encoding: 'utf8', windowsHide: true }
+      );
+      expect(protectedReceipt.status).toBe(0);
+      expect(protectedReceipt.stdout).toBe('');
+      expect(protectedReceipt.stderr).toBe('');
+      expect(fs.readFileSync(receiptPath)).toEqual(beforeBytes);
+
+      const acceptedReceipt = spawnSync(
+        powershell,
+        [
+          '-NoLogo',
+          '-NoProfile',
+          '-NonInteractive',
+          '-File',
+          aclHelper,
+          '-Mode',
+          'CAPTURE',
+          '-Kind',
+          'FILE',
+          '-LiteralPath',
+          receiptPath,
+        ],
+        { cwd: repoRoot, encoding: 'utf8', windowsHide: true }
+      );
+      expect(acceptedReceipt.status).toBe(0);
+      const observation = JSON.parse(acceptedReceipt.stdout) as {
+        aclPolicyId: string;
+        accessRulesProtected: boolean;
+        accessRuleCount: number;
+        allowedSids: string[];
+      };
+      expect(observation).toMatchObject({
+        aclPolicyId: 'WINDOWS_CURRENT_USER_AND_SYSTEM_FULL_CONTROL_V1',
+        accessRulesProtected: true,
+        accessRuleCount: 2,
+      });
+      expect(observation.allowedSids).toHaveLength(2);
+    } finally {
+      fs.rmSync(temporaryRoot, { recursive: true, force: true });
+    }
   });
 
   test('continues through the owner-authorized functional qualification scope', () => {
