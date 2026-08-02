@@ -580,6 +580,24 @@ const STEP06_BROWSER_UNEXPECTED_AUTH_INTENT_SHA256 =
   '75134334a565ed23a27218bec46b84677526f1ec5e2b498e256aa3b15d4528ea';
 const STEP06_BROWSER_UNEXPECTED_AUTH_OBSERVATION_SHA256 =
   '923e5484b5805e419aed69eab4533a37f2042355ef0dfeac93a86290cdb0d096';
+const STEP01_CA_SOURCE_DEFECT_RECOVERY_HEAD =
+  '943977d5fdb24dc900953127c0434d039acfb6dd';
+const STEP01_CA_SOURCE_DEFECT_JOURNAL_FILE_SHA256 = Object.freeze({
+  [RUNTIME_CREDENTIAL_CONFIG_FILE]:
+    'bb811504736409c7e177ba858bcd1c0773b57b8324bda1c0314b680da2f55069',
+  'pr12-existing-project-recovery-credential-consumed.json':
+    '776299ac0427f20a16b7b1e774172d0bc34d9ddc13bfffc01b57c8a615f04411',
+  [TERMINAL_FILE]:
+    '8a1f9d4da24d3f994dbf08540e4645145f7e7516ae1c1604875e5d300e2e625f',
+  [CLAIM_FILE]:
+    'f3df0e5bcc72a6bd3478ec04ce5f7b132f4f92ba5e75033a785b85ece11b5c5b',
+});
+const STEP01_CA_SOURCE_DEFECT_STEP01_FILE_SHA256 =
+  '5b70a1cde70d6eef9a0f8a1052e97fd81ef2bac11d9dac91720f5bc13dc5b9d6';
+const STEP01_CA_SOURCE_DEFECT_TERMINAL_SHA256 =
+  'f86a96574f6818a5f80001670350442dc271e38499c8ce9dba7692a928dcd199';
+const STEP01_CA_SOURCE_DEFECT_STEP01_EVIDENCE_SHA256 =
+  '467abdd439ea1441cdbbbbb5f691d30798f1155924546cbc57e828493b0f3e10';
 const ADVISOR_SHAPE_DEFECT_EVIDENCE_SHA256 = Object.freeze({
   [STEP01_EVIDENCE_FILE]:
     '1c1e989ab92d4835c2cedffeaa859abac53383801de8afd014a1ceebd4ddbb5d',
@@ -995,17 +1013,29 @@ function assertExternalSiblingPaths(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle11'
     ),
-    recoveryJournal: path.join(
+    step01CaSourceDefectRecoveryJournal: path.join(
       actionBase,
       'pr12-existing-project-recovery-journal-cycle12'
     ),
-    recoveryEvidence: path.join(
+    step01CaSourceDefectRecoveryEvidence: path.join(
       actionBase,
       'pr12-existing-project-recovery-evidence-cycle12'
     ),
-    replayWorkdir: path.join(
+    step01CaSourceDefectReplayWorkdir: path.join(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle12'
+    ),
+    recoveryJournal: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-journal-cycle13'
+    ),
+    recoveryEvidence: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-evidence-cycle13'
+    ),
+    replayWorkdir: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-replay-workdir-cycle13'
     ),
   };
 }
@@ -3409,6 +3439,153 @@ function assertPredecessorStep06BrowserUnexpectedFailure(
     authObservationSha256: STEP06_BROWSER_UNEXPECTED_AUTH_OBSERVATION_SHA256,
     linkStatus: 'STEP06_BROWSER_UNEXPECTED_RUNTIME_FAILURE_VERIFIED',
   });
+}
+
+function assertPredecessorStep01CaSourceDefect(
+  repositoryRoot,
+  paths,
+  predecessorAttempts
+) {
+  const code = 'STEP01_CA_SOURCE_DEFECT_PREDECESSOR_INVALID';
+  const journal = resolveExistingDirectory(
+    paths.step01CaSourceDefectRecoveryJournal,
+    code
+  );
+  const evidence = resolveExistingDirectory(
+    paths.step01CaSourceDefectRecoveryEvidence,
+    code
+  );
+  const workdir = resolveExistingDirectory(
+    paths.step01CaSourceDefectReplayWorkdir,
+    code
+  );
+  assertExactDirectoryEntries(
+    journal,
+    Object.keys(STEP01_CA_SOURCE_DEFECT_JOURNAL_FILE_SHA256),
+    code
+  );
+  assertExactDirectoryEntries(evidence, [STEP01_EVIDENCE_FILE], code);
+  assertExactDirectoryEntries(workdir, [], code);
+  for (const directory of [journal, evidence, workdir]) {
+    captureOwnerPrivatePath(repositoryRoot, directory, 'DIRECTORY');
+  }
+  const journalFiles = Object.fromEntries(
+    Object.keys(STEP01_CA_SOURCE_DEFECT_JOURNAL_FILE_SHA256).map(filename => [
+      filename,
+      path.join(journal, filename),
+    ])
+  );
+  const step01Path = path.join(evidence, STEP01_EVIDENCE_FILE);
+  for (const candidate of [...Object.values(journalFiles), step01Path]) {
+    resolveExistingFile(candidate, code);
+    assertNoReparsePathIdentity(path.dirname(journal), candidate, code);
+    captureOwnerPrivatePath(repositoryRoot, candidate, 'FILE');
+  }
+  const snapshots = Object.fromEntries(
+    Object.entries(journalFiles).map(([filename, artifactPath]) => [
+      filename,
+      readCanonicalJson(artifactPath, code),
+    ])
+  );
+  const step01 = readCanonicalJson(step01Path, code);
+  if (
+    Object.entries(snapshots).some(
+      ([filename, snapshot]) =>
+        snapshot.sha256 !==
+        STEP01_CA_SOURCE_DEFECT_JOURNAL_FILE_SHA256[filename]
+    ) ||
+    step01.sha256 !== STEP01_CA_SOURCE_DEFECT_STEP01_FILE_SHA256
+  ) {
+    fail(code);
+  }
+  const claim = snapshots[CLAIM_FILE].value;
+  const consumed =
+    snapshots['pr12-existing-project-recovery-credential-consumed.json'].value;
+  const terminal = snapshots[TERMINAL_FILE].value;
+  assertCanonicalEmbeddedSha(
+    terminal,
+    'terminalSha256',
+    STEP01_CA_SOURCE_DEFECT_TERMINAL_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    step01.value,
+    'evidenceSha256',
+    STEP01_CA_SOURCE_DEFECT_STEP01_EVIDENCE_SHA256,
+    code
+  );
+  const contacts = isRecord(step01.value.remoteContacts)
+    ? step01.value.remoteContacts
+    : null;
+  if (
+    claim.actionId !== RECOVERY_ACTION_ID ||
+    claim.state !== 'CLAIMED_CONTINUATION_NOT_STARTED' ||
+    consumed.actionId !== RECOVERY_ACTION_ID ||
+    consumed.state !== 'CREDENTIAL_CONSUMED_CONTINUATION_STARTED' ||
+    consumed.claimSha256 !== snapshots[CLAIM_FILE].sha256 ||
+    terminal.status !== 'BLOCK' ||
+    terminal.reasonCode !== 'UNEXPECTED_RECOVERY_FAILURE' ||
+    terminal.gitHead !== STEP01_CA_SOURCE_DEFECT_RECOVERY_HEAD ||
+    terminal.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    canonicalJson(terminal.predecessorAttempts) !==
+      canonicalJson(predecessorAttempts) ||
+    canonicalJson(terminal.completedCanonicalSteps) !== canonicalJson([]) ||
+    terminal.blockedCanonicalStep !== '01' ||
+    terminal.newProjectPostAttemptCount !== 0 ||
+    terminal.productionContactCount !== 0 ||
+    terminal.secretValuesCaptured !== false ||
+    step01.value.status !== 'BLOCK' ||
+    step01.value.reasonCode !== 'UNEXPECTED_RECOVERY_FAILURE' ||
+    canonicalJson(step01.value.predecessorAttempts) !==
+      canonicalJson(predecessorAttempts) ||
+    step01.value.target?.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    step01.value.target?.organizationId !==
+      PR12_RECOVERY_TARGET.organizationId ||
+    step01.value.target?.region !== PR12_RECOVERY_TARGET.region ||
+    step01.value.providerBodySha256 !== null ||
+    step01.value.productionContactCount !== 0 ||
+    step01.value.rawProviderBodiesRetained !== false ||
+    step01.value.rawPathsRetained !== false ||
+    step01.value.secretValuesCaptured !== false ||
+    contacts === null ||
+    Object.values(contacts).some(value => value !== 0)
+  ) {
+    fail(code);
+  }
+  for (const [filename, snapshot] of Object.entries(snapshots)) {
+    if (filename === RUNTIME_CREDENTIAL_CONFIG_FILE) continue;
+    assertSecretFreeEvidence(snapshot.value, []);
+  }
+  assertSecretFreeEvidence(step01.value, []);
+  const linkWithoutHash = {
+    status: 'PRE_PROVIDER_CA_SOURCE_TOOLING_DEFECT_VERIFIED',
+    gitHead: STEP01_CA_SOURCE_DEFECT_RECOVERY_HEAD,
+    reasonCode: 'UNEXPECTED_RECOVERY_FAILURE',
+    runtimeCredentialConfigurationFileSha256:
+      STEP01_CA_SOURCE_DEFECT_JOURNAL_FILE_SHA256[
+        RUNTIME_CREDENTIAL_CONFIG_FILE
+      ],
+    claimFileSha256: STEP01_CA_SOURCE_DEFECT_JOURNAL_FILE_SHA256[CLAIM_FILE],
+    consumedReceiptFileSha256:
+      STEP01_CA_SOURCE_DEFECT_JOURNAL_FILE_SHA256[
+        'pr12-existing-project-recovery-credential-consumed.json'
+      ],
+    terminalFileSha256:
+      STEP01_CA_SOURCE_DEFECT_JOURNAL_FILE_SHA256[TERMINAL_FILE],
+    terminalSha256: STEP01_CA_SOURCE_DEFECT_TERMINAL_SHA256,
+    step01FileSha256: STEP01_CA_SOURCE_DEFECT_STEP01_FILE_SHA256,
+    step01EvidenceSha256: STEP01_CA_SOURCE_DEFECT_STEP01_EVIDENCE_SHA256,
+    credentialBrokerInvocationCount: 1,
+    allProviderAndDatabaseContactCountsZero: true,
+    newProjectPostAttemptCount: 0,
+    productionContactCount: 0,
+    rawPathsRetained: false,
+    secretValuesCaptured: false,
+  };
+  return {
+    ...linkWithoutHash,
+    linkSha256: sha256Canonical(linkWithoutHash),
+  };
 }
 
 function createOwnerPrivateDirectory(repositoryRoot, directory) {
@@ -5867,9 +6044,18 @@ async function main() {
   const step06BrowserUnexpectedAttempt = step06BrowserUnexpectedSnapshot.link;
   const step06BrowserUnexpectedEvidenceDirectory =
     step06BrowserUnexpectedSnapshot.sourceDirectory;
-  const predecessorAttempts = [
+  const preStep01CaSourceDefectAttempts = [
     ...preStep06BrowserUnexpectedAttempts,
     step06BrowserUnexpectedAttempt,
+  ];
+  const step01CaSourceDefectAttempt = assertPredecessorStep01CaSourceDefect(
+    repositoryRoot,
+    paths,
+    preStep01CaSourceDefectAttempts
+  );
+  const predecessorAttempts = [
+    ...preStep01CaSourceDefectAttempts,
+    step01CaSourceDefectAttempt,
   ];
   createOwnerPrivateDirectory(repositoryRoot, paths.recoveryJournal);
   createOwnerPrivateDirectory(repositoryRoot, paths.recoveryEvidence);
@@ -5949,7 +6135,7 @@ async function main() {
     const caPath = path.join(paths.recoveryEvidence, CA_FILE);
     copyExactBytesArtifact({
       repositoryRoot,
-      source: path.join(step06UnexpectedEvidenceDirectory, CA_FILE),
+      source: path.join(step06BrowserUnexpectedEvidenceDirectory, CA_FILE),
       destination: caPath,
       expectedSha256: PINNED_CA_SHA256,
       maximumBytes: 16 * 1024,
@@ -5972,13 +6158,13 @@ async function main() {
     }
     const identityWithoutHash = {
       schemaVersion: 1,
-      recordType: 'PR12_EXISTING_PROJECT_CYCLE12_DATABASE_IDENTITY',
+      recordType: 'PR12_EXISTING_PROJECT_CYCLE13_DATABASE_IDENTITY',
       projectRef: PR12_RECOVERY_TARGET.projectRef,
       database,
       predecessorStep01EvidenceSha256:
         TYPES_DRIFT_EVIDENCE_SHA256[STEP01_EVIDENCE_FILE],
-      predecessorStep06BrowserUnexpectedLinkSha256:
-        step06BrowserUnexpectedAttempt.linkSha256,
+      predecessorStep01CaSourceDefectLinkSha256:
+        step01CaSourceDefectAttempt.linkSha256,
       toolchain: toolchainProjection,
       credentialBoundary: {
         brokerProtocolMode: 'ISOLATED_PROJECT_CONTINUATION',
@@ -6003,12 +6189,12 @@ async function main() {
     };
     const identityPath = path.join(
       paths.recoveryJournal,
-      'pr12-cycle12-database-identity.json'
+      'pr12-cycle13-database-identity.json'
     );
     writeCanonicalCreateNew(
       identityPath,
       identity,
-      'CYCLE12_DATABASE_IDENTITY_CREATE_FAILED'
+      'CYCLE13_DATABASE_IDENTITY_CREATE_FAILED'
     );
     hardenPath(repositoryRoot, identityPath, 'FILE');
     const evidence = copyExactCanonicalArtifact({

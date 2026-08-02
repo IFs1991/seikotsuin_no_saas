@@ -942,12 +942,22 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(source).toContain(
       "'pr12-existing-project-recovery-replay-workdir-cycle12'"
     );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-journal-cycle13'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-evidence-cycle13'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-replay-workdir-cycle13'"
+    );
     expect(source).toContain('assertPredecessorStep06Http400(');
     expect(source).toContain('assertPredecessorStep06AuthHttp500(');
     expect(source).toContain('assertPredecessorStep06UnexpectedFailure(');
     expect(source).toContain(
       'assertPredecessorStep06BrowserUnexpectedFailure('
     );
+    expect(source).toContain('assertPredecessorStep01CaSourceDefect(');
     expect(source).toContain(
       "status: 'POST_ADVISOR_STEP06_AUTH_HTTP400_VERIFIED'"
     );
@@ -996,6 +1006,12 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(activeMain).not.toContain('executeAdvisorAfterScan({');
     expect(activeMain).toContain(
       'STEP06_BROWSER_UNEXPECTED_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE]'
+    );
+    expect(activeMain).toContain(
+      'path.join(step06BrowserUnexpectedEvidenceDirectory, CA_FILE)'
+    );
+    expect(activeMain).not.toContain(
+      'path.join(step06UnexpectedEvidenceDirectory, CA_FILE)'
     );
     expect(activeMain).toContain('advisorScanRedispatched: false');
     expect(activeMain).toContain('localNormalizationRedispatched: false');
