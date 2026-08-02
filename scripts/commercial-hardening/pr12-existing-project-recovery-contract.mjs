@@ -68,6 +68,28 @@ export function sha256Canonical(value) {
     .digest('hex');
 }
 
+export function assertRecoveredStep01ContactCounts(valueInput) {
+  const value = requireRecord(valueInput, 'RECOVERY_CONTACT_COUNTS_INVALID');
+  const expected = {
+    projectStateGetCount: 1,
+    computeAddonGetCount: 1,
+    publicCaGetCount: 1,
+    directDatabaseConnectionCount: 1,
+    postCount: 0,
+    retryCount: 0,
+  };
+  const observedKeys = Object.keys(value).sort();
+  const expectedKeys = Object.keys(expected).sort();
+  if (
+    observedKeys.length !== expectedKeys.length ||
+    observedKeys.some((key, index) => key !== expectedKeys[index]) ||
+    expectedKeys.some(key => value[key] !== expected[key])
+  ) {
+    fail('RECOVERY_CONTACT_COUNTS_INVALID');
+  }
+  return expected;
+}
+
 function normalizeProviderTimestamp(value) {
   const text = requireString(value, 'RECOVERY_TARGET_MISMATCH');
   const milliseconds = Date.parse(text);

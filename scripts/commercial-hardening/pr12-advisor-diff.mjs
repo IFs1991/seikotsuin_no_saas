@@ -216,6 +216,31 @@ export function buildAdvisorCommandDescriptor(input) {
   };
 }
 
+export function parseAdvisorCliJsonOutput(outputInput) {
+  if (typeof outputInput !== 'string' || outputInput.length === 0) {
+    fail('ADVISOR_OUTPUT_INVALID');
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(outputInput);
+  } catch {
+    fail('ADVISOR_OUTPUT_INVALID');
+  }
+  const envelope = requireExactKeys(
+    parsed,
+    ['results', 'message'],
+    'ADVISOR_OUTPUT_INVALID'
+  );
+  if (
+    envelope.message !== 'db advisors' ||
+    !Array.isArray(envelope.results) ||
+    `${JSON.stringify(envelope)}\n` !== outputInput
+  ) {
+    fail('ADVISOR_OUTPUT_INVALID');
+  }
+  return envelope.results;
+}
+
 function normalizeFinding(valueInput) {
   const value = requireExactKeys(
     valueInput,

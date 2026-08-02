@@ -168,6 +168,58 @@ describe('PR12 existing isolated project recovery', () => {
     expect(result.stderr).toContain('DIRECT_DATABASE_UNREACHABLE');
   });
 
+  test('requires exact verified Step 01 remote contact counts before linking them', () => {
+    const result = evaluate(`
+      const exact = {
+        projectStateGetCount: 1,
+        computeAddonGetCount: 1,
+        publicCaGetCount: 1,
+        directDatabaseConnectionCount: 1,
+        postCount: 0,
+        retryCount: 0
+      };
+      const accepted = subject.assertRecoveredStep01ContactCounts(exact);
+      const rejected = {};
+      for (const [name, value] of Object.entries({
+        wrongProjectGet: { ...exact, projectStateGetCount: 2 },
+        wrongDatabaseCount: { ...exact, directDatabaseConnectionCount: 0 },
+        postAttempt: { ...exact, postCount: 1 },
+        retryAttempt: { ...exact, retryCount: 1 },
+        missingKey: Object.fromEntries(
+          Object.entries(exact).filter(([key]) => key !== 'publicCaGetCount')
+        ),
+        extraKey: { ...exact, runtimeApiKeysGetCount: 0 }
+      })) {
+        try {
+          subject.assertRecoveredStep01ContactCounts(value);
+        } catch (error) {
+          rejected[name] = error.message;
+        }
+      }
+      process.stdout.write(JSON.stringify({ accepted, rejected }));
+    `);
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({
+      accepted: {
+        projectStateGetCount: 1,
+        computeAddonGetCount: 1,
+        publicCaGetCount: 1,
+        directDatabaseConnectionCount: 1,
+        postCount: 0,
+        retryCount: 0,
+      },
+      rejected: {
+        wrongProjectGet: 'RECOVERY_CONTACT_COUNTS_INVALID',
+        wrongDatabaseCount: 'RECOVERY_CONTACT_COUNTS_INVALID',
+        postAttempt: 'RECOVERY_CONTACT_COUNTS_INVALID',
+        retryAttempt: 'RECOVERY_CONTACT_COUNTS_INVALID',
+        missingKey: 'RECOVERY_CONTACT_COUNTS_INVALID',
+        extraKey: 'RECOVERY_CONTACT_COUNTS_INVALID',
+      },
+    });
+  });
+
   test('allows only read-only requests for the exact isolated project', () => {
     const allowed = evaluate(`
       const values = [
@@ -528,17 +580,30 @@ describe('PR12 existing isolated project recovery', () => {
     expect(source).toContain(
       "'pr12-existing-project-recovery-replay-workdir-cycle3'"
     );
+    expect(source).toContain("'pr12-existing-project-recovery-journal-cycle4'");
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-evidence-cycle4'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-replay-workdir-cycle4'"
+    );
     expect(source).toContain('assertPredecessorPreContactAbort(');
     expect(source).toContain('assertPredecessorCredentialBrokerAbort(');
+    expect(source).toContain('assertPredecessorAdvisorParserAbort(');
     expect(source).toContain("status: 'PRE_CONTACT_TOOLING_ABORT_VERIFIED'");
     expect(source).toContain(
       "status: 'PRE_PROVIDER_CREDENTIAL_BROKER_ABORT_VERIFIED'"
+    );
+    expect(source).toContain(
+      "status: 'PRE_MUTATION_ADVISOR_PARSER_ABORT_VERIFIED'"
     );
     expect(source).toContain('allRemoteContactCountsZero: true');
     expect(source).toContain('allProviderAndDatabaseContactCountsZero: true');
     expect(source).toContain(
       'consumedReceiptAclRemediatedWithoutContentMutation: true'
     );
+    expect(source).toContain('migrationApplyDispatchCount: 0');
+    expect(source).toContain('mutationOutcomeUnknown: false');
     expect(source).toContain('predecessorAttempts');
     expect(source).not.toContain('rmSync');
     expect(source).not.toContain('unlinkSync');

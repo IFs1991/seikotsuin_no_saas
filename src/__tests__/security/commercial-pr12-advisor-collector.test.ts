@@ -76,6 +76,46 @@ console.log(JSON.stringify({ before, after, production }));
     expect(output.production).toBe('PRODUCTION_CONTACT_DENIED');
   });
 
+  it('accepts only the pinned CLI 2.109.0 JSON success envelope', () => {
+    const result = runPr12Module(
+      advisorModule,
+      `
+const accepted = subject.parseAdvisorCliJsonOutput(
+  '{"results":[],"message":"db advisors"}\\n'
+);
+const rejected = {};
+for (const [name, value] of Object.entries({
+  legacyArray: '[]\\n',
+  legacyAdvisors: '{"advisors":[]}\\n',
+  extraKey: '{"results":[],"message":"db advisors","extra":true}\\n',
+  wrongMessage: '{"results":[],"message":"other"}\\n',
+  nonCanonical: '{ "results": [], "message": "db advisors" }\\n',
+  trailing: '{"results":[],"message":"db advisors"}\\n{}\\n'
+})) {
+  try {
+    subject.parseAdvisorCliJsonOutput(value);
+  } catch (error) {
+    rejected[name] = error.message;
+  }
+}
+console.log(JSON.stringify({ accepted, rejected }));
+`
+    );
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({
+      accepted: [],
+      rejected: {
+        legacyArray: 'ADVISOR_OUTPUT_INVALID',
+        legacyAdvisors: 'ADVISOR_OUTPUT_INVALID',
+        extraKey: 'ADVISOR_OUTPUT_INVALID',
+        wrongMessage: 'ADVISOR_OUTPUT_INVALID',
+        nonCanonical: 'ADVISOR_OUTPUT_INVALID',
+        trailing: 'ADVISOR_OUTPUT_INVALID',
+      },
+    });
+  });
+
   it('normalizes stable finding keys and deterministic diffs', () => {
     const result = runPr12Module(
       advisorModule,

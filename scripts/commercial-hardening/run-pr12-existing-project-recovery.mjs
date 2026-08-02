@@ -21,6 +21,7 @@ import {
   PR12_RECOVERY_TARGET,
   addonResponseToRecoveryComputeProjection,
   assertAllowedRecoveryProviderRequest,
+  assertRecoveredStep01ContactCounts,
   determineRecoveredStep01Result,
   projectResponseToRecoverySafeProjection,
   sha256Canonical,
@@ -62,6 +63,7 @@ import {
 import {
   diffAdvisorSnapshots,
   normalizeAdvisorSnapshot,
+  parseAdvisorCliJsonOutput,
 } from './pr12-advisor-diff.mjs';
 import {
   executePr12AllRoleSmokeRuntime,
@@ -120,6 +122,42 @@ const BROKER_ABORT_TERMINAL_SHA256 =
   '5e2825b85faad85cac82af92235c95b0c5dde2cd53bd578334e8ce466ff30ae4';
 const BROKER_ABORT_STEP01_EVIDENCE_SHA256 =
   '72293d11823c91d61639a9ef4d75f69b33df1b6db848db059397c736c660166c';
+const ADVISOR_ABORT_RECOVERY_HEAD = 'bd456a8a29aa7202e3f5bf6643e637e256036507';
+const ADVISOR_ABORT_RUNTIME_CREDENTIAL_FILE_SHA256 =
+  'bb811504736409c7e177ba858bcd1c0773b57b8324bda1c0314b680da2f55069';
+const ADVISOR_ABORT_CLAIM_FILE_SHA256 =
+  '796c88fbf3e294ccd71439a981abacb979274433b428533205df782c1f4d3a5e';
+const ADVISOR_ABORT_CONSUMED_FILE_SHA256 =
+  'c995c8be02fcdd80b1a63747d87e6365894f5e57156501d6791a8454585850cd';
+const ADVISOR_ABORT_TERMINAL_FILE_SHA256 =
+  'f927c8d78b08d835eea463454b72b469b3b47b00bfc486de655bd9095d83f6b2';
+const ADVISOR_ABORT_TERMINAL_SHA256 =
+  '1e3bde11ff6afd66b95b3f76260e04e584ee38885f72aadbd74aeceaf52e9cd2';
+const ADVISOR_ABORT_STEP01_FILE_SHA256 =
+  '846a99c90dee41ed66a119c431d955aded75437ee3eb3dabf276ea7a8d9bc408';
+const ADVISOR_ABORT_STEP01_EVIDENCE_SHA256 =
+  '8f8391f61444892c3c509ff02745ab7c7a6847fb657043ba142fb6c11e9b365c';
+const ADVISOR_ABORT_STEP02_FILE_SHA256 =
+  '33ed7e11c228c72a154aef9d570be52a0f743aa6f1872a1ccb56b3a20624ce42';
+const ADVISOR_ABORT_STEP02_EVIDENCE_SHA256 =
+  '5fdb30e6cf0f55b3c3a422f847feb3295e12bd665e3879c00cacfa227577a966';
+const ADVISOR_ABORT_CMD_FILE_SHA256 = Object.freeze({
+  'pr12-cmd-004-intent.json':
+    '2e4a957d87c8322e77cd3b08068312e02dc3a52454450ca1fc07e201c545b06d',
+  'pr12-cmd-004-result.json':
+    'de5e520bb7c8e72cf65ebfc2983c6e5e69d8bfe2b7266314ce290aa142f4c9c9',
+  'pr12-cmd-005-intent.json':
+    '35412f9a4b731e8e6b09edf8a9f32033b4161330975439e5f8f2db18c4841027',
+  'pr12-cmd-005-result.json':
+    '7e500385bf26d619cd5c2ce3243206d0da410affda1d86dd86f8e5c4cbfd1aa2',
+  'pr12-cmd-006-intent.json':
+    'b9654fea6bf8d85de8482d1c04b16fdccf16b913fcb4ca41c690823406676116',
+  'pr12-cmd-006-result.json':
+    'c16534b5b6a43d17cb2f2b9a4e9cfa9cd696aacc6fe643134404e2c5945d1a2a',
+});
+const ADVISOR_ABORT_CLI_STDOUT = '{"results":[],"message":"db advisors"}\n';
+const ADVISOR_ABORT_CLI_STDOUT_SHA256 =
+  'bce10ca753e505742e3ba9cb69d0507a2bbe645a064f4a72aee039846e0ad669';
 
 class RecoveryExecutionError extends Error {
   constructor(code) {
@@ -357,17 +395,29 @@ function assertExternalSiblingPaths(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle2'
     ),
-    recoveryJournal: path.join(
+    advisorAbortRecoveryJournal: path.join(
       actionBase,
       'pr12-existing-project-recovery-journal-cycle3'
     ),
-    recoveryEvidence: path.join(
+    advisorAbortRecoveryEvidence: path.join(
       actionBase,
       'pr12-existing-project-recovery-evidence-cycle3'
     ),
-    replayWorkdir: path.join(
+    advisorAbortReplayWorkdir: path.join(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle3'
+    ),
+    recoveryJournal: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-journal-cycle4'
+    ),
+    recoveryEvidence: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-evidence-cycle4'
+    ),
+    replayWorkdir: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-replay-workdir-cycle4'
     ),
   };
 }
@@ -669,6 +719,265 @@ function assertPredecessorCredentialBrokerAbort(
     credentialDecryptionCompletedBeforeResponseAbort: true,
     consumedReceiptAclRemediatedWithoutContentMutation: true,
     allProviderAndDatabaseContactCountsZero: true,
+    newProjectPostAttemptCount: 0,
+    productionContactCount: 0,
+    rawPathsRetained: false,
+    secretValuesCaptured: false,
+  };
+  return {
+    ...linkWithoutHash,
+    linkSha256: sha256Canonical(linkWithoutHash),
+  };
+}
+
+function assertPredecessorAdvisorParserAbort(
+  repositoryRoot,
+  paths,
+  predecessorAttempts
+) {
+  const code = 'ADVISOR_ABORT_RECOVERY_EVIDENCE_INVALID';
+  const journal = resolveExistingDirectory(
+    paths.advisorAbortRecoveryJournal,
+    code
+  );
+  const evidence = resolveExistingDirectory(
+    paths.advisorAbortRecoveryEvidence,
+    code
+  );
+  resolveExistingDirectory(paths.advisorAbortReplayWorkdir, code);
+  const commandFilenames = Object.keys(ADVISOR_ABORT_CMD_FILE_SHA256);
+  assertExactDirectoryEntries(
+    journal,
+    [
+      ...commandFilenames,
+      RUNTIME_CREDENTIAL_CONFIG_FILE,
+      'pr12-existing-project-recovery-credential-consumed.json',
+      TERMINAL_FILE,
+      CLAIM_FILE,
+    ],
+    code
+  );
+  assertExactDirectoryEntries(
+    evidence,
+    [STEP01_EVIDENCE_FILE, STEP02_EVIDENCE_FILE, CA_FILE],
+    code
+  );
+  captureOwnerPrivatePath(repositoryRoot, journal, 'DIRECTORY');
+  captureOwnerPrivatePath(repositoryRoot, evidence, 'DIRECTORY');
+
+  const journalFiles = {
+    runtimeCredential: path.join(journal, RUNTIME_CREDENTIAL_CONFIG_FILE),
+    claim: path.join(journal, CLAIM_FILE),
+    consumed: path.join(
+      journal,
+      'pr12-existing-project-recovery-credential-consumed.json'
+    ),
+    terminal: path.join(journal, TERMINAL_FILE),
+  };
+  const evidenceFiles = {
+    step01: path.join(evidence, STEP01_EVIDENCE_FILE),
+    step02: path.join(evidence, STEP02_EVIDENCE_FILE),
+    ca: path.join(evidence, CA_FILE),
+  };
+  const allFiles = [
+    ...Object.values(journalFiles),
+    ...Object.values(evidenceFiles),
+    ...commandFilenames.map(filename => path.join(journal, filename)),
+  ];
+  for (const filename of allFiles) {
+    resolveExistingFile(filename, code);
+    captureOwnerPrivatePath(repositoryRoot, filename, 'FILE');
+  }
+
+  const runtimeCredential = readCanonicalJson(
+    journalFiles.runtimeCredential,
+    code
+  );
+  const claim = readCanonicalJson(journalFiles.claim, code);
+  const consumed = readCanonicalJson(journalFiles.consumed, code);
+  const terminal = readCanonicalJson(journalFiles.terminal, code);
+  const step01 = readCanonicalJson(evidenceFiles.step01, code);
+  const step02 = readCanonicalJson(evidenceFiles.step02, code);
+  const caBytes = readStableBytes(evidenceFiles.ca, 16 * 1024, code);
+  const caSha256 = sha256Bytes(caBytes);
+  caBytes.fill(0);
+  const commandArtifacts = Object.fromEntries(
+    commandFilenames.map(filename => {
+      const snapshot = readCanonicalJson(path.join(journal, filename), code);
+      if (snapshot.sha256 !== ADVISOR_ABORT_CMD_FILE_SHA256[filename]) {
+        fail(code);
+      }
+      return [filename, snapshot];
+    })
+  );
+
+  if (
+    runtimeCredential.sha256 !== ADVISOR_ABORT_RUNTIME_CREDENTIAL_FILE_SHA256 ||
+    claim.sha256 !== ADVISOR_ABORT_CLAIM_FILE_SHA256 ||
+    consumed.sha256 !== ADVISOR_ABORT_CONSUMED_FILE_SHA256 ||
+    terminal.sha256 !== ADVISOR_ABORT_TERMINAL_FILE_SHA256 ||
+    step01.sha256 !== ADVISOR_ABORT_STEP01_FILE_SHA256 ||
+    step02.sha256 !== ADVISOR_ABORT_STEP02_FILE_SHA256 ||
+    caSha256 !== PINNED_CA_SHA256
+  ) {
+    fail(code);
+  }
+  assertCanonicalEmbeddedSha(
+    terminal.value,
+    'terminalSha256',
+    ADVISOR_ABORT_TERMINAL_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    step01.value,
+    'evidenceSha256',
+    ADVISOR_ABORT_STEP01_EVIDENCE_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    step02.value,
+    'evidenceSha256',
+    ADVISOR_ABORT_STEP02_EVIDENCE_SHA256,
+    code
+  );
+
+  const provider = step01.value.provider;
+  const projection = isRecord(provider) ? provider.projection : null;
+  const database = step01.value.database;
+  const compute = step01.value.compute;
+  const decision = step01.value.decision;
+  const remoteContacts = step01.value.remoteContacts;
+  const verifiedRemoteContacts =
+    assertRecoveredStep01ContactCounts(remoteContacts);
+  const productionBoundary = step01.value.productionBoundary;
+  const completedCommandIds = [
+    'PR12-CMD-003',
+    'PR12-CMD-004',
+    'PR12-CMD-005',
+    'PR12-CMD-006',
+  ];
+  const observations = Array.isArray(step02.value.commandObservations)
+    ? step02.value.commandObservations
+    : [];
+  const cmd006 = observations.find(
+    observation => observation.commandId === 'PR12-CMD-006'
+  );
+  const cmd006Result = commandArtifacts['pr12-cmd-006-result.json'].value;
+  if (
+    claim.value.actionId !== RECOVERY_ACTION_ID ||
+    claim.value.state !== 'CLAIMED_CONTINUATION_NOT_STARTED' ||
+    consumed.value.actionId !== RECOVERY_ACTION_ID ||
+    consumed.value.state !== 'CREDENTIAL_CONSUMED_CONTINUATION_STARTED' ||
+    consumed.value.claimSha256 !== claim.sha256 ||
+    terminal.value.status !== 'BLOCK' ||
+    terminal.value.reasonCode !== 'ADVISOR_OUTPUT_INVALID' ||
+    terminal.value.gitHead !== ADVISOR_ABORT_RECOVERY_HEAD ||
+    terminal.value.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    canonicalJson(terminal.value.completedCanonicalSteps) !==
+      canonicalJson(['01']) ||
+    terminal.value.blockedCanonicalStep !== '02' ||
+    canonicalJson(terminal.value.predecessorAttempts) !==
+      canonicalJson(predecessorAttempts) ||
+    terminal.value.newProjectPostAttemptCount !== 0 ||
+    terminal.value.productionContactCount !== 0 ||
+    terminal.value.secretValuesCaptured !== false ||
+    step01.value.status !== 'PASS' ||
+    canonicalJson(step01.value.predecessorAttempts) !==
+      canonicalJson(predecessorAttempts) ||
+    !isRecord(provider) ||
+    provider.httpStatus !== 200 ||
+    !isRecord(projection) ||
+    projection.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    projection.organizationId !== PR12_RECOVERY_TARGET.organizationId ||
+    projection.region !== PR12_RECOVERY_TARGET.region ||
+    projection.status !== 'ACTIVE_HEALTHY' ||
+    !isRecord(database) ||
+    database.status !== 'REACHABLE' ||
+    database.systemIdentifier !== '7666052913346410626' ||
+    database.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    database.connectionMode !== 'DIRECT' ||
+    database.tls?.verifiedMode !== 'verify-full' ||
+    !isRecord(compute) ||
+    compute.verification !== 'UNVERIFIED' ||
+    compute.reason !== 'PROVIDER_RESPONSE_INVALID' ||
+    !isRecord(decision) ||
+    decision.result !== 'PASS' ||
+    decision.nextStep !== '02' ||
+    decision.productionEquivalentPerformanceQualificationDeferred !== true ||
+    !isRecord(productionBoundary) ||
+    Object.values(productionBoundary).some(value =>
+      typeof value === 'number' ? value !== 0 : false
+    ) ||
+    step01.value.secretValuesCaptured !== false ||
+    step02.value.status !== 'BLOCK' ||
+    step02.value.reasonCode !== 'ADVISOR_OUTPUT_INVALID' ||
+    step02.value.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    step02.value.databaseSystemIdentifier !== '7666052913346410626' ||
+    canonicalJson(step02.value.completedCommandIds) !==
+      canonicalJson(completedCommandIds) ||
+    observations.length !== completedCommandIds.length ||
+    observations.some(
+      (observation, index) =>
+        observation.commandId !== completedCommandIds[index] ||
+        observation.outcome !== 'SUCCEEDED' ||
+        observation.dispatchCount !== 1 ||
+        observation.wrapperRetryCount !== 0
+    ) ||
+    step02.value.lastDispatchedCommand?.commandId !== 'PR12-CMD-006' ||
+    step02.value.lastDispatchedCommand?.mutation !== false ||
+    step02.value.mutationOutcomeUnknown !== false ||
+    step02.value.secretValuesCaptured !== false ||
+    !isRecord(cmd006) ||
+    cmd006.stdoutBytes !== Buffer.byteLength(ADVISOR_ABORT_CLI_STDOUT) ||
+    cmd006.stdoutSha256 !== ADVISOR_ABORT_CLI_STDOUT_SHA256 ||
+    cmd006Result.stdoutBytes !== Buffer.byteLength(ADVISOR_ABORT_CLI_STDOUT) ||
+    cmd006Result.stdoutSha256 !== ADVISOR_ABORT_CLI_STDOUT_SHA256 ||
+    sha256Bytes(Buffer.from(ADVISOR_ABORT_CLI_STDOUT, 'utf8')) !==
+      ADVISOR_ABORT_CLI_STDOUT_SHA256
+  ) {
+    fail(code);
+  }
+
+  for (const commandId of ['004', '005', '006']) {
+    const intentName = `pr12-cmd-${commandId}-intent.json`;
+    const resultName = `pr12-cmd-${commandId}-result.json`;
+    const observation = observations.find(
+      value => value.commandId === `PR12-CMD-${commandId}`
+    );
+    if (
+      observation?.intentArtifactSha256 !==
+        commandArtifacts[intentName].sha256 ||
+      observation?.resultArtifactSha256 !== commandArtifacts[resultName].sha256
+    ) {
+      fail(code);
+    }
+  }
+
+  const linkWithoutHash = {
+    status: 'PRE_MUTATION_ADVISOR_PARSER_ABORT_VERIFIED',
+    gitHead: ADVISOR_ABORT_RECOVERY_HEAD,
+    reasonCode: 'ADVISOR_OUTPUT_INVALID',
+    step01Result: 'PASS',
+    step01FileSha256: ADVISOR_ABORT_STEP01_FILE_SHA256,
+    step01EvidenceSha256: ADVISOR_ABORT_STEP01_EVIDENCE_SHA256,
+    step02Result: 'BLOCK',
+    step02FileSha256: ADVISOR_ABORT_STEP02_FILE_SHA256,
+    step02EvidenceSha256: ADVISOR_ABORT_STEP02_EVIDENCE_SHA256,
+    completedCommandIds,
+    migrationApplyDispatchCount: 0,
+    mutationOutcomeUnknown: false,
+    advisorCliJsonEnvelope: {
+      format: 'SUPABASE_CLI_2_109_0_JSON_SUCCESS',
+      stdoutBytes: Buffer.byteLength(ADVISOR_ABORT_CLI_STDOUT),
+      stdoutSha256: ADVISOR_ABORT_CLI_STDOUT_SHA256,
+      parsedFindingCount: 0,
+    },
+    credentialBrokerInvocationCount: 1,
+    projectStateGetCount: verifiedRemoteContacts.projectStateGetCount,
+    computeAddonGetCount: verifiedRemoteContacts.computeAddonGetCount,
+    publicCaGetCount: verifiedRemoteContacts.publicCaGetCount,
+    directDatabaseConnectionCount:
+      verifiedRemoteContacts.directDatabaseConnectionCount,
     newProjectPostAttemptCount: 0,
     productionContactCount: 0,
     rawPathsRetained: false,
@@ -1271,12 +1580,7 @@ function executeFullMigrationReplay({
           fail('ISOLATED_PROJECT_NOT_CLEAN');
         }
       } else if (command.id === 'PR12-CMD-006') {
-        const parsed = JSON.parse(dispatched.stdout);
-        const findings = Array.isArray(parsed)
-          ? parsed
-          : Array.isArray(parsed?.advisors)
-            ? parsed.advisors
-            : fail('ADVISOR_OUTPUT_INVALID');
+        const findings = parseAdvisorCliJsonOutput(dispatched.stdout);
         advisorBefore = normalizeAdvisorSnapshot({
           schemaVersion: 1,
           commandId: 'PR12-CMD-006',
@@ -2171,12 +2475,7 @@ function executeAdvisorAfterScan({
   if (dispatched.observation.outcome !== 'SUCCEEDED') {
     fail('PR12_CMD_016_FAILED');
   }
-  const parsed = JSON.parse(dispatched.stdout);
-  const findings = Array.isArray(parsed)
-    ? parsed
-    : Array.isArray(parsed?.advisors)
-      ? parsed.advisors
-      : fail('ADVISOR_OUTPUT_INVALID');
+  const findings = parseAdvisorCliJsonOutput(dispatched.stdout);
   const after = normalizeAdvisorSnapshot({
     schemaVersion: 1,
     commandId: 'PR12-CMD-016',
@@ -2492,7 +2791,16 @@ async function main() {
     paths,
     predecessorAttempt
   );
-  const predecessorAttempts = [predecessorAttempt, brokerAbortAttempt];
+  const advisorAbortAttempt = assertPredecessorAdvisorParserAbort(
+    repositoryRoot,
+    paths,
+    [predecessorAttempt, brokerAbortAttempt]
+  );
+  const predecessorAttempts = [
+    predecessorAttempt,
+    brokerAbortAttempt,
+    advisorAbortAttempt,
+  ];
   createOwnerPrivateDirectory(repositoryRoot, paths.recoveryJournal);
   const evidenceAcl = createOwnerPrivateDirectory(
     repositoryRoot,
