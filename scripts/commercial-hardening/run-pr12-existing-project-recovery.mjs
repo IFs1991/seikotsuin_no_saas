@@ -21,7 +21,9 @@ import {
   PR12_RECOVERY_TARGET,
   addonResponseToRecoveryComputeProjection,
   assertAllowedRecoveryProviderRequest,
+  assertPostApplyReplayCommandEvidence,
   assertRecoveredStep01ContactCounts,
+  buildRecoveryOperatingSystemValues,
   determineRecoveredStep01Result,
   projectResponseToRecoverySafeProjection,
   sha256Canonical,
@@ -34,7 +36,9 @@ import {
 } from './pr12-windows-dpapi-credential-channel.mjs';
 import {
   buildExternalReplayInputManifest,
+  buildPostApplyReplayRecoveryCommandPlan,
   buildSourceReplayCommandPlan,
+  compileFunctionalReplayCatalogFromSqlObservation,
   compileFreshCatalogSnapshotFromSqlObservation,
   materializeExternalReplayInputs,
   readAndVerifyFrozenMigrationInventory,
@@ -158,6 +162,49 @@ const ADVISOR_ABORT_CMD_FILE_SHA256 = Object.freeze({
 const ADVISOR_ABORT_CLI_STDOUT = '{"results":[],"message":"db advisors"}\n';
 const ADVISOR_ABORT_CLI_STDOUT_SHA256 =
   'bce10ca753e505742e3ba9cb69d0507a2bbe645a064f4a72aee039846e0ad669';
+const CATALOG_GAP_RECOVERY_HEAD = 'e229059c7fd407b0c6f0b16251084efceff5a79e';
+const CATALOG_GAP_RUNTIME_CREDENTIAL_FILE_SHA256 =
+  'bb811504736409c7e177ba858bcd1c0773b57b8324bda1c0314b680da2f55069';
+const CATALOG_GAP_CLAIM_FILE_SHA256 =
+  '8a44efabd857ad87f471cb9d0512ee0120a36ec166a78796c177066a280268a8';
+const CATALOG_GAP_CONSUMED_FILE_SHA256 =
+  'e7a67d0f018d2f9b6537e12c7b7fa6ae11415d8c8c7ae73ea1005b7deed16cab';
+const CATALOG_GAP_TERMINAL_FILE_SHA256 =
+  '406786916c72990bf184ce939255510fe082dde373c404823dfea6fd995b223d';
+const CATALOG_GAP_TERMINAL_SHA256 =
+  'b042e6859ab420fcac05c8e314b4f0916c36a54d4a6f52fa4c547446cb33c611';
+const CATALOG_GAP_STEP01_FILE_SHA256 =
+  'fa0e5135e596fe18b056a6b7db6aea97b9a05ff46fd55e61c3a003731c6e7dc0';
+const CATALOG_GAP_STEP01_EVIDENCE_SHA256 =
+  'cdfb0c93af3d4747264a2dfcd15e27c8bb146fa5cd7248813448f2a8b60bc48b';
+const CATALOG_GAP_STEP02_FILE_SHA256 =
+  'dafdd523127edeef818beec79bc861712dc9f0583e7a34ee29ce0abbe5e1b294';
+const CATALOG_GAP_STEP02_EVIDENCE_SHA256 =
+  '7547d71c1c415289abf853667cbaa0e6117bf2c0c7a6c49064247dc70c6a9439';
+const CATALOG_GAP_CMD_FILE_SHA256 = Object.freeze({
+  'pr12-cmd-004-intent.json':
+    '3525112a745861426fce460298cb1a11e7ecbe0bfdc45a46b7083a7a8bbdf8e0',
+  'pr12-cmd-004-result.json':
+    'eee80de1b98f6ec6c952354d491eb8d1c3090d2dd488b9468cd7ab011f062295',
+  'pr12-cmd-005-intent.json':
+    '90ea56fde6e12cfbc525ac4979547e8335e78a2be27157e86c05ec4a4655a2b8',
+  'pr12-cmd-005-result.json':
+    'd54062cf5b9d8851591bd172d93bfb27417a6a3b21326fddefb17dd107e0fbc1',
+  'pr12-cmd-006-intent.json':
+    'ca8c9ffc09196627c280f8adbfa2c940927efd8fc00270b7daaa325b507ac154',
+  'pr12-cmd-006-result.json':
+    '61d52acb34435e3a750ec04b0bbd9f96001b9d490e0e89a918c9acc85a66a101',
+  'pr12-cmd-007-intent.json':
+    '5f855c5b3b37e2b844b330a67c3cfd723aaa5b0d9e2ddd8e35551d1d06dc70c3',
+  'pr12-cmd-007-result.json':
+    'adca3ae55b2502c9e48c9f40de92af70cfa459055619c8a6c211cb14b7f0d13c',
+  'pr12-cmd-007a-intent.json':
+    '119bc023a4a36a14e62d69f25c6095ece16680d32fd0b3efb7a743ba4df410e8',
+  'pr12-cmd-007a-result.json':
+    'e74fda414927081733c6498c963f9ee20ece06d740aa839b7dec25d5ffafc545',
+});
+const CATALOG_GAP_EXECUTION_BINDING_SHA256 =
+  'ede63dc657f8f3b44b0f4ed65d29a66da634f60e8f9ea6d126aff742fb48319a';
 
 class RecoveryExecutionError extends Error {
   constructor(code) {
@@ -407,17 +454,29 @@ function assertExternalSiblingPaths(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle3'
     ),
-    recoveryJournal: path.join(
+    catalogGapRecoveryJournal: path.join(
       actionBase,
       'pr12-existing-project-recovery-journal-cycle4'
     ),
-    recoveryEvidence: path.join(
+    catalogGapRecoveryEvidence: path.join(
       actionBase,
       'pr12-existing-project-recovery-evidence-cycle4'
     ),
-    replayWorkdir: path.join(
+    catalogGapReplayWorkdir: path.join(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle4'
+    ),
+    recoveryJournal: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-journal-cycle5'
+    ),
+    recoveryEvidence: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-evidence-cycle5'
+    ),
+    replayWorkdir: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-replay-workdir-cycle5'
     ),
   };
 }
@@ -989,6 +1048,291 @@ function assertPredecessorAdvisorParserAbort(
   };
 }
 
+function assertPredecessorCatalogGapAbort(
+  repositoryRoot,
+  paths,
+  predecessorAttempts
+) {
+  const code = 'CATALOG_GAP_RECOVERY_EVIDENCE_INVALID';
+  const journal = resolveExistingDirectory(
+    paths.catalogGapRecoveryJournal,
+    code
+  );
+  const evidence = resolveExistingDirectory(
+    paths.catalogGapRecoveryEvidence,
+    code
+  );
+  resolveExistingDirectory(paths.catalogGapReplayWorkdir, code);
+  const commandFilenames = Object.keys(CATALOG_GAP_CMD_FILE_SHA256);
+  assertExactDirectoryEntries(
+    journal,
+    [
+      ...commandFilenames,
+      RUNTIME_CREDENTIAL_CONFIG_FILE,
+      'pr12-existing-project-recovery-credential-consumed.json',
+      TERMINAL_FILE,
+      CLAIM_FILE,
+    ],
+    code
+  );
+  assertExactDirectoryEntries(
+    evidence,
+    [STEP01_EVIDENCE_FILE, STEP02_EVIDENCE_FILE, CA_FILE],
+    code
+  );
+  captureOwnerPrivatePath(repositoryRoot, journal, 'DIRECTORY');
+  captureOwnerPrivatePath(repositoryRoot, evidence, 'DIRECTORY');
+
+  const journalFiles = {
+    runtimeCredential: path.join(journal, RUNTIME_CREDENTIAL_CONFIG_FILE),
+    claim: path.join(journal, CLAIM_FILE),
+    consumed: path.join(
+      journal,
+      'pr12-existing-project-recovery-credential-consumed.json'
+    ),
+    terminal: path.join(journal, TERMINAL_FILE),
+  };
+  const evidenceFiles = {
+    step01: path.join(evidence, STEP01_EVIDENCE_FILE),
+    step02: path.join(evidence, STEP02_EVIDENCE_FILE),
+    ca: path.join(evidence, CA_FILE),
+  };
+  const allFiles = [
+    ...Object.values(journalFiles),
+    ...Object.values(evidenceFiles),
+    ...commandFilenames.map(filename => path.join(journal, filename)),
+  ];
+  for (const filename of allFiles) {
+    resolveExistingFile(filename, code);
+    captureOwnerPrivatePath(repositoryRoot, filename, 'FILE');
+  }
+
+  const runtimeCredential = readCanonicalJson(
+    journalFiles.runtimeCredential,
+    code
+  );
+  const claim = readCanonicalJson(journalFiles.claim, code);
+  const consumed = readCanonicalJson(journalFiles.consumed, code);
+  const terminal = readCanonicalJson(journalFiles.terminal, code);
+  const step01 = readCanonicalJson(evidenceFiles.step01, code);
+  const step02 = readCanonicalJson(evidenceFiles.step02, code);
+  const caBytes = readStableBytes(evidenceFiles.ca, 16 * 1024, code);
+  const caSha256 = sha256Bytes(caBytes);
+  caBytes.fill(0);
+  const commandArtifacts = Object.fromEntries(
+    commandFilenames.map(filename => {
+      const snapshot = readCanonicalJson(path.join(journal, filename), code);
+      if (snapshot.sha256 !== CATALOG_GAP_CMD_FILE_SHA256[filename]) {
+        fail(code);
+      }
+      return [filename, snapshot];
+    })
+  );
+  if (
+    runtimeCredential.sha256 !== CATALOG_GAP_RUNTIME_CREDENTIAL_FILE_SHA256 ||
+    claim.sha256 !== CATALOG_GAP_CLAIM_FILE_SHA256 ||
+    consumed.sha256 !== CATALOG_GAP_CONSUMED_FILE_SHA256 ||
+    terminal.sha256 !== CATALOG_GAP_TERMINAL_FILE_SHA256 ||
+    step01.sha256 !== CATALOG_GAP_STEP01_FILE_SHA256 ||
+    step02.sha256 !== CATALOG_GAP_STEP02_FILE_SHA256 ||
+    caSha256 !== PINNED_CA_SHA256
+  ) {
+    fail(code);
+  }
+  assertCanonicalEmbeddedSha(
+    terminal.value,
+    'terminalSha256',
+    CATALOG_GAP_TERMINAL_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    step01.value,
+    'evidenceSha256',
+    CATALOG_GAP_STEP01_EVIDENCE_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    step02.value,
+    'evidenceSha256',
+    CATALOG_GAP_STEP02_EVIDENCE_SHA256,
+    code
+  );
+
+  const provider = step01.value.provider;
+  const projection = isRecord(provider) ? provider.projection : null;
+  const database = step01.value.database;
+  const compute = step01.value.compute;
+  const decision = step01.value.decision;
+  const productionBoundary = step01.value.productionBoundary;
+  const verifiedRemoteContacts = assertRecoveredStep01ContactCounts(
+    step01.value.remoteContacts
+  );
+  const completedCommandIds = [
+    'PR12-CMD-003',
+    'PR12-CMD-004',
+    'PR12-CMD-005',
+    'PR12-CMD-006',
+    'PR12-CMD-007',
+    'PR12-CMD-007A',
+  ];
+  const observations = Array.isArray(step02.value.commandObservations)
+    ? step02.value.commandObservations
+    : [];
+  const cmd006 = observations.find(
+    observation => observation.commandId === 'PR12-CMD-006'
+  );
+  const cmd007 = observations.find(
+    observation => observation.commandId === 'PR12-CMD-007'
+  );
+  const cmd007Intent = commandArtifacts['pr12-cmd-007-intent.json'].value;
+  const cmd007Result = commandArtifacts['pr12-cmd-007-result.json'].value;
+  const cmd007a = observations.find(
+    observation => observation.commandId === 'PR12-CMD-007A'
+  );
+  const cmd007aIntent = commandArtifacts['pr12-cmd-007a-intent.json'].value;
+  const verifiedPostApplyCommands = assertPostApplyReplayCommandEvidence({
+    migrationApply: {
+      intent: cmd007Intent,
+      intentFileSha256: commandArtifacts['pr12-cmd-007-intent.json'].sha256,
+      result: cmd007Result,
+    },
+    catalogCapture: {
+      intent: cmd007aIntent,
+      intentFileSha256: commandArtifacts['pr12-cmd-007a-intent.json'].sha256,
+      result: commandArtifacts['pr12-cmd-007a-result.json'].value,
+    },
+  });
+  if (
+    claim.value.actionId !== RECOVERY_ACTION_ID ||
+    claim.value.state !== 'CLAIMED_CONTINUATION_NOT_STARTED' ||
+    claim.value.derivedExecutionBindingSha256 !==
+      CATALOG_GAP_EXECUTION_BINDING_SHA256 ||
+    consumed.value.actionId !== RECOVERY_ACTION_ID ||
+    consumed.value.state !== 'CREDENTIAL_CONSUMED_CONTINUATION_STARTED' ||
+    consumed.value.claimSha256 !== claim.sha256 ||
+    terminal.value.status !== 'BLOCK' ||
+    terminal.value.reasonCode !== 'DATA_API_CONFIGURATION_NOT_OBSERVED' ||
+    terminal.value.gitHead !== CATALOG_GAP_RECOVERY_HEAD ||
+    terminal.value.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    canonicalJson(terminal.value.completedCanonicalSteps) !==
+      canonicalJson(['01']) ||
+    terminal.value.blockedCanonicalStep !== '02' ||
+    canonicalJson(terminal.value.predecessorAttempts) !==
+      canonicalJson(predecessorAttempts) ||
+    terminal.value.newProjectPostAttemptCount !== 0 ||
+    terminal.value.productionContactCount !== 0 ||
+    terminal.value.secretValuesCaptured !== false ||
+    step01.value.status !== 'PASS' ||
+    canonicalJson(step01.value.predecessorAttempts) !==
+      canonicalJson(predecessorAttempts) ||
+    !isRecord(provider) ||
+    provider.httpStatus !== 200 ||
+    !isRecord(projection) ||
+    projection.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    projection.organizationId !== PR12_RECOVERY_TARGET.organizationId ||
+    projection.region !== PR12_RECOVERY_TARGET.region ||
+    projection.status !== 'ACTIVE_HEALTHY' ||
+    !isRecord(database) ||
+    database.status !== 'REACHABLE' ||
+    database.systemIdentifier !== '7666052913346410626' ||
+    database.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    database.connectionMode !== 'DIRECT' ||
+    database.tls?.verifiedMode !== 'verify-full' ||
+    !isRecord(compute) ||
+    compute.verification !== 'UNVERIFIED' ||
+    !isRecord(decision) ||
+    decision.result !== 'PASS' ||
+    decision.nextStep !== '02' ||
+    decision.productionEquivalentPerformanceQualificationDeferred !== true ||
+    !isRecord(productionBoundary) ||
+    Object.values(productionBoundary).some(value =>
+      typeof value === 'number' ? value !== 0 : false
+    ) ||
+    step01.value.secretValuesCaptured !== false ||
+    step02.value.status !== 'BLOCK' ||
+    step02.value.reasonCode !== 'DATA_API_CONFIGURATION_NOT_OBSERVED' ||
+    step02.value.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    step02.value.databaseSystemIdentifier !== '7666052913346410626' ||
+    canonicalJson(step02.value.completedCommandIds) !==
+      canonicalJson(completedCommandIds) ||
+    observations.length !== completedCommandIds.length ||
+    observations.some(
+      (observation, index) =>
+        observation.commandId !== completedCommandIds[index] ||
+        observation.outcome !== 'SUCCEEDED' ||
+        observation.dispatchCount !== 1 ||
+        observation.wrapperRetryCount !== 0
+    ) ||
+    step02.value.lastDispatchedCommand?.commandId !== 'PR12-CMD-007A' ||
+    step02.value.lastDispatchedCommand?.mutation !== false ||
+    step02.value.mutationOutcomeUnknown !== false ||
+    step02.value.secretValuesCaptured !== false ||
+    !isRecord(cmd006) ||
+    cmd006.stdoutBytes !== Buffer.byteLength(ADVISOR_ABORT_CLI_STDOUT) ||
+    cmd006.stdoutSha256 !== ADVISOR_ABORT_CLI_STDOUT_SHA256 ||
+    !isRecord(cmd007) ||
+    cmd007.outcome !== 'SUCCEEDED' ||
+    cmd007.timedOut !== false ||
+    !isRecord(cmd007a) ||
+    cmd007a.outcome !== 'SUCCEEDED'
+  ) {
+    fail(code);
+  }
+  for (const commandId of ['004', '005', '006', '007', '007a']) {
+    const intentName = `pr12-cmd-${commandId}-intent.json`;
+    const resultName = `pr12-cmd-${commandId}-result.json`;
+    const observation = observations.find(
+      value => value.commandId === `PR12-CMD-${commandId.toUpperCase()}`
+    );
+    if (
+      observation?.intentArtifactSha256 !==
+        commandArtifacts[intentName].sha256 ||
+      observation?.resultArtifactSha256 !== commandArtifacts[resultName].sha256
+    ) {
+      fail(code);
+    }
+  }
+
+  const linkWithoutHash = {
+    status: 'POST_APPLY_CATALOG_GAP_VERIFIED',
+    gitHead: CATALOG_GAP_RECOVERY_HEAD,
+    reasonCode: 'DATA_API_CONFIGURATION_NOT_OBSERVED',
+    step01Result: 'PASS',
+    step01FileSha256: CATALOG_GAP_STEP01_FILE_SHA256,
+    step01EvidenceSha256: CATALOG_GAP_STEP01_EVIDENCE_SHA256,
+    step02Result: 'BLOCK',
+    step02FileSha256: CATALOG_GAP_STEP02_FILE_SHA256,
+    step02EvidenceSha256: CATALOG_GAP_STEP02_EVIDENCE_SHA256,
+    executionBindingSha256: CATALOG_GAP_EXECUTION_BINDING_SHA256,
+    advisorBefore: {
+      capturedAt: cmd006.completedAt,
+      stdoutBytes: cmd006.stdoutBytes,
+      stdoutSha256: cmd006.stdoutSha256,
+      findingCount: 0,
+    },
+    completedCommandIds,
+    migrationApplyDispatchCount: 1,
+    migrationApplyOutcome: 'SUCCEEDED',
+    migrationApplyRedispatchAllowed: false,
+    mutationOutcomeUnknown: false,
+    lastReadOnlyCommand: 'PR12-CMD-007A',
+    verifiedPostApplyCommands,
+    projectStateGetCount: verifiedRemoteContacts.projectStateGetCount,
+    computeAddonGetCount: verifiedRemoteContacts.computeAddonGetCount,
+    publicCaGetCount: verifiedRemoteContacts.publicCaGetCount,
+    directDatabaseConnectionCount:
+      verifiedRemoteContacts.directDatabaseConnectionCount,
+    newProjectPostAttemptCount: 0,
+    productionContactCount: 0,
+    rawPathsRetained: false,
+    secretValuesCaptured: false,
+  };
+  return {
+    ...linkWithoutHash,
+    linkSha256: sha256Canonical(linkWithoutHash),
+  };
+}
+
 function createOwnerPrivateDirectory(repositoryRoot, directory) {
   if (existsSync(directory)) fail('RECOVERY_OUTPUT_ALREADY_EXISTS');
   mkdirSync(directory, { recursive: false });
@@ -1539,12 +1883,12 @@ function executeFullMigrationReplay({
     const environment = buildIsolatedChildEnvironment({
       credentialKind: 'database',
       credentialValues: { PGPASSWORD: databasePassword },
-      operatingSystemValues: {
-        SystemRoot: process.env.SystemRoot ?? 'C:\\Windows',
-        TEMP: process.env.TEMP ?? 'C:\\Windows\\Temp',
-        TMP: process.env.TMP ?? 'C:\\Windows\\Temp',
+      operatingSystemValues: buildRecoveryOperatingSystemValues({
+        SystemRoot: process.env.SystemRoot,
+        TEMP: process.env.TEMP,
+        TMP: process.env.TMP,
         PATH: `${path.dirname(supabasePath)};${path.dirname(psqlPath)}`,
-      },
+      }),
       isolationPaths: { supabaseHome, dockerConfig },
     });
     let catalogSnapshot = null;
@@ -1725,6 +2069,248 @@ function executeFullMigrationReplay({
       lastDurableResult,
       mutationOutcomeUnknown:
         lastDispatchedCommand?.mutation === true && lastDurableResult === null,
+      wrapperRetryCount: 0,
+      rawPathsRetained: false,
+      rawOutputsRetained: false,
+      secretValuesCaptured: false,
+    };
+    assertSecretFreeEvidence(blockedWithoutHash, [databasePassword]);
+    const blocked = {
+      ...blockedWithoutHash,
+      evidenceSha256: sha256Canonical(blockedWithoutHash),
+    };
+    const filename = path.join(evidenceDirectory, STEP02_EVIDENCE_FILE);
+    if (!existsSync(filename)) {
+      writeCanonicalCreateNew(
+        filename,
+        blocked,
+        'STEP02_BLOCK_EVIDENCE_CREATE_FAILED'
+      );
+      hardenPath(repositoryRoot, filename, 'FILE');
+    }
+    throw error;
+  }
+}
+
+function resumeFullMigrationReplayAfterCatalogGap({
+  repositoryRoot,
+  replayWorkdir,
+  evidenceDirectory,
+  databasePassword,
+  databaseIdentity,
+  caPath,
+  supabasePath,
+  psqlPath,
+  journalDirectory,
+  catalogGapAttempt,
+}) {
+  const startedAt = new Date().toISOString();
+  const observations = [];
+  let lastDispatchedCommand = null;
+  try {
+    const inventory = readAndVerifyFrozenMigrationInventory(repositoryRoot);
+    const inputManifest = buildExternalReplayInputManifest({
+      repoRoot: repositoryRoot,
+      externalWorkdir: replayWorkdir,
+    });
+    const materialized = materializeExternalReplayInputs(inputManifest);
+    observations.push({
+      commandId: 'PR12-CMD-003',
+      operation: 'MATERIALIZE_APPROVED_SOURCE_RUNTIME_METADATA',
+      dispatchCount: 1,
+      wrapperRetryCount: 0,
+      outcome: 'SUCCEEDED',
+      remoteContact: false,
+      manifestSha256: inputManifest.manifestSha256,
+      rawOutputRetained: false,
+    });
+    const runtimeRoot = path.join(replayWorkdir, '.pr12-runtime');
+    mkdirSync(runtimeRoot, { recursive: false });
+    const supabaseHome = path.join(runtimeRoot, 'supabase-home');
+    const dockerConfig = path.join(runtimeRoot, 'docker-config');
+    mkdirSync(supabaseHome, { recursive: false });
+    mkdirSync(dockerConfig, { recursive: false });
+    const commandPlan = buildPostApplyReplayRecoveryCommandPlan({
+      directDatabaseUrl: directDatabaseUrl(caPath),
+      supabasePath,
+      psqlPath,
+      externalWorkdir: replayWorkdir,
+    });
+    if (
+      commandPlan.migrationApplyRedispatchAllowed !== false ||
+      commandPlan.commands.some(command => command.id === 'PR12-CMD-007')
+    ) {
+      fail('MIGRATION_APPLY_REDISPATCH_FORBIDDEN');
+    }
+    const environment = buildIsolatedChildEnvironment({
+      credentialKind: 'database',
+      credentialValues: { PGPASSWORD: databasePassword },
+      operatingSystemValues: buildRecoveryOperatingSystemValues({
+        SystemRoot: process.env.SystemRoot,
+        TEMP: process.env.TEMP,
+        TMP: process.env.TMP,
+        PATH: `${path.dirname(supabasePath)};${path.dirname(psqlPath)}`,
+      }),
+      isolationPaths: { supabaseHome, dockerConfig },
+    });
+    let catalogSnapshot = null;
+    let migrationHistory = null;
+    for (const command of commandPlan.commands) {
+      lastDispatchedCommand = command;
+      const dispatched = runReplayCommand(
+        command,
+        environment,
+        [databasePassword],
+        journalDirectory,
+        repositoryRoot
+      );
+      observations.push(dispatched.observation);
+      if (dispatched.observation.outcome !== 'SUCCEEDED') {
+        fail(
+          dispatched.observation.outcome === 'UNKNOWN_REMOTE_OUTCOME'
+            ? 'UNKNOWN_REMOTE_OUTCOME'
+            : `${command.id.replaceAll('-', '_')}_FAILED`
+        );
+      }
+      if (command.id === 'PR12-CMD-007A') {
+        const observation = lastJsonLine(
+          dispatched.stdout,
+          'FRESH_CATALOG_OBSERVATION_INVALID'
+        );
+        const compiledCatalog =
+          compileFunctionalReplayCatalogFromSqlObservation({
+            projectRef: PR12_RECOVERY_TARGET.projectRef,
+            databaseSystemIdentifier: databaseIdentity.systemIdentifier,
+            capturedAt: dispatched.observation.completedAt,
+            observation,
+          });
+        catalogSnapshot = {
+          capturedAt: dispatched.observation.completedAt,
+          verification: compiledCatalog.verification,
+          hostedApiConfiguration: {
+            dataApi: compiledCatalog.snapshot.dataApi,
+            graphql: compiledCatalog.snapshot.graphql,
+          },
+          snapshotSha256: sha256Canonical(compiledCatalog.snapshot),
+          rawRowsPersisted: false,
+        };
+      } else if (command.id === 'PR12-CMD-008A') {
+        const observation = lastJsonLine(
+          dispatched.stdout,
+          'MIGRATION_HISTORY_OBSERVATION_INVALID'
+        );
+        if (observation.migrationCount !== observation.versions?.length) {
+          fail('MIGRATION_HISTORY_OBSERVATION_INVALID');
+        }
+        migrationHistory = validateMigrationHistoryParity(
+          observation.versions,
+          inventory
+        );
+      }
+    }
+    if (catalogSnapshot === null || migrationHistory === null) {
+      fail('MIGRATION_REPLAY_EVIDENCE_INCOMPLETE');
+    }
+    const advisorBefore = normalizeAdvisorSnapshot({
+      schemaVersion: 1,
+      commandId: 'PR12-CMD-006',
+      bindingSha256: catalogGapAttempt.executionBindingSha256,
+      projectRef: PR12_RECOVERY_TARGET.projectRef,
+      databaseSystemIdentifier: databaseIdentity.systemIdentifier,
+      category: 'all',
+      capturedAt: catalogGapAttempt.advisorBefore.capturedAt,
+      findings: [],
+    });
+    const resultWithoutHash = {
+      schemaVersion: 1,
+      recordType: 'PR12_FULL_MIGRATION_REPLAY_RESULT',
+      canonicalStep: { step: '02', name: 'full migration replay' },
+      status: 'PASS',
+      startedAt,
+      completedAt: new Date().toISOString(),
+      projectRef: PR12_RECOVERY_TARGET.projectRef,
+      databaseSystemIdentifier: databaseIdentity.systemIdentifier,
+      frozenInput: {
+        migrationCount: inventory.migrationCount,
+        migrationHead: inventory.migrationHead,
+        migrationSetSha256: inventory.migrationSetSha256,
+        inputManifestSha256: inputManifest.manifestSha256,
+        materializedFileCount: materialized.fileCount,
+        seedCopied: false,
+        testsCopied: false,
+        dotenvCopied: false,
+        repositoryTempCopied: false,
+      },
+      postApplyRecovery: {
+        predecessorLinkSha256: catalogGapAttempt.linkSha256,
+        predecessorStep02EvidenceSha256: catalogGapAttempt.step02EvidenceSha256,
+        migrationApplyDispatchCount:
+          catalogGapAttempt.migrationApplyDispatchCount,
+        migrationApplyOutcome: catalogGapAttempt.migrationApplyOutcome,
+        migrationApplyRedispatched: false,
+        priorCatalogGap: catalogGapAttempt.reasonCode,
+      },
+      commandSequence: [
+        'PR12-CMD-003',
+        ...commandPlan.commands.map(command => command.id),
+      ],
+      commandObservations: observations,
+      advisorBefore,
+      advisorBeforeSource: {
+        predecessorExecutionBindingSha256:
+          catalogGapAttempt.executionBindingSha256,
+        predecessorStdoutSha256: catalogGapAttempt.advisorBefore.stdoutSha256,
+        findingCount: catalogGapAttempt.advisorBefore.findingCount,
+        rawOutputRetained: false,
+      },
+      catalogSnapshot,
+      migrationHistory,
+      wrapperRetryCount: 0,
+      rawPathsRetained: false,
+      rawOutputsRetained: false,
+      secretValuesCaptured: false,
+      nextStep: '03',
+    };
+    assertSecretFreeEvidence(resultWithoutHash, [databasePassword]);
+    const result = {
+      ...resultWithoutHash,
+      evidenceSha256: sha256Canonical(resultWithoutHash),
+    };
+    const filename = path.join(evidenceDirectory, STEP02_EVIDENCE_FILE);
+    writeCanonicalCreateNew(filename, result, 'STEP02_EVIDENCE_CREATE_FAILED');
+    hardenPath(repositoryRoot, filename, 'FILE');
+    return result;
+  } catch (error) {
+    const reasonCode =
+      error instanceof Error && /^[A-Z0-9_-]+$/u.test(error.message)
+        ? error.message
+        : 'UNEXPECTED_REPLAY_FAILURE';
+    const blockedWithoutHash = {
+      schemaVersion: 1,
+      recordType: 'PR12_FULL_MIGRATION_REPLAY_RESULT',
+      canonicalStep: { step: '02', name: 'full migration replay' },
+      status: 'BLOCK',
+      reasonCode,
+      startedAt,
+      completedAt: new Date().toISOString(),
+      projectRef: PR12_RECOVERY_TARGET.projectRef,
+      databaseSystemIdentifier: databaseIdentity.systemIdentifier,
+      predecessorStep02EvidenceSha256: catalogGapAttempt.step02EvidenceSha256,
+      completedCommandIds: observations
+        .filter(item => item.outcome === 'SUCCEEDED')
+        .map(item => item.commandId),
+      commandObservations: observations,
+      lastDispatchedCommand:
+        lastDispatchedCommand === null
+          ? null
+          : {
+              commandId: lastDispatchedCommand.id,
+              mutation: false,
+              timeoutMs: lastDispatchedCommand.timeoutMs,
+            },
+      migrationApplyDispatchCount: 0,
+      migrationApplyRedispatched: false,
+      mutationOutcomeUnknown: false,
       wrapperRetryCount: 0,
       rawPathsRetained: false,
       rawOutputsRetained: false,
@@ -2796,10 +3382,16 @@ async function main() {
     paths,
     [predecessorAttempt, brokerAbortAttempt]
   );
+  const catalogGapAttempt = assertPredecessorCatalogGapAbort(
+    repositoryRoot,
+    paths,
+    [predecessorAttempt, brokerAbortAttempt, advisorAbortAttempt]
+  );
   const predecessorAttempts = [
     predecessorAttempt,
     brokerAbortAttempt,
     advisorAbortAttempt,
+    catalogGapAttempt,
   ];
   createOwnerPrivateDirectory(repositoryRoot, paths.recoveryJournal);
   const evidenceAcl = createOwnerPrivateDirectory(
@@ -3036,7 +3628,7 @@ async function main() {
         nextStep: '02',
       })}\n`
     );
-    const replay = executeFullMigrationReplay({
+    const replay = resumeFullMigrationReplayAfterCatalogGap({
       repositoryRoot,
       replayWorkdir: paths.replayWorkdir,
       evidenceDirectory: paths.recoveryEvidence,
@@ -3046,7 +3638,7 @@ async function main() {
       supabasePath,
       psqlPath,
       journalDirectory: paths.recoveryJournal,
-      bindingSha256: claim.derivedExecutionBindingSha256,
+      catalogGapAttempt,
     });
     process.stdout.write(
       `${canonicalJson({
@@ -3107,7 +3699,7 @@ async function main() {
       caPath,
       databasePassword,
       databaseIdentity: database,
-      bindingSha256: claim.derivedExecutionBindingSha256,
+      bindingSha256: replay.advisorBefore.bindingSha256,
       advisorBefore: replay.advisorBefore,
       journalDirectory: paths.recoveryJournal,
     });

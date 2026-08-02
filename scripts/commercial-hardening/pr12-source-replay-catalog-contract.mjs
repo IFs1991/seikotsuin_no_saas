@@ -640,6 +640,29 @@ export function buildSourceReplayCommandPlan(input) {
   };
 }
 
+export function buildPostApplyReplayRecoveryCommandPlan(input) {
+  const fullPlan = buildSourceReplayCommandPlan(input);
+  const commands = fullPlan.commands.filter(command =>
+    ['PR12-CMD-007A', 'PR12-CMD-008A'].includes(command.id)
+  );
+  if (
+    commands.length !== 2 ||
+    commands[0]?.id !== 'PR12-CMD-007A' ||
+    commands[1]?.id !== 'PR12-CMD-008A' ||
+    commands.some(command => command.mutation !== false)
+  ) {
+    fail('SOURCE_REPLAY_POST_APPLY_RECOVERY_PLAN_INVALID');
+  }
+  return {
+    status: 'SOURCE_REPLAY_POST_APPLY_RECOVERY_PLAN_READY_NOT_AUTHORIZED',
+    authorizedNow: false,
+    executionStatus: 'NOT_RUN',
+    wrapperRetryCount: 0,
+    migrationApplyRedispatchAllowed: false,
+    commands,
+  };
+}
+
 function normalizedUniqueRecords(valuesInput, keys, code, keyBuilder) {
   const values = requireArray(valuesInput, code).map(value =>
     requireExactKeys(value, keys, code)
@@ -794,6 +817,174 @@ export function compileFreshCatalogSnapshotFromSqlObservation(input) {
     remoteContactPerformed: false,
     snapshot,
     verification,
+  };
+}
+
+export function compileFunctionalReplayCatalogFromSqlObservation(input) {
+  const request = requireExactKeys(
+    input,
+    ['projectRef', 'databaseSystemIdentifier', 'capturedAt', 'observation'],
+    'CATALOG_SQL_OBSERVATION_INVALID'
+  );
+  const observation = requireExactKeys(
+    request.observation,
+    [
+      'schemaVersion',
+      'operation',
+      'relations',
+      'routines',
+      'authTargets',
+      'databasePlatformSettings',
+      'graphqlDatabaseObservation',
+    ],
+    'CATALOG_SQL_OBSERVATION_INVALID'
+  );
+  if (
+    observation.schemaVersion !== 1 ||
+    observation.operation !== 'POST_REPLAY_CATALOG_CAPTURE'
+  ) {
+    fail('CATALOG_SQL_OBSERVATION_INVALID');
+  }
+  const settings = normalizedUniqueRecords(
+    observation.databasePlatformSettings,
+    ['role', 'setting'],
+    'CATALOG_PLATFORM_SETTING_INVALID',
+    value => {
+      if (
+        typeof value.role !== 'string' ||
+        value.role.length === 0 ||
+        typeof value.setting !== 'string' ||
+        value.setting.length === 0 ||
+        !value.setting.includes('=')
+      ) {
+        fail('CATALOG_PLATFORM_SETTING_INVALID');
+      }
+      return `${value.role}\u0000${value.setting}`;
+    }
+  );
+  const exposedSchemaValues = [
+    ...new Set(
+      settings
+        .filter(setting => setting.setting.startsWith('pgrst.db_schemas='))
+        .map(setting => setting.setting.slice('pgrst.db_schemas='.length))
+    ),
+  ];
+  if (exposedSchemaValues.length > 1) {
+    fail('DATA_API_CONFIGURATION_CONFLICT');
+  }
+  let exposedSchemas = null;
+  if (exposedSchemaValues.length === 1) {
+    exposedSchemas = exposedSchemaValues[0]
+      .split(',')
+      .map(value => value.trim())
+      .filter(value => value.length > 0);
+    if (
+      exposedSchemas.length === 0 ||
+      new Set(exposedSchemas).size !== exposedSchemas.length
+    ) {
+      fail('DATA_API_CONFIGURATION_INVALID');
+    }
+  }
+  const introspectionValues = [
+    ...new Set(
+      settings
+        .filter(setting => {
+          const separator = setting.setting.indexOf('=');
+          const key = setting.setting.slice(0, separator);
+          return key.startsWith('graphql.') && key.includes('introspection');
+        })
+        .map(setting => setting.setting.slice(setting.setting.indexOf('=') + 1))
+        .map(value => value.toLowerCase())
+    ),
+  ];
+  if (introspectionValues.length > 1) {
+    fail('GRAPHQL_INTROSPECTION_CONFLICT');
+  }
+  let introspectionEnabled = null;
+  if (introspectionValues.length === 1) {
+    if (['true', 'on', '1'].includes(introspectionValues[0])) {
+      introspectionEnabled = true;
+    } else if (['false', 'off', '0'].includes(introspectionValues[0])) {
+      introspectionEnabled = false;
+    } else {
+      fail('GRAPHQL_INTROSPECTION_INVALID');
+    }
+  }
+  const graphqlObservation = requireExactKeys(
+    observation.graphqlDatabaseObservation,
+    ['extensionEnabled', 'defaultAssumed'],
+    'GRAPHQL_CONFIGURATION_INVALID'
+  );
+  if (
+    typeof graphqlObservation.extensionEnabled !== 'boolean' ||
+    graphqlObservation.defaultAssumed !== false
+  ) {
+    fail('GRAPHQL_CONFIGURATION_INVALID');
+  }
+  const coreVerification = validateFreshCatalogSnapshot({
+    schemaVersion: 1,
+    projectRef: request.projectRef,
+    databaseSystemIdentifier: request.databaseSystemIdentifier,
+    capturedAt: request.capturedAt,
+    relations: observation.relations,
+    routines: observation.routines,
+    authTargets: observation.authTargets,
+    dataApi: {
+      exposedSchemas: exposedSchemas ?? [],
+      defaultExposureAssumed: false,
+    },
+    graphql: {
+      enabled: graphqlObservation.extensionEnabled,
+      introspectionEnabled: introspectionEnabled ?? false,
+      defaultAssumed: false,
+    },
+  });
+  const hostedApiConfigurationQualification =
+    exposedSchemas === null || introspectionEnabled === null
+      ? 'DEFERRED_UNVERIFIED'
+      : 'VERIFIED';
+  const snapshot = {
+    schemaVersion: 1,
+    projectRef: request.projectRef,
+    databaseSystemIdentifier: request.databaseSystemIdentifier,
+    capturedAt: new Date(request.capturedAt).toISOString(),
+    relations: observation.relations,
+    routines: observation.routines,
+    authTargets: observation.authTargets,
+    dataApi: {
+      verification: exposedSchemas === null ? 'UNVERIFIED' : 'VERIFIED',
+      exposedSchemas,
+      reason:
+        exposedSchemas === null ? 'DATABASE_ROLE_SETTING_NOT_OBSERVED' : null,
+      defaultExposureAssumed: false,
+    },
+    graphql: {
+      enabled: graphqlObservation.extensionEnabled,
+      introspectionVerification:
+        introspectionEnabled === null ? 'UNVERIFIED' : 'VERIFIED',
+      introspectionEnabled,
+      reason:
+        introspectionEnabled === null
+          ? 'DATABASE_ROLE_SETTING_NOT_OBSERVED'
+          : null,
+      defaultAssumed: false,
+    },
+  };
+  return {
+    status: 'FUNCTIONAL_REPLAY_CATALOG_SQL_OBSERVATION_COMPILED',
+    implementationStatus: 'IMPLEMENTED_OFFLINE_VERIFIED',
+    executionStatus: 'NOT_RUN',
+    executionAuthorized: false,
+    remoteContactPerformed: false,
+    snapshot,
+    verification: {
+      status: 'FUNCTIONAL_REPLAY_CATALOG_VERIFIED',
+      relationCount: coreVerification.relationCount,
+      routineCount: coreVerification.routineCount,
+      authTargetCount: coreVerification.authTargetCount,
+      hostedApiConfigurationQualification,
+      catalogSha256: sha256Canonical(snapshot),
+    },
   };
 }
 

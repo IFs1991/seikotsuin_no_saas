@@ -14,6 +14,7 @@ const PRODUCTION_PROJECT_REF = 'qnanuoqveidwvacvbhqp';
 const PROJECT_REF_PATTERN = /^[a-z]{20}$/u;
 const SYSTEM_IDENTIFIER_PATTERN = /^(?:0|[1-9][0-9]{0,19})$/u;
 const STATUS_PATTERN = /^[A-Z][A-Z0-9_]{1,63}$/u;
+const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
 
 export class Pr12ExistingProjectRecoveryError extends Error {
   constructor(code) {
@@ -88,6 +89,124 @@ export function assertRecoveredStep01ContactCounts(valueInput) {
     fail('RECOVERY_CONTACT_COUNTS_INVALID');
   }
   return expected;
+}
+
+export function assertPostApplyReplayCommandEvidence(input) {
+  const request = requireRecord(input, 'POST_APPLY_COMMAND_EVIDENCE_INVALID');
+  const descriptors = [
+    {
+      key: 'migrationApply',
+      commandId: 'PR12-CMD-007',
+      operation: 'CLEAN_MIGRATION_REPLAY_OPERATION',
+      mutation: true,
+      transport: 'DIRECT_POSTGRES_VIA_SUPABASE_CLI',
+      timeoutMs: 900_000,
+    },
+    {
+      key: 'catalogCapture',
+      commandId: 'PR12-CMD-007A',
+      operation: 'POST_REPLAY_CATALOG_CAPTURE',
+      mutation: false,
+      transport: 'DIRECT_POSTGRES',
+      timeoutMs: 300_000,
+    },
+  ];
+  const verified = {};
+  for (const descriptor of descriptors) {
+    const artifact = requireRecord(
+      request[descriptor.key],
+      'POST_APPLY_COMMAND_EVIDENCE_INVALID'
+    );
+    const intent = requireRecord(
+      artifact.intent,
+      'POST_APPLY_COMMAND_EVIDENCE_INVALID'
+    );
+    const result = requireRecord(
+      artifact.result,
+      'POST_APPLY_COMMAND_EVIDENCE_INVALID'
+    );
+    const intentFileSha256 = artifact.intentFileSha256;
+    if (
+      !SHA256_PATTERN.test(intentFileSha256 ?? '') ||
+      intent.schemaVersion !== 1 ||
+      intent.recordType !== 'PR12_REPLAY_COMMAND_INTENT' ||
+      intent.commandId !== descriptor.commandId ||
+      intent.operation !== descriptor.operation ||
+      intent.mutation !== descriptor.mutation ||
+      intent.targetProjectRef !== PR12_RECOVERY_TARGET.projectRef ||
+      intent.targetDirectHost !== PR12_RECOVERY_TARGET.directHost ||
+      intent.transport !== descriptor.transport ||
+      intent.dispatchMaximum !== 1 ||
+      intent.wrapperRetryCount !== 0 ||
+      intent.timeoutMs !== descriptor.timeoutMs ||
+      intent.rawArgumentsRetained !== false ||
+      intent.secretValuesCaptured !== false ||
+      !SHA256_PATTERN.test(intent.argvSha256 ?? '') ||
+      !SHA256_PATTERN.test(intent.intentSha256 ?? '') ||
+      !Number.isFinite(Date.parse(intent.createdAt ?? '')) ||
+      result.commandId !== descriptor.commandId ||
+      result.operation !== descriptor.operation ||
+      result.intentArtifactSha256 !== intentFileSha256 ||
+      result.dispatchCount !== 1 ||
+      result.wrapperRetryCount !== 0 ||
+      result.exitCode !== 0 ||
+      result.timedOut !== false ||
+      result.outcome !== 'SUCCEEDED' ||
+      result.rawOutputRetained !== false ||
+      result.startedAt !== intent.createdAt ||
+      !Number.isFinite(Date.parse(result.completedAt ?? '')) ||
+      !Number.isInteger(result.stdoutBytes) ||
+      result.stdoutBytes < 0 ||
+      !SHA256_PATTERN.test(result.stdoutSha256 ?? '') ||
+      !Number.isInteger(result.stderrBytes) ||
+      result.stderrBytes < 0 ||
+      !SHA256_PATTERN.test(result.stderrSha256 ?? '') ||
+      !SHA256_PATTERN.test(result.observationSha256 ?? '')
+    ) {
+      fail('POST_APPLY_COMMAND_EVIDENCE_INVALID');
+    }
+    verified[descriptor.key] = {
+      commandId: descriptor.commandId,
+      operation: descriptor.operation,
+      mutation: descriptor.mutation,
+      targetProjectRef: intent.targetProjectRef,
+      targetDirectHost: intent.targetDirectHost,
+      dispatchCount: result.dispatchCount,
+      wrapperRetryCount: result.wrapperRetryCount,
+      timeoutMs: intent.timeoutMs,
+      outcome: result.outcome,
+      rawArgumentsRetained: false,
+      rawOutputRetained: false,
+      secretValuesCaptured: false,
+    };
+  }
+  return verified;
+}
+
+export function buildRecoveryOperatingSystemValues(input) {
+  const value = requireRecord(input, 'RECOVERY_CHILD_ENVIRONMENT_INVALID');
+  const expectedKeys = ['PATH', 'SystemRoot', 'TEMP', 'TMP'].sort();
+  const observedKeys = Object.keys(value).sort();
+  if (
+    observedKeys.length !== expectedKeys.length ||
+    observedKeys.some((key, index) => key !== expectedKeys[index])
+  ) {
+    fail('RECOVERY_CHILD_ENVIRONMENT_INVALID');
+  }
+  const result = {
+    SystemRoot: value.SystemRoot ?? 'C:\\Windows',
+    TEMP: value.TEMP ?? 'C:\\Windows\\Temp',
+    TMP: value.TMP ?? 'C:\\Windows\\Temp',
+    PATH: value.PATH,
+  };
+  if (
+    Object.values(result).some(
+      entry => typeof entry !== 'string' || entry.length === 0
+    )
+  ) {
+    fail('RECOVERY_CHILD_ENVIRONMENT_INVALID');
+  }
+  return result;
 }
 
 function normalizeProviderTimestamp(value) {

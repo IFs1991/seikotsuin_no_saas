@@ -209,6 +209,38 @@ console.log(JSON.stringify(subject.buildExternalReplayInputManifest({
     }
   });
 
+  it('builds a post-apply recovery plan that cannot dispatch migration apply again', () => {
+    const result = runPr12Module(
+      replayModule,
+      `
+const plan = subject.buildPostApplyReplayRecoveryCommandPlan({
+  directDatabaseUrl: 'postgresql://postgres@db.abcdefghijklmnopqrst.supabase.co:5432/postgres?sslmode=verify-full&sslrootcert=C%3A%5Csecure%5Croot.crt',
+  supabasePath: 'C:\\\\tools\\\\supabase.exe',
+  psqlPath: 'C:\\\\pgsql\\\\psql.exe',
+  externalWorkdir: 'C:\\\\external-pr12'
+});
+console.log(JSON.stringify(plan));
+`
+    );
+
+    expect(result.status).toBe(0);
+    const output = JSON.parse(result.stdout) as {
+      status: string;
+      commands: ReadonlyArray<{ id: string; mutation: boolean }>;
+    };
+    expect(output.status).toBe(
+      'SOURCE_REPLAY_POST_APPLY_RECOVERY_PLAN_READY_NOT_AUTHORIZED'
+    );
+    expect(output.commands.map(command => command.id)).toEqual([
+      'PR12-CMD-007A',
+      'PR12-CMD-008A',
+    ]);
+    expect(output.commands.every(command => command.mutation === false)).toBe(
+      true
+    );
+    expect(JSON.stringify(output)).not.toContain('PR12-CMD-007"');
+  });
+
   it('validates fresh catalog shape and rejects reordered migration history', () => {
     const result = runPr12Module(
       replayModule,
@@ -336,6 +368,54 @@ console.log(JSON.stringify({ compiled, failures }));
         missingDataApi: 'DATA_API_CONFIGURATION_NOT_OBSERVED',
         conflictingDataApi: 'DATA_API_CONFIGURATION_CONFLICT',
         missingIntrospection: 'GRAPHQL_INTROSPECTION_NOT_OBSERVED',
+      },
+    });
+  });
+
+  it('separates functional replay catalog proof from unobservable hosted API settings', () => {
+    const result = runPr12Module(
+      replayModule,
+      `
+const compiled = subject.compileFunctionalReplayCatalogFromSqlObservation({
+  projectRef: 'abcdefghijklmnopqrst',
+  databaseSystemIdentifier: 'source-system-001',
+  capturedAt: '2026-08-02T04:30:15.000Z',
+  observation: {
+    schemaVersion: 1,
+    operation: 'POST_REPLAY_CATALOG_CAPTURE',
+    relations: [{ schema: 'public', name: 'staff', kind: 'table', rlsEnabled: true }],
+    routines: [{ schema: 'public', name: 'example', identityArguments: '', securityDefiner: false }],
+    authTargets: [{ schema: 'auth', name: 'users', kind: 'table' }],
+    databasePlatformSettings: [],
+    graphqlDatabaseObservation: { extensionEnabled: true, defaultAssumed: false }
+  }
+});
+console.log(JSON.stringify(compiled));
+`
+    );
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      status: 'FUNCTIONAL_REPLAY_CATALOG_SQL_OBSERVATION_COMPILED',
+      snapshot: {
+        dataApi: {
+          verification: 'UNVERIFIED',
+          exposedSchemas: null,
+          reason: 'DATABASE_ROLE_SETTING_NOT_OBSERVED',
+          defaultExposureAssumed: false,
+        },
+        graphql: {
+          enabled: true,
+          introspectionVerification: 'UNVERIFIED',
+          introspectionEnabled: null,
+          reason: 'DATABASE_ROLE_SETTING_NOT_OBSERVED',
+          defaultAssumed: false,
+        },
+      },
+      verification: {
+        status: 'FUNCTIONAL_REPLAY_CATALOG_VERIFIED',
+        relationCount: 1,
+        hostedApiConfigurationQualification: 'DEFERRED_UNVERIFIED',
       },
     });
   });

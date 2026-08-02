@@ -220,6 +220,136 @@ describe('PR12 existing isolated project recovery', () => {
     });
   });
 
+  test('rejects drift in the exact post-apply migration and catalog command evidence', () => {
+    const result = evaluate(`
+      const hash = 'a'.repeat(64);
+      const intentFileSha256 = 'b'.repeat(64);
+      const makeArtifact = ({ commandId, operation, mutation, transport, timeoutMs }) => {
+        const createdAt = '2026-08-02T04:29:17.685Z';
+        return {
+          intentFileSha256,
+          intent: {
+            schemaVersion: 1,
+            recordType: 'PR12_REPLAY_COMMAND_INTENT',
+            commandId,
+            operation,
+            mutation,
+            targetProjectRef: ${JSON.stringify(PROJECT_REF)},
+            targetDirectHost: 'db.${PROJECT_REF}.supabase.co',
+            transport,
+            dispatchMaximum: 1,
+            wrapperRetryCount: 0,
+            timeoutMs,
+            rawArgumentsRetained: false,
+            secretValuesCaptured: false,
+            argvSha256: hash,
+            intentSha256: hash,
+            createdAt
+          },
+          result: {
+            commandId,
+            operation,
+            intentArtifactSha256: intentFileSha256,
+            dispatchCount: 1,
+            wrapperRetryCount: 0,
+            exitCode: 0,
+            timedOut: false,
+            outcome: 'SUCCEEDED',
+            rawOutputRetained: false,
+            startedAt: createdAt,
+            completedAt: '2026-08-02T04:30:15.225Z',
+            stdoutBytes: 1,
+            stdoutSha256: hash,
+            stderrBytes: 0,
+            stderrSha256: hash,
+            observationSha256: hash
+          }
+        };
+      };
+      const exact = {
+        migrationApply: makeArtifact({
+          commandId: 'PR12-CMD-007',
+          operation: 'CLEAN_MIGRATION_REPLAY_OPERATION',
+          mutation: true,
+          transport: 'DIRECT_POSTGRES_VIA_SUPABASE_CLI',
+          timeoutMs: 900000
+        }),
+        catalogCapture: makeArtifact({
+          commandId: 'PR12-CMD-007A',
+          operation: 'POST_REPLAY_CATALOG_CAPTURE',
+          mutation: false,
+          transport: 'DIRECT_POSTGRES',
+          timeoutMs: 300000
+        })
+      };
+      const accepted = subject.assertPostApplyReplayCommandEvidence(exact);
+      const rejected = {};
+      for (const [name, mutate] of Object.entries({
+        wrongTarget: value => { value.migrationApply.intent.targetProjectRef = 'abcdefghijklmnopqrst'; },
+        wrongHost: value => { value.migrationApply.intent.targetDirectHost = 'db.abcdefghijklmnopqrst.supabase.co'; },
+        duplicateDispatch: value => { value.migrationApply.result.dispatchCount = 2; },
+        wrapperRetry: value => { value.catalogCapture.intent.wrapperRetryCount = 1; },
+        wrongTimeout: value => { value.migrationApply.intent.timeoutMs = 300000; },
+        rawArguments: value => { value.catalogCapture.intent.rawArgumentsRetained = true; },
+        secretCaptured: value => { value.migrationApply.intent.secretValuesCaptured = true; },
+        failedOutcome: value => { value.migrationApply.result.outcome = 'FAILED_DETERMINISTIC'; }
+      })) {
+        const candidate = structuredClone(exact);
+        mutate(candidate);
+        try {
+          subject.assertPostApplyReplayCommandEvidence(candidate);
+        } catch (error) {
+          rejected[name] = error.message;
+        }
+      }
+      process.stdout.write(JSON.stringify({ accepted, rejected }));
+    `);
+
+    expect(result.status).toBe(0);
+    const output = JSON.parse(result.stdout) as {
+      accepted: {
+        migrationApply: { commandId: string; mutation: boolean };
+        catalogCapture: { commandId: string; mutation: boolean };
+      };
+      rejected: Record<string, string>;
+    };
+    expect(output.accepted).toMatchObject({
+      migrationApply: { commandId: 'PR12-CMD-007', mutation: true },
+      catalogCapture: { commandId: 'PR12-CMD-007A', mutation: false },
+    });
+    expect(output.rejected).toEqual({
+      wrongTarget: 'POST_APPLY_COMMAND_EVIDENCE_INVALID',
+      wrongHost: 'POST_APPLY_COMMAND_EVIDENCE_INVALID',
+      duplicateDispatch: 'POST_APPLY_COMMAND_EVIDENCE_INVALID',
+      wrapperRetry: 'POST_APPLY_COMMAND_EVIDENCE_INVALID',
+      wrongTimeout: 'POST_APPLY_COMMAND_EVIDENCE_INVALID',
+      rawArguments: 'POST_APPLY_COMMAND_EVIDENCE_INVALID',
+      secretCaptured: 'POST_APPLY_COMMAND_EVIDENCE_INVALID',
+      failedOutcome: 'POST_APPLY_COMMAND_EVIDENCE_INVALID',
+    });
+  });
+
+  test('uses canonical Windows TEMP and TMP when the child environment has no ambient values', () => {
+    const result = evaluate(`
+      process.stdout.write(JSON.stringify(
+        subject.buildRecoveryOperatingSystemValues({
+          SystemRoot: undefined,
+          TEMP: undefined,
+          TMP: undefined,
+          PATH: 'C:\\\\tools'
+        })
+      ));
+    `);
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({
+      SystemRoot: 'C:\\Windows',
+      TEMP: 'C:\\Windows\\Temp',
+      TMP: 'C:\\Windows\\Temp',
+      PATH: 'C:\\tools',
+    });
+  });
+
   test('allows only read-only requests for the exact isolated project', () => {
     const allowed = evaluate(`
       const values = [
@@ -587,9 +717,17 @@ describe('PR12 existing isolated project recovery', () => {
     expect(source).toContain(
       "'pr12-existing-project-recovery-replay-workdir-cycle4'"
     );
+    expect(source).toContain("'pr12-existing-project-recovery-journal-cycle5'");
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-evidence-cycle5'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-replay-workdir-cycle5'"
+    );
     expect(source).toContain('assertPredecessorPreContactAbort(');
     expect(source).toContain('assertPredecessorCredentialBrokerAbort(');
     expect(source).toContain('assertPredecessorAdvisorParserAbort(');
+    expect(source).toContain('assertPredecessorCatalogGapAbort(');
     expect(source).toContain("status: 'PRE_CONTACT_TOOLING_ABORT_VERIFIED'");
     expect(source).toContain(
       "status: 'PRE_PROVIDER_CREDENTIAL_BROKER_ABORT_VERIFIED'"
@@ -597,6 +735,7 @@ describe('PR12 existing isolated project recovery', () => {
     expect(source).toContain(
       "status: 'PRE_MUTATION_ADVISOR_PARSER_ABORT_VERIFIED'"
     );
+    expect(source).toContain("status: 'POST_APPLY_CATALOG_GAP_VERIFIED'");
     expect(source).toContain('allRemoteContactCountsZero: true');
     expect(source).toContain('allProviderAndDatabaseContactCountsZero: true');
     expect(source).toContain(
@@ -604,6 +743,13 @@ describe('PR12 existing isolated project recovery', () => {
     );
     expect(source).toContain('migrationApplyDispatchCount: 0');
     expect(source).toContain('mutationOutcomeUnknown: false');
+    expect(source).toContain('migrationApplyRedispatchAllowed: false');
+    expect(source).toContain('migrationApplyRedispatched: false');
+    expect(source).toContain('resumeFullMigrationReplayAfterCatalogGap(');
+    expect(source).toContain('buildRecoveryOperatingSystemValues({');
+    expect(source).toContain(
+      'bindingSha256: replay.advisorBefore.bindingSha256'
+    );
     expect(source).toContain('predecessorAttempts');
     expect(source).not.toContain('rmSync');
     expect(source).not.toContain('unlinkSync');
