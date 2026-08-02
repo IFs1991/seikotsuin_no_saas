@@ -597,9 +597,19 @@ console.log(JSON.stringify({ accepted, failures }));
       "instance_id='00000000-0000-0000-0000-000000000000'::uuid"
     );
     expect(runnerSource).toContain('is_sso_user=false');
+    expect(runnerSource).toContain("confirmation_token=''");
+    expect(runnerSource).toContain("recovery_token=''");
+    expect(runnerSource).toContain("email_change_token_current=''");
+    expect(runnerSource).toContain("email_change_token_new=''");
+    expect(runnerSource).toContain("email_change=''");
+    expect(runnerSource).toContain("phone_change_token=''");
+    expect(runnerSource).toContain("phone_change=''");
+    expect(runnerSource).toContain("reauthentication_token=''");
+    expect(runnerSource).toContain("role='authenticated'");
     expect(runnerSource).toContain("'authLookupReadyCount'");
+    expect(runnerSource).toContain("'authModelStringReadyCount'");
     expect(runnerSource).toContain(
-      'UUID_NIL_INSTANCE_AUTHENTICATED_AUDIENCE_NON_SSO_CONFIRMED_PASSWORD'
+      'UUID_NIL_INSTANCE_AUTHENTICATED_AUDIENCE_AUTHENTICATED_ROLE_NON_SSO_CONFIRMED_PASSWORD_NON_NULL_MODEL_STRINGS'
     );
 
     const relation = evaluateAllRole(`
@@ -887,7 +897,17 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(source).toContain(
       "'pr12-existing-project-recovery-replay-workdir-cycle9'"
     );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-journal-cycle10'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-evidence-cycle10'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-replay-workdir-cycle10'"
+    );
     expect(source).toContain('assertPredecessorStep06Http400(');
+    expect(source).toContain('assertPredecessorStep06AuthHttp500(');
     expect(source).toContain(
       "status: 'POST_ADVISOR_STEP06_AUTH_HTTP400_VERIFIED'"
     );
@@ -935,7 +955,7 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(activeMain).not.toContain('executeRepresentativeDataValidation({');
     expect(activeMain).not.toContain('executeAdvisorAfterScan({');
     expect(activeMain).toContain(
-      'STEP06_HTTP400_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE]'
+      'STEP06_AUTH_HTTP500_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE]'
     );
     expect(activeMain).toContain('advisorScanRedispatched: false');
     expect(activeMain).toContain('localNormalizationRedispatched: false');

@@ -418,6 +418,60 @@ const STEP06_HTTP400_AUTH_OBSERVATION_SHA256 =
   '074a6c8a78921deed20c9484bb66a55f3d28df6c72a332e4d5f0c0a600350465';
 const STEP06_HTTP400_TELEMETRY_FILE_SHA256 =
   '4a99f31406a3ca623b675c634abfbf3f2b34e4173b31b377ccfa02611da024e5';
+const STEP06_AUTH_HTTP500_RECOVERY_HEAD =
+  'cd0c74804c06bcd75dba5977df3a1b80095aea42';
+const STEP06_AUTH_HTTP500_JOURNAL_FILE_SHA256 = Object.freeze({
+  'pr12-cmd-013-auth-rebind-intent.json':
+    'bc29de34b3ca1c4eff80fb20ccf5dc90e6650a0958d8f2d57fceb27b873b15d7',
+  'pr12-cmd-013-auth-rebind-result.json':
+    '642f3a418ec99b0d4409f2122ab91093da56303af36ce0b702afaf280c356965',
+  'pr12-cycle9-database-identity.json':
+    'e31ccc27f960e72b27e566039692c3df922409a73816037ed259cb4728a0cf01',
+  [RUNTIME_CREDENTIAL_CONFIG_FILE]:
+    'bb811504736409c7e177ba858bcd1c0773b57b8324bda1c0314b680da2f55069',
+  'pr12-existing-project-recovery-credential-consumed.json':
+    '5ecc102657717415775fdca4f612154803dbbd7b43cb12ebbb8b89aeb8d0564d',
+  [TERMINAL_FILE]:
+    'bf3d20d68c67b2bde5be3c97ed78814b6d9bbc2ad3680ee568ccccd0f5031cf6',
+  [CLAIM_FILE]:
+    'a886079f15f99f91cafdac2193d49229a60ec086447be70d13cbe42c928e8b68',
+});
+const STEP06_AUTH_HTTP500_EVIDENCE_FILE_SHA256 = Object.freeze({
+  [STEP01_EVIDENCE_FILE]:
+    '308fd78552c69327e90e2cd602e5d3656578b7097d92936717b8e41bab29a9f2',
+  [STEP02_EVIDENCE_FILE]:
+    'ea12d1201fa1d607e9bed634b641db6242cd060df86cce2b7366b8044ce9b8b7',
+  [STEP03_EVIDENCE_FILE]:
+    'd7d4e5fca50f5cef329d13cf2bfe21727470d5b5f5c08479f6442921d0e00af1',
+  [STEP04_EVIDENCE_FILE]:
+    '5da18834414b6ff6a3e5107294aa6157545a39b8d7c73ecfad8f3eba549f635d',
+  [STEP05_EVIDENCE_FILE]:
+    '307b10b3b0d2f6704d041dce46d55714931a6ccc783eb493da50f3c404a65737',
+  [STEP06_EVIDENCE_FILE]:
+    '16f13940a199759d3581c6672f2a3b3e958ea4a2fbe9af0483e3dc4204827cc5',
+});
+const STEP06_AUTH_HTTP500_EVIDENCE_SHA256 = Object.freeze({
+  [STEP01_EVIDENCE_FILE]:
+    '1c1e989ab92d4835c2cedffeaa859abac53383801de8afd014a1ceebd4ddbb5d',
+  [STEP02_EVIDENCE_FILE]:
+    'ed46277e4924bf51c4c2a41f4d7276e1e4b7d653e03824d9018e451b32a7ef49',
+  [STEP03_EVIDENCE_FILE]:
+    '688d5a2e4a603db9614c9eb8c59cab78980ce01f563158d74df98d86fb460506',
+  [STEP04_EVIDENCE_FILE]:
+    '1ea039b794ef0dd0b2648367b85412d5fc3aeee262e823998082416b2b3e8c81',
+  [STEP05_EVIDENCE_FILE]:
+    '4a31b5584260dc95f3eb28bff1ae4a8fa786eb2f2ef644d502c4b3d4d687d553',
+  [STEP06_EVIDENCE_FILE]:
+    'f754fd68db0253be5c2db4bfaae232cdc331eaad761802cce4a76439212b7808',
+});
+const STEP06_AUTH_HTTP500_TERMINAL_SHA256 =
+  'cddaa2bd3817b2f541b56e1af4ed6225c3a69ba0d87a5ce9785ed5ec71b8e6bf';
+const STEP06_AUTH_HTTP500_IDENTITY_SHA256 =
+  '6cca92979973be37c6a9968bf47650357e94aec09c36e4eba7106e5120700049';
+const STEP06_AUTH_HTTP500_AUTH_INTENT_SHA256 =
+  '967cce967eaeea9eb7d9b504bd078fe6e3907549484d00f931cbe46a6f415d1d';
+const STEP06_AUTH_HTTP500_AUTH_OBSERVATION_SHA256 =
+  'f967e60df5c7d2a15f286e5d63284e83b9b63dd84e1d083a5ab3d8f281be9a9e';
 const ADVISOR_SHAPE_DEFECT_EVIDENCE_SHA256 = Object.freeze({
   [STEP01_EVIDENCE_FILE]:
     '1c1e989ab92d4835c2cedffeaa859abac53383801de8afd014a1ceebd4ddbb5d',
@@ -797,17 +851,29 @@ function assertExternalSiblingPaths(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle8'
     ),
-    recoveryJournal: path.join(
+    step06AuthHttp500RecoveryJournal: path.join(
       actionBase,
       'pr12-existing-project-recovery-journal-cycle9'
     ),
-    recoveryEvidence: path.join(
+    step06AuthHttp500RecoveryEvidence: path.join(
       actionBase,
       'pr12-existing-project-recovery-evidence-cycle9'
     ),
-    replayWorkdir: path.join(
+    step06AuthHttp500ReplayWorkdir: path.join(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle9'
+    ),
+    recoveryJournal: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-journal-cycle10'
+    ),
+    recoveryEvidence: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-evidence-cycle10'
+    ),
+    replayWorkdir: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-replay-workdir-cycle10'
     ),
   };
 }
@@ -2943,6 +3009,219 @@ function assertPredecessorStep06Http400(
   };
 }
 
+function assertPredecessorStep06AuthHttp500(
+  repositoryRoot,
+  paths,
+  predecessorAttempts
+) {
+  const code = 'STEP06_AUTH_HTTP500_PREDECESSOR_INVALID';
+  const journal = resolveExistingDirectory(
+    paths.step06AuthHttp500RecoveryJournal,
+    code
+  );
+  const evidence = resolveExistingDirectory(
+    paths.step06AuthHttp500RecoveryEvidence,
+    code
+  );
+  const workdir = resolveExistingDirectory(
+    paths.step06AuthHttp500ReplayWorkdir,
+    code
+  );
+  const browserRuntime = resolveExistingDirectory(
+    path.join(workdir, '.pr12-browser-runtime'),
+    code
+  );
+  assertExactDirectoryEntries(
+    journal,
+    Object.keys(STEP06_AUTH_HTTP500_JOURNAL_FILE_SHA256),
+    code
+  );
+  assertExactDirectoryEntries(
+    evidence,
+    [...Object.keys(STEP06_AUTH_HTTP500_EVIDENCE_FILE_SHA256), CA_FILE],
+    code
+  );
+  assertExactDirectoryEntries(workdir, ['.pr12-browser-runtime'], code);
+  for (const directory of [journal, evidence, workdir]) {
+    captureOwnerPrivatePath(repositoryRoot, directory, 'DIRECTORY');
+  }
+  assertNoReparsePathIdentity(workdir, browserRuntime, code);
+  captureInheritedOwnerPrivatePath(repositoryRoot, browserRuntime, 'DIRECTORY');
+  const journalFiles = Object.fromEntries(
+    Object.keys(STEP06_AUTH_HTTP500_JOURNAL_FILE_SHA256).map(filename => [
+      filename,
+      path.join(journal, filename),
+    ])
+  );
+  const evidenceFiles = Object.fromEntries(
+    Object.keys(STEP06_AUTH_HTTP500_EVIDENCE_FILE_SHA256).map(filename => [
+      filename,
+      path.join(evidence, filename),
+    ])
+  );
+  for (const candidate of [
+    ...Object.values(journalFiles),
+    ...Object.values(evidenceFiles),
+    path.join(evidence, CA_FILE),
+  ]) {
+    assertNoReparsePathIdentity(path.dirname(journal), candidate, code);
+    captureOwnerPrivatePath(repositoryRoot, candidate, 'FILE');
+  }
+  const journalSnapshots = Object.fromEntries(
+    Object.entries(journalFiles).map(([filename, artifactPath]) => [
+      filename,
+      readCanonicalJson(artifactPath, code),
+    ])
+  );
+  const evidenceSnapshots = Object.fromEntries(
+    Object.entries(evidenceFiles).map(([filename, artifactPath]) => [
+      filename,
+      readCanonicalJson(artifactPath, code),
+    ])
+  );
+  if (
+    Object.entries(journalSnapshots).some(
+      ([filename, snapshot]) =>
+        snapshot.sha256 !== STEP06_AUTH_HTTP500_JOURNAL_FILE_SHA256[filename]
+    ) ||
+    Object.entries(evidenceSnapshots).some(
+      ([filename, snapshot]) =>
+        snapshot.sha256 !== STEP06_AUTH_HTTP500_EVIDENCE_FILE_SHA256[filename]
+    )
+  ) {
+    fail(code);
+  }
+  const terminal = journalSnapshots[TERMINAL_FILE].value;
+  const identity = journalSnapshots['pr12-cycle9-database-identity.json'].value;
+  const authIntent =
+    journalSnapshots['pr12-cmd-013-auth-rebind-intent.json'].value;
+  const authResult =
+    journalSnapshots['pr12-cmd-013-auth-rebind-result.json'].value;
+  assertCanonicalEmbeddedSha(
+    terminal,
+    'terminalSha256',
+    STEP06_AUTH_HTTP500_TERMINAL_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    identity,
+    'identityEvidenceSha256',
+    STEP06_AUTH_HTTP500_IDENTITY_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    authIntent,
+    'intentSha256',
+    STEP06_AUTH_HTTP500_AUTH_INTENT_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    authResult,
+    'observationSha256',
+    STEP06_AUTH_HTTP500_AUTH_OBSERVATION_SHA256,
+    code
+  );
+  for (const [filename, snapshot] of Object.entries(evidenceSnapshots)) {
+    assertCanonicalEmbeddedSha(
+      snapshot.value,
+      'evidenceSha256',
+      STEP06_AUTH_HTTP500_EVIDENCE_SHA256[filename],
+      code
+    );
+  }
+  const step01 = evidenceSnapshots[STEP01_EVIDENCE_FILE].value;
+  const step02 = evidenceSnapshots[STEP02_EVIDENCE_FILE].value;
+  const step03 = evidenceSnapshots[STEP03_EVIDENCE_FILE].value;
+  const step04 = evidenceSnapshots[STEP04_EVIDENCE_FILE].value;
+  const step05 = evidenceSnapshots[STEP05_EVIDENCE_FILE].value;
+  const step06 = evidenceSnapshots[STEP06_EVIDENCE_FILE].value;
+  if (
+    terminal.gitHead !== STEP06_AUTH_HTTP500_RECOVERY_HEAD ||
+    terminal.status !== 'BLOCK' ||
+    terminal.reasonCode !== 'ISOLATED_AUTH_SIGN_IN_HTTP_500' ||
+    terminal.blockedCanonicalStep !== '06' ||
+    canonicalJson(terminal.completedCanonicalSteps) !==
+      canonicalJson(['01', '02', '03', '04', '05']) ||
+    canonicalJson(terminal.predecessorAttempts) !==
+      canonicalJson(predecessorAttempts) ||
+    terminal.newProjectPostAttemptCount !== 0 ||
+    terminal.productionContactCount !== 0 ||
+    terminal.secretValuesCaptured !== false ||
+    identity.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    identity.database?.status !== 'REACHABLE' ||
+    identity.database?.systemIdentifier !== '7666052913346410626' ||
+    step01.status !== 'PASS' ||
+    step02.status !== 'PASS' ||
+    step03.status !== 'PASS' ||
+    step04.status !== 'PASS' ||
+    step05.status !== 'PASS' ||
+    step06.status !== 'BLOCK' ||
+    step06.reasonCode !== 'ISOLATED_AUTH_SIGN_IN_HTTP_500' ||
+    step06.runtimeApiKeysGetCount !== 1 ||
+    step06.productionContactCount !== 0 ||
+    step06.secretValuesCaptured !== false ||
+    step06.rawOutputsRetained !== false ||
+    authIntent.mutation !== true ||
+    authIntent.isolatedSyntheticActorsOnly !== true ||
+    authIntent.dispatchMaximum !== 1 ||
+    authResult.dispatchCount !== 1 ||
+    authResult.wrapperRetryCount !== 0 ||
+    authResult.outcome !== 'SUCCEEDED' ||
+    authResult.actorPasswordValuesPersisted !== false ||
+    authResult.secretValuesCaptured !== false
+  ) {
+    fail(code);
+  }
+  for (const [filename, snapshot] of Object.entries(journalSnapshots)) {
+    if (filename === RUNTIME_CREDENTIAL_CONFIG_FILE) continue;
+    assertSecretFreeEvidence(snapshot.value, []);
+  }
+  for (const snapshot of Object.values(evidenceSnapshots)) {
+    assertSecretFreeEvidence(snapshot.value, []);
+  }
+  const caBytes = readStableBytes(
+    path.join(evidence, CA_FILE),
+    16 * 1024,
+    code
+  );
+  try {
+    if (sha256Bytes(caBytes) !== PINNED_CA_SHA256) fail(code);
+  } finally {
+    caBytes.fill(0);
+  }
+  const linkWithoutHash = {
+    status: 'STEP06_AUTH_SIGN_IN_HTTP500_VERIFIED',
+    gitHead: STEP06_AUTH_HTTP500_RECOVERY_HEAD,
+    completedCanonicalSteps: ['01', '02', '03', '04', '05'],
+    blockedCanonicalStep: '06',
+    reasonCode: 'ISOLATED_AUTH_SIGN_IN_HTTP_500',
+    step01FileSha256:
+      STEP06_AUTH_HTTP500_EVIDENCE_FILE_SHA256[STEP01_EVIDENCE_FILE],
+    step02FileSha256:
+      STEP06_AUTH_HTTP500_EVIDENCE_FILE_SHA256[STEP02_EVIDENCE_FILE],
+    step03FileSha256:
+      STEP06_AUTH_HTTP500_EVIDENCE_FILE_SHA256[STEP03_EVIDENCE_FILE],
+    step04FileSha256:
+      STEP06_AUTH_HTTP500_EVIDENCE_FILE_SHA256[STEP04_EVIDENCE_FILE],
+    step05FileSha256:
+      STEP06_AUTH_HTTP500_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE],
+    step06FileSha256:
+      STEP06_AUTH_HTTP500_EVIDENCE_FILE_SHA256[STEP06_EVIDENCE_FILE],
+    advisorScanRedispatched: false,
+    allRoleSmokeRetryMaximum: 1,
+    newProjectPostAttemptCount: 0,
+    productionContactCount: 0,
+    secretValuesCaptured: false,
+  };
+  return {
+    link: {
+      ...linkWithoutHash,
+      linkSha256: sha256Canonical(linkWithoutHash),
+    },
+    sourceDirectory: evidence,
+  };
+}
+
 function createOwnerPrivateDirectory(repositoryRoot, directory) {
   if (existsSync(directory)) fail('RECOVERY_OUTPUT_ALREADY_EXISTS');
   mkdirSync(directory, { recursive: false });
@@ -4600,10 +4879,21 @@ DO $pr12_update$
 DECLARE updated_users integer;
 BEGIN
   -- Supabase Auth FindUserByEmailAndAudience requires UUID nil instance_id,
-  -- authenticated audience, and is_sso_user=false for password grants.
+  -- authenticated audience, is_sso_user=false, and non-null model string
+  -- fields for password grants loaded through the current Auth User model.
   UPDATE auth.users AS users
   SET instance_id='00000000-0000-0000-0000-000000000000'::uuid,
       is_sso_user=false,
+      is_anonymous=false,
+      confirmation_token='',
+      recovery_token='',
+      email_change_token_current='',
+      email_change_token_new='',
+      email_change='',
+      email_change_confirm_status=0,
+      phone_change_token='',
+      phone_change='',
+      reauthentication_token='',
       encrypted_password=extensions.crypt(expected.password,extensions.gen_salt('bf')),
       updated_at=clock_timestamp()
   FROM (VALUES ${credentialRows.join(',')}) AS expected(id,email,password)
@@ -4615,7 +4905,8 @@ END $pr12_update$;
 SELECT json_build_object(
   'actorCount',(SELECT count(*) FROM auth.users WHERE email LIKE 'pr12+%@invalid.example'),
   'profileCount',(SELECT count(*) FROM public.profiles WHERE email LIKE 'pr12+%@invalid.example'),
-  'authLookupReadyCount',(SELECT count(*) FROM auth.users WHERE email LIKE 'pr12+%@invalid.example' AND instance_id='00000000-0000-0000-0000-000000000000'::uuid AND aud='authenticated' AND is_sso_user=false AND email_confirmed_at IS NOT NULL AND encrypted_password IS NOT NULL)
+  'authLookupReadyCount',(SELECT count(*) FROM auth.users WHERE email LIKE 'pr12+%@invalid.example' AND instance_id='00000000-0000-0000-0000-000000000000'::uuid AND aud='authenticated' AND role='authenticated' AND is_sso_user=false AND email_confirmed_at IS NOT NULL AND encrypted_password IS NOT NULL),
+  'authModelStringReadyCount',(SELECT count(*) FROM auth.users WHERE email LIKE 'pr12+%@invalid.example' AND confirmation_token='' AND recovery_token='' AND email_change_token_current='' AND email_change_token_new='' AND email_change='' AND phone_change_token='' AND phone_change='' AND reauthentication_token='')
 )::text;
 COMMIT;
 `;
@@ -4702,7 +4993,8 @@ COMMIT;
     if (
       counts.actorCount !== 7 ||
       counts.profileCount !== 7 ||
-      counts.authLookupReadyCount !== 7
+      counts.authLookupReadyCount !== 7 ||
+      counts.authModelStringReadyCount !== 7
     ) {
       fail('STEP06_AUTH_REBIND_RESULT_INVALID');
     }
@@ -4722,8 +5014,9 @@ COMMIT;
         actorCount: 7,
         actorTopologySha256,
         authLookupReadyCount: counts.authLookupReadyCount,
+        authModelStringReadyCount: counts.authModelStringReadyCount,
         authLookupContract:
-          'UUID_NIL_INSTANCE_AUTHENTICATED_AUDIENCE_NON_SSO_CONFIRMED_PASSWORD',
+          'UUID_NIL_INSTANCE_AUTHENTICATED_AUDIENCE_AUTHENTICATED_ROLE_NON_SSO_CONFIRMED_PASSWORD_NON_NULL_MODEL_STRINGS',
         intentArtifactSha256,
         resultArtifactSha256,
         dispatch: dispatched.observation,
@@ -5352,10 +5645,21 @@ async function main() {
     preStep06Http400Attempts
   );
   const step06Http400Attempt = step06Http400Snapshot.link;
-  const step06Http400EvidenceDirectory = step06Http400Snapshot.sourceDirectory;
-  const predecessorAttempts = [
+  const preStep06AuthHttp500Attempts = [
     ...preStep06Http400Attempts,
     step06Http400Attempt,
+  ];
+  const step06AuthHttp500Snapshot = assertPredecessorStep06AuthHttp500(
+    repositoryRoot,
+    paths,
+    preStep06AuthHttp500Attempts
+  );
+  const step06AuthHttp500Attempt = step06AuthHttp500Snapshot.link;
+  const step06AuthHttp500EvidenceDirectory =
+    step06AuthHttp500Snapshot.sourceDirectory;
+  const predecessorAttempts = [
+    ...preStep06AuthHttp500Attempts,
+    step06AuthHttp500Attempt,
   ];
   createOwnerPrivateDirectory(repositoryRoot, paths.recoveryJournal);
   createOwnerPrivateDirectory(repositoryRoot, paths.recoveryEvidence);
@@ -5435,7 +5739,7 @@ async function main() {
     const caPath = path.join(paths.recoveryEvidence, CA_FILE);
     copyExactBytesArtifact({
       repositoryRoot,
-      source: path.join(step06Http400EvidenceDirectory, CA_FILE),
+      source: path.join(step06AuthHttp500EvidenceDirectory, CA_FILE),
       destination: caPath,
       expectedSha256: PINNED_CA_SHA256,
       maximumBytes: 16 * 1024,
@@ -5458,12 +5762,13 @@ async function main() {
     }
     const identityWithoutHash = {
       schemaVersion: 1,
-      recordType: 'PR12_EXISTING_PROJECT_CYCLE9_DATABASE_IDENTITY',
+      recordType: 'PR12_EXISTING_PROJECT_CYCLE10_DATABASE_IDENTITY',
       projectRef: PR12_RECOVERY_TARGET.projectRef,
       database,
       predecessorStep01EvidenceSha256:
         TYPES_DRIFT_EVIDENCE_SHA256[STEP01_EVIDENCE_FILE],
-      predecessorStep06Http400LinkSha256: step06Http400Attempt.linkSha256,
+      predecessorStep06AuthHttp500LinkSha256:
+        step06AuthHttp500Attempt.linkSha256,
       toolchain: toolchainProjection,
       credentialBoundary: {
         brokerProtocolMode: 'ISOLATED_PROJECT_CONTINUATION',
@@ -5488,33 +5793,45 @@ async function main() {
     };
     const identityPath = path.join(
       paths.recoveryJournal,
-      'pr12-cycle9-database-identity.json'
+      'pr12-cycle10-database-identity.json'
     );
     writeCanonicalCreateNew(
       identityPath,
       identity,
-      'CYCLE9_DATABASE_IDENTITY_CREATE_FAILED'
+      'CYCLE10_DATABASE_IDENTITY_CREATE_FAILED'
     );
     hardenPath(repositoryRoot, identityPath, 'FILE');
     const evidence = copyExactCanonicalArtifact({
       repositoryRoot,
-      source: path.join(step06Http400EvidenceDirectory, STEP01_EVIDENCE_FILE),
+      source: path.join(
+        step06AuthHttp500EvidenceDirectory,
+        STEP01_EVIDENCE_FILE
+      ),
       destination: path.join(paths.recoveryEvidence, STEP01_EVIDENCE_FILE),
-      expectedSha256: STEP06_HTTP400_EVIDENCE_FILE_SHA256[STEP01_EVIDENCE_FILE],
+      expectedSha256:
+        STEP06_AUTH_HTTP500_EVIDENCE_FILE_SHA256[STEP01_EVIDENCE_FILE],
       code: 'STEP01_PREDECESSOR_COPY_INVALID',
     });
     const replay = copyExactCanonicalArtifact({
       repositoryRoot,
-      source: path.join(step06Http400EvidenceDirectory, STEP02_EVIDENCE_FILE),
+      source: path.join(
+        step06AuthHttp500EvidenceDirectory,
+        STEP02_EVIDENCE_FILE
+      ),
       destination: path.join(paths.recoveryEvidence, STEP02_EVIDENCE_FILE),
-      expectedSha256: STEP06_HTTP400_EVIDENCE_FILE_SHA256[STEP02_EVIDENCE_FILE],
+      expectedSha256:
+        STEP06_AUTH_HTTP500_EVIDENCE_FILE_SHA256[STEP02_EVIDENCE_FILE],
       code: 'STEP02_PREDECESSOR_COPY_INVALID',
     });
     const fixtureEvidence = copyExactCanonicalArtifact({
       repositoryRoot,
-      source: path.join(step06Http400EvidenceDirectory, STEP03_EVIDENCE_FILE),
+      source: path.join(
+        step06AuthHttp500EvidenceDirectory,
+        STEP03_EVIDENCE_FILE
+      ),
       destination: path.join(paths.recoveryEvidence, STEP03_EVIDENCE_FILE),
-      expectedSha256: STEP06_HTTP400_EVIDENCE_FILE_SHA256[STEP03_EVIDENCE_FILE],
+      expectedSha256:
+        STEP06_AUTH_HTTP500_EVIDENCE_FILE_SHA256[STEP03_EVIDENCE_FILE],
       code: 'STEP03_PREDECESSOR_COPY_INVALID',
     });
     process.stdout.write(
@@ -5553,9 +5870,13 @@ async function main() {
     );
     const types = copyExactCanonicalArtifact({
       repositoryRoot,
-      source: path.join(step06Http400EvidenceDirectory, STEP04_EVIDENCE_FILE),
+      source: path.join(
+        step06AuthHttp500EvidenceDirectory,
+        STEP04_EVIDENCE_FILE
+      ),
       destination: path.join(paths.recoveryEvidence, STEP04_EVIDENCE_FILE),
-      expectedSha256: STEP06_HTTP400_EVIDENCE_FILE_SHA256[STEP04_EVIDENCE_FILE],
+      expectedSha256:
+        STEP06_AUTH_HTTP500_EVIDENCE_FILE_SHA256[STEP04_EVIDENCE_FILE],
       code: 'STEP04_PREDECESSOR_COPY_INVALID',
     });
     process.stdout.write(
@@ -5571,9 +5892,13 @@ async function main() {
     );
     const advisor = copyExactCanonicalArtifact({
       repositoryRoot,
-      source: path.join(step06Http400EvidenceDirectory, STEP05_EVIDENCE_FILE),
+      source: path.join(
+        step06AuthHttp500EvidenceDirectory,
+        STEP05_EVIDENCE_FILE
+      ),
       destination: path.join(paths.recoveryEvidence, STEP05_EVIDENCE_FILE),
-      expectedSha256: STEP06_HTTP400_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE],
+      expectedSha256:
+        STEP06_AUTH_HTTP500_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE],
       code: 'STEP05_PREDECESSOR_COPY_INVALID',
     });
     process.stdout.write(
