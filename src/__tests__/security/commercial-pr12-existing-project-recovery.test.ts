@@ -984,6 +984,13 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(source).toContain("dependencyBoundary: 'NPM_CI_OFFLINE_LOCKFILE'");
     expect(source).not.toContain('symlinkSync');
     expect(source).not.toContain('VALIDATED_NODE_MODULES_JUNCTION');
+    expect(source).toContain(
+      "if (!existsSync(npmCli)) fail('BROWSER_NPM_CLI_MISSING');"
+    );
+    expect(source.indexOf('if (!existsSync(npmCli))')).toBeLessThan(
+      source.indexOf('lstatSync(npmCli)')
+    );
+    expect(source).toContain('assertPr12BrowserRuntimeToolchain');
   });
 
   test('keeps the recovery runner free of every project-create and production path', () => {
@@ -1160,6 +1167,15 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(source).toContain(
       "'pr12-existing-project-recovery-replay-workdir-cycle15'"
     );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-journal-cycle16'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-evidence-cycle16'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-replay-workdir-cycle16'"
+    );
     expect(source).toContain('assertPredecessorStep06Http400(');
     expect(source).toContain('assertPredecessorStep06AuthHttp500(');
     expect(source).toContain('assertPredecessorStep06UnexpectedFailure(');
@@ -1210,6 +1226,7 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(source).toContain('buildRecoveryOperatingSystemValues({');
     expect(source).toContain('predecessorAttempts');
     expect(source).toContain('assertPredecessorStep06ApiResponseFailure(');
+    expect(source).toContain('assertPredecessorStep06BrowserToolchainFailure(');
     expect(source).toContain(
       "const STEP06_API_RESPONSE_FAILURE_RECOVERY_HEAD =\n  '0904f7bd835f4cba400e630cd96a34d4163f8443';"
     );
@@ -1223,18 +1240,44 @@ console.log(JSON.stringify({ accepted, failures }));
       "recordType: 'PR12_EXISTING_PROJECT_CYCLE15_DATABASE_IDENTITY'"
     );
     expect(source).toContain("'pr12-cycle15-database-identity.json'");
+    expect(source).toContain(
+      "const STEP06_BROWSER_TOOLCHAIN_FAILURE_RECOVERY_HEAD =\n  '3b13eef8dd55d9e5535d04966cf14af5498466d1';"
+    );
+    expect(source).toContain("reasonCode: 'UNEXPECTED_RECOVERY_FAILURE'");
+    expect(source).toContain(
+      "identityFilename: 'pr12-cycle15-database-identity.json'"
+    );
+    expect(source).toContain('runtimeApiKeysGetCount: 0');
+    expect(source).toContain(
+      "recordType: 'PR12_EXISTING_PROJECT_CYCLE16_DATABASE_IDENTITY'"
+    );
+    expect(source).toContain("'pr12-cycle16-database-identity.json'");
     const activeMain = source.slice(source.indexOf('async function main()'));
+    expect(activeMain).toContain('assertPr12BrowserRuntimeToolchain();');
+    expect(
+      activeMain.indexOf('assertPr12BrowserRuntimeToolchain();')
+    ).toBeLessThan(
+      activeMain.indexOf(
+        "resolveExistingFile(\n    args['--credential-config']"
+      )
+    );
+    expect(
+      activeMain.indexOf('assertPr12BrowserRuntimeToolchain();')
+    ).toBeLessThan(activeMain.indexOf('createOwnerPrivateDirectory('));
     expect(activeMain).not.toContain('executeHostedTypesParity({');
     expect(activeMain).not.toContain('executeRepresentativeDataValidation({');
     expect(activeMain).not.toContain('executeAdvisorAfterScan({');
     expect(activeMain).toContain(
-      'STEP06_API_RESPONSE_FAILURE_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE]'
+      'STEP06_BROWSER_TOOLCHAIN_FAILURE_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE]'
     );
     expect(activeMain).toContain(
-      'path.join(step06ApiResponseFailureEvidenceDirectory, CA_FILE)'
+      'path.join(step06BrowserToolchainFailureEvidenceDirectory, CA_FILE)'
     );
     expect(activeMain).toContain(
       'predecessorStep06ApiResponseFailureLinkSha256:'
+    );
+    expect(activeMain).toContain(
+      'predecessorStep06BrowserToolchainFailureLinkSha256:'
     );
     expect(activeMain).not.toContain(
       'path.join(step06BrowserContactEvidenceDirectory, CA_FILE)'
