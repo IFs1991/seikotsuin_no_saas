@@ -1,4 +1,19 @@
 import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import {
+  closeSync,
+  existsSync,
+  fstatSync,
+  fsyncSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 
 import {
@@ -14,7 +29,17 @@ const PRODUCTION_PROJECT_REF = 'qnanuoqveidwvacvbhqp';
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const GIT_SHA_PATTERN = /^[a-f0-9]{40}$/;
 const SYSTEM_IDENTIFIER_PATTERN = /^(?:0|[1-9][0-9]{0,19})$/u;
-const POSTGREST_VERSION_PATTERN = /(PostgrestVersion:\s*')[^']+('(?:;)?)/g;
+const POSTGREST_VERSION_PATTERN =
+  /(PostgrestVersion:\s*)['"][^'"\r\n]+['"](;?)/g;
+const PINNED_PRETTIER_VERSION = '3.8.0';
+const PINNED_PRETTIER_CLI_SHA256 =
+  'ac5523cd57e7e9d8eac71caef7e022a8a8489bcdc19ca8a778b7e728ec103b93';
+const PINNED_PRETTIER_CONFIG_SHA256 =
+  'c934965d90061f1feba139aa348e7682cd176c205e9c01309cd5bdba912cd511';
+const PINNED_PRETTIER_PACKAGE_TREE_SHA256 =
+  '1752308f326a0886e10a988d3485e57f5ab93319252faad9fa0e855647dfb69b';
+const PINNED_PRETTIER_PACKAGE_FILE_COUNT = 56;
+const PINNED_PRETTIER_PACKAGE_TOTAL_BYTES = 8_579_866;
 
 function fail(code) {
   throw new Error(code);
@@ -49,6 +74,168 @@ function requireExactKeys(value, keys, code) {
 
 function sha256(value) {
   return createHash('sha256').update(value, 'utf8').digest('hex');
+}
+
+function normalizedPathIdentity(value) {
+  const resolved = path.resolve(value).replaceAll('/', path.sep);
+  return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+}
+
+function assertNoReparseComponents(value, code) {
+  let current = path.resolve(value);
+  while (true) {
+    if (!existsSync(current) || lstatSync(current).isSymbolicLink()) fail(code);
+    const actual = realpathSync.native(current);
+    if (normalizedPathIdentity(actual) !== normalizedPathIdentity(current)) {
+      fail(code);
+    }
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+}
+
+function readStableFile(value, code) {
+  let descriptor;
+  try {
+    assertNoReparseComponents(value, code);
+    descriptor = openSync(value, 'r');
+    const before = fstatSync(descriptor, { bigint: true });
+    if (!before.isFile() || before.size > 64n * 1024n * 1024n) fail(code);
+    const bytes = readFileSync(descriptor);
+    const after = fstatSync(descriptor, { bigint: true });
+    if (
+      before.dev !== after.dev ||
+      before.ino !== after.ino ||
+      before.size !== after.size ||
+      before.mtimeMs !== after.mtimeMs ||
+      BigInt(bytes.length) !== after.size
+    ) {
+      bytes.fill(0);
+      fail(code);
+    }
+    return bytes;
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
+}
+
+function writeCreateNew(value, bytes, code) {
+  let descriptor;
+  try {
+    descriptor = openSync(value, 'wx');
+    writeFileSync(descriptor, bytes);
+    fsyncSync(descriptor);
+  } catch {
+    fail(code);
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
+}
+
+function collectPackageTreeManifest(packageRoot, code) {
+  assertNoReparseComponents(packageRoot, code);
+  const manifest = [];
+  const walk = (directory, prefix) => {
+    for (const name of readdirSync(directory).sort()) {
+      const absolute = path.join(directory, name);
+      const relativePath = prefix.length > 0 ? `${prefix}/${name}` : name;
+      assertNoReparseComponents(absolute, code);
+      const status = lstatSync(absolute);
+      if (status.isDirectory()) {
+        walk(absolute, relativePath);
+      } else if (status.isFile()) {
+        const bytes = readStableFile(absolute, code);
+        try {
+          manifest.push({
+            relativePath,
+            byteLength: bytes.length,
+            sha256: sha256(bytes),
+          });
+        } finally {
+          bytes.fill(0);
+        }
+      } else {
+        fail(code);
+      }
+    }
+  };
+  walk(packageRoot, '');
+  const totalBytes = manifest.reduce(
+    (total, entry) => total + entry.byteLength,
+    0
+  );
+  return {
+    fileCount: manifest.length,
+    totalBytes,
+    treeSha256: sha256(JSON.stringify(manifest)),
+  };
+}
+
+function assertPinnedPackageTree(observation, code) {
+  if (
+    observation.fileCount !== PINNED_PRETTIER_PACKAGE_FILE_COUNT ||
+    observation.totalBytes !== PINNED_PRETTIER_PACKAGE_TOTAL_BYTES ||
+    observation.treeSha256 !== PINNED_PRETTIER_PACKAGE_TREE_SHA256
+  ) {
+    fail(code);
+  }
+}
+
+function copyPackageTreeCreateNew(sourceRoot, destinationRoot, code) {
+  if (existsSync(destinationRoot)) fail(code);
+  mkdirSync(destinationRoot, { recursive: false });
+  const walk = (source, destination) => {
+    for (const name of readdirSync(source).sort()) {
+      const sourcePath = path.join(source, name);
+      const destinationPath = path.join(destination, name);
+      assertNoReparseComponents(sourcePath, code);
+      const status = lstatSync(sourcePath);
+      if (status.isDirectory()) {
+        mkdirSync(destinationPath, { recursive: false });
+        walk(sourcePath, destinationPath);
+      } else if (status.isFile()) {
+        const bytes = readStableFile(sourcePath, code);
+        try {
+          writeCreateNew(destinationPath, bytes, code);
+        } finally {
+          bytes.fill(0);
+        }
+      } else {
+        fail(code);
+      }
+    }
+  };
+  walk(sourceRoot, destinationRoot);
+}
+
+function resolveRegularFile(value, code) {
+  if (
+    !isAbsoluteWindowsOrNative(value) ||
+    !existsSync(value) ||
+    lstatSync(value).isSymbolicLink() ||
+    !statSync(value).isFile()
+  ) {
+    fail(code);
+  }
+  const resolved = path.resolve(value);
+  assertNoReparseComponents(resolved, code);
+  return resolved;
+}
+
+function resolveEmptyDirectory(value, code) {
+  if (
+    !isAbsoluteWindowsOrNative(value) ||
+    !existsSync(value) ||
+    lstatSync(value).isSymbolicLink() ||
+    !statSync(value).isDirectory() ||
+    readdirSync(value).length !== 0
+  ) {
+    fail(code);
+  }
+  const resolved = path.resolve(value);
+  assertNoReparseComponents(resolved, code);
+  return resolved;
 }
 
 function isAbsoluteWindowsOrNative(value) {
@@ -112,8 +299,211 @@ export function extractGeneratedTypes(stdoutInput) {
 export function normalizeHostedTypes(typesInput) {
   return assertTypeText(typesInput, 'GENERATED_TYPES_OUTPUT_INVALID').replace(
     POSTGREST_VERSION_PATTERN,
-    '$1__PR12_POSTGREST_VERSION__$2'
+    "$1'__PR12_POSTGREST_VERSION__'$2"
   );
+}
+
+export function formatGeneratedTypesWithPinnedPrettier(input) {
+  const request = requireExactKeys(
+    input,
+    ['repositoryRoot', 'generatedTypesPath', 'formatterRuntimeRoot'],
+    'GENERATED_TYPES_FORMATTER_INVALID'
+  );
+  const repositoryRoot = requireString(
+    request.repositoryRoot,
+    'GENERATED_TYPES_FORMATTER_INVALID'
+  );
+  const generatedTypesPath = resolveRegularFile(
+    requireString(
+      request.generatedTypesPath,
+      'GENERATED_TYPES_FORMATTER_INVALID'
+    ),
+    'GENERATED_TYPES_FORMATTER_INVALID'
+  );
+  const formatterRuntimeRoot = resolveEmptyDirectory(
+    requireString(
+      request.formatterRuntimeRoot,
+      'GENERATED_TYPES_FORMATTER_INVALID'
+    ),
+    'GENERATED_TYPES_FORMATTER_INVALID'
+  );
+  if (
+    !isAbsoluteWindowsOrNative(repositoryRoot) ||
+    isInsideRepository(repositoryRoot, generatedTypesPath) ||
+    isInsideRepository(repositoryRoot, formatterRuntimeRoot)
+  ) {
+    fail('EXTERNAL_WORKDIR_REQUIRED');
+  }
+
+  const sourcePrettierRoot = path.join(
+    repositoryRoot,
+    'node_modules',
+    'prettier'
+  );
+  const sourceTreeObservation = collectPackageTreeManifest(
+    sourcePrettierRoot,
+    'PINNED_PRETTIER_INVALID'
+  );
+  assertPinnedPackageTree(sourceTreeObservation, 'PINNED_PRETTIER_INVALID');
+  const sourcePrettierConfigPath = resolveRegularFile(
+    path.join(repositoryRoot, '.prettierrc'),
+    'PINNED_PRETTIER_INVALID'
+  );
+  const prettierConfigBytes = readStableFile(
+    sourcePrettierConfigPath,
+    'PINNED_PRETTIER_INVALID'
+  );
+  const prettierConfigSha256 = sha256(prettierConfigBytes);
+  if (prettierConfigSha256 !== PINNED_PRETTIER_CONFIG_SHA256) {
+    prettierConfigBytes.fill(0);
+    fail('PINNED_PRETTIER_INVALID');
+  }
+
+  const isolatedPrettierRoot = path.join(formatterRuntimeRoot, 'prettier');
+  copyPackageTreeCreateNew(
+    sourcePrettierRoot,
+    isolatedPrettierRoot,
+    'PINNED_PRETTIER_COPY_FAILED'
+  );
+  const isolatedPrettierConfigPath = path.join(
+    formatterRuntimeRoot,
+    '.prettierrc'
+  );
+  try {
+    writeCreateNew(
+      isolatedPrettierConfigPath,
+      prettierConfigBytes,
+      'PINNED_PRETTIER_COPY_FAILED'
+    );
+  } finally {
+    prettierConfigBytes.fill(0);
+  }
+  const isolatedTreeBefore = collectPackageTreeManifest(
+    isolatedPrettierRoot,
+    'PINNED_PRETTIER_COPY_INVALID'
+  );
+  assertPinnedPackageTree(isolatedTreeBefore, 'PINNED_PRETTIER_COPY_INVALID');
+  const prettierCliPath = resolveRegularFile(
+    path.join(isolatedPrettierRoot, 'bin', 'prettier.cjs'),
+    'PINNED_PRETTIER_COPY_INVALID'
+  );
+  const prettierPackagePath = resolveRegularFile(
+    path.join(isolatedPrettierRoot, 'package.json'),
+    'PINNED_PRETTIER_COPY_INVALID'
+  );
+  const prettierCliBytes = readStableFile(
+    prettierCliPath,
+    'PINNED_PRETTIER_COPY_INVALID'
+  );
+  const prettierCliSha256 = sha256(prettierCliBytes);
+  prettierCliBytes.fill(0);
+  let prettierPackage;
+  try {
+    const packageBytes = readStableFile(
+      prettierPackagePath,
+      'PINNED_PRETTIER_COPY_INVALID'
+    );
+    try {
+      prettierPackage = JSON.parse(packageBytes.toString('utf8'));
+    } finally {
+      packageBytes.fill(0);
+    }
+  } catch {
+    fail('PINNED_PRETTIER_COPY_INVALID');
+  }
+  if (
+    prettierCliSha256 !== PINNED_PRETTIER_CLI_SHA256 ||
+    !isRecord(prettierPackage) ||
+    prettierPackage.version !== PINNED_PRETTIER_VERSION
+  ) {
+    fail('PINNED_PRETTIER_COPY_INVALID');
+  }
+
+  const operatingSystemEnvironment = Object.fromEntries(
+    [
+      ['SystemRoot', process.env.SystemRoot],
+      ['TEMP', process.env.TEMP],
+      ['TMP', process.env.TMP],
+    ].filter(([, value]) => typeof value === 'string' && value.length > 0)
+  );
+  const child = spawnSync(
+    process.execPath,
+    [
+      prettierCliPath,
+      generatedTypesPath,
+      '--parser',
+      'typescript',
+      '--config',
+      isolatedPrettierConfigPath,
+    ],
+    {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+      env: operatingSystemEnvironment,
+      maxBuffer: 64 * 1024 * 1024,
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 30_000,
+      windowsHide: true,
+    }
+  );
+  if (
+    child.error !== undefined ||
+    child.signal !== null ||
+    !Number.isInteger(child.status)
+  ) {
+    fail('GENERATED_TYPES_FORMATTER_UNKNOWN_OUTCOME');
+  }
+  if (child.status !== 0 || child.stderr !== '') {
+    fail('GENERATED_TYPES_FORMATTER_FAILED');
+  }
+  const isolatedTreeAfter = collectPackageTreeManifest(
+    isolatedPrettierRoot,
+    'PINNED_PRETTIER_RUNTIME_DRIFT'
+  );
+  assertPinnedPackageTree(isolatedTreeAfter, 'PINNED_PRETTIER_RUNTIME_DRIFT');
+  const isolatedConfigAfter = readStableFile(
+    isolatedPrettierConfigPath,
+    'PINNED_PRETTIER_RUNTIME_DRIFT'
+  );
+  try {
+    if (sha256(isolatedConfigAfter) !== PINNED_PRETTIER_CONFIG_SHA256) {
+      fail('PINNED_PRETTIER_RUNTIME_DRIFT');
+    }
+  } finally {
+    isolatedConfigAfter.fill(0);
+  }
+  const formattedTypes = extractGeneratedTypes(child.stdout);
+  const sourceTypes = assertTypeText(
+    readFileSync(generatedTypesPath, 'utf8'),
+    'GENERATED_TYPES_OUTPUT_INVALID'
+  );
+  return {
+    formattedTypes,
+    observation: {
+      formatter: 'PRETTIER',
+      formatterVersion: PINNED_PRETTIER_VERSION,
+      prettierCliSha256,
+      prettierConfigSha256,
+      prettierPackageTreeSha256: isolatedTreeAfter.treeSha256,
+      prettierPackageFileCount: isolatedTreeAfter.fileCount,
+      prettierPackageTotalBytes: isolatedTreeAfter.totalBytes,
+      executionSource: 'OWNER_PRIVATE_CREATE_NEW_COPY',
+      sourceAndCopyTreeHashMatch:
+        sourceTreeObservation.treeSha256 === isolatedTreeAfter.treeSha256,
+      sourceByteLength: Buffer.byteLength(sourceTypes, 'utf8'),
+      sourceSha256: sha256(sourceTypes),
+      formattedByteLength: Buffer.byteLength(formattedTypes, 'utf8'),
+      formattedSha256: sha256(formattedTypes),
+      dispatchCount: 1,
+      wrapperRetryCount: 0,
+      shell: false,
+      stdin: 'CLOSED',
+      timeoutMs: 30_000,
+      credentialEnvironmentKeys: [],
+      rawTypesRetainedByFormatter: false,
+    },
+  };
 }
 
 export function diagnoseHostedTypesParity(input) {

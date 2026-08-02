@@ -840,6 +840,20 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(source).toContain('actorPasswordValuesPersisted: false');
     expect(source).toContain('generated-types-diagnostic.json');
     expect(source).toContain('generated-types-hosted.ts');
+    expect(source).toContain('formatGeneratedTypesWithPinnedPrettier({');
+    expect(source).toContain('assertPredecessorTypesNormalizationDefect(');
+    expect(source).toContain(
+      "status: 'GENERATED_TYPES_NORMALIZATION_RECHECK_PENDING'"
+    );
+    expect(source).toContain(
+      "correctedClassification: 'LOCAL_FORMAT_NORMALIZATION_DEFECT_VERIFIED'"
+    );
+    expect(source).toContain("'pr12-existing-project-recovery-journal-cycle7'");
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-evidence-cycle7'"
+    );
+    expect(source).toContain('hostedTypesRemoteRedispatched: false');
+    expect(source).toContain('HOSTED_TYPES_REMOTE_REDISPATCH_FORBIDDEN');
     expect(source).toContain('resumeFullMigrationReplayAfterCatalogGap(');
     expect(source).toContain('buildRecoveryOperatingSystemValues({');
     expect(source).toContain(
@@ -935,6 +949,31 @@ console.log(JSON.stringify({ accepted, failures }));
       );
       expect(inheritedReceipt.status).not.toBe(0);
       expect(inheritedReceipt.stderr).toContain('ACCESS_RULES_NOT_PROTECTED');
+      const effectiveReceipt = spawnSync(
+        powershell,
+        [
+          '-NoLogo',
+          '-NoProfile',
+          '-NonInteractive',
+          '-File',
+          aclHelper,
+          '-Mode',
+          'CAPTURE_EFFECTIVE',
+          '-Kind',
+          'FILE',
+          '-LiteralPath',
+          receiptPath,
+        ],
+        { cwd: repoRoot, encoding: 'utf8', windowsHide: true }
+      );
+      expect(effectiveReceipt.status).toBe(0);
+      expect(JSON.parse(effectiveReceipt.stdout)).toMatchObject({
+        aclPolicyId:
+          'WINDOWS_INHERITED_CURRENT_USER_AND_SYSTEM_FULL_CONTROL_V1',
+        accessRulesProtected: false,
+        rulesInherited: true,
+        accessRuleCount: 2,
+      });
 
       const brokerSource = fs.readFileSync(brokerPath, 'utf8');
       const functionsStart = brokerSource.indexOf(

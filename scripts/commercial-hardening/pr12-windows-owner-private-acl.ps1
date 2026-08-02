@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
   [Parameter(Mandatory)]
-  [ValidateSet('PROTECT_AND_CAPTURE', 'CAPTURE')]
+  [ValidateSet('PROTECT_AND_CAPTURE', 'CAPTURE', 'CAPTURE_EFFECTIVE')]
   [string]$Mode,
 
   [Parameter(Mandatory)]
@@ -110,7 +110,12 @@ $owner = $captured.GetOwner(
 if ($owner.Value -ne $currentSid.Value) {
   throw 'OWNER_SID_MISMATCH'
 }
-if (-not $captured.AreAccessRulesProtected) {
+if ($Mode -eq 'CAPTURE_EFFECTIVE') {
+  if ($captured.AreAccessRulesProtected) {
+    throw 'ACCESS_RULES_UNEXPECTEDLY_PROTECTED'
+  }
+}
+elseif (-not $captured.AreAccessRulesProtected) {
   throw 'ACCESS_RULES_NOT_PROTECTED'
 }
 
@@ -138,7 +143,8 @@ else {
 $allowedSidValues = [Collections.Generic.List[string]]::new()
 foreach ($rule in $rules) {
   if (
-    $rule.IsInherited -or
+    ($Mode -eq 'CAPTURE_EFFECTIVE' -and -not $rule.IsInherited) -or
+    ($Mode -ne 'CAPTURE_EFFECTIVE' -and $rule.IsInherited) -or
     $rule.AccessControlType -ne
       [Security.AccessControl.AccessControlType]::Allow -or
     $rule.FileSystemRights -ne
@@ -170,12 +176,18 @@ $sddlSections = (
 )
 $result = [ordered]@{
   schemaVersion = 1
-  aclPolicyId = 'WINDOWS_CURRENT_USER_AND_SYSTEM_FULL_CONTROL_V1'
+  aclPolicyId = if ($Mode -eq 'CAPTURE_EFFECTIVE') {
+    'WINDOWS_INHERITED_CURRENT_USER_AND_SYSTEM_FULL_CONTROL_V1'
+  }
+  else {
+    'WINDOWS_CURRENT_USER_AND_SYSTEM_FULL_CONTROL_V1'
+  }
   kind = $Kind
   ownerSid = $owner.Value
   currentUserSid = $currentSid.Value
   systemSid = $systemSid.Value
   accessRulesProtected = $captured.AreAccessRulesProtected
+  rulesInherited = ($Mode -eq 'CAPTURE_EFFECTIVE')
   accessRuleCount = $rules.Count
   allowedSids = $actualAllowedSids
   sddl = $captured.GetSecurityDescriptorSddlForm($sddlSections)

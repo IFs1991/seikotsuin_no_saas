@@ -1,6 +1,10 @@
 /** @jest-environment node */
 
-import { runPr12Module } from './pr12-local-module-test-helpers';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+
+import { repoRoot, runPr12Module } from './pr12-local-module-test-helpers';
 
 const typesModule = 'scripts/commercial-hardening/pr12-hosted-types-parity.mjs';
 
@@ -149,6 +153,174 @@ console.log(JSON.stringify(diagnostic));
       /^[a-f0-9]{64}$/
     );
     expect(result.stdout).not.toContain('hosted_only');
+  });
+
+  it('uses the repo-pinned Prettier config before semantic parity comparison', () => {
+    const rawHosted = generatedTypes.replaceAll("'", '"').replaceAll(';', '');
+    const temporaryRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'pr12-types-format-')
+    );
+    try {
+      const rawPath = path.join(temporaryRoot, 'generated-types-hosted.ts');
+      const formatterRuntimeRoot = path.join(
+        temporaryRoot,
+        'formatter-runtime'
+      );
+      fs.writeFileSync(rawPath, rawHosted, 'utf8');
+      fs.mkdirSync(formatterRuntimeRoot);
+      const result = runPr12Module(
+        typesModule,
+        `
+const formatted = subject.formatGeneratedTypesWithPinnedPrettier({
+  repositoryRoot: ${JSON.stringify(repoRoot)},
+  generatedTypesPath: ${JSON.stringify(rawPath)},
+  formatterRuntimeRoot: ${JSON.stringify(formatterRuntimeRoot)}
+});
+const committedTypes = formatted.formattedTypes.replace(
+    '12.2.0 (generated)',
+    '12.2.0 (committed)'
+  );
+const diagnostic = subject.diagnoseHostedTypesParity({
+  generatedTypes: formatted.formattedTypes,
+  committedTypes
+});
+const comparison = diagnostic.parity
+  ? subject.compareHostedTypes({
+      generatedTypes: formatted.formattedTypes,
+      committedTypes,
+      projectRef: 'abcdefghijklmnopqrst',
+      bindingSha256: '${'b'.repeat(64)}',
+      gitCommit: '${'c'.repeat(40)}',
+      databaseSystemIdentifier: '7662783869098430503'
+    })
+  : null;
+console.log(JSON.stringify({ comparison, diagnostic, observation: formatted.observation }));
+`
+      );
+      expect({ status: result.status, stderr: result.stderr }).toEqual({
+        status: 0,
+        stderr: '',
+      });
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        comparison: {
+          status: 'GENERATED_TYPES_PARITY',
+          parity: true,
+        },
+        diagnostic: {
+          status: 'GENERATED_TYPES_PARITY',
+          parity: true,
+          firstDifference: null,
+        },
+        observation: {
+          formatter: 'PRETTIER',
+          formatterVersion: '3.8.0',
+          dispatchCount: 1,
+          wrapperRetryCount: 0,
+          shell: false,
+          stdin: 'CLOSED',
+          credentialEnvironmentKeys: [],
+          prettierPackageFileCount: 56,
+          prettierPackageTotalBytes: 8_579_866,
+          executionSource: 'OWNER_PRIVATE_CREATE_NEW_COPY',
+          sourceAndCopyTreeHashMatch: true,
+        },
+      });
+    } finally {
+      fs.rmSync(temporaryRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects repository-internal formatter input before dispatch', () => {
+    const temporaryRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'pr12-types-internal-')
+    );
+    const formatterRuntimeRoot = path.join(temporaryRoot, 'formatter-runtime');
+    fs.mkdirSync(formatterRuntimeRoot);
+    try {
+      const result = runPr12Module(
+        typesModule,
+        `
+let outcome = 'NOT_REJECTED';
+try {
+  subject.formatGeneratedTypesWithPinnedPrettier({
+    repositoryRoot: ${JSON.stringify(repoRoot)},
+    generatedTypesPath: ${JSON.stringify(path.join(repoRoot, 'src/types/supabase.ts'))},
+    formatterRuntimeRoot: ${JSON.stringify(formatterRuntimeRoot)}
+  });
+} catch (error) {
+  outcome = error.message;
+}
+console.log(JSON.stringify({ outcome }));
+`
+      );
+      expect(result.status).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual({
+        outcome: 'EXTERNAL_WORKDIR_REQUIRED',
+      });
+    } finally {
+      fs.rmSync(temporaryRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects drift anywhere in the Prettier execution closure', () => {
+    const temporaryRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'pr12-prettier-drift-')
+    );
+    try {
+      const fakeRepository = path.join(temporaryRoot, 'repository');
+      const fakePrettier = path.join(
+        fakeRepository,
+        'node_modules',
+        'prettier'
+      );
+      const generatedTypesPath = path.join(
+        temporaryRoot,
+        'generated-types-hosted.ts'
+      );
+      const formatterRuntimeRoot = path.join(
+        temporaryRoot,
+        'formatter-runtime'
+      );
+      fs.mkdirSync(path.dirname(fakePrettier), { recursive: true });
+      fs.cpSync(path.join(repoRoot, 'node_modules/prettier'), fakePrettier, {
+        recursive: true,
+      });
+      fs.copyFileSync(
+        path.join(repoRoot, '.prettierrc'),
+        path.join(fakeRepository, '.prettierrc')
+      );
+      fs.appendFileSync(
+        path.join(fakePrettier, 'internal/legacy-cli.mjs'),
+        '\n// intentional test drift\n',
+        'utf8'
+      );
+      fs.writeFileSync(generatedTypesPath, generatedTypes, 'utf8');
+      fs.mkdirSync(formatterRuntimeRoot);
+
+      const result = runPr12Module(
+        typesModule,
+        `
+let outcome = 'NOT_REJECTED';
+try {
+  subject.formatGeneratedTypesWithPinnedPrettier({
+    repositoryRoot: ${JSON.stringify(fakeRepository)},
+    generatedTypesPath: ${JSON.stringify(generatedTypesPath)},
+    formatterRuntimeRoot: ${JSON.stringify(formatterRuntimeRoot)}
+  });
+} catch (error) {
+  outcome = error.message;
+}
+console.log(JSON.stringify({ outcome }));
+`
+      );
+      expect(result.status).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual({
+        outcome: 'PINNED_PRETTIER_INVALID',
+      });
+      expect(fs.readdirSync(formatterRuntimeRoot)).toEqual([]);
+    } finally {
+      fs.rmSync(temporaryRoot, { recursive: true, force: true });
+    }
   });
 
   it('uses the isolated management-token runtime with one dispatch and fail-closed outcomes', () => {

@@ -60,8 +60,7 @@ import {
 } from './pr12-representative-fixture-contract.mjs';
 import {
   compareHostedTypes,
-  diagnoseHostedTypesParity,
-  extractGeneratedTypes,
+  formatGeneratedTypesWithPinnedPrettier,
 } from './pr12-hosted-types-parity.mjs';
 import {
   diffAdvisorSnapshots,
@@ -249,6 +248,59 @@ const TYPES_DRIFT_CMD_FILE_SHA256 = Object.freeze({
 });
 const TYPES_DRIFT_EXECUTION_BINDING_SHA256 =
   '87f95fbad0ad307e81eb1d42689c187c22a3180cd34e733499f2ec8e0cc873a3';
+const NORMALIZATION_DEFECT_RECOVERY_HEAD =
+  '451b9a7118d46eda243043d22ed8b0c9083f3906';
+const NORMALIZATION_DEFECT_RUNTIME_CREDENTIAL_FILE_SHA256 =
+  'bb811504736409c7e177ba858bcd1c0773b57b8324bda1c0314b680da2f55069';
+const NORMALIZATION_DEFECT_CLAIM_FILE_SHA256 =
+  'de54b84f5436d2e1dbcc232c6e301db3b3065f5226b2c68909f26c35849cd52d';
+const NORMALIZATION_DEFECT_CONSUMED_FILE_SHA256 =
+  '12787019f392d813dbbbe8798f260dcb4e2de7f819a984f1f868f70fc4528b1e';
+const NORMALIZATION_DEFECT_TERMINAL_FILE_SHA256 =
+  '8e75a60012530cef1c2e02eb984030ce2afb277515a39374b92b5635bd2deb17';
+const NORMALIZATION_DEFECT_TERMINAL_SHA256 =
+  '4513450f778e2f48c2dba6369d8c22ab83fd1c3aa9a0514b54487d8a4df9c010';
+const NORMALIZATION_DEFECT_DATABASE_IDENTITY_FILE_SHA256 =
+  'a2cb050725ae24dba8393cff0bcb3ca4d2941863a8e6a5f04522edb874a4491a';
+const NORMALIZATION_DEFECT_DATABASE_IDENTITY_SHA256 =
+  '6a7831ea093b4d84927f99b171614022d5001f9200c797c20f39347db6e9047d';
+const NORMALIZATION_DEFECT_DIAGNOSTIC_FILE_SHA256 =
+  '92f9e6804b3c5fd2366edff972cc6c57d53afa662e77db7082bfba6db8fe24c9';
+const NORMALIZATION_DEFECT_DIAGNOSTIC_SHA256 =
+  'ba004595f3f586cc46de3ef3bc4ef2d7ee0bc9fb67621e359a5683979ddc49ae';
+const NORMALIZATION_DEFECT_GENERATED_TYPES_SHA256 =
+  '237a8451ff7520e88b1a6b1c8e0a0e22c44dfef2352e64db26fd28712af1ad17';
+const NORMALIZATION_DEFECT_GENERATED_TYPES_BYTES = 215_954;
+const NORMALIZATION_DEFECT_TELEMETRY_FILE_SHA256 =
+  '37d85d1a0d4c0521821cc60deee1abcd77dab60f2b8b45d7891cdbd907a08240';
+const NORMALIZATION_DEFECT_LINKED_PROJECT_FILE_SHA256 =
+  'f30a26d365701eb6ba2c450386f99feea14abb3547370c23817d9f74f2de9f51';
+const NORMALIZATION_DEFECT_EXECUTION_BINDING_SHA256 =
+  '970e693e4468f58b862cd9e1f15d2e3933d2ed8e7db5aae33b1b3e5aefb0cf32';
+const NORMALIZATION_DEFECT_BINDING_MATERIAL_SHA256 =
+  'f39fc8da661fe82116070e641de8767d1b4e5218fb0933adf472292090b35b3c';
+const NORMALIZATION_DEFECT_PAYLOAD_SHA256 =
+  '0a4d257cd63e7076da62ba78648287006e96aadd8cc558941de6d33bf69cd339';
+const NORMALIZATION_DEFECT_STEP_FILE_SHA256 = Object.freeze({
+  [STEP01_EVIDENCE_FILE]:
+    '308fd78552c69327e90e2cd602e5d3656578b7097d92936717b8e41bab29a9f2',
+  [STEP02_EVIDENCE_FILE]:
+    'ea12d1201fa1d607e9bed634b641db6242cd060df86cce2b7366b8044ce9b8b7',
+  [STEP03_EVIDENCE_FILE]:
+    'd7d4e5fca50f5cef329d13cf2bfe21727470d5b5f5c08479f6442921d0e00af1',
+  [STEP04_EVIDENCE_FILE]:
+    '3ff2d1265043c39c9b075744dcccec0ed86e0d1c7dde0bd5459e19625c078e17',
+});
+const NORMALIZATION_DEFECT_EVIDENCE_SHA256 = Object.freeze({
+  [STEP01_EVIDENCE_FILE]:
+    '1c1e989ab92d4835c2cedffeaa859abac53383801de8afd014a1ceebd4ddbb5d',
+  [STEP02_EVIDENCE_FILE]:
+    'ed46277e4924bf51c4c2a41f4d7276e1e4b7d653e03824d9018e451b32a7ef49',
+  [STEP03_EVIDENCE_FILE]:
+    '688d5a2e4a603db9614c9eb8c59cab78980ce01f563158d74df98d86fb460506',
+  [STEP04_EVIDENCE_FILE]:
+    '4221454f1beb88420cc6e7cb9af41e96d46b7c3ddd4c758b325fbdfa206dbd99',
+});
 
 class RecoveryExecutionError extends Error {
   constructor(code) {
@@ -356,6 +408,28 @@ function resolveExistingDirectory(value, code) {
   return resolved;
 }
 
+function assertNoReparsePathIdentity(root, candidate, code) {
+  const resolvedRoot = path.resolve(root);
+  const resolvedCandidate = path.resolve(candidate);
+  const relative = path.relative(resolvedRoot, resolvedCandidate);
+  if (
+    relative === '..' ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative)
+  ) {
+    fail(code);
+  }
+  const components = relative.length === 0 ? [] : relative.split(path.sep);
+  let current = resolvedRoot;
+  for (const component of components) {
+    current = path.join(current, component);
+    if (!existsSync(current) || lstatSync(current).isSymbolicLink()) fail(code);
+    const lexical = path.resolve(current).toLowerCase();
+    const actual = realpathSync.native(current).toLowerCase();
+    if (lexical !== actual) fail(code);
+  }
+}
+
 function readStableBytes(filename, maximumBytes, code) {
   let descriptor;
   try {
@@ -378,6 +452,15 @@ function readStableBytes(filename, maximumBytes, code) {
     return bytes;
   } finally {
     if (descriptor !== undefined) closeSync(descriptor);
+  }
+}
+
+function sha256StableFile(filename, maximumBytes, code) {
+  const bytes = readStableBytes(filename, maximumBytes, code);
+  try {
+    return sha256Bytes(bytes);
+  } finally {
+    bytes.fill(0);
   }
 }
 
@@ -537,17 +620,29 @@ function assertExternalSiblingPaths(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle5'
     ),
-    recoveryJournal: path.join(
+    normalizationDefectRecoveryJournal: path.join(
       actionBase,
       'pr12-existing-project-recovery-journal-cycle6'
     ),
-    recoveryEvidence: path.join(
+    normalizationDefectRecoveryEvidence: path.join(
       actionBase,
       'pr12-existing-project-recovery-evidence-cycle6'
     ),
-    replayWorkdir: path.join(
+    normalizationDefectReplayWorkdir: path.join(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir-cycle6'
+    ),
+    recoveryJournal: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-journal-cycle7'
+    ),
+    recoveryEvidence: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-evidence-cycle7'
+    ),
+    replayWorkdir: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-replay-workdir-cycle7'
     ),
   };
 }
@@ -1619,6 +1714,332 @@ function assertPredecessorTypesDriftAbort(
   };
 }
 
+function assertPredecessorTypesNormalizationDefect(
+  repositoryRoot,
+  paths,
+  predecessorAttempts
+) {
+  const code = 'TYPES_NORMALIZATION_DEFECT_EVIDENCE_INVALID';
+  const journal = resolveExistingDirectory(
+    paths.normalizationDefectRecoveryJournal,
+    code
+  );
+  const evidence = resolveExistingDirectory(
+    paths.normalizationDefectRecoveryEvidence,
+    code
+  );
+  const workdir = resolveExistingDirectory(
+    paths.normalizationDefectReplayWorkdir,
+    code
+  );
+  const typesRuntime = resolveExistingDirectory(
+    path.join(workdir, '.pr12-types-runtime'),
+    code
+  );
+  const supabaseHome = resolveExistingDirectory(
+    path.join(typesRuntime, 'supabase-home'),
+    code
+  );
+  const dockerConfig = resolveExistingDirectory(
+    path.join(typesRuntime, 'docker-config'),
+    code
+  );
+  const supabaseRuntime = resolveExistingDirectory(
+    path.join(workdir, 'supabase'),
+    code
+  );
+  const supabaseTemp = resolveExistingDirectory(
+    path.join(supabaseRuntime, '.temp'),
+    code
+  );
+  const telemetryPath = resolveExistingFile(
+    path.join(supabaseHome, 'telemetry.json'),
+    code
+  );
+  const linkedProjectPath = resolveExistingFile(
+    path.join(supabaseTemp, 'linked-project.json'),
+    code
+  );
+  assertExactDirectoryEntries(
+    journal,
+    [
+      'generated-types-diagnostic.json',
+      'pr12-cycle6-database-identity.json',
+      RUNTIME_CREDENTIAL_CONFIG_FILE,
+      'pr12-existing-project-recovery-credential-consumed.json',
+      TERMINAL_FILE,
+      CLAIM_FILE,
+    ],
+    code
+  );
+  assertExactDirectoryEntries(
+    evidence,
+    [...Object.keys(NORMALIZATION_DEFECT_STEP_FILE_SHA256), CA_FILE],
+    code
+  );
+  assertExactDirectoryEntries(
+    workdir,
+    ['.pr12-types-runtime', 'supabase'],
+    code
+  );
+  assertExactDirectoryEntries(
+    typesRuntime,
+    ['docker-config', 'generated-types-hosted.ts', 'supabase-home'],
+    code
+  );
+  assertExactDirectoryEntries(supabaseHome, ['telemetry.json'], code);
+  assertExactDirectoryEntries(dockerConfig, [], code);
+  assertExactDirectoryEntries(supabaseRuntime, ['.temp'], code);
+  assertExactDirectoryEntries(supabaseTemp, ['linked-project.json'], code);
+  for (const candidate of [
+    typesRuntime,
+    supabaseHome,
+    dockerConfig,
+    supabaseRuntime,
+    supabaseTemp,
+    telemetryPath,
+    linkedProjectPath,
+  ]) {
+    assertNoReparsePathIdentity(workdir, candidate, code);
+  }
+  for (const directory of [journal, evidence, workdir]) {
+    captureOwnerPrivatePath(repositoryRoot, directory, 'DIRECTORY');
+  }
+  for (const directory of [
+    typesRuntime,
+    supabaseHome,
+    dockerConfig,
+    supabaseRuntime,
+    supabaseTemp,
+  ]) {
+    captureInheritedOwnerPrivatePath(repositoryRoot, directory, 'DIRECTORY');
+  }
+  for (const filename of [telemetryPath, linkedProjectPath]) {
+    captureInheritedOwnerPrivatePath(repositoryRoot, filename, 'FILE');
+  }
+
+  const files = {
+    runtimeCredential: path.join(journal, RUNTIME_CREDENTIAL_CONFIG_FILE),
+    claim: path.join(journal, CLAIM_FILE),
+    consumed: path.join(
+      journal,
+      'pr12-existing-project-recovery-credential-consumed.json'
+    ),
+    terminal: path.join(journal, TERMINAL_FILE),
+    identity: path.join(journal, 'pr12-cycle6-database-identity.json'),
+    diagnostic: path.join(journal, 'generated-types-diagnostic.json'),
+    ca: path.join(evidence, CA_FILE),
+    generatedTypes: path.join(typesRuntime, 'generated-types-hosted.ts'),
+  };
+  const evidenceFiles = Object.fromEntries(
+    Object.keys(NORMALIZATION_DEFECT_STEP_FILE_SHA256).map(filename => [
+      filename,
+      path.join(evidence, filename),
+    ])
+  );
+  for (const filename of [
+    ...Object.values(files),
+    ...Object.values(evidenceFiles),
+  ]) {
+    resolveExistingFile(filename, code);
+    captureOwnerPrivatePath(repositoryRoot, filename, 'FILE');
+  }
+
+  const runtimeCredential = readCanonicalJson(files.runtimeCredential, code);
+  const claim = readCanonicalJson(files.claim, code);
+  const consumed = readCanonicalJson(files.consumed, code);
+  const terminal = readCanonicalJson(files.terminal, code);
+  const identity = readCanonicalJson(files.identity, code);
+  const diagnostic = readCanonicalJson(files.diagnostic, code);
+  const steps = Object.fromEntries(
+    Object.entries(evidenceFiles).map(([filename, artifactPath]) => [
+      filename,
+      readCanonicalJson(artifactPath, code),
+    ])
+  );
+  if (
+    runtimeCredential.sha256 !==
+      NORMALIZATION_DEFECT_RUNTIME_CREDENTIAL_FILE_SHA256 ||
+    claim.sha256 !== NORMALIZATION_DEFECT_CLAIM_FILE_SHA256 ||
+    consumed.sha256 !== NORMALIZATION_DEFECT_CONSUMED_FILE_SHA256 ||
+    terminal.sha256 !== NORMALIZATION_DEFECT_TERMINAL_FILE_SHA256 ||
+    identity.sha256 !== NORMALIZATION_DEFECT_DATABASE_IDENTITY_FILE_SHA256 ||
+    diagnostic.sha256 !== NORMALIZATION_DEFECT_DIAGNOSTIC_FILE_SHA256 ||
+    sha256Bytes(readFileSync(files.ca)) !== PINNED_CA_SHA256 ||
+    sha256Bytes(readFileSync(files.generatedTypes)) !==
+      NORMALIZATION_DEFECT_GENERATED_TYPES_SHA256 ||
+    statSync(files.generatedTypes).size !==
+      NORMALIZATION_DEFECT_GENERATED_TYPES_BYTES ||
+    sha256StableFile(telemetryPath, 1024, code) !==
+      NORMALIZATION_DEFECT_TELEMETRY_FILE_SHA256 ||
+    sha256StableFile(linkedProjectPath, 1024, code) !==
+      NORMALIZATION_DEFECT_LINKED_PROJECT_FILE_SHA256 ||
+    Object.entries(steps).some(
+      ([filename, snapshot]) =>
+        snapshot.sha256 !== NORMALIZATION_DEFECT_STEP_FILE_SHA256[filename]
+    )
+  ) {
+    fail(code);
+  }
+  assertCanonicalEmbeddedSha(
+    terminal.value,
+    'terminalSha256',
+    NORMALIZATION_DEFECT_TERMINAL_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    identity.value,
+    'identityEvidenceSha256',
+    NORMALIZATION_DEFECT_DATABASE_IDENTITY_SHA256,
+    code
+  );
+  assertCanonicalEmbeddedSha(
+    diagnostic.value,
+    'diagnosticArtifactSha256',
+    NORMALIZATION_DEFECT_DIAGNOSTIC_SHA256,
+    code
+  );
+  for (const [filename, snapshot] of Object.entries(steps)) {
+    assertCanonicalEmbeddedSha(
+      snapshot.value,
+      'evidenceSha256',
+      NORMALIZATION_DEFECT_EVIDENCE_SHA256[filename],
+      code
+    );
+  }
+  const step01 = steps[STEP01_EVIDENCE_FILE].value;
+  const step02 = steps[STEP02_EVIDENCE_FILE].value;
+  const step03 = steps[STEP03_EVIDENCE_FILE].value;
+  const step04 = steps[STEP04_EVIDENCE_FILE].value;
+  const lastAttempt = predecessorAttempts.at(-1);
+  if (
+    claim.value.actionId !== RECOVERY_ACTION_ID ||
+    claim.value.state !== 'CLAIMED_CONTINUATION_NOT_STARTED' ||
+    claim.value.bindingMaterialSha256 !==
+      NORMALIZATION_DEFECT_BINDING_MATERIAL_SHA256 ||
+    claim.value.derivedExecutionBindingSha256 !==
+      NORMALIZATION_DEFECT_EXECUTION_BINDING_SHA256 ||
+    claim.value.payloadSha256 !== NORMALIZATION_DEFECT_PAYLOAD_SHA256 ||
+    consumed.value.actionId !== RECOVERY_ACTION_ID ||
+    consumed.value.state !== 'CREDENTIAL_CONSUMED_CONTINUATION_STARTED' ||
+    consumed.value.claimSha256 !== NORMALIZATION_DEFECT_CLAIM_FILE_SHA256 ||
+    terminal.value.gitHead !== NORMALIZATION_DEFECT_RECOVERY_HEAD ||
+    terminal.value.status !== 'BLOCK' ||
+    terminal.value.reasonCode !== 'GENERATED_TYPES_DRIFT' ||
+    canonicalJson(terminal.value.completedCanonicalSteps) !==
+      canonicalJson(['01', '02', '03']) ||
+    terminal.value.blockedCanonicalStep !== '04' ||
+    canonicalJson(terminal.value.predecessorAttempts) !==
+      canonicalJson(predecessorAttempts) ||
+    terminal.value.newProjectPostAttemptCount !== 0 ||
+    terminal.value.productionContactCount !== 0 ||
+    step01.status !== 'PASS' ||
+    step01.decision?.result !== 'PASS' ||
+    step01.database?.systemIdentifier !== '7666052913346410626' ||
+    step02.status !== 'PASS' ||
+    step02.postApplyRecovery?.migrationApplyRedispatched !== false ||
+    step03.status !== 'PASS' ||
+    step03.explicitRows !== 83 ||
+    step03.derivedRows !== 12 ||
+    step03.verifiedRows !== 95 ||
+    step04.status !== 'BLOCK' ||
+    step04.reasonCode !== 'GENERATED_TYPES_DRIFT' ||
+    step04.dispatch?.dispatchCount !== 1 ||
+    step04.dispatch?.wrapperRetryCount !== 0 ||
+    step04.dispatch?.exitCode !== 0 ||
+    step04.generatedTypesArtifact?.artifactSha256 !==
+      NORMALIZATION_DEFECT_GENERATED_TYPES_SHA256 ||
+    step04.generatedTypesArtifact?.byteLength !==
+      NORMALIZATION_DEFECT_GENERATED_TYPES_BYTES ||
+    step04.diagnostic?.artifactSha256 !==
+      NORMALIZATION_DEFECT_DIAGNOSTIC_SHA256 ||
+    step04.diagnostic?.fileSha256 !==
+      NORMALIZATION_DEFECT_DIAGNOSTIC_FILE_SHA256 ||
+    step04.managementCredentialPassedViaChildEnvironmentOnly !== true ||
+    step04.productionContactCount !== 0 ||
+    identity.value.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    identity.value.database?.status !== 'REACHABLE' ||
+    identity.value.database?.systemIdentifier !== '7666052913346410626' ||
+    identity.value.database?.tls?.verifiedMode !== 'verify-full' ||
+    identity.value.predecessorTypesDriftLinkSha256 !==
+      lastAttempt?.linkSha256 ||
+    identity.value.productionBoundary?.productionCredentialAccessCount !== 0 ||
+    identity.value.productionBoundary?.productionDatabaseContactCount !== 0 ||
+    diagnostic.value.gitHead !== NORMALIZATION_DEFECT_RECOVERY_HEAD ||
+    diagnostic.value.bindingSha256 !==
+      NORMALIZATION_DEFECT_EXECUTION_BINDING_SHA256 ||
+    diagnostic.value.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    diagnostic.value.databaseSystemIdentifier !== '7666052913346410626' ||
+    diagnostic.value.diagnostic?.status !== 'GENERATED_TYPES_DRIFT' ||
+    diagnostic.value.generatedTypesArtifact?.artifactSha256 !==
+      NORMALIZATION_DEFECT_GENERATED_TYPES_SHA256 ||
+    diagnostic.value.generatedTypesArtifact?.byteLength !==
+      NORMALIZATION_DEFECT_GENERATED_TYPES_BYTES ||
+    diagnostic.value.generatedTypesArtifact?.pathFingerprint !==
+      windowsPathFingerprint(files.generatedTypes) ||
+    diagnostic.value.committedFileMutated !== false ||
+    diagnostic.value.secretValuesCaptured !== false
+  ) {
+    fail(code);
+  }
+
+  const linkWithoutHash = {
+    status: 'GENERATED_TYPES_NORMALIZATION_RECHECK_PENDING',
+    gitHead: NORMALIZATION_DEFECT_RECOVERY_HEAD,
+    historicalReasonCode: 'GENERATED_TYPES_DRIFT',
+    suspectedClassification: 'LOCAL_FORMAT_NORMALIZATION_DEFECT',
+    completedCanonicalSteps: ['01', '02', '03'],
+    blockedCanonicalStep: '04',
+    step01FileSha256:
+      NORMALIZATION_DEFECT_STEP_FILE_SHA256[STEP01_EVIDENCE_FILE],
+    step01EvidenceSha256:
+      NORMALIZATION_DEFECT_EVIDENCE_SHA256[STEP01_EVIDENCE_FILE],
+    step02FileSha256:
+      NORMALIZATION_DEFECT_STEP_FILE_SHA256[STEP02_EVIDENCE_FILE],
+    step02EvidenceSha256:
+      NORMALIZATION_DEFECT_EVIDENCE_SHA256[STEP02_EVIDENCE_FILE],
+    step03FileSha256:
+      NORMALIZATION_DEFECT_STEP_FILE_SHA256[STEP03_EVIDENCE_FILE],
+    step03EvidenceSha256:
+      NORMALIZATION_DEFECT_EVIDENCE_SHA256[STEP03_EVIDENCE_FILE],
+    step04FileSha256:
+      NORMALIZATION_DEFECT_STEP_FILE_SHA256[STEP04_EVIDENCE_FILE],
+    step04EvidenceSha256:
+      NORMALIZATION_DEFECT_EVIDENCE_SHA256[STEP04_EVIDENCE_FILE],
+    diagnosticFileSha256: NORMALIZATION_DEFECT_DIAGNOSTIC_FILE_SHA256,
+    diagnosticArtifactSha256: NORMALIZATION_DEFECT_DIAGNOSTIC_SHA256,
+    generatedTypesArtifactSha256: NORMALIZATION_DEFECT_GENERATED_TYPES_SHA256,
+    hostedTypesGenerationDispatchCount: 1,
+    hostedTypesRemoteRedispatchAllowed: false,
+    hostedTypesRemoteRedispatched: false,
+    historicalRuntimeResidue: {
+      authority: 'NON_EVIDENCE_NON_INPUT',
+      exactTreeVerified: true,
+      reparseComponentCount: 0,
+      effectiveAcl:
+        'INHERITED_CURRENT_USER_AND_SYSTEM_FULL_CONTROL_FROM_PROTECTED_ROOT',
+      telemetryFileSha256: NORMALIZATION_DEFECT_TELEMETRY_FILE_SHA256,
+      linkedProjectFileSha256: NORMALIZATION_DEFECT_LINKED_PROJECT_FILE_SHA256,
+      contentConsumedByCycle7: false,
+      credentialConsumedByCycle7: false,
+    },
+    migrationApplyRedispatched: false,
+    representativeFixtureRedispatched: false,
+    newProjectPostAttemptCount: 0,
+    productionContactCount: 0,
+    secretValuesCaptured: false,
+  };
+  return {
+    link: {
+      ...linkWithoutHash,
+      linkSha256: sha256Canonical(linkWithoutHash),
+    },
+    sourceDirectory: evidence,
+    generatedTypesPath: files.generatedTypes,
+    step02,
+  };
+}
+
 function createOwnerPrivateDirectory(repositoryRoot, directory) {
   if (existsSync(directory)) fail('RECOVERY_OUTPUT_ALREADY_EXISTS');
   mkdirSync(directory, { recursive: false });
@@ -1802,16 +2223,23 @@ function observeOwnerPrivatePath(repositoryRoot, targetPath, kind, mode) {
   }
   try {
     const observation = JSON.parse(result.stdout);
+    const effectiveInherited = mode === 'CAPTURE_EFFECTIVE';
     if (
-      observation.accessRulesProtected !== true ||
-      observation.accessRuleCount !== 2
+      observation.accessRulesProtected !== !effectiveInherited ||
+      observation.accessRuleCount !== 2 ||
+      observation.rulesInherited !== effectiveInherited ||
+      observation.aclPolicyId !==
+        (effectiveInherited
+          ? 'WINDOWS_INHERITED_CURRENT_USER_AND_SYSTEM_FULL_CONTROL_V1'
+          : 'WINDOWS_CURRENT_USER_AND_SYSTEM_FULL_CONTROL_V1')
     ) {
       fail('OWNER_PRIVATE_ACL_FAILED');
     }
     return {
       policy: observation.aclPolicyId,
-      accessRulesProtected: true,
+      accessRulesProtected: !effectiveInherited,
       accessRuleCount: 2,
+      rulesInherited: effectiveInherited,
     };
   } catch (error) {
     if (error instanceof RecoveryExecutionError) throw error;
@@ -1830,6 +2258,15 @@ function hardenPath(repositoryRoot, targetPath, kind) {
 
 function captureOwnerPrivatePath(repositoryRoot, targetPath, kind) {
   return observeOwnerPrivatePath(repositoryRoot, targetPath, kind, 'CAPTURE');
+}
+
+function captureInheritedOwnerPrivatePath(repositoryRoot, targetPath, kind) {
+  return observeOwnerPrivatePath(
+    repositoryRoot,
+    targetPath,
+    kind,
+    'CAPTURE_EFFECTIVE'
+  );
 }
 
 async function readBoundedResponse(response, expectedContentTypes) {
@@ -3391,178 +3828,127 @@ function executeHostedTypesParity({
   evidenceDirectory,
   journalDirectory,
   replayWorkdir,
-  supabasePath,
-  managementAccessToken,
   gitHead,
   bindingSha256,
   databaseIdentity,
+  predecessorAttempt,
+  predecessorGeneratedTypesPath,
 }) {
+  if (
+    predecessorAttempt?.status !==
+      'GENERATED_TYPES_NORMALIZATION_RECHECK_PENDING' ||
+    predecessorAttempt.historicalReasonCode !== 'GENERATED_TYPES_DRIFT' ||
+    predecessorAttempt.suspectedClassification !==
+      'LOCAL_FORMAT_NORMALIZATION_DEFECT' ||
+    predecessorAttempt.hostedTypesGenerationDispatchCount !== 1 ||
+    predecessorAttempt.hostedTypesRemoteRedispatchAllowed !== false ||
+    predecessorAttempt.hostedTypesRemoteRedispatched !== false ||
+    predecessorAttempt.generatedTypesArtifactSha256 !==
+      NORMALIZATION_DEFECT_GENERATED_TYPES_SHA256
+  ) {
+    fail('HOSTED_TYPES_REMOTE_REDISPATCH_FORBIDDEN');
+  }
   const runtimeRoot = path.join(replayWorkdir, '.pr12-types-runtime');
   mkdirSync(runtimeRoot, { recursive: false });
-  const supabaseHome = path.join(runtimeRoot, 'supabase-home');
-  const dockerConfig = path.join(runtimeRoot, 'docker-config');
-  mkdirSync(supabaseHome, { recursive: false });
-  mkdirSync(dockerConfig, { recursive: false });
-  const environment = buildIsolatedChildEnvironment({
-    credentialKind: 'management-types',
-    credentialValues: { SUPABASE_ACCESS_TOKEN: managementAccessToken },
-    operatingSystemValues: {
-      SystemRoot: process.env.SystemRoot ?? 'C:\\Windows',
-      TEMP: process.env.TEMP ?? 'C:\\Windows\\Temp',
-      TMP: process.env.TMP ?? 'C:\\Windows\\Temp',
-      PATH: path.dirname(supabasePath),
-    },
-    isolationPaths: { supabaseHome, dockerConfig },
-  });
-  const contract = buildPinnedSpawnContract({
-    executable: supabasePath,
-    args: [
-      'gen',
-      'types',
-      'typescript',
-      '--project-id',
-      PR12_RECOVERY_TARGET.projectRef,
-      '--schema',
-      'public',
-    ],
-    cwd: replayWorkdir,
-    env: environment,
-    timeoutMs: 300_000,
-    retries: 0,
-  });
+  hardenPath(repositoryRoot, runtimeRoot, 'DIRECTORY');
+  const formatterRuntimeRoot = path.join(runtimeRoot, 'formatter-runtime');
+  mkdirSync(formatterRuntimeRoot, { recursive: false });
+  hardenPath(repositoryRoot, formatterRuntimeRoot, 'DIRECTORY');
   const startedAt = new Date().toISOString();
-  const child = spawnSync(contract.executable, contract.args, contract.options);
-  const stdout = typeof child.stdout === 'string' ? child.stdout : '';
-  const stderr = typeof child.stderr === 'string' ? child.stderr : '';
-  if (
-    stdout.includes(managementAccessToken) ||
-    stderr.includes(managementAccessToken)
-  ) {
-    fail('SECRET_BEARING_PROCESS_OUTPUT');
-  }
-  if (
-    child.error !== undefined ||
-    child.signal !== null ||
-    !Number.isInteger(child.status)
-  ) {
-    fail('UNKNOWN_REMOTE_OUTCOME');
-  }
-  if (child.status !== 0) fail('HOSTED_TYPES_GENERATION_FAILED');
-  const generatedTypes = extractGeneratedTypes(stdout);
-  const committedTypes = readFileSync(
-    path.join(repositoryRoot, 'src/types/supabase.ts'),
-    'utf8'
-  );
-  const diagnostic = diagnoseHostedTypesParity({
-    generatedTypes,
-    committedTypes,
-  });
   const generatedTypesPath = path.join(
     runtimeRoot,
     'generated-types-hosted.ts'
   );
-  const generatedTypesSha256 = writeBytesCreateNew(
+  copyExactBytesArtifact({
+    repositoryRoot,
+    source: predecessorGeneratedTypesPath,
+    destination: generatedTypesPath,
+    expectedSha256: NORMALIZATION_DEFECT_GENERATED_TYPES_SHA256,
+    maximumBytes: 64 * 1024 * 1024,
+    code: 'HOSTED_TYPES_PREDECESSOR_COPY_INVALID',
+  });
+  const committedTypesPath = path.join(repositoryRoot, 'src/types/supabase.ts');
+  const committedBefore = readFileSync(committedTypesPath, 'utf8');
+  const committedBeforeSha256 = sha256Bytes(
+    Buffer.from(committedBefore, 'utf8')
+  );
+  const formatted = formatGeneratedTypesWithPinnedPrettier({
+    repositoryRoot,
     generatedTypesPath,
-    Buffer.from(generatedTypes, 'utf8'),
-    'HOSTED_TYPES_OUTPUT_CREATE_FAILED'
-  );
-  hardenPath(repositoryRoot, generatedTypesPath, 'FILE');
-  const diagnosticWithoutHash = {
-    schemaVersion: 1,
-    recordType: 'PR12_HOSTED_TYPES_PARITY_DIAGNOSTIC',
-    commandId: 'PR12-CMD-010',
-    projectRef: PR12_RECOVERY_TARGET.projectRef,
-    gitHead,
-    databaseSystemIdentifier: databaseIdentity.systemIdentifier,
-    bindingSha256,
-    diagnostic,
-    generatedTypesArtifact: {
-      artifactSha256: generatedTypesSha256,
-      byteLength: Buffer.byteLength(generatedTypes, 'utf8'),
-      pathFingerprint: windowsPathFingerprint(generatedTypesPath),
-      ownerPrivate: true,
-      repositoryTracked: false,
-      containsSchemaOnlyNoDataRows: true,
-    },
-    committedFileMutated: false,
-    secretValuesCaptured: false,
-  };
-  assertSecretFreeEvidence(diagnosticWithoutHash, [managementAccessToken]);
-  const diagnosticArtifact = {
-    ...diagnosticWithoutHash,
-    diagnosticArtifactSha256: sha256Canonical(diagnosticWithoutHash),
-  };
-  const diagnosticPath = path.join(
-    journalDirectory,
-    'generated-types-diagnostic.json'
-  );
-  const diagnosticFileSha256 = writeCanonicalCreateNew(
-    diagnosticPath,
-    diagnosticArtifact,
-    'HOSTED_TYPES_DIAGNOSTIC_CREATE_FAILED'
-  );
-  hardenPath(repositoryRoot, diagnosticPath, 'FILE');
-  if (!diagnostic.parity) {
-    const blockedWithoutHash = {
-      schemaVersion: 1,
-      recordType: 'PR12_HOSTED_TYPES_PARITY_RESULT',
-      canonicalStep: { step: '04', name: 'types parity' },
-      status: 'BLOCK',
-      reasonCode: 'GENERATED_TYPES_DRIFT',
-      startedAt,
-      completedAt: new Date().toISOString(),
-      projectRef: PR12_RECOVERY_TARGET.projectRef,
-      diagnostic: {
-        artifactSha256: diagnosticArtifact.diagnosticArtifactSha256,
-        fileSha256: diagnosticFileSha256,
-        parity: false,
-        firstDifference: diagnostic.firstDifference,
-        generatedSha256: diagnostic.generatedSha256,
-        committedSha256: diagnostic.committedSha256,
-      },
-      generatedTypesArtifact: {
-        artifactSha256: generatedTypesSha256,
-        byteLength: Buffer.byteLength(generatedTypes, 'utf8'),
-        ownerPrivateExternalTemporaryOutput: true,
-        repositoryTracked: false,
-      },
-      dispatch: {
-        dispatchCount: 1,
-        wrapperRetryCount: 0,
-        exitCode: child.status,
-        stdoutBytes: Buffer.byteLength(stdout, 'utf8'),
-        stdoutSha256: sha256Bytes(Buffer.from(stdout, 'utf8')),
-        stderrBytes: Buffer.byteLength(stderr, 'utf8'),
-        stderrSha256: sha256Bytes(Buffer.from(stderr, 'utf8')),
-        rawOutputRetainedOnlyAsSchemaArtifact: true,
-      },
-      managementCredentialPassedViaChildEnvironmentOnly: true,
-      committedFileMutated: false,
-      productionContactCount: 0,
-      secretValuesCaptured: false,
-    };
-    assertSecretFreeEvidence(blockedWithoutHash, [managementAccessToken]);
-    const blocked = {
-      ...blockedWithoutHash,
-      evidenceSha256: sha256Canonical(blockedWithoutHash),
-    };
-    const filename = path.join(evidenceDirectory, STEP04_EVIDENCE_FILE);
-    writeCanonicalCreateNew(
-      filename,
-      blocked,
-      'STEP04_BLOCK_EVIDENCE_CREATE_FAILED'
-    );
-    hardenPath(repositoryRoot, filename, 'FILE');
-    fail('GENERATED_TYPES_DRIFT');
+    formatterRuntimeRoot,
+  });
+  if (
+    formatted.observation.sourceSha256 !==
+      NORMALIZATION_DEFECT_GENERATED_TYPES_SHA256 ||
+    formatted.observation.sourceByteLength !==
+      NORMALIZATION_DEFECT_GENERATED_TYPES_BYTES ||
+    formatted.observation.credentialEnvironmentKeys.length !== 0 ||
+    formatted.observation.stdin !== 'CLOSED' ||
+    formatted.observation.shell !== false ||
+    formatted.observation.dispatchCount !== 1 ||
+    formatted.observation.wrapperRetryCount !== 0
+  ) {
+    fail('GENERATED_TYPES_FORMATTER_OBSERVATION_INVALID');
   }
   const comparison = compareHostedTypes({
-    generatedTypes,
-    committedTypes,
+    generatedTypes: formatted.formattedTypes,
+    committedTypes: committedBefore,
     projectRef: PR12_RECOVERY_TARGET.projectRef,
     bindingSha256,
     gitCommit: gitHead,
     databaseSystemIdentifier: databaseIdentity.systemIdentifier,
   });
+  const committedAfterSha256 = sha256Bytes(readFileSync(committedTypesPath));
+  if (committedAfterSha256 !== committedBeforeSha256) {
+    fail('COMMITTED_TYPES_MUTATED');
+  }
+
+  const normalizationWithoutHash = {
+    schemaVersion: 1,
+    recordType: 'PR12_HOSTED_TYPES_NORMALIZATION_RECOVERY',
+    commandId: 'PR12-CMD-010',
+    projectRef: PR12_RECOVERY_TARGET.projectRef,
+    gitHead,
+    databaseSystemIdentifier: databaseIdentity.systemIdentifier,
+    bindingSha256,
+    predecessor: {
+      linkSha256: predecessorAttempt.linkSha256,
+      historicalReasonCode: predecessorAttempt.historicalReasonCode,
+      suspectedClassification: predecessorAttempt.suspectedClassification,
+      step04FileSha256: predecessorAttempt.step04FileSha256,
+      step04EvidenceSha256: predecessorAttempt.step04EvidenceSha256,
+      diagnosticFileSha256: predecessorAttempt.diagnosticFileSha256,
+      diagnosticArtifactSha256: predecessorAttempt.diagnosticArtifactSha256,
+      generatedTypesArtifactSha256:
+        predecessorAttempt.generatedTypesArtifactSha256,
+    },
+    formatter: formatted.observation,
+    comparison,
+    correctedClassification: 'LOCAL_FORMAT_NORMALIZATION_DEFECT_VERIFIED',
+    sourceArtifactCopiedCreateNew: true,
+    hostedTypesGenerationHistoricalDispatchCount: 1,
+    hostedTypesRemoteRedispatched: false,
+    localFormatterDispatchCount: 1,
+    credentialPassedToFormatter: false,
+    committedFileMutated: false,
+    productionContactCount: 0,
+    secretValuesCaptured: false,
+  };
+  assertSecretFreeEvidence(normalizationWithoutHash, []);
+  const normalizationArtifact = {
+    ...normalizationWithoutHash,
+    normalizationArtifactSha256: sha256Canonical(normalizationWithoutHash),
+  };
+  const normalizationPath = path.join(
+    journalDirectory,
+    'generated-types-normalization-recovery.json'
+  );
+  const normalizationFileSha256 = writeCanonicalCreateNew(
+    normalizationPath,
+    normalizationArtifact,
+    'HOSTED_TYPES_NORMALIZATION_CREATE_FAILED'
+  );
+  hardenPath(repositoryRoot, normalizationPath, 'FILE');
   const withoutHash = {
     schemaVersion: 1,
     recordType: 'PR12_HOSTED_TYPES_PARITY_RESULT',
@@ -3571,28 +3957,34 @@ function executeHostedTypesParity({
     startedAt,
     completedAt: new Date().toISOString(),
     comparison,
-    dispatch: {
-      dispatchCount: 1,
-      wrapperRetryCount: 0,
-      exitCode: child.status,
-      stdoutBytes: Buffer.byteLength(stdout, 'utf8'),
-      stdoutSha256: sha256Bytes(Buffer.from(stdout, 'utf8')),
-      stderrBytes: Buffer.byteLength(stderr, 'utf8'),
-      stderrSha256: sha256Bytes(Buffer.from(stderr, 'utf8')),
-      rawOutputRetained: false,
+    predecessorNormalizationDefect: {
+      linkSha256: predecessorAttempt.linkSha256,
+      historicalStep04EvidenceSha256: predecessorAttempt.step04EvidenceSha256,
+      historicalDiagnosticArtifactSha256:
+        predecessorAttempt.diagnosticArtifactSha256,
     },
     generatedTypesArtifact: {
-      artifactSha256: generatedTypesSha256,
-      diagnosticArtifactSha256: diagnosticArtifact.diagnosticArtifactSha256,
-      diagnosticFileSha256,
+      artifactSha256: NORMALIZATION_DEFECT_GENERATED_TYPES_SHA256,
+      byteLength: NORMALIZATION_DEFECT_GENERATED_TYPES_BYTES,
+      copiedCreateNewFromVerifiedPredecessor: true,
       ownerPrivateExternalTemporaryOutput: true,
       repositoryTracked: false,
     },
-    managementCredentialPassedViaChildEnvironmentOnly: true,
+    normalizationArtifact: {
+      artifactSha256: normalizationArtifact.normalizationArtifactSha256,
+      fileSha256: normalizationFileSha256,
+    },
+    correctedClassification: 'LOCAL_FORMAT_NORMALIZATION_DEFECT_VERIFIED',
+    formatter: formatted.observation,
+    hostedTypesGenerationHistoricalDispatchCount: 1,
+    hostedTypesRemoteRedispatched: false,
+    remoteCredentialUseCount: 0,
     committedFileMutated: false,
+    productionContactCount: 0,
+    secretValuesCaptured: false,
     nextStep: '05',
   };
-  assertSecretFreeEvidence(withoutHash, [managementAccessToken]);
+  assertSecretFreeEvidence(withoutHash, []);
   const result = {
     ...withoutHash,
     evidenceSha256: sha256Canonical(withoutHash),
@@ -4001,10 +4393,21 @@ async function main() {
     paths,
     priorAttempts
   );
-  const typesDriftEvidenceDirectory = typesDriftSnapshot.sourceDirectory;
-  const predecessorStep02 = typesDriftSnapshot.step02;
   const typesDriftAttempt = typesDriftSnapshot.link;
-  const predecessorAttempts = [...priorAttempts, typesDriftAttempt];
+  const preNormalizationAttempts = [...priorAttempts, typesDriftAttempt];
+  const normalizationDefectSnapshot = assertPredecessorTypesNormalizationDefect(
+    repositoryRoot,
+    paths,
+    preNormalizationAttempts
+  );
+  const normalizationDefectEvidenceDirectory =
+    normalizationDefectSnapshot.sourceDirectory;
+  const predecessorStep02 = normalizationDefectSnapshot.step02;
+  const normalizationDefectAttempt = normalizationDefectSnapshot.link;
+  const predecessorAttempts = [
+    ...preNormalizationAttempts,
+    normalizationDefectAttempt,
+  ];
   createOwnerPrivateDirectory(repositoryRoot, paths.recoveryJournal);
   createOwnerPrivateDirectory(repositoryRoot, paths.recoveryEvidence);
   createOwnerPrivateDirectory(repositoryRoot, paths.replayWorkdir);
@@ -4083,7 +4486,7 @@ async function main() {
     const caPath = path.join(paths.recoveryEvidence, CA_FILE);
     copyExactBytesArtifact({
       repositoryRoot,
-      source: path.join(typesDriftEvidenceDirectory, CA_FILE),
+      source: path.join(normalizationDefectEvidenceDirectory, CA_FILE),
       destination: caPath,
       expectedSha256: PINNED_CA_SHA256,
       maximumBytes: 16 * 1024,
@@ -4106,12 +4509,13 @@ async function main() {
     }
     const identityWithoutHash = {
       schemaVersion: 1,
-      recordType: 'PR12_EXISTING_PROJECT_CYCLE6_DATABASE_IDENTITY',
+      recordType: 'PR12_EXISTING_PROJECT_CYCLE7_DATABASE_IDENTITY',
       projectRef: PR12_RECOVERY_TARGET.projectRef,
       database,
       predecessorStep01EvidenceSha256:
         TYPES_DRIFT_EVIDENCE_SHA256[STEP01_EVIDENCE_FILE],
-      predecessorTypesDriftLinkSha256: typesDriftAttempt.linkSha256,
+      predecessorNormalizationDefectLinkSha256:
+        normalizationDefectAttempt.linkSha256,
       toolchain: toolchainProjection,
       credentialBoundary: {
         brokerProtocolMode: 'ISOLATED_PROJECT_CONTINUATION',
@@ -4136,31 +4540,40 @@ async function main() {
     };
     const identityPath = path.join(
       paths.recoveryJournal,
-      'pr12-cycle6-database-identity.json'
+      'pr12-cycle7-database-identity.json'
     );
     writeCanonicalCreateNew(
       identityPath,
       identity,
-      'CYCLE6_DATABASE_IDENTITY_CREATE_FAILED'
+      'CYCLE7_DATABASE_IDENTITY_CREATE_FAILED'
     );
     hardenPath(repositoryRoot, identityPath, 'FILE');
     const evidence = copyExactCanonicalArtifact({
       repositoryRoot,
-      source: path.join(typesDriftEvidenceDirectory, STEP01_EVIDENCE_FILE),
+      source: path.join(
+        normalizationDefectEvidenceDirectory,
+        STEP01_EVIDENCE_FILE
+      ),
       destination: path.join(paths.recoveryEvidence, STEP01_EVIDENCE_FILE),
       expectedSha256: TYPES_DRIFT_STEP_FILE_SHA256[STEP01_EVIDENCE_FILE],
       code: 'STEP01_PREDECESSOR_COPY_INVALID',
     });
     const replay = copyExactCanonicalArtifact({
       repositoryRoot,
-      source: path.join(typesDriftEvidenceDirectory, STEP02_EVIDENCE_FILE),
+      source: path.join(
+        normalizationDefectEvidenceDirectory,
+        STEP02_EVIDENCE_FILE
+      ),
       destination: path.join(paths.recoveryEvidence, STEP02_EVIDENCE_FILE),
       expectedSha256: TYPES_DRIFT_STEP_FILE_SHA256[STEP02_EVIDENCE_FILE],
       code: 'STEP02_PREDECESSOR_COPY_INVALID',
     });
     const fixtureEvidence = copyExactCanonicalArtifact({
       repositoryRoot,
-      source: path.join(typesDriftEvidenceDirectory, STEP03_EVIDENCE_FILE),
+      source: path.join(
+        normalizationDefectEvidenceDirectory,
+        STEP03_EVIDENCE_FILE
+      ),
       destination: path.join(paths.recoveryEvidence, STEP03_EVIDENCE_FILE),
       expectedSha256: TYPES_DRIFT_STEP_FILE_SHA256[STEP03_EVIDENCE_FILE],
       code: 'STEP03_PREDECESSOR_COPY_INVALID',
@@ -4204,11 +4617,12 @@ async function main() {
       evidenceDirectory: paths.recoveryEvidence,
       journalDirectory: paths.recoveryJournal,
       replayWorkdir: paths.replayWorkdir,
-      supabasePath,
-      managementAccessToken,
       gitHead,
       bindingSha256: claim.derivedExecutionBindingSha256,
       databaseIdentity: database,
+      predecessorAttempt: normalizationDefectAttempt,
+      predecessorGeneratedTypesPath:
+        normalizationDefectSnapshot.generatedTypesPath,
     });
     process.stdout.write(
       `${canonicalJson({
