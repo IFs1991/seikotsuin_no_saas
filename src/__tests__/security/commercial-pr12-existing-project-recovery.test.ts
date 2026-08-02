@@ -593,7 +593,23 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(runtimeSource).not.toContain(
       'fail(`ISOLATED_DATA_HTTP_${response.status}`)'
     );
-    expect(runtimeSource).toContain("fail('BROWSER_LOGIN_NAVIGATION_FAILED')");
+    expect(runtimeSource).toContain("'BROWSER_LOGIN_NAVIGATION_FAILED'");
+    expect(runtimeSource).toContain(
+      'const BROWSER_LOGIN_NAVIGATION_TIMEOUT_MS = 120_000;'
+    );
+    expect(runtimeSource).toContain("'BROWSER_RUNTIME_EXECUTION_FAILED'");
+    expect(runtimeSource).toContain("'PROFILE_RESPONSE_DISPOSE_FAILED'");
+    expect(runtimeSource).toContain("'BROWSER_CONTEXT_CLEANUP_FAILED'");
+    expect(runtimeSource).toContain("'BROWSER_PROCESS_CLEANUP_FAILED'");
+    expect(runtimeSource).not.toContain(
+      'profileResponse.dispose().catch(() => undefined)'
+    );
+    expect(runtimeSource).not.toContain(
+      'context.close().catch(() => undefined)'
+    );
+    expect(runtimeSource).not.toContain(
+      'anonymousContext.close().catch(() => undefined)'
+    );
     expect(runnerSource).toContain(
       "instance_id='00000000-0000-0000-0000-000000000000'::uuid"
     );
@@ -917,9 +933,21 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(source).toContain(
       "'pr12-existing-project-recovery-replay-workdir-cycle11'"
     );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-journal-cycle12'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-evidence-cycle12'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-replay-workdir-cycle12'"
+    );
     expect(source).toContain('assertPredecessorStep06Http400(');
     expect(source).toContain('assertPredecessorStep06AuthHttp500(');
     expect(source).toContain('assertPredecessorStep06UnexpectedFailure(');
+    expect(source).toContain(
+      'assertPredecessorStep06BrowserUnexpectedFailure('
+    );
     expect(source).toContain(
       "status: 'POST_ADVISOR_STEP06_AUTH_HTTP400_VERIFIED'"
     );
@@ -967,7 +995,7 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(activeMain).not.toContain('executeRepresentativeDataValidation({');
     expect(activeMain).not.toContain('executeAdvisorAfterScan({');
     expect(activeMain).toContain(
-      'STEP06_UNEXPECTED_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE]'
+      'STEP06_BROWSER_UNEXPECTED_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE]'
     );
     expect(activeMain).toContain('advisorScanRedispatched: false');
     expect(activeMain).toContain('localNormalizationRedispatched: false');

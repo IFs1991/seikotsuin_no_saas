@@ -23,6 +23,7 @@ const MAX_HTTP_BYTES = 1024 * 1024;
 const MAX_BROWSER_RESPONSE_BYTES = 8 * 1024 * 1024;
 const MAX_SERVER_LOG_BYTES = 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 30_000;
+const BROWSER_LOGIN_NAVIGATION_TIMEOUT_MS = 120_000;
 const BROWSER_REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const LOCAL_BROWSER_GET_PATHS = new Set([
   '/',
@@ -800,6 +801,24 @@ function assertBrowserSandboxHealthy(state) {
   if (state.failureCode !== null) fail(state.failureCode);
 }
 
+function rethrowBrowserRuntimeFailure(error, state, fallbackCode) {
+  assertBrowserSandboxHealthy(state);
+  if (error instanceof Pr12AllRoleSmokeRuntimeError) throw error;
+  fail(fallbackCode);
+}
+
+async function finalizeBrowserResource(
+  operation,
+  primaryOperationFailed,
+  code
+) {
+  try {
+    await operation();
+  } catch {
+    if (!primaryOperationFailed) fail(code);
+  }
+}
+
 async function installWebSocketBoundary(
   context,
   { baseUrl, serverApiKey, state }
@@ -1019,6 +1038,7 @@ async function runBrowserAndProfileSmoke({
   attachBoundedLogCapture(child.stdout, logs);
   attachBoundedLogCapture(child.stderr, logs);
   let browser = null;
+  let browserOperationFailed = false;
   const profileObservations = [];
   const routeObservations = [];
   const boundaryState = {
@@ -1063,6 +1083,7 @@ async function runBrowserAndProfileSmoke({
         serverApiKey,
         state: boundaryState,
       });
+      let actorOperationFailed = false;
       try {
         const page = await context.newPage();
         page.setDefaultTimeout(60_000);
@@ -1076,18 +1097,24 @@ async function runBrowserAndProfileSmoke({
         await page
           .locator('#login-password')
           .fill(actorPasswords[actor.actorId]);
+        let profileOperationFailed = false;
         try {
           await Promise.all([
             page.waitForURL(
               url => !['/login', '/admin/login'].includes(url.pathname),
-              { timeout: 30_000, waitUntil: 'domcontentloaded' }
+              {
+                timeout: BROWSER_LOGIN_NAVIGATION_TIMEOUT_MS,
+                waitUntil: 'domcontentloaded',
+              }
             ),
             page.getByRole('button', { name: 'ログイン' }).click(),
           ]);
         } catch (error) {
-          assertBrowserSandboxHealthy(boundaryState);
-          if (error instanceof Pr12AllRoleSmokeRuntimeError) throw error;
-          fail('BROWSER_LOGIN_NAVIGATION_FAILED');
+          rethrowBrowserRuntimeFailure(
+            error,
+            boundaryState,
+            'BROWSER_LOGIN_NAVIGATION_FAILED'
+          );
         }
         assertBrowserSandboxHealthy(boundaryState);
         const profileResponse = await context.request.get(
@@ -1129,9 +1156,16 @@ async function runBrowserAndProfileSmoke({
             status: profileResponse.status(),
             responseSha256: sha256Bytes(profileBytes),
           });
+        } catch (error) {
+          profileOperationFailed = true;
+          throw error;
         } finally {
           profileBytes.fill(0);
-          await profileResponse.dispose();
+          await finalizeBrowserResource(
+            () => profileResponse.dispose(),
+            profileOperationFailed,
+            'PROFILE_RESPONSE_DISPOSE_FAILED'
+          );
         }
         const actorBrowserCases = applicationBrowserCases.filter(
           browserCase => browserCase.actorId === actor.actorId
@@ -1172,8 +1206,15 @@ async function runBrowserAndProfileSmoke({
           JSON.stringify(storageState),
         ]);
         assertBrowserSandboxHealthy(boundaryState);
+      } catch (error) {
+        actorOperationFailed = true;
+        throw error;
       } finally {
-        await context.close();
+        await finalizeBrowserResource(
+          () => context.close(),
+          actorOperationFailed,
+          'BROWSER_CONTEXT_CLEANUP_FAILED'
+        );
       }
     }
     const anonymousCase = ALL_ROLE_SMOKE_BROWSER_CASES.find(
@@ -1195,6 +1236,7 @@ async function runBrowserAndProfileSmoke({
       serverApiKey,
       state: boundaryState,
     });
+    let anonymousOperationFailed = false;
     try {
       const page = await anonymousContext.newPage();
       await page.goto(anonymousCase.route, {
@@ -1219,14 +1261,35 @@ async function runBrowserAndProfileSmoke({
         expected: anonymousCase.expected,
         observed: observed.outcome,
       });
+    } catch (error) {
+      anonymousOperationFailed = true;
+      throw error;
     } finally {
-      await anonymousContext.close();
+      await finalizeBrowserResource(
+        () => anonymousContext.close(),
+        anonymousOperationFailed,
+        'BROWSER_CONTEXT_CLEANUP_FAILED'
+      );
     }
     if (profileObservations.length !== 7 || routeObservations.length !== 16) {
       fail('BROWSER_CASE_COUNT_MISMATCH');
     }
+  } catch (error) {
+    browserOperationFailed = true;
+    rethrowBrowserRuntimeFailure(
+      error,
+      boundaryState,
+      'BROWSER_RUNTIME_EXECUTION_FAILED'
+    );
   } finally {
-    if (browser !== null) await browser.close().catch(() => undefined);
+    let browserCleanupFailed = false;
+    if (browser !== null) {
+      try {
+        await browser.close();
+      } catch {
+        browserCleanupFailed = !browserOperationFailed;
+      }
+    }
     if (child.exitCode === null) child.kill();
     let childExited = child.exitCode !== null;
     await new Promise(resolve => {
@@ -1267,6 +1330,7 @@ async function runBrowserAndProfileSmoke({
       logBytes.fill(0);
       logs.chunks.forEach(chunk => chunk.fill(0));
     }
+    if (browserCleanupFailed) fail('BROWSER_PROCESS_CLEANUP_FAILED');
   }
   return {
     materialized,
