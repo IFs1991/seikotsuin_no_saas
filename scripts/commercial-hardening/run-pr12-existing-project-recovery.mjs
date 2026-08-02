@@ -2427,7 +2427,6 @@ function assertPredecessorAdvisorShapeDefect(
   ) {
     fail(chronologyCode);
   }
-  code = 'ADVISOR_SHAPE_DEFECT_SEMANTIC_CONTENT_INVALID';
   if (
     claim.actionId !== RECOVERY_ACTION_ID ||
     claim.bindingMaterialSha256 !==
@@ -2436,7 +2435,11 @@ function assertPredecessorAdvisorShapeDefect(
       ADVISOR_SHAPE_DEFECT_EXECUTION_BINDING_SHA256 ||
     claim.payloadSha256 !== ADVISOR_SHAPE_DEFECT_PAYLOAD_SHA256 ||
     consumed.actionId !== RECOVERY_ACTION_ID ||
-    consumed.claimSha256 !== ADVISOR_SHAPE_DEFECT_CLAIM_FILE_SHA256 ||
+    consumed.claimSha256 !== ADVISOR_SHAPE_DEFECT_CLAIM_FILE_SHA256
+  ) {
+    fail('ADVISOR_SHAPE_DEFECT_CLAIM_CONTENT_INVALID');
+  }
+  if (
     terminal.gitHead !== ADVISOR_SHAPE_DEFECT_RECOVERY_HEAD ||
     terminal.status !== 'BLOCK' ||
     terminal.reasonCode !== 'ADVISOR_FINDING_SHAPE_INVALID' ||
@@ -2446,12 +2449,20 @@ function assertPredecessorAdvisorShapeDefect(
     JSON.stringify(terminal.predecessorAttempts) !==
       JSON.stringify(predecessorAttempts) ||
     terminal.newProjectPostAttemptCount !== 0 ||
-    terminal.productionContactCount !== 0 ||
+    terminal.productionContactCount !== 0
+  ) {
+    fail('ADVISOR_SHAPE_DEFECT_TERMINAL_CHAIN_INVALID');
+  }
+  if (
     identity.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
     identity.database?.status !== 'REACHABLE' ||
     identity.database?.connectionMode !== 'DIRECT' ||
     identity.database?.systemIdentifier !== '7666052913346410626' ||
-    identity.database?.tls?.verifiedMode !== 'verify-full' ||
+    identity.database?.tls?.verifiedMode !== 'verify-full'
+  ) {
+    fail('ADVISOR_SHAPE_DEFECT_DATABASE_IDENTITY_INVALID');
+  }
+  if (
     normalization.recordType !== 'PR12_HOSTED_TYPES_NORMALIZATION_RECOVERY' ||
     normalization.comparison?.status !== 'GENERATED_TYPES_PARITY' ||
     normalization.comparison?.parity !== true ||
@@ -2466,7 +2477,11 @@ function assertPredecessorAdvisorShapeDefect(
     normalization.formatter?.prettierPackageTotalBytes !==
       pinnedPrettierRuntime.totalBytes ||
     normalization.formatter?.prettierConfigSha256 !==
-      pinnedPrettierRuntime.configSha256 ||
+      pinnedPrettierRuntime.configSha256
+  ) {
+    fail('ADVISOR_SHAPE_DEFECT_NORMALIZATION_CONTENT_INVALID');
+  }
+  if (
     intent.commandId !== 'PR12-CMD-016' ||
     intent.mutation !== false ||
     intent.dispatchMaximum !== 1 ||
@@ -2478,7 +2493,11 @@ function assertPredecessorAdvisorShapeDefect(
     result.timedOut !== false ||
     result.rawOutputRetained !== false ||
     result.intentArtifactSha256 !==
-      ADVISOR_SHAPE_DEFECT_CMD016_INTENT_FILE_SHA256 ||
+      ADVISOR_SHAPE_DEFECT_CMD016_INTENT_FILE_SHA256
+  ) {
+    fail('ADVISOR_SHAPE_DEFECT_CMD016_CONTENT_INVALID');
+  }
+  if (
     step01.status !== 'PASS' ||
     step02.status !== 'PASS' ||
     step03.status !== 'PASS' ||
@@ -2489,7 +2508,7 @@ function assertPredecessorAdvisorShapeDefect(
     step05.rawOutputsRetained !== false ||
     step05.productionContactCount !== 0
   ) {
-    fail(code);
+    fail('ADVISOR_SHAPE_DEFECT_STEP_STATE_INVALID');
   }
   for (const [name, snapshot] of Object.entries(snapshots)) {
     if (name === 'runtimeCredential') continue;

@@ -878,7 +878,14 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(source).toContain('ADVISOR_SHAPE_DEFECT_FILE_SECURITY_INVALID');
     expect(source).toContain('ADVISOR_SHAPE_DEFECT_FILE_HASH_INVALID');
     expect(source).toContain('ADVISOR_SHAPE_DEFECT_EMBEDDED_HASH_INVALID');
-    expect(source).toContain('ADVISOR_SHAPE_DEFECT_SEMANTIC_CONTENT_INVALID');
+    expect(source).toContain('ADVISOR_SHAPE_DEFECT_CLAIM_CONTENT_INVALID');
+    expect(source).toContain('ADVISOR_SHAPE_DEFECT_TERMINAL_CHAIN_INVALID');
+    expect(source).toContain('ADVISOR_SHAPE_DEFECT_DATABASE_IDENTITY_INVALID');
+    expect(source).toContain(
+      'ADVISOR_SHAPE_DEFECT_NORMALIZATION_CONTENT_INVALID'
+    );
+    expect(source).toContain('ADVISOR_SHAPE_DEFECT_CMD016_CONTENT_INVALID');
+    expect(source).toContain('ADVISOR_SHAPE_DEFECT_STEP_STATE_INVALID');
     expect(source).toContain('ADVISOR_SHAPE_DEFECT_BYTE_HASH_INVALID');
     expect(source).toContain('claimClaimedAt < consumedAt');
     expect(source).toContain('step04CompletedAt < intentCreatedAt');
