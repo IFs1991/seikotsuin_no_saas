@@ -1163,7 +1163,7 @@ function invokeDpapiCredentialCanary(input: JsonObject): HarnessResult {
 function invokeDpapiFrameParser(
   frame: Buffer,
   requestBytes: Buffer,
-  mode: 'EXECUTE' | 'RECOVERY',
+  mode: 'EXECUTE' | 'RECOVERY' | 'ISOLATED_PROJECT_CONTINUATION',
   credentialConfiguration: JsonValue
 ): HarnessResult {
   const harness = `
@@ -1218,14 +1218,14 @@ function invokeDpapiFrameParser(
 function makeDpapiFrame(
   requestBytes: Buffer,
   values: Array<{ role: number; bytes: Buffer }>,
-  mode: 'EXECUTE' | 'RECOVERY'
+  mode: 'EXECUTE' | 'RECOVERY' | 'ISOLATED_PROJECT_CONTINUATION'
 ): Buffer {
   const length =
     44 + values.reduce((total, value) => total + 5 + value.bytes.length, 0);
   const frame = Buffer.alloc(length);
   frame.write('PR12DPB1', 0, 'ascii');
   frame[8] = 1;
-  frame[9] = mode === 'EXECUTE' ? 1 : 2;
+  frame[9] = mode === 'EXECUTE' ? 1 : mode === 'RECOVERY' ? 2 : 4;
   frame[10] = values.length;
   frame[11] = 0;
   createHash('sha256').update(requestBytes).digest().copy(frame, 12);
@@ -3084,6 +3084,9 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     const recovery = invokeDpapiMethod('buildCredentialBrokerRequest', [
       { ...common, mode: 'RECOVERY' },
     ]);
+    const continuation = invokeDpapiMethod('buildCredentialBrokerRequest', [
+      { ...common, mode: 'ISOLATED_PROJECT_CONTINUATION' },
+    ]);
     const identityCommon = { ...common };
     Reflect.deleteProperty(identityCommon, 'derivedExecutionBindingSha256');
     const identityCapture = invokeDpapiMethod('buildCredentialBrokerRequest', [
@@ -3100,6 +3103,11 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     expect(recovery.ok).toBe(true);
     expect(JSON.stringify(recovery.value)).toContain('MANAGEMENT_ACCESS_TOKEN');
     expect(JSON.stringify(recovery.value)).not.toContain('DATABASE_PASSWORD');
+    expect(continuation.ok).toBe(true);
+    expect(JSON.stringify(continuation.value)).toContain(
+      'PR12-RECOVER-EXISTING-ISOLATED-PROJECT-001'
+    );
+    expect(JSON.stringify(continuation.value)).toContain('DATABASE_PASSWORD');
     expect(JSON.stringify(execute.value)).toContain(
       'derivedExecutionBindingSha256'
     );
@@ -3475,6 +3483,28 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
     expect(accepted.value).toEqual({
       managementAccessToken: 't'.repeat(20),
       databasePassword: 'p'.repeat(32),
+    });
+    const continuationFrame = makeDpapiFrame(
+      requestBytes,
+      [
+        { role: 1, bytes: Buffer.from('t'.repeat(20), 'utf8') },
+        { role: 2, bytes: Buffer.from('p'.repeat(32), 'utf8') },
+      ],
+      'ISOLATED_PROJECT_CONTINUATION'
+    );
+    expect(
+      invokeDpapiFrameParser(
+        continuationFrame,
+        requestBytes,
+        'ISOLATED_PROJECT_CONTINUATION',
+        fixture.credentialConfiguration
+      )
+    ).toMatchObject({
+      ok: true,
+      value: {
+        managementAccessToken: 't'.repeat(20),
+        databasePassword: 'p'.repeat(32),
+      },
     });
 
     const wrongDigest = Buffer.from(valid);
@@ -4524,6 +4554,47 @@ describe('PR12 Phase 1 source project provisioning contract', () => {
       ],
       'PROVIDER_RESPONSE_INVALID'
     );
+  });
+
+  test('does not turn transient target database metadata into a project-identity failure', () => {
+    const fixture = makeValidFixture();
+    const result = invokeContract('organizationProjectPageToSafeProjection', [
+      {
+        projects: [
+          {
+            ref: 'bcdefghijklmnopqrstu',
+            name: 'seikotsuin-pr12-isolated-qualification-20260719',
+            cloud_provider: 'AWS',
+            region: 'ap-northeast-1',
+            is_branch: false,
+            status: 'COMING_UP',
+            inserted_at: '2026-08-01T00:00:00.000Z',
+            databases: null,
+          },
+        ],
+        pagination: { count: 1, limit: 100, offset: 0 },
+      },
+      fixture.binding,
+    ]);
+
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        projects: [
+          {
+            projectRef: 'bcdefghijklmnopqrstu',
+            projectName: 'seikotsuin-pr12-isolated-qualification-20260719',
+            region: 'ap-northeast-1',
+            isBranch: false,
+            status: 'COMING_UP',
+            insertedAt: '2026-08-01T00:00:00.000Z',
+          },
+        ],
+        pagination: { count: 1, limit: 100, offset: 0 },
+        duplicateProjectRefs: ['bcdefghijklmnopqrstu'],
+        protectedProductionProjectCount: 0,
+      },
+    });
   });
 
   test('keeps isolated-target region, timestamp, and duplicate identity fail-closed', () => {

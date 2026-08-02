@@ -3470,7 +3470,7 @@ export function organizationProjectPageToSafeProjection(
       PROJECT_REF_PATTERN.test(projectRef) &&
         typeof project.name === 'string' &&
         typeof project.is_branch === 'boolean' &&
-        Array.isArray(project.databases),
+        (project.databases === null || Array.isArray(project.databases)),
       'PROVIDER_RESPONSE_INVALID'
     );
     if (prohibitedProjectRefs.includes(projectRef)) {

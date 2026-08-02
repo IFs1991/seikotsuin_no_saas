@@ -7,11 +7,17 @@ $ProgressPreference = 'SilentlyContinue'
 
 $ProvisioningActionId = 'PR12-ACTION-003'
 $OrganizationIdentityCaptureActionId = 'PR12-ACTION-002'
+$IsolatedProjectContinuationActionId =
+  'PR12-RECOVER-EXISTING-ISOLATED-PROJECT-001'
 $ProviderId = 'WINDOWS_DPAPI_CURRENT_USER_V1'
 $RequestProtocol = 'PR12_DPAPI_BROKER_REQUEST_V1'
 $ProvisioningClaimFileName = 'source-project-provisioning-action.claim.json'
 $OrganizationIdentityCaptureClaimFileName =
   'source-organization-identity-capture-action.claim.json'
+$IsolatedProjectContinuationClaimFileName =
+  'pr12-existing-project-recovery.claim.json'
+$IsolatedProjectContinuationConsumedFileName =
+  'pr12-existing-project-recovery-credential-consumed.json'
 $MaximumRequestBytes = 16384
 $MaximumResponseBytes = 8192
 $Utf8Strict = [System.Text.UTF8Encoding]::new($false, $true)
@@ -460,6 +466,10 @@ try {
     $request.PSObject.Properties.Name -ccontains 'mode' -and
     $request.mode -ceq 'ORGANIZATION_IDENTITY_CAPTURE'
   )
+  $isIsolatedProjectContinuation = (
+    $request.PSObject.Properties.Name -ccontains 'mode' -and
+    $request.mode -ceq 'ISOLATED_PROJECT_CONTINUATION'
+  )
   $requestProperties = @(
     'actionId',
     'approvalExpiresAt',
@@ -508,6 +518,9 @@ try {
   $expectedActionId = if ($isIdentityCapture) {
     $OrganizationIdentityCaptureActionId
   }
+  elseif ($isIsolatedProjectContinuation) {
+    $IsolatedProjectContinuationActionId
+  }
   else {
     $ProvisioningActionId
   }
@@ -518,20 +531,25 @@ try {
     $request.providerId -cne $ProviderId -or
     ($request.mode -cne 'EXECUTE' -and
       $request.mode -cne 'RECOVERY' -and
-      $request.mode -cne 'ORGANIZATION_IDENTITY_CAPTURE') -or
+      $request.mode -cne 'ORGANIZATION_IDENTITY_CAPTURE' -and
+      $request.mode -cne 'ISOLATED_PROJECT_CONTINUATION') -or
     $request.configurationId -isnot [string] -or
     [string]::IsNullOrWhiteSpace($request.configurationId)
   ) {
     throw 'REQUEST_INVALID'
   }
   $entries = @($request.entries)
-  $expectedCount = if ($request.mode -ceq 'EXECUTE') { 2 } else { 1 }
+  $expectedCount = if (
+    $request.mode -ceq 'EXECUTE' -or
+    $request.mode -ceq 'ISOLATED_PROJECT_CONTINUATION'
+  ) { 2 } else { 1 }
   if ($entries.Count -ne $expectedCount) {
     throw 'ENTRY_COUNT_INVALID'
   }
   if (
     $entries[0].role -cne 'MANAGEMENT_ACCESS_TOKEN' -or
-    ($request.mode -ceq 'EXECUTE' -and
+    (($request.mode -ceq 'EXECUTE' -or
+        $request.mode -ceq 'ISOLATED_PROJECT_CONTINUATION') -and
       $entries[1].role -cne 'DATABASE_PASSWORD')
   ) {
     throw 'ENTRY_ORDER_INVALID'
@@ -607,6 +625,9 @@ try {
   $claimFileName = if ($isIdentityCapture) {
     $OrganizationIdentityCaptureClaimFileName
   }
+  elseif ($isIsolatedProjectContinuation) {
+    $IsolatedProjectContinuationClaimFileName
+  }
   else {
     $ProvisioningClaimFileName
   }
@@ -635,6 +656,9 @@ try {
     Assert-ExactProperties -Value $claim -Expected $claimProperties
     $expectedClaimState = if ($isIdentityCapture) {
       'CLAIMED_GET_NOT_SENT'
+    }
+    elseif ($isIsolatedProjectContinuation) {
+      'CLAIMED_CONTINUATION_NOT_STARTED'
     }
     else {
       'CLAIMED_POST_NOT_SENT'
@@ -677,7 +701,8 @@ try {
   if (
     $values[0].Length -lt 20 -or
     $values[0].Length -gt 4096 -or
-    ($request.mode -ceq 'EXECUTE' -and
+    (($request.mode -ceq 'EXECUTE' -or
+        $request.mode -ceq 'ISOLATED_PROJECT_CONTINUATION') -and
       ($values[1].Length -lt 32 -or $values[1].Length -gt 256))
   ) {
     throw 'CREDENTIAL_LENGTH_INVALID'
@@ -691,6 +716,51 @@ try {
   if ($responseLength -gt $MaximumResponseBytes) {
     throw 'RESPONSE_TOO_LARGE'
   }
+  if ($isIsolatedProjectContinuation) {
+    $consumedPath = [IO.Path]::Combine(
+      $request.journalDirectory,
+      $IsolatedProjectContinuationConsumedFileName
+    )
+    Assert-NoReparsePathComponents -Value $request.journalDirectory
+    if (Test-Path -LiteralPath $consumedPath) {
+      throw 'CONTINUATION_CREDENTIAL_ALREADY_CONSUMED'
+    }
+    $consumedRecord = [ordered]@{
+      actionId = $IsolatedProjectContinuationActionId
+      claimSha256 = $request.claimSha256
+      consumedAt = [DateTimeOffset]::UtcNow.ToString(
+        'yyyy-MM-ddTHH:mm:ss.fffZ',
+        [Globalization.CultureInfo]::InvariantCulture
+      )
+      requestNonceSha256 = Get-TextSha256Hex -Value $request.requestNonce
+      state = 'CREDENTIAL_CONSUMED_CONTINUATION_STARTED'
+    }
+    $consumedBytes = $Utf8Strict.GetBytes(
+      (($consumedRecord | ConvertTo-Json -Compress) + "`n")
+    )
+    try {
+      $stream = [IO.File]::Open(
+        $consumedPath,
+        [IO.FileMode]::CreateNew,
+        [IO.FileAccess]::Write,
+        [IO.FileShare]::None
+      )
+      try {
+        $stream.Write($consumedBytes, 0, $consumedBytes.Length)
+        $stream.Flush($true)
+      }
+      finally {
+        $stream.Dispose()
+      }
+      Assert-StrictAcl `
+        -Value $consumedPath `
+        -Directory $false `
+        -CurrentSid $ownerSid
+    }
+    finally {
+      [Array]::Clear($consumedBytes, 0, $consumedBytes.Length)
+    }
+  }
   $ResponseBuffer = [byte[]]::new($responseLength)
   [Text.Encoding]::ASCII.GetBytes('PR12DPB1').CopyTo($ResponseBuffer, 0)
   $ResponseBuffer[8] = 1
@@ -699,6 +769,9 @@ try {
   }
   elseif ($request.mode -ceq 'RECOVERY') {
     2
+  }
+  elseif ($request.mode -ceq 'ISOLATED_PROJECT_CONTINUATION') {
+    4
   }
   else {
     3

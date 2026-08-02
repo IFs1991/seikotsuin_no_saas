@@ -16,6 +16,10 @@ const CLAIM_FILE = 'source-project-provisioning-action.claim.json';
 const ORGANIZATION_IDENTITY_CAPTURE_ACTION_ID = 'PR12-ACTION-002';
 const ORGANIZATION_IDENTITY_CAPTURE_CLAIM_FILE =
   'source-organization-identity-capture-action.claim.json';
+const ISOLATED_PROJECT_CONTINUATION_ACTION_ID =
+  'PR12-RECOVER-EXISTING-ISOLATED-PROJECT-001';
+const ISOLATED_PROJECT_CONTINUATION_CLAIM_FILE =
+  'pr12-existing-project-recovery.claim.json';
 const PROVIDER_ID = 'WINDOWS_DPAPI_CURRENT_USER_V1';
 const REQUEST_PROTOCOL = 'PR12_DPAPI_BROKER_REQUEST_V1';
 const RESPONSE_MAGIC = Buffer.from('PR12DPB1', 'ascii');
@@ -778,7 +782,8 @@ export function buildCredentialBrokerRequest({
   requireCondition(
     mode === 'EXECUTE' ||
       mode === 'RECOVERY' ||
-      mode === 'ORGANIZATION_IDENTITY_CAPTURE',
+      mode === 'ORGANIZATION_IDENTITY_CAPTURE' ||
+      mode === 'ISOLATED_PROJECT_CONTINUATION',
     'DPAPI_BROKER_MODE_INVALID'
   );
   const isIdentityCapture = mode === 'ORGANIZATION_IDENTITY_CAPTURE';
@@ -798,7 +803,7 @@ export function buildCredentialBrokerRequest({
       envelopeSha256: secrets.managementAccessToken.envelopeSha256,
     },
   ];
-  if (mode === 'EXECUTE') {
+  if (mode === 'EXECUTE' || mode === 'ISOLATED_PROJECT_CONTINUATION') {
     entries.push({
       role: 'DATABASE_PASSWORD',
       opaqueHandle: secrets.databasePassword.opaqueHandle,
@@ -812,7 +817,9 @@ export function buildCredentialBrokerRequest({
     mode,
     actionId: isIdentityCapture
       ? ORGANIZATION_IDENTITY_CAPTURE_ACTION_ID
-      : ACTION_ID,
+      : mode === 'ISOLATED_PROJECT_CONTINUATION'
+        ? ISOLATED_PROJECT_CONTINUATION_ACTION_ID
+        : ACTION_ID,
     bindingMaterialSha256,
     ...(isIdentityCapture ? {} : { derivedExecutionBindingSha256 }),
     payloadSha256,
@@ -888,8 +895,13 @@ export function parseCredentialBrokerFrame(
             ? 2
             : mode === 'ORGANIZATION_IDENTITY_CAPTURE'
               ? 3
-              : 0) &&
-      frame[10] === (mode === 'EXECUTE' ? 2 : 1) &&
+              : mode === 'ISOLATED_PROJECT_CONTINUATION'
+                ? 4
+                : 0) &&
+      frame[10] ===
+        (mode === 'EXECUTE' || mode === 'ISOLATED_PROJECT_CONTINUATION'
+          ? 2
+          : 1) &&
       frame[11] === 0 &&
       frame
         .subarray(12, 44)
@@ -897,7 +909,7 @@ export function parseCredentialBrokerFrame(
     'DPAPI_BROKER_FRAME_INVALID'
   );
   const expectedRoles =
-    mode === 'EXECUTE'
+    mode === 'EXECUTE' || mode === 'ISOLATED_PROJECT_CONTINUATION'
       ? [
           {
             code: 1,
@@ -1054,6 +1066,9 @@ export const DPAPI_CHANNEL_CONSTANTS = Object.freeze({
   organizationIdentityCaptureActionId: ORGANIZATION_IDENTITY_CAPTURE_ACTION_ID,
   organizationIdentityCaptureClaimFile:
     ORGANIZATION_IDENTITY_CAPTURE_CLAIM_FILE,
+  isolatedProjectContinuationActionId: ISOLATED_PROJECT_CONTINUATION_ACTION_ID,
+  isolatedProjectContinuationClaimFile:
+    ISOLATED_PROJECT_CONTINUATION_CLAIM_FILE,
   providerId: PROVIDER_ID,
   requestProtocol: REQUEST_PROTOCOL,
   brokerRelativePath: BROKER_RELATIVE_PATH,
