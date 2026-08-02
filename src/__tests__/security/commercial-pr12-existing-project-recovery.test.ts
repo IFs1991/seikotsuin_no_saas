@@ -1142,6 +1142,24 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(source).toContain(
       "'pr12-existing-project-recovery-replay-workdir-cycle13'"
     );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-journal-cycle14'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-evidence-cycle14'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-replay-workdir-cycle14'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-journal-cycle15'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-evidence-cycle15'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-replay-workdir-cycle15'"
+    );
     expect(source).toContain('assertPredecessorStep06Http400(');
     expect(source).toContain('assertPredecessorStep06AuthHttp500(');
     expect(source).toContain('assertPredecessorStep06UnexpectedFailure(');
@@ -1191,14 +1209,34 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(source).toContain('resumeFullMigrationReplayAfterCatalogGap(');
     expect(source).toContain('buildRecoveryOperatingSystemValues({');
     expect(source).toContain('predecessorAttempts');
+    expect(source).toContain('assertPredecessorStep06ApiResponseFailure(');
+    expect(source).toContain(
+      "const STEP06_API_RESPONSE_FAILURE_RECOVERY_HEAD =\n  '0904f7bd835f4cba400e630cd96a34d4163f8443';"
+    );
+    expect(source).toContain(
+      "reasonCode: 'ISOLATED_BROWSER_RESPONSE_READ_FAILED'"
+    );
+    expect(source).toContain(
+      "identityFilename: 'pr12-cycle14-database-identity.json'"
+    );
+    expect(source).toContain(
+      "recordType: 'PR12_EXISTING_PROJECT_CYCLE15_DATABASE_IDENTITY'"
+    );
+    expect(source).toContain("'pr12-cycle15-database-identity.json'");
     const activeMain = source.slice(source.indexOf('async function main()'));
     expect(activeMain).not.toContain('executeHostedTypesParity({');
     expect(activeMain).not.toContain('executeRepresentativeDataValidation({');
     expect(activeMain).not.toContain('executeAdvisorAfterScan({');
     expect(activeMain).toContain(
-      'STEP06_BROWSER_CONTACT_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE]'
+      'STEP06_API_RESPONSE_FAILURE_EVIDENCE_FILE_SHA256[STEP05_EVIDENCE_FILE]'
     );
     expect(activeMain).toContain(
+      'path.join(step06ApiResponseFailureEvidenceDirectory, CA_FILE)'
+    );
+    expect(activeMain).toContain(
+      'predecessorStep06ApiResponseFailureLinkSha256:'
+    );
+    expect(activeMain).not.toContain(
       'path.join(step06BrowserContactEvidenceDirectory, CA_FILE)'
     );
     expect(activeMain).not.toContain(
