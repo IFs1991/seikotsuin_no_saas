@@ -2446,8 +2446,8 @@ function assertPredecessorAdvisorShapeDefect(
     terminal.blockedCanonicalStep !== '05' ||
     JSON.stringify(terminal.completedCanonicalSteps) !==
       JSON.stringify(['01', '02', '03', '04']) ||
-    JSON.stringify(terminal.predecessorAttempts) !==
-      JSON.stringify(predecessorAttempts) ||
+    canonicalJson(terminal.predecessorAttempts) !==
+      canonicalJson(predecessorAttempts) ||
     terminal.newProjectPostAttemptCount !== 0 ||
     terminal.productionContactCount !== 0
   ) {

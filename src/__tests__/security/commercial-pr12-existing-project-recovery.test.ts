@@ -880,6 +880,11 @@ console.log(JSON.stringify({ accepted, failures }));
     expect(source).toContain('ADVISOR_SHAPE_DEFECT_EMBEDDED_HASH_INVALID');
     expect(source).toContain('ADVISOR_SHAPE_DEFECT_CLAIM_CONTENT_INVALID');
     expect(source).toContain('ADVISOR_SHAPE_DEFECT_TERMINAL_CHAIN_INVALID');
+    expect(source).toContain('canonicalJson(terminal.predecessorAttempts)');
+    expect(source).toContain('canonicalJson(predecessorAttempts)');
+    expect(source).not.toContain(
+      'JSON.stringify(terminal.predecessorAttempts)'
+    );
     expect(source).toContain('ADVISOR_SHAPE_DEFECT_DATABASE_IDENTITY_INVALID');
     expect(source).toContain(
       'ADVISOR_SHAPE_DEFECT_NORMALIZATION_CONTENT_INVALID'
