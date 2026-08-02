@@ -2131,7 +2131,7 @@ function assertPredecessorAdvisorShapeDefect(
   paths,
   predecessorAttempts
 ) {
-  const code = 'ADVISOR_SHAPE_DEFECT_EVIDENCE_INVALID';
+  let code = 'ADVISOR_SHAPE_DEFECT_PATH_SET_INVALID';
   const journal = resolveExistingDirectory(
     paths.advisorShapeDefectRecoveryJournal,
     code
@@ -2212,6 +2212,7 @@ function assertPredecessorAdvisorShapeDefect(
     ['.prettierrc', 'prettier'],
     code
   );
+  code = 'ADVISOR_SHAPE_DEFECT_DIRECTORY_SECURITY_INVALID';
   for (const directory of [journal, evidence, workdir]) {
     captureOwnerPrivatePath(repositoryRoot, directory, 'DIRECTORY');
   }
@@ -2274,6 +2275,7 @@ function assertPredecessorAdvisorShapeDefect(
       path.join(evidence, filename),
     ])
   );
+  code = 'ADVISOR_SHAPE_DEFECT_FILE_SECURITY_INVALID';
   const actionBase = path.dirname(journal);
   for (const candidate of [
     ...Object.values(files),
@@ -2295,6 +2297,7 @@ function assertPredecessorAdvisorShapeDefect(
       readCanonicalJson(artifactPath, code),
     ])
   );
+  code = 'ADVISOR_SHAPE_DEFECT_FILE_HASH_INVALID';
   if (
     snapshots.runtimeCredential.sha256 !==
       ADVISOR_SHAPE_DEFECT_RUNTIME_CREDENTIAL_FILE_SHA256 ||
@@ -2316,6 +2319,7 @@ function assertPredecessorAdvisorShapeDefect(
   ) {
     fail(code);
   }
+  code = 'ADVISOR_SHAPE_DEFECT_EMBEDDED_HASH_INVALID';
   assertCanonicalEmbeddedSha(
     snapshots.terminal.value,
     'terminalSha256',
@@ -2423,6 +2427,7 @@ function assertPredecessorAdvisorShapeDefect(
   ) {
     fail(chronologyCode);
   }
+  code = 'ADVISOR_SHAPE_DEFECT_SEMANTIC_CONTENT_INVALID';
   if (
     claim.actionId !== RECOVERY_ACTION_ID ||
     claim.bindingMaterialSha256 !==
@@ -2493,6 +2498,7 @@ function assertPredecessorAdvisorShapeDefect(
   for (const snapshot of Object.values(evidenceSnapshots)) {
     assertSecretFreeEvidence(snapshot.value, []);
   }
+  code = 'ADVISOR_SHAPE_DEFECT_BYTE_HASH_INVALID';
   const caBytes = readStableBytes(
     path.join(evidence, CA_FILE),
     16 * 1024,
