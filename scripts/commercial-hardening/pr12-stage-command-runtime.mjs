@@ -357,7 +357,28 @@ export function assertPinnedToolchainObservation(observationInput) {
 }
 
 export function projectPinnedToolchainObservation(observationInput, resolver) {
-  const verified = assertPinnedToolchainObservation(observationInput);
+  const observation = requireRecord(
+    observationInput,
+    'TOOLCHAIN_OBSERVATION_INVALID'
+  );
+  const rawObservation = Object.hasOwn(observation, 'status')
+    ? (() => {
+        const alreadyVerified = requireExactKeys(
+          observation,
+          ['status', 'supabase', 'supabaseGo', 'psql'],
+          'TOOLCHAIN_OBSERVATION_INVALID'
+        );
+        if (alreadyVerified.status !== 'PINNED_TOOLCHAIN_VERIFIED') {
+          fail('TOOLCHAIN_OBSERVATION_INVALID');
+        }
+        return {
+          supabase: alreadyVerified.supabase,
+          supabaseGo: alreadyVerified.supabaseGo,
+          psql: alreadyVerified.psql,
+        };
+      })()
+    : observation;
+  const verified = assertPinnedToolchainObservation(rawObservation);
   const projection = {
     schemaVersion: 1,
     status: verified.status,

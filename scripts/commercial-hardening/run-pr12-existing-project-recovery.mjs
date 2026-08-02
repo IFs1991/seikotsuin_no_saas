@@ -9,6 +9,7 @@ import {
   mkdirSync,
   openSync,
   readFileSync,
+  readdirSync,
   realpathSync,
   statSync,
   writeFileSync,
@@ -93,6 +94,17 @@ const EXPECTED_ACTION003_MANIFEST_SHA256 =
 const MAX_PROVIDER_BODY_BYTES = 8 * 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 30_000;
 const CREDENTIAL_LEASE_MS = 12 * 60 * 60 * 1000;
+const PREDECESSOR_RECOVERY_HEAD = '9aede531ea4496a76c9661697588f79148e03663';
+const PREDECESSOR_RUNTIME_CREDENTIAL_FILE_SHA256 =
+  '32a061bc72c9b79e90c13a16694a61299856a8d63a5e4f1e4d86b49e51eb7cd2';
+const PREDECESSOR_TERMINAL_FILE_SHA256 =
+  '2ea6c56e9642d52cf854dbfbc962265bc21a1b90d2d6f635c978825e4004b90c';
+const PREDECESSOR_STEP01_FILE_SHA256 =
+  '361a186aae2fdc21e649526cfa9ea92148abfd08e59b46e2a5ca7aa972b59fc7';
+const PREDECESSOR_TERMINAL_SHA256 =
+  'ce5f0b7e1ac12a985549c270444aba794cef578ba921ce287575b0b97c60bba2';
+const PREDECESSOR_STEP01_EVIDENCE_SHA256 =
+  '87c206d50515748ff31c37e808f1d9cc6e6d3547de26da753abee620d3bd4e58';
 
 class RecoveryExecutionError extends Error {
   constructor(code) {
@@ -306,18 +318,165 @@ function assertExternalSiblingPaths(
   }
   return {
     actionBase,
-    recoveryJournal: path.join(
+    predecessorRecoveryJournal: path.join(
       actionBase,
       'pr12-existing-project-recovery-journal'
     ),
-    recoveryEvidence: path.join(
+    predecessorRecoveryEvidence: path.join(
       actionBase,
       'pr12-existing-project-recovery-evidence'
     ),
-    replayWorkdir: path.join(
+    predecessorReplayWorkdir: path.join(
       actionBase,
       'pr12-existing-project-recovery-replay-workdir'
     ),
+    recoveryJournal: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-journal-cycle2'
+    ),
+    recoveryEvidence: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-evidence-cycle2'
+    ),
+    replayWorkdir: path.join(
+      actionBase,
+      'pr12-existing-project-recovery-replay-workdir-cycle2'
+    ),
+  };
+}
+
+function assertCanonicalEmbeddedSha(value, property, expected, code) {
+  if (!isRecord(value) || value[property] !== expected) fail(code);
+  const withoutHash = { ...value };
+  delete withoutHash[property];
+  if (sha256Canonical(withoutHash) !== expected) fail(code);
+}
+
+function assertExactDirectoryEntries(directory, expected, code) {
+  const observed = readdirSync(directory).sort();
+  const wanted = [...expected].sort();
+  if (
+    observed.length !== wanted.length ||
+    observed.some((entry, index) => entry !== wanted[index])
+  ) {
+    fail(code);
+  }
+}
+
+function assertPredecessorPreContactAbort(repositoryRoot, paths) {
+  const journal = resolveExistingDirectory(
+    paths.predecessorRecoveryJournal,
+    'PREDECESSOR_RECOVERY_EVIDENCE_INVALID'
+  );
+  const evidence = resolveExistingDirectory(
+    paths.predecessorRecoveryEvidence,
+    'PREDECESSOR_RECOVERY_EVIDENCE_INVALID'
+  );
+  if (existsSync(paths.predecessorReplayWorkdir)) {
+    fail('PREDECESSOR_RECOVERY_EVIDENCE_INVALID');
+  }
+  assertExactDirectoryEntries(
+    journal,
+    [RUNTIME_CREDENTIAL_CONFIG_FILE, TERMINAL_FILE],
+    'PREDECESSOR_RECOVERY_EVIDENCE_INVALID'
+  );
+  assertExactDirectoryEntries(
+    evidence,
+    [STEP01_EVIDENCE_FILE],
+    'PREDECESSOR_RECOVERY_EVIDENCE_INVALID'
+  );
+  captureOwnerPrivatePath(repositoryRoot, journal, 'DIRECTORY');
+  captureOwnerPrivatePath(repositoryRoot, evidence, 'DIRECTORY');
+  const runtimeCredentialPath = resolveExistingFile(
+    path.join(journal, RUNTIME_CREDENTIAL_CONFIG_FILE),
+    'PREDECESSOR_RECOVERY_EVIDENCE_INVALID'
+  );
+  const terminalPath = resolveExistingFile(
+    path.join(journal, TERMINAL_FILE),
+    'PREDECESSOR_RECOVERY_EVIDENCE_INVALID'
+  );
+  const step01Path = resolveExistingFile(
+    path.join(evidence, STEP01_EVIDENCE_FILE),
+    'PREDECESSOR_RECOVERY_EVIDENCE_INVALID'
+  );
+  for (const filePath of [runtimeCredentialPath, terminalPath, step01Path]) {
+    captureOwnerPrivatePath(repositoryRoot, filePath, 'FILE');
+  }
+  const runtimeCredential = readCanonicalJson(
+    runtimeCredentialPath,
+    'PREDECESSOR_RECOVERY_EVIDENCE_INVALID'
+  );
+  const terminal = readCanonicalJson(
+    terminalPath,
+    'PREDECESSOR_RECOVERY_EVIDENCE_INVALID'
+  );
+  const step01 = readCanonicalJson(
+    step01Path,
+    'PREDECESSOR_RECOVERY_EVIDENCE_INVALID'
+  );
+  if (
+    runtimeCredential.sha256 !== PREDECESSOR_RUNTIME_CREDENTIAL_FILE_SHA256 ||
+    terminal.sha256 !== PREDECESSOR_TERMINAL_FILE_SHA256 ||
+    step01.sha256 !== PREDECESSOR_STEP01_FILE_SHA256
+  ) {
+    fail('PREDECESSOR_RECOVERY_EVIDENCE_INVALID');
+  }
+  assertCanonicalEmbeddedSha(
+    terminal.value,
+    'terminalSha256',
+    PREDECESSOR_TERMINAL_SHA256,
+    'PREDECESSOR_RECOVERY_EVIDENCE_INVALID'
+  );
+  assertCanonicalEmbeddedSha(
+    step01.value,
+    'evidenceSha256',
+    PREDECESSOR_STEP01_EVIDENCE_SHA256,
+    'PREDECESSOR_RECOVERY_EVIDENCE_INVALID'
+  );
+  const contactCounts = isRecord(step01.value.remoteContacts)
+    ? step01.value.remoteContacts
+    : null;
+  if (
+    terminal.value.status !== 'BLOCK' ||
+    terminal.value.reasonCode !== 'TOOLCHAIN_OBSERVATION_INVALID' ||
+    terminal.value.gitHead !== PREDECESSOR_RECOVERY_HEAD ||
+    terminal.value.projectRef !== PR12_RECOVERY_TARGET.projectRef ||
+    !Array.isArray(terminal.value.completedCanonicalSteps) ||
+    terminal.value.completedCanonicalSteps.length !== 0 ||
+    terminal.value.blockedCanonicalStep !== '01' ||
+    terminal.value.newProjectPostAttemptCount !== 0 ||
+    terminal.value.productionContactCount !== 0 ||
+    terminal.value.secretValuesCaptured !== false ||
+    step01.value.status !== 'BLOCK' ||
+    step01.value.reasonCode !== 'TOOLCHAIN_OBSERVATION_INVALID' ||
+    step01.value.providerBodySha256 !== null ||
+    step01.value.productionContactCount !== 0 ||
+    step01.value.secretValuesCaptured !== false ||
+    contactCounts === null ||
+    Object.values(contactCounts).some(value => value !== 0)
+  ) {
+    fail('PREDECESSOR_RECOVERY_EVIDENCE_INVALID');
+  }
+  const linkWithoutHash = {
+    status: 'PRE_CONTACT_TOOLING_ABORT_VERIFIED',
+    gitHead: PREDECESSOR_RECOVERY_HEAD,
+    reasonCode: 'TOOLCHAIN_OBSERVATION_INVALID',
+    runtimeCredentialConfigurationFileSha256:
+      PREDECESSOR_RUNTIME_CREDENTIAL_FILE_SHA256,
+    terminalFileSha256: PREDECESSOR_TERMINAL_FILE_SHA256,
+    terminalSha256: PREDECESSOR_TERMINAL_SHA256,
+    step01FileSha256: PREDECESSOR_STEP01_FILE_SHA256,
+    step01EvidenceSha256: PREDECESSOR_STEP01_EVIDENCE_SHA256,
+    allRemoteContactCountsZero: true,
+    credentialRetrievalCount: 0,
+    newProjectPostAttemptCount: 0,
+    productionContactCount: 0,
+    rawPathsRetained: false,
+    secretValuesCaptured: false,
+  };
+  return {
+    ...linkWithoutHash,
+    linkSha256: sha256Canonical(linkWithoutHash),
   };
 }
 
@@ -356,6 +515,7 @@ function createRecoveryClaim({
   action003Evidence,
   action003Verification,
   credentialConfigurationSha256,
+  predecessorAttempt,
 }) {
   const ownerDecision = {
     schemaVersion: 1,
@@ -385,6 +545,7 @@ function createRecoveryClaim({
     action003ManifestSha256: action003Verification.manifestSha256,
     action003EvidencePathSha256: windowsPathFingerprint(action003Evidence),
     credentialConfigurationSha256,
+    predecessorAttempt,
   };
   const bindingMaterialSha256 = sha256Canonical(ownerDecision);
   const payloadSha256 = sha256Canonical({
@@ -423,7 +584,7 @@ function assertNoAmbientCredentials() {
   if (forbidden.length > 0) fail('AMBIENT_CREDENTIAL_ENVIRONMENT_FORBIDDEN');
 }
 
-function hardenPath(repositoryRoot, targetPath, kind) {
+function observeOwnerPrivatePath(repositoryRoot, targetPath, kind, mode) {
   const helper = path.join(
     repositoryRoot,
     'scripts/commercial-hardening/pr12-windows-owner-private-acl.ps1'
@@ -438,7 +599,7 @@ function hardenPath(repositoryRoot, targetPath, kind) {
       '-File',
       helper,
       '-Mode',
-      'PROTECT_AND_CAPTURE',
+      mode,
       '-Kind',
       kind,
       '-LiteralPath',
@@ -479,6 +640,19 @@ function hardenPath(repositoryRoot, targetPath, kind) {
     if (error instanceof RecoveryExecutionError) throw error;
     fail('OWNER_PRIVATE_ACL_FAILED');
   }
+}
+
+function hardenPath(repositoryRoot, targetPath, kind) {
+  return observeOwnerPrivatePath(
+    repositoryRoot,
+    targetPath,
+    kind,
+    'PROTECT_AND_CAPTURE'
+  );
+}
+
+function captureOwnerPrivatePath(repositoryRoot, targetPath, kind) {
+  return observeOwnerPrivatePath(repositoryRoot, targetPath, kind, 'CAPTURE');
 }
 
 async function readBoundedResponse(response, expectedContentTypes) {
@@ -2109,6 +2283,10 @@ async function main() {
     journalDirectory,
     action003EvidenceDirectory
   );
+  const predecessorAttempt = assertPredecessorPreContactAbort(
+    repositoryRoot,
+    paths
+  );
   createOwnerPrivateDirectory(repositoryRoot, paths.recoveryJournal);
   const evidenceAcl = createOwnerPrivateDirectory(
     repositoryRoot,
@@ -2126,6 +2304,7 @@ async function main() {
     runtimeApiKeysGetCount: 0,
     directDatabaseConnectionCount: 0,
     providerBodySha256: null,
+    predecessorAttempt,
   };
   const runtimeCredential = createRuntimeCredentialConfiguration(
     repositoryRoot,
@@ -2148,6 +2327,7 @@ async function main() {
     action003Evidence: action003EvidenceDirectory,
     action003Verification: historical,
     credentialConfigurationSha256: runtimeCredential.sha256,
+    predecessorAttempt,
   });
   const claim = claimSnapshot.claim;
   const credentialLeaseExpiresAt = new Date(
@@ -2288,6 +2468,7 @@ async function main() {
         createPostAttemptCount: 1,
         terminalReason: 'PROVIDER_RESPONSE_INVALID',
       },
+      predecessorAttempt,
       decision,
       productionBoundary: {
         productionProjectRef: 'qnanuoqveidwvacvbhqp',
@@ -2453,6 +2634,7 @@ async function main() {
       step04EvidenceSha256: types.evidenceSha256,
       step05EvidenceSha256: advisor.evidenceSha256,
       step06EvidenceSha256: smoke.evidenceSha256,
+      predecessorAttempt,
       newProjectPostAttemptCount: 0,
       productionContactCount: 0,
       secretValuesCaptured: false,
@@ -2522,6 +2704,7 @@ main().catch(error => {
             region: PR12_RECOVERY_TARGET.region,
           },
           providerBodySha256: context.providerBodySha256,
+          predecessorAttempt: context.predecessorAttempt,
           remoteContacts: {
             projectStateGetCount: context.projectStateGetCount,
             computeAddonGetCount: context.computeAddonGetCount,
@@ -2615,6 +2798,7 @@ main().catch(error => {
           projectRef: PR12_RECOVERY_TARGET.projectRef,
           completedCanonicalSteps,
           blockedCanonicalStep: blockedCanonicalStep ?? '01',
+          predecessorAttempt: context.predecessorAttempt,
           newProjectPostAttemptCount: 0,
           productionContactCount: 0,
           secretValuesCaptured: false,

@@ -512,6 +512,19 @@ describe('PR12 existing isolated project recovery', () => {
     expect(source).toContain('PINNED_CA_SHA256');
     expect(source).toContain('CA_BUNDLE_HASH_MISMATCH');
     expect(source).toContain('default_transaction_read_only=on');
+    expect(source).toContain("'pr12-existing-project-recovery-journal-cycle2'");
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-evidence-cycle2'"
+    );
+    expect(source).toContain(
+      "'pr12-existing-project-recovery-replay-workdir-cycle2'"
+    );
+    expect(source).toContain('assertPredecessorPreContactAbort(');
+    expect(source).toContain("status: 'PRE_CONTACT_TOOLING_ABORT_VERIFIED'");
+    expect(source).toContain('allRemoteContactCountsZero: true');
+    expect(source).toContain('predecessorAttempt');
+    expect(source).not.toContain('rmSync');
+    expect(source).not.toContain('unlinkSync');
 
     const broker = fs.readFileSync(
       path.join(

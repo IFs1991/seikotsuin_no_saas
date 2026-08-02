@@ -62,7 +62,7 @@ const observation = {
 };
 const accepted = subject.assertPinnedToolchainObservation(observation);
 const safeProjection = subject.projectPinnedToolchainObservation(
-  observation,
+  accepted,
   value => value
 );
 let drift = 'NOT_REJECTED';
