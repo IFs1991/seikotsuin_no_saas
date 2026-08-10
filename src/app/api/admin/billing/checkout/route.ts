@@ -14,7 +14,10 @@ import {
   hasBlockingBillingState,
   resolveOrgRootClinicForBilling,
 } from '@/lib/billing/admin';
-import { buildBillingLineItems } from '@/lib/billing/plans';
+import {
+  BILLING_TRIAL_PERIOD_DAYS,
+  buildBillingLineItems,
+} from '@/lib/billing/plans';
 import { getStripeClient } from '@/lib/stripe/server';
 import { assertEnv, env } from '@/lib/env';
 import {
@@ -24,8 +27,6 @@ import {
 import { writeBillingAuditLog } from '@/lib/billing/audit';
 
 const CHECKOUT_ENDPOINT = '/api/admin/billing/checkout';
-const TRIAL_PERIOD_DAYS = 30;
-
 const CheckoutRequestSchema = z.object({
   plan_code: z.enum(['single_clinic', 'group']),
 });
@@ -143,7 +144,7 @@ export async function POST(request: NextRequest) {
       };
 
     if (subscription?.trial_consumed !== true) {
-      subscriptionData.trial_period_days = TRIAL_PERIOD_DAYS;
+      subscriptionData.trial_period_days = BILLING_TRIAL_PERIOD_DAYS;
     }
 
     const checkoutSession = await stripe.checkout.sessions.create({
