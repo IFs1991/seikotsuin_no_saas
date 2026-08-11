@@ -131,6 +131,25 @@ describe('billing tenant activation helpers', () => {
 
   test('updates existing Stripe store add-on item with no proration', async () => {
     const { ensureStripeStoreAddOnQuantity } = await loadTenantActivation();
+    const retrieveSubscription = jest.fn(async () => ({
+      id: 'sub_123',
+      metadata: { org_root_clinic_id: 'root-clinic-1' },
+    }));
+    const retrieveItem = jest.fn(async () => ({
+      id: 'si_store_existing',
+      subscription: 'sub_123',
+      price: { id: 'price_store_addon' },
+    }));
+    const list = jest.fn(async () => ({
+      data: [
+        {
+          id: 'si_store_existing',
+          subscription: 'sub_123',
+          price: { id: 'price_store_addon' },
+        },
+      ],
+      has_more: false,
+    }));
     const update = jest.fn(async () => ({ id: 'si_store_existing' }));
     const create = jest.fn(async () => ({ id: 'si_store_new' }));
 
@@ -141,7 +160,8 @@ describe('billing tenant activation helpers', () => {
       }),
       targetPaidExtraStoreQuantity: 2,
       stripe: {
-        subscriptionItems: { update, create },
+        subscriptions: { retrieve: retrieveSubscription },
+        subscriptionItems: { retrieve: retrieveItem, list, update, create },
       },
     });
 
@@ -153,10 +173,59 @@ describe('billing tenant activation helpers', () => {
       quantity: 2,
       proration_behavior: 'none',
     });
+    expect(retrieveSubscription).toHaveBeenCalledWith('sub_123');
+    expect(retrieveItem).toHaveBeenCalledWith('si_store_existing');
+    expect(list).toHaveBeenCalledWith({ subscription: 'sub_123', limit: 100 });
     expect(create).not.toHaveBeenCalled();
   });
 
   test('creates Stripe store add-on item only with paid extra quantity', async () => {
+    const { ensureStripeStoreAddOnQuantity } = await loadTenantActivation();
+    const retrieveSubscription = jest.fn(async () => ({
+      id: 'sub_123',
+      metadata: { org_root_clinic_id: 'root-clinic-1' },
+    }));
+    const retrieveItem = jest.fn(async () => ({
+      id: 'unused',
+      subscription: 'sub_123',
+      price: { id: 'price_store_addon' },
+    }));
+    const list = jest.fn(async () => ({ data: [], has_more: false }));
+    const update = jest.fn(async () => ({ id: 'si_store_existing' }));
+    const create = jest.fn(async () => ({ id: 'si_store_new' }));
+
+    const result = await ensureStripeStoreAddOnQuantity({
+      subscription: buildSubscription({
+        stripe_store_subscription_item_id: null,
+        paid_extra_store_quantity: 0,
+      }),
+      targetPaidExtraStoreQuantity: 1,
+      stripe: {
+        subscriptions: { retrieve: retrieveSubscription },
+        subscriptionItems: { retrieve: retrieveItem, list, update, create },
+      },
+    });
+
+    expect(result).toEqual({
+      status: 'created',
+      subscriptionItemId: 'si_store_new',
+    });
+    expect(create).toHaveBeenCalledWith(
+      {
+        subscription: 'sub_123',
+        price: 'price_store_addon',
+        quantity: 1,
+        proration_behavior: 'none',
+      },
+      { idempotencyKey: 'store-addon:sub_123:1' }
+    );
+    expect(retrieveSubscription).toHaveBeenCalledWith('sub_123');
+    expect(retrieveItem).not.toHaveBeenCalled();
+    expect(list).toHaveBeenCalledWith({ subscription: 'sub_123', limit: 100 });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  test('reuses an existing Stripe add-on item when the database item ID is missing', async () => {
     const { ensureStripeStoreAddOnQuantity } = await loadTenantActivation();
     const update = jest.fn(async () => ({ id: 'si_store_existing' }));
     const create = jest.fn(async () => ({ id: 'si_store_new' }));
@@ -168,20 +237,220 @@ describe('billing tenant activation helpers', () => {
       }),
       targetPaidExtraStoreQuantity: 1,
       stripe: {
-        subscriptionItems: { update, create },
+        subscriptions: {
+          retrieve: jest.fn(async () => ({
+            id: 'sub_123',
+            metadata: { org_root_clinic_id: 'root-clinic-1' },
+          })),
+        },
+        subscriptionItems: {
+          retrieve: jest.fn(async () => ({
+            id: 'unused',
+            subscription: 'sub_123',
+            price: { id: 'price_store_addon' },
+          })),
+          list: jest.fn(async () => ({
+            data: [
+              {
+                id: 'si_store_existing',
+                subscription: 'sub_123',
+                price: { id: 'price_store_addon' },
+              },
+            ],
+            has_more: false,
+          })),
+          update,
+          create,
+        },
       },
     });
 
     expect(result).toEqual({
-      status: 'created',
-      subscriptionItemId: 'si_store_new',
+      status: 'updated',
+      subscriptionItemId: 'si_store_existing',
     });
-    expect(create).toHaveBeenCalledWith({
-      subscription: 'sub_123',
-      price: 'price_store_addon',
+    expect(update).toHaveBeenCalledWith('si_store_existing', {
       quantity: 1,
       proration_behavior: 'none',
     });
-    expect(update).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
   });
+
+  test('rejects duplicate Stripe add-on items before mutating quantity', async () => {
+    const { ensureStripeStoreAddOnQuantity } = await loadTenantActivation();
+    const update = jest.fn(async () => ({ id: 'si_store_existing' }));
+    const create = jest.fn(async () => ({ id: 'si_store_new' }));
+
+    await expect(
+      ensureStripeStoreAddOnQuantity({
+        subscription: buildSubscription({
+          stripe_store_subscription_item_id: null,
+          paid_extra_store_quantity: 0,
+        }),
+        targetPaidExtraStoreQuantity: 1,
+        stripe: {
+          subscriptions: {
+            retrieve: jest.fn(async () => ({
+              id: 'sub_123',
+              metadata: { org_root_clinic_id: 'root-clinic-1' },
+            })),
+          },
+          subscriptionItems: {
+            retrieve: jest.fn(async () => ({
+              id: 'unused',
+              subscription: 'sub_123',
+              price: { id: 'price_store_addon' },
+            })),
+            list: jest.fn(async () => ({
+              data: ['first', 'second'].map(id => ({
+                id,
+                subscription: 'sub_123',
+                price: { id: 'price_store_addon' },
+              })),
+              has_more: false,
+            })),
+            update,
+            create,
+          },
+        },
+      })
+    ).rejects.toThrow('Multiple Stripe store add-on items found');
+
+    expect(update).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  test('rejects duplicate Stripe add-on items even when the database item ID is set', async () => {
+    const { ensureStripeStoreAddOnQuantity } = await loadTenantActivation();
+    const retrieveItem = jest.fn(async () => ({
+      id: 'si_store_existing',
+      subscription: 'sub_123',
+      price: { id: 'price_store_addon' },
+    }));
+    const update = jest.fn(async () => ({ id: 'si_store_existing' }));
+    const create = jest.fn(async () => ({ id: 'si_store_new' }));
+
+    await expect(
+      ensureStripeStoreAddOnQuantity({
+        subscription: buildSubscription({
+          stripe_store_subscription_item_id: 'si_store_existing',
+          paid_extra_store_quantity: 1,
+        }),
+        targetPaidExtraStoreQuantity: 2,
+        stripe: {
+          subscriptions: {
+            retrieve: jest.fn(async () => ({
+              id: 'sub_123',
+              metadata: { org_root_clinic_id: 'root-clinic-1' },
+            })),
+          },
+          subscriptionItems: {
+            retrieve: retrieveItem,
+            list: jest.fn(async () => ({
+              data: ['si_store_existing', 'si_store_duplicate'].map(id => ({
+                id,
+                subscription: 'sub_123',
+                price: { id: 'price_store_addon' },
+              })),
+              has_more: false,
+            })),
+            update,
+            create,
+          },
+        },
+      })
+    ).rejects.toThrow('Multiple Stripe store add-on items found');
+
+    expect(retrieveItem).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  test('rejects a Stripe subscription that is not owned by the tenant', async () => {
+    const { ensureStripeStoreAddOnQuantity } = await loadTenantActivation();
+    const update = jest.fn(async () => ({ id: 'si_store_existing' }));
+    const create = jest.fn(async () => ({ id: 'si_store_new' }));
+
+    await expect(
+      ensureStripeStoreAddOnQuantity({
+        subscription: buildSubscription({
+          stripe_store_subscription_item_id: null,
+          paid_extra_store_quantity: 0,
+        }),
+        targetPaidExtraStoreQuantity: 1,
+        stripe: {
+          subscriptions: {
+            retrieve: jest.fn(async () => ({
+              id: 'sub_123',
+              metadata: { org_root_clinic_id: 'another-root' },
+            })),
+          },
+          subscriptionItems: {
+            retrieve: jest.fn(async () => ({
+              id: 'unused',
+              subscription: 'sub_123',
+              price: { id: 'price_store_addon' },
+            })),
+            list: jest.fn(async () => ({ data: [], has_more: false })),
+            update,
+            create,
+          },
+        },
+      })
+    ).rejects.toThrow('Stripe subscription ownership check failed');
+
+    expect(update).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    {
+      label: '別のサブスクリプション',
+      itemSubscriptionId: 'sub_other',
+      itemPriceId: 'price_store_addon',
+    },
+    {
+      label: '別のPrice',
+      itemSubscriptionId: 'sub_123',
+      itemPriceId: 'price_other',
+    },
+  ])(
+    'rejects an existing add-on item linked to $label',
+    async ({ itemSubscriptionId, itemPriceId }) => {
+      const { ensureStripeStoreAddOnQuantity } = await loadTenantActivation();
+      const update = jest.fn(async () => ({ id: 'si_store_existing' }));
+      const create = jest.fn(async () => ({ id: 'si_store_new' }));
+
+      await expect(
+        ensureStripeStoreAddOnQuantity({
+          subscription: buildSubscription({
+            stripe_store_subscription_item_id: 'si_store_existing',
+            paid_extra_store_quantity: 1,
+          }),
+          targetPaidExtraStoreQuantity: 2,
+          stripe: {
+            subscriptions: {
+              retrieve: jest.fn(async () => ({
+                id: 'sub_123',
+                metadata: { org_root_clinic_id: 'root-clinic-1' },
+              })),
+            },
+            subscriptionItems: {
+              retrieve: jest.fn(async () => ({
+                id: 'si_store_existing',
+                subscription: itemSubscriptionId,
+                price: { id: itemPriceId },
+              })),
+              list: jest.fn(async () => ({ data: [], has_more: false })),
+              update,
+              create,
+            },
+          },
+        })
+      ).rejects.toThrow('Stripe store add-on ownership check failed');
+
+      expect(update).not.toHaveBeenCalled();
+      expect(create).not.toHaveBeenCalled();
+    }
+  );
 });

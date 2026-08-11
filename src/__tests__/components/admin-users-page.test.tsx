@@ -40,7 +40,9 @@ jest.mock('@/components/ui/select', () => {
   };
 
   return {
-    Select: ({ children }: SelectMockProps) => <div>{children}</div>,
+    Select: ({ children, value }: SelectMockProps) => (
+      <div data-select-value={value}>{children}</div>
+    ),
     SelectTrigger: ({ children, id, className }: SelectMockProps) => (
       <button id={id} type='button' className={className}>
         {children}
@@ -129,7 +131,63 @@ const setupHooks = (role: 'admin' | 'clinic_admin' | 'manager') => {
 describe('AdminUsersPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    window.history.replaceState({}, '', '/admin/users');
     setupHooks('admin');
+  });
+
+  it('店舗追加後の許可済みclinic_idだけを初期選択する', async () => {
+    window.history.replaceState({}, '', '/admin/users?clinic_id=clinic-1');
+    const { container } = render(<AdminUsersPage />);
+
+    await waitFor(() => {
+      expect(
+        container.querySelector('#admin-user-clinic')?.parentElement
+      ).toHaveAttribute('data-select-value', 'clinic-1');
+    });
+  });
+
+  it('許可済み店舗候補の遅延取得後に作成フォームへclinic_idを引き継ぐ', async () => {
+    window.history.replaceState({}, '', '/admin/users?clinic_id=clinic-1');
+    useAdminTenantsMock.mockReturnValue({
+      clinics: [],
+      loading: true,
+      error: null,
+      fetchClinics: jest.fn(),
+    });
+    const { container, rerender } = render(<AdminUsersPage />);
+
+    expect(
+      container.querySelector('#admin-user-clinic')?.parentElement
+    ).not.toHaveAttribute('data-select-value', 'clinic-1');
+
+    useAdminTenantsMock.mockReturnValue({
+      clinics: [{ id: 'clinic-1', name: '新宿院' }],
+      loading: false,
+      error: null,
+      fetchClinics: jest.fn(),
+    });
+    rerender(<AdminUsersPage />);
+
+    await waitFor(() => {
+      expect(
+        container.querySelector('#admin-user-clinic')?.parentElement
+      ).toHaveAttribute('data-select-value', 'clinic-1');
+    });
+  });
+
+  it('スコープ外のclinic_idを初期選択しない', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/admin/users?clinic_id=scope-out-clinic'
+    );
+    const { container } = render(<AdminUsersPage />);
+
+    await waitFor(() => {
+      expect(
+        container.querySelector('[data-select-value="scope-out-clinic"]')
+      ).not.toBeInTheDocument();
+    });
   });
 
   it('lets admin create an account-only user without adding it to the permission list', async () => {
@@ -257,10 +315,13 @@ describe('AdminUsersPage', () => {
     fireEvent.change(screen.getByLabelText('初期パスワード'), {
       target: { value: 'SafePass123!' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'アカウントを作成する' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'アカウントを作成する' })
+    );
 
-    expect(await screen.findByText('所属先店舗を選択してください'))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByText('所属先店舗を選択してください')
+    ).toBeInTheDocument();
     expect(assignPermissionMock).not.toHaveBeenCalled();
   });
 });

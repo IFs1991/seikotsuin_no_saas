@@ -6,11 +6,16 @@ import {
   useDeferredValue,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ChangeEvent,
   type FormEvent,
 } from 'react';
-import { useAdminTenants, type ClinicSummary } from '@/hooks/useAdminTenants';
+import {
+  useAdminTenants,
+  type ClinicSummary,
+  type CreateClinicResult,
+} from '@/hooks/useAdminTenants';
 import { useAdminUserCandidates, useAdminUsers } from '@/hooks/useAdminUsers';
 import { AdminFormCard } from '@/components/admin/admin-form-card';
 import { AdminListCard } from '@/components/admin/admin-list-card';
@@ -18,8 +23,9 @@ import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminScopeNotice } from '@/components/admin/admin-scope-notice';
 import { AdminState } from '@/components/admin/admin-state';
 import { AdminAccountCreateFields } from '@/components/admin/admin-account-create-fields';
+import { TenantAddDialog } from '@/components/admin/tenant-add-dialog';
 import {
-  TenantOperationStatusBadge,
+  TenantLifecycleStatusBadge,
   TenantOperationStatusControl,
 } from '@/components/admin/tenant-operation-status';
 import { UserCandidateCombobox } from '@/components/admin/user-candidate-combobox';
@@ -76,14 +82,14 @@ import {
 
 const TENANT_SCOPE_NOTICE_ITEMS = [
   {
-    label: 'この画面で作るもの',
+    label: '店舗を追加',
     description:
-      '同一スコープ内の本部配下に、子テナントと店舗単位の運用状態を作成・管理します。',
+      '店舗情報と追加後の料金影響を確認してから、同一スコープ内の本部配下へ追加します。',
   },
   {
-    label: '初期アクセス',
+    label: '店舗管理者',
     description:
-      'あとで設定、新規管理者作成、既存ユーザー割り当てから選択できます。',
+      '店舗追加後にアカウント・権限管理で設定します。店舗作成とアカウント作成は分けて行います。',
   },
   {
     label: '別画面で扱うもの',
@@ -112,7 +118,7 @@ const TenantTableRow = memo(function TenantTableRow({
       <TableCell>{formatClinicTypeLabel(clinic)}</TableCell>
       <TableCell>{buildParentLabel(clinic)}</TableCell>
       <TableCell>
-        <TenantOperationStatusBadge isActive={clinic.is_active} />
+        <TenantLifecycleStatusBadge clinic={clinic} />
       </TableCell>
       <TableCell>{formatClinicDate(clinic.created_at)}</TableCell>
       <TableCell className='space-x-2'>
@@ -122,9 +128,14 @@ const TenantTableRow = memo(function TenantTableRow({
         <Button
           size='sm'
           variant={clinic.is_active ? 'destructive' : 'secondary'}
+          disabled={clinic.billing_activation_status === 'pending_billing'}
           onClick={() => onToggleActive(clinic)}
         >
-          {formatClinicOperationAction(clinic.is_active)}
+          {clinic.billing_activation_status === 'pending_billing'
+            ? '契約反映待ち'
+            : clinic.billing_activation_status === 'billing_failed'
+              ? '有効化を再試行'
+              : formatClinicOperationAction(clinic.is_active)}
         </Button>
       </TableCell>
     </TableRow>
@@ -139,6 +150,7 @@ export default function AdminTenantsPage() {
     fetchClinics,
     listClinics,
     createClinic,
+    previewTenantAdd,
     updateClinic,
     setClinics,
   } = useAdminTenants();
@@ -162,14 +174,29 @@ export default function AdminTenantsPage() {
   const [selectedUserLabel, setSelectedUserLabel] = useState('');
   const [isUserPickerOpen, setIsUserPickerOpen] = useState(false);
   const [statusFilter, setStatusFilter] =
-    useState<ClinicStatusFilterValue>('active');
+    useState<ClinicStatusFilterValue>('all');
   const [tenantOptions, setTenantOptions] = useState<ClinicSummary[]>([]);
   const [tenantOptionsLoading, setTenantOptionsLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const editPanelRef = useRef<HTMLDivElement>(null);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [formState, setFormState] = useState<TenantFormState>(
     createInitialTenantFormState
   );
+
+  useEffect(() => {
+    if (!editingId) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      editPanelRef.current?.scrollIntoView?.({ block: 'start' });
+      editPanelRef.current?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [editingId]);
   const isCreateMode = editingId === null;
   const isNewInitialAdminMode =
     formState.initial_access_mode === TENANT_INITIAL_ACCESS_NEW;
@@ -268,9 +295,17 @@ export default function AdminTenantsPage() {
     (clinic: ClinicSummary) => {
       if (!matchesCurrentFilters(clinic)) {
         removeClinicFromCurrentView(clinic.id);
+        return;
       }
+
+      setClinics(current => {
+        const exists = current.some(item => item.id === clinic.id);
+        return exists
+          ? current.map(item => (item.id === clinic.id ? clinic : item))
+          : [clinic, ...current];
+      });
     },
-    [matchesCurrentFilters, removeClinicFromCurrentView]
+    [matchesCurrentFilters, removeClinicFromCurrentView, setClinics]
   );
 
   const resetForm = useCallback(() => {
@@ -326,6 +361,16 @@ export default function AdminTenantsPage() {
         )
       ),
     [tenantOptions, editingId, formState.parent_id]
+  );
+
+  const addParentTenantOptions = useMemo(
+    () =>
+      sortClinicsForDisplay(
+        tenantOptions.filter(
+          clinic => clinic.parent_id === null && clinic.is_active
+        )
+      ),
+    [tenantOptions]
   );
 
   const displayClinics = useMemo(
@@ -473,6 +518,39 @@ export default function AdminTenantsPage() {
       setStatusFilter(value);
     },
     []
+  );
+
+  const handleDialogCreated = useCallback(
+    async (clinic: CreateClinicResult) => {
+      syncClinicWithCurrentFilters(clinic);
+      await refreshTenantOptions();
+      setNotice(
+        clinic.billing_activation_result?.status === 'pending_webhook' ||
+          clinic.billing_activation_result?.status === 'pending_capacity'
+          ? '店舗を作成し、契約情報を同期しています'
+          : clinic.billing_activation_result?.status === 'billing_failed'
+            ? '店舗は作成済みですが、有効化を完了できませんでした'
+            : '店舗を追加しました'
+      );
+    },
+    [refreshTenantOptions, syncClinicWithCurrentFilters]
+  );
+
+  const pollCreatedClinic = useCallback(
+    async (clinicId: string) => {
+      const items = await listClinics({ isActive: null });
+      if (!items) {
+        return null;
+      }
+
+      setTenantOptions(items);
+      const clinic = items.find(item => item.id === clinicId) ?? null;
+      if (clinic) {
+        syncClinicWithCurrentFilters(clinic);
+      }
+      return clinic;
+    },
+    [listClinics, syncClinicWithCurrentFilters]
   );
 
   const handleSubmit = useCallback(
@@ -631,256 +709,290 @@ export default function AdminTenantsPage() {
 
   return (
     <AdminPageShell
-      title='クリニック管理'
-      description='同一スコープ内の本部配下に子テナントを作成し、店舗の運用状態を管理します。スタッフや権限ユーザーの追加はアカウント・権限管理で扱います。'
+      title='店舗管理'
+      description='本部配下の店舗を一覧で確認し、料金への影響を確認してから新しい店舗を追加します。'
     >
       <AdminScopeNotice
         title='この画面の役割'
-        description='店舗という箱を作る画面です。人を増やす操作とは分けて管理します。'
+        description='店舗という箱と契約上の店舗枠を確認する画面です。人を増やす操作とは分けて管理します。'
         items={TENANT_SCOPE_NOTICE_ITEMS}
         action={{ href: '/admin/users', label: '店舗ユーザーを作成する' }}
       />
 
-      <AdminFormCard
-        title={isCreateMode ? 'テナント/店舗作成' : 'テナント/店舗編集'}
-      >
-        <form onSubmit={handleSubmit} className='space-y-4'>
-          <div className='grid gap-4 md:grid-cols-2'>
-            <div className='space-y-2'>
-              <label htmlFor='clinic-name' className='text-sm font-medium'>
-                店舗/テナント名
-              </label>
-              <Input
-                id='clinic-name'
-                value={formState.name}
-                onChange={handleNameChange}
-                placeholder='例: 本院'
-              />
-            </div>
-            <div className='space-y-2'>
-              <label
-                htmlFor='clinic-phone-number'
-                className='text-sm font-medium'
-              >
-                電話番号
-              </label>
-              <Input
-                id='clinic-phone-number'
-                value={formState.phone_number}
-                onChange={handlePhoneNumberChange}
-                placeholder='例: 03-1234-5678'
-              />
-            </div>
-          </div>
-          <div className='grid gap-4 md:grid-cols-2'>
-            <div className='space-y-2'>
-              <label htmlFor='clinic-address' className='text-sm font-medium'>
-                住所
-              </label>
-              <Input
-                id='clinic-address'
-                value={formState.address}
-                onChange={handleAddressChange}
-                placeholder='例: 東京都千代田区'
-              />
-            </div>
-            <TenantOperationStatusControl
-              id='clinic-active'
-              isActive={formState.is_active}
-              onChange={handleOperationStatusChange}
-            />
-          </div>
-          <div className='grid gap-4 md:grid-cols-2'>
-            <div className='space-y-2'>
-              <label
-                htmlFor='clinic-tenant-type'
-                className='text-sm font-medium'
-              >
-                テナント種別
-              </label>
-              <Select
-                value={formState.tenant_type}
-                onValueChange={value =>
-                  handleTenantTypeChange(value as ClinicHierarchyType)
-                }
-                disabled={
-                  shouldLockHierarchy || shouldRestrictTenantTypeToChild
-                }
-              >
-                <SelectTrigger id='clinic-tenant-type' className='w-full'>
-                  <SelectValue placeholder='種別を選択' />
-                </SelectTrigger>
-                <SelectContent>
-                  {tenantTypeOptions.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className='space-y-2'>
-              <label
-                htmlFor='clinic-parent-tenant'
-                className='text-sm font-medium'
-              >
-                親テナント
-              </label>
-              <Select
-                value={formState.parent_id || UNSELECTED_PARENT_VALUE}
-                onValueChange={handleParentTenantChange}
-                disabled={
-                  formState.tenant_type !== 'child' || shouldLockHierarchy
-                }
-              >
-                <SelectTrigger id='clinic-parent-tenant' className='w-full'>
-                  <SelectValue
-                    placeholder={
-                      tenantOptionsLoading
-                        ? '親テナントを読み込み中'
-                        : '親テナントを選択'
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={UNSELECTED_PARENT_VALUE}>
-                    親テナントを選択
-                  </SelectItem>
-                  {parentTenantOptions.map(clinic => (
-                    <SelectItem key={clinic.id} value={clinic.id}>
-                      {buildParentOptionLabel(clinic)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className='text-xs text-muted-foreground'>
-                子テナントは同一スコープ内の本部配下に作成します
-              </p>
-              {shouldLockHierarchy && (
-                <p className='text-xs text-amber-600 dark:text-amber-400'>
-                  子テナントを持つ本部テナントは、先に子テナントを整理するまで親変更できません
-                </p>
-              )}
-            </div>
-          </div>
-          <section className='space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-muted'>
-            <div>
-              <h3 className='text-sm font-semibold text-slate-950 dark:text-slate-50'>
-                {isCreateMode ? '初期アクセス設定' : '管理者アクセス設定'}
-              </h3>
-              <p className='mt-1 text-xs leading-5 text-slate-600 dark:text-muted-foreground'>
-                {isCreateMode
-                  ? '店舗/テナント作成時点で、誰が最初に管理画面へアクセスするかを選択します。既存の院長・施術者・管理者が担う場合は、既存ユーザーを割り当ててください。'
-                  : 'このテナントにログインできる店舗管理者を追加します。新規管理者を作成するか、既存ユーザーを割り当ててください。'}
-              </p>
-            </div>
-            <div
-              className={`grid gap-3 ${
-                isCreateMode ? 'md:grid-cols-3' : 'md:grid-cols-2'
-              }`}
-              role='radiogroup'
-              aria-label={
-                isCreateMode ? '初期アクセス設定' : '管理者アクセス設定'
-              }
-            >
-              {initialAccessOptions.map(option => {
-                const isSelected =
-                  formState.initial_access_mode === option.value;
+      <TenantAddDialog
+        open={isAddDialogOpen}
+        parentOptions={addParentTenantOptions}
+        parentOptionsLoading={tenantOptionsLoading}
+        requestError={error}
+        onOpenChange={setIsAddDialogOpen}
+        onPreview={previewTenantAdd}
+        onCreate={createClinic}
+        onCreated={handleDialogCreated}
+        onPollClinic={pollCreatedClinic}
+      />
 
-                return (
-                  <button
-                    key={option.value}
-                    type='button'
-                    role='radio'
-                    aria-checked={isSelected}
-                    className={`rounded-lg border p-3 text-left transition-colors ${
-                      isSelected
-                        ? 'border-blue-500 bg-blue-50 text-blue-950 dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-100'
-                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-card dark:text-muted-foreground dark:hover:bg-slate-900'
-                    }`}
-                    onClick={() => handleInitialAccessModeChange(option.value)}
+      <div aria-live='polite' aria-atomic='true' className='space-y-2'>
+        {notice && (
+          <p className='text-sm font-medium text-emerald-700 dark:text-emerald-300'>
+            {notice}
+          </p>
+        )}
+        {error && !isAddDialogOpen && (
+          <p className='text-sm text-destructive'>{error}</p>
+        )}
+      </div>
+
+      {editingId && (
+        <div ref={editPanelRef} tabIndex={-1} aria-label='店舗情報を編集'>
+          <AdminFormCard title='店舗情報を編集'>
+            <form onSubmit={handleSubmit} className='space-y-4'>
+              <div className='grid gap-4 md:grid-cols-2'>
+                <div className='space-y-2'>
+                  <label htmlFor='clinic-name' className='text-sm font-medium'>
+                    店舗/テナント名
+                  </label>
+                  <Input
+                    id='clinic-name'
+                    value={formState.name}
+                    onChange={handleNameChange}
+                    placeholder='例: 本院'
+                  />
+                </div>
+                <div className='space-y-2'>
+                  <label
+                    htmlFor='clinic-phone-number'
+                    className='text-sm font-medium'
                   >
-                    <span className='block text-sm font-semibold'>
-                      {option.label}
-                    </span>
-                    <span className='mt-1 block text-xs leading-5 opacity-80'>
-                      {option.description}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            {formState.initial_access_mode === TENANT_INITIAL_ACCESS_LATER && (
-              <p className='rounded-md bg-white px-3 py-2 text-xs leading-5 text-slate-600 dark:bg-card dark:text-muted-foreground'>
-                テナント作成後、アカウント・権限管理から店舗管理者、マネージャー、施術者、スタッフを追加してください。
-              </p>
-            )}
-            {isNewInitialAdminMode && (
-              <AdminAccountCreateFields
-                fullName={formState.login_full_name}
-                email={formState.login_email}
-                password={formState.login_password}
-                fullNameInputId='clinic-login-full-name'
-                emailInputId='clinic-login-email'
-                passwordInputId='clinic-login-password'
-                emailPlaceholder='例: clinic-admin@example.com'
-                passwordPlaceholder='初期パスワードを設定'
-                passwordHelpText='ログインはメールアドレスとパスワードで行います'
-                onFullNameChange={handleLoginFullNameChange}
-                onEmailChange={handleLoginEmailChange}
-                onPasswordChange={handleLoginPasswordChange}
-              />
-            )}
-            {isExistingInitialAdminMode && (
-              <UserCandidateCombobox
-                candidates={userCandidates}
-                disabled={false}
-                error={userCandidatesError}
-                hasSelectedUser={hasSelectedInitialAdmin}
-                inputId='tenant-initial-admin-search'
-                isOpen={isUserPickerOpen}
-                listboxId='tenant-initial-admin-candidates'
-                loading={userCandidatesLoading}
-                selectedUserId={formState.existing_admin_user_id}
-                value={userSearch}
-                onOpenChange={setIsUserPickerOpen}
-                onSearchChange={handleInitialAdminSearchChange}
-                onSelect={handleInitialAdminSelect}
-              />
-            )}
-            {!isCreateMode && (
-              <Button
-                type='button'
-                variant='outline'
-                disabled={loading || permissionLoading}
-                onClick={handleTenantAdminAccessSubmit}
-              >
-                店舗管理者を設定する
-              </Button>
-            )}
-          </section>
-          <div className='flex flex-wrap items-center gap-2'>
-            <Button type='submit' disabled={loading || permissionLoading}>
-              {editingId ? '更新する' : '作成する'}
-            </Button>
-            {editingId && (
-              <Button type='button' variant='outline' onClick={resetForm}>
-                編集をキャンセル
-              </Button>
-            )}
-            {notice && (
-              <span className='text-sm text-emerald-600'>{notice}</span>
-            )}
-            {error && <span className='text-sm text-red-500'>{error}</span>}
-            {permissionError && (
-              <span className='text-sm text-red-500'>{permissionError}</span>
-            )}
-          </div>
-        </form>
-      </AdminFormCard>
+                    電話番号
+                  </label>
+                  <Input
+                    id='clinic-phone-number'
+                    value={formState.phone_number}
+                    onChange={handlePhoneNumberChange}
+                    placeholder='例: 03-1234-5678'
+                  />
+                </div>
+              </div>
+              <div className='grid gap-4 md:grid-cols-2'>
+                <div className='space-y-2'>
+                  <label
+                    htmlFor='clinic-address'
+                    className='text-sm font-medium'
+                  >
+                    住所
+                  </label>
+                  <Input
+                    id='clinic-address'
+                    value={formState.address}
+                    onChange={handleAddressChange}
+                    placeholder='例: 東京都千代田区'
+                  />
+                </div>
+                <TenantOperationStatusControl
+                  id='clinic-active'
+                  isActive={formState.is_active}
+                  onChange={handleOperationStatusChange}
+                />
+              </div>
+              <div className='grid gap-4 md:grid-cols-2'>
+                <div className='space-y-2'>
+                  <label
+                    htmlFor='clinic-tenant-type'
+                    className='text-sm font-medium'
+                  >
+                    テナント種別
+                  </label>
+                  <Select
+                    value={formState.tenant_type}
+                    onValueChange={value =>
+                      handleTenantTypeChange(value as ClinicHierarchyType)
+                    }
+                    disabled={
+                      shouldLockHierarchy || shouldRestrictTenantTypeToChild
+                    }
+                  >
+                    <SelectTrigger id='clinic-tenant-type' className='w-full'>
+                      <SelectValue placeholder='種別を選択' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tenantTypeOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className='space-y-2'>
+                  <label
+                    htmlFor='clinic-parent-tenant'
+                    className='text-sm font-medium'
+                  >
+                    親テナント
+                  </label>
+                  <Select
+                    value={formState.parent_id || UNSELECTED_PARENT_VALUE}
+                    onValueChange={handleParentTenantChange}
+                    disabled={
+                      formState.tenant_type !== 'child' || shouldLockHierarchy
+                    }
+                  >
+                    <SelectTrigger id='clinic-parent-tenant' className='w-full'>
+                      <SelectValue
+                        placeholder={
+                          tenantOptionsLoading
+                            ? '親テナントを読み込み中'
+                            : '親テナントを選択'
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={UNSELECTED_PARENT_VALUE}>
+                        親テナントを選択
+                      </SelectItem>
+                      {parentTenantOptions.map(clinic => (
+                        <SelectItem key={clinic.id} value={clinic.id}>
+                          {buildParentOptionLabel(clinic)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className='text-xs text-muted-foreground'>
+                    子テナントは同一スコープ内の本部配下に作成します
+                  </p>
+                  {shouldLockHierarchy && (
+                    <p className='text-xs text-amber-600 dark:text-amber-400'>
+                      子テナントを持つ本部テナントは、先に子テナントを整理するまで親変更できません
+                    </p>
+                  )}
+                </div>
+              </div>
+              <section className='space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-muted'>
+                <div>
+                  <h3 className='text-sm font-semibold text-slate-950 dark:text-slate-50'>
+                    {isCreateMode ? '初期アクセス設定' : '管理者アクセス設定'}
+                  </h3>
+                  <p className='mt-1 text-xs leading-5 text-slate-600 dark:text-muted-foreground'>
+                    {isCreateMode
+                      ? '店舗/テナント作成時点で、誰が最初に管理画面へアクセスするかを選択します。既存の院長・施術者・管理者が担う場合は、既存ユーザーを割り当ててください。'
+                      : 'このテナントにログインできる店舗管理者を追加します。新規管理者を作成するか、既存ユーザーを割り当ててください。'}
+                  </p>
+                </div>
+                <div
+                  className={`grid gap-3 ${
+                    isCreateMode ? 'md:grid-cols-3' : 'md:grid-cols-2'
+                  }`}
+                  role='radiogroup'
+                  aria-label={
+                    isCreateMode ? '初期アクセス設定' : '管理者アクセス設定'
+                  }
+                >
+                  {initialAccessOptions.map(option => {
+                    const isSelected =
+                      formState.initial_access_mode === option.value;
+
+                    return (
+                      <button
+                        key={option.value}
+                        type='button'
+                        role='radio'
+                        aria-checked={isSelected}
+                        className={`rounded-lg border p-3 text-left transition-colors ${
+                          isSelected
+                            ? 'border-blue-500 bg-blue-50 text-blue-950 dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-100'
+                            : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-card dark:text-muted-foreground dark:hover:bg-slate-900'
+                        }`}
+                        onClick={() =>
+                          handleInitialAccessModeChange(option.value)
+                        }
+                      >
+                        <span className='block text-sm font-semibold'>
+                          {option.label}
+                        </span>
+                        <span className='mt-1 block text-xs leading-5 opacity-80'>
+                          {option.description}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {formState.initial_access_mode ===
+                  TENANT_INITIAL_ACCESS_LATER && (
+                  <p className='rounded-md bg-white px-3 py-2 text-xs leading-5 text-slate-600 dark:bg-card dark:text-muted-foreground'>
+                    テナント作成後、アカウント・権限管理から店舗管理者、マネージャー、施術者、スタッフを追加してください。
+                  </p>
+                )}
+                {isNewInitialAdminMode && (
+                  <AdminAccountCreateFields
+                    fullName={formState.login_full_name}
+                    email={formState.login_email}
+                    password={formState.login_password}
+                    fullNameInputId='clinic-login-full-name'
+                    emailInputId='clinic-login-email'
+                    passwordInputId='clinic-login-password'
+                    emailPlaceholder='例: clinic-admin@example.com'
+                    passwordPlaceholder='初期パスワードを設定'
+                    passwordHelpText='ログインはメールアドレスとパスワードで行います'
+                    onFullNameChange={handleLoginFullNameChange}
+                    onEmailChange={handleLoginEmailChange}
+                    onPasswordChange={handleLoginPasswordChange}
+                  />
+                )}
+                {isExistingInitialAdminMode && (
+                  <UserCandidateCombobox
+                    candidates={userCandidates}
+                    disabled={false}
+                    error={userCandidatesError}
+                    hasSelectedUser={hasSelectedInitialAdmin}
+                    inputId='tenant-initial-admin-search'
+                    isOpen={isUserPickerOpen}
+                    listboxId='tenant-initial-admin-candidates'
+                    loading={userCandidatesLoading}
+                    selectedUserId={formState.existing_admin_user_id}
+                    value={userSearch}
+                    onOpenChange={setIsUserPickerOpen}
+                    onSearchChange={handleInitialAdminSearchChange}
+                    onSelect={handleInitialAdminSelect}
+                  />
+                )}
+                {!isCreateMode && (
+                  <Button
+                    type='button'
+                    variant='outline'
+                    disabled={loading || permissionLoading}
+                    onClick={handleTenantAdminAccessSubmit}
+                  >
+                    店舗管理者を設定する
+                  </Button>
+                )}
+              </section>
+              <div className='flex flex-wrap items-center gap-2'>
+                <Button type='submit' disabled={loading || permissionLoading}>
+                  {editingId ? '更新する' : '作成する'}
+                </Button>
+                {editingId && (
+                  <Button type='button' variant='outline' onClick={resetForm}>
+                    編集をキャンセル
+                  </Button>
+                )}
+                {permissionError && (
+                  <span className='text-sm text-red-500'>
+                    {permissionError}
+                  </span>
+                )}
+              </div>
+            </form>
+          </AdminFormCard>
+        </div>
+      )}
 
       <AdminListCard
-        title='クリニック一覧'
+        title='店舗一覧'
+        actions={
+          <Button size='touch' onClick={() => setIsAddDialogOpen(true)}>
+            店舗を追加
+          </Button>
+        }
         searchId='admin-tenant-search'
         searchValue={search}
         searchPlaceholder='クリニック名で検索'
@@ -934,8 +1046,8 @@ export default function AdminTenantsPage() {
                   <TableCell colSpan={7}>
                     <AdminState
                       variant='empty'
-                      title='クリニックがありません'
-                      description='検索条件を変更するか、新しいクリニックを作成してください。'
+                      title='店舗がありません'
+                      description='検索条件を変更するか、「店舗を追加」から新しい店舗を作成してください。'
                     />
                   </TableCell>
                 </TableRow>

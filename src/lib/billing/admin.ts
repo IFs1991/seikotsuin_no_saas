@@ -150,6 +150,23 @@ export async function countActiveChildClinics(input: {
   return count ?? 0;
 }
 
+export async function countUnresolvedBillingChildClinics(input: {
+  client: SupabaseServerClient;
+  orgRootClinicId: string;
+}) {
+  const { count, error } = await input.client
+    .from('clinics')
+    .select('id', { count: 'exact', head: true })
+    .eq('parent_id', input.orgRootClinicId)
+    .in('billing_activation_status', ['pending_billing', 'billing_failed']);
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
+}
+
 export function isCheckoutPendingExpired(input: {
   subscription: Pick<
     BillingSubscriptionRow,
