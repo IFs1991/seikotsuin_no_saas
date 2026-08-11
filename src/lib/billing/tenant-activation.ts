@@ -61,13 +61,31 @@ export type StoreAddOnQuantitySyncResult =
 
 type StoreAddOnSubscription = Pick<
   BillingTenantSubscriptionRow,
+  | 'org_root_clinic_id'
   | 'stripe_subscription_id'
   | 'stripe_store_subscription_item_id'
   | 'paid_extra_store_quantity'
 >;
 
+type StripeStoreAddOnItem = {
+  id: string;
+  subscription: string | { id: string };
+  price: { id: string };
+};
+
 type StripeStoreAddOnClient = {
+  subscriptions: {
+    retrieve: (id: string) => Promise<{
+      id: string;
+      metadata: Record<string, string>;
+    }>;
+  };
   subscriptionItems: {
+    retrieve: (id: string) => Promise<StripeStoreAddOnItem>;
+    list: (params: { subscription: string; limit: number }) => Promise<{
+      data: StripeStoreAddOnItem[];
+      has_more: boolean;
+    }>;
     update: (
       id: string,
       params: {
@@ -75,14 +93,95 @@ type StripeStoreAddOnClient = {
         proration_behavior: 'none';
       }
     ) => Promise<{ id: string }>;
-    create: (params: {
-      subscription: string;
-      price: string;
-      quantity: number;
-      proration_behavior: 'none';
-    }) => Promise<{ id: string }>;
+    create: (
+      params: {
+        subscription: string;
+        price: string;
+        quantity: number;
+        proration_behavior: 'none';
+      },
+      options: { idempotencyKey: string }
+    ) => Promise<{ id: string }>;
   };
 };
+
+function stripeResourceId(resource: string | { id: string }): string {
+  return typeof resource === 'string' ? resource : resource.id;
+}
+
+async function assertStripeStoreAddOnTarget(input: {
+  stripe: StripeStoreAddOnClient;
+  subscription: StoreAddOnSubscription & {
+    stripe_subscription_id: string;
+  };
+  storeAddonPriceId: string;
+}): Promise<string | null> {
+  const stripeSubscription = await input.stripe.subscriptions.retrieve(
+    input.subscription.stripe_subscription_id
+  );
+  if (
+    stripeSubscription.id !== input.subscription.stripe_subscription_id ||
+    stripeSubscription.metadata.org_root_clinic_id !==
+      input.subscription.org_root_clinic_id
+  ) {
+    throw new Error('Stripe subscription ownership check failed');
+  }
+
+  const subscriptionItemId =
+    input.subscription.stripe_store_subscription_item_id;
+  const subscriptionItems = await input.stripe.subscriptionItems.list({
+    subscription: input.subscription.stripe_subscription_id,
+    limit: 100,
+  });
+  if (subscriptionItems.has_more) {
+    throw new Error('Stripe store add-on item lookup was incomplete');
+  }
+
+  const matchingItems = subscriptionItems.data.filter(
+    item => item.price.id === input.storeAddonPriceId
+  );
+  if (!subscriptionItemId) {
+    if (matchingItems.length === 0) {
+      return null;
+    }
+    if (matchingItems.length !== 1) {
+      throw new Error('Multiple Stripe store add-on items found');
+    }
+
+    const matchingItem = matchingItems[0];
+    if (
+      stripeResourceId(matchingItem.subscription) !==
+      input.subscription.stripe_subscription_id
+    ) {
+      throw new Error('Stripe store add-on ownership check failed');
+    }
+
+    return matchingItem.id;
+  }
+
+  if (matchingItems.length !== 1) {
+    if (matchingItems.length > 1) {
+      throw new Error('Multiple Stripe store add-on items found');
+    }
+    throw new Error('Stripe store add-on ownership check failed');
+  }
+  if (matchingItems[0].id !== subscriptionItemId) {
+    throw new Error('Stripe store add-on ownership check failed');
+  }
+
+  const subscriptionItem =
+    await input.stripe.subscriptionItems.retrieve(subscriptionItemId);
+  if (
+    subscriptionItem.id !== subscriptionItemId ||
+    stripeResourceId(subscriptionItem.subscription) !==
+      input.subscription.stripe_subscription_id ||
+    subscriptionItem.price.id !== input.storeAddonPriceId
+  ) {
+    throw new Error('Stripe store add-on ownership check failed');
+  }
+
+  return subscriptionItem.id;
+}
 
 export type ActivationRpcResult = {
   success: boolean;
@@ -230,9 +329,18 @@ export async function ensureStripeStoreAddOnQuantity(input: {
   }
 
   const stripe = input.stripe ?? getStripeClient();
-  if (input.subscription.stripe_store_subscription_item_id) {
+  const verifiedSubscriptionItemId = await assertStripeStoreAddOnTarget({
+    stripe,
+    subscription: {
+      ...input.subscription,
+      stripe_subscription_id: input.subscription.stripe_subscription_id,
+    },
+    storeAddonPriceId: priceIds.storeAddon,
+  });
+
+  if (verifiedSubscriptionItemId) {
     const updated = await stripe.subscriptionItems.update(
-      input.subscription.stripe_store_subscription_item_id,
+      verifiedSubscriptionItemId,
       {
         quantity: input.targetPaidExtraStoreQuantity,
         proration_behavior: 'none',
@@ -245,12 +353,21 @@ export async function ensureStripeStoreAddOnQuantity(input: {
     };
   }
 
-  const created = await stripe.subscriptionItems.create({
-    subscription: input.subscription.stripe_subscription_id,
-    price: priceIds.storeAddon,
-    quantity: input.targetPaidExtraStoreQuantity,
-    proration_behavior: 'none',
-  });
+  const created = await stripe.subscriptionItems.create(
+    {
+      subscription: input.subscription.stripe_subscription_id,
+      price: priceIds.storeAddon,
+      quantity: input.targetPaidExtraStoreQuantity,
+      proration_behavior: 'none',
+    },
+    {
+      idempotencyKey: [
+        'store-addon',
+        input.subscription.stripe_subscription_id,
+        input.targetPaidExtraStoreQuantity,
+      ].join(':'),
+    }
+  );
 
   return {
     status: 'created',

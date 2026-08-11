@@ -555,7 +555,6 @@ export async function PATCH(
       }
 
       responseClinic.billing_activation_status = 'pending_billing';
-      responseClinic.billing_activation_error = null;
 
       if (plan.requiresStripeQuantityIncrease && subscription) {
         try {
@@ -579,7 +578,6 @@ export async function PATCH(
           responseClinic.billing_activation_status = 'billing_failed';
           responseClinic.billing_activation_failed_at =
             new Date().toISOString();
-          responseClinic.billing_activation_error = errorMessage;
           billingActivationResult = {
             status: 'billing_failed',
             error_code: 'stripe_quantity_update_failed',

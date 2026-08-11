@@ -6,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AdminTenantsPage from '@/app/(app)/admin/(protected)/tenants/page';
@@ -41,8 +42,7 @@ describe('AdminTenantsPage', () => {
     jest.useRealTimers();
   });
 
-  it('作成したクリニックを一覧再取得なしで反映する', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  it('料金影響を確認して店舗を追加し、管理者設定導線を表示する', async () => {
     const hqClinic = {
       id: '11111111-1111-4111-8111-111111111111',
       name: '本部',
@@ -66,19 +66,30 @@ describe('AdminTenantsPage', () => {
       parent_name: hqClinic.name,
       clinic_type: 'child',
       child_count: 0,
-      admin_account: {
-        email: 'clinic-admin@example.com',
-        role: 'clinic_admin',
-      },
+      billing_activation_status: 'active',
+      billing_activation_result: { status: 'activated' },
     };
-    const clinicAdminName = '山田 院長';
 
     mockFetch
       .mockResolvedValueOnce(
         createJsonResponse({ success: true, data: { items: [hqClinic] } })
       )
       .mockResolvedValueOnce(
-        createJsonResponse({ success: true, data: { items: [] } })
+        createJsonResponse({ success: true, data: { items: [hqClinic] } })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          success: true,
+          data: {
+            status: 'base_capacity',
+            canCreate: true,
+            activeStoreCount: 3,
+            afterStoreCount: 4,
+            includedStoreCount: 5,
+            contractedExtraStoreQuantity: 0,
+            contractedStoreLimit: 5,
+          },
+        })
       )
       .mockResolvedValueOnce(
         createJsonResponse({ success: true, data: createdClinic })
@@ -100,34 +111,35 @@ describe('AdminTenantsPage', () => {
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
-    fireEvent.change(screen.getByPlaceholderText('例: 本院'), {
+    fireEvent.click(screen.getByRole('button', { name: '店舗を追加' }));
+    const dialog = await screen.findByRole('dialog');
+
+    fireEvent.change(within(dialog).getByPlaceholderText('例: 新宿西口院'), {
       target: { value: createdClinic.name },
     });
-    fireEvent.change(screen.getByPlaceholderText('例: 東京都千代田区'), {
+    fireEvent.change(within(dialog).getByPlaceholderText('例: 東京都新宿区'), {
       target: { value: createdClinic.address },
     });
-    fireEvent.change(screen.getByPlaceholderText('例: 03-1234-5678'), {
+    fireEvent.change(within(dialog).getByPlaceholderText('例: 03-1234-5678'), {
       target: { value: createdClinic.phone_number },
     });
-    await user.click(screen.getByLabelText('親テナント'));
-    await user.click(
-      await screen.findByText(hqClinic.name, { selector: 'span' })
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: '追加内容を確認' })
     );
-    await user.click(screen.getByRole('radio', { name: /新規管理者を作成/ }));
-    fireEvent.change(screen.getByPlaceholderText('例: 山田 太郎'), {
-      target: { value: clinicAdminName },
-    });
-    fireEvent.change(
-      screen.getByPlaceholderText('例: clinic-admin@example.com'),
-      {
-        target: { value: createdClinic.admin_account.email },
-      }
-    );
-    fireEvent.change(screen.getByPlaceholderText('初期パスワードを設定'), {
-      target: { value: 'StorePass1!' },
+
+    expect(
+      await within(dialog).findByText('基本料金内で追加できます')
+    ).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: '店舗を追加' })
+      );
     });
 
-    fireEvent.click(screen.getByRole('button', { name: '作成する' }));
+    expect(
+      await within(dialog).findByRole('link', { name: '店舗管理者を設定' })
+    ).toHaveAttribute('href', `/admin/users?clinic_id=${createdClinic.id}`);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'あとで設定' }));
 
     await waitFor(() => {
       expect(
@@ -136,41 +148,35 @@ describe('AdminTenantsPage', () => {
     });
 
     expect(
-      screen.getByText(
-        '子テナントと店舗管理者アカウントを作成しました（親: 本部 / ID: clinic-admin@example.com）'
-      )
+      screen.getByText('店舗を追加しました', { selector: 'p' })
     ).toBeInTheDocument();
-    expect(mockFetch).toHaveBeenCalledTimes(4);
+    expect(mockFetch).toHaveBeenCalledTimes(5);
     expect(mockFetch).toHaveBeenNthCalledWith(1, '/api/admin/tenants');
-    expect(mockFetch).toHaveBeenNthCalledWith(
-      2,
-      '/api/admin/tenants?is_active=true'
-    );
+    expect(mockFetch).toHaveBeenNthCalledWith(2, '/api/admin/tenants');
     expect(mockFetch).toHaveBeenNthCalledWith(
       3,
+      `/api/admin/tenants/add-preview?parent_id=${hqClinic.id}`
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      4,
       '/api/admin/tenants',
       expect.objectContaining({
         method: 'POST',
       })
     );
-    expect(mockFetch).toHaveBeenNthCalledWith(4, '/api/admin/tenants');
+    expect(mockFetch).toHaveBeenNthCalledWith(5, '/api/admin/tenants');
 
-    const requestInit = mockFetch.mock.calls[2][1] as RequestInit;
-    expect(JSON.parse(String(requestInit.body))).toEqual(
-      expect.objectContaining({
-        name: createdClinic.name,
-        address: createdClinic.address,
-        phone_number: createdClinic.phone_number,
-        is_active: true,
-        parent_id: hqClinic.id,
-        login_full_name: clinicAdminName,
-        login_email: createdClinic.admin_account.email,
-        login_password: 'StorePass1!',
-      })
-    );
+    const requestInit = mockFetch.mock.calls[3][1] as RequestInit;
+    expect(JSON.parse(String(requestInit.body))).toEqual({
+      name: createdClinic.name,
+      address: createdClinic.address,
+      phone_number: createdClinic.phone_number,
+      is_active: true,
+      parent_id: hqClinic.id,
+    });
   });
 
-  it('運用中フィルタで停止したクリニックを一覧から外す', async () => {
+  it('店舗を停止して一覧の状態表示を更新する', async () => {
     const activeClinic = {
       id: 'clinic-1',
       name: '本院',
@@ -236,8 +242,9 @@ describe('AdminTenantsPage', () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByRole('cell', { name: activeClinic.name })
-      ).not.toBeInTheDocument();
+        screen.getByRole('cell', { name: activeClinic.name })
+      ).toBeInTheDocument();
+      expect(screen.getByText('停止中')).toBeInTheDocument();
     });
 
     expect(
@@ -319,6 +326,9 @@ describe('AdminTenantsPage', () => {
     });
 
     fireEvent.click(screen.getAllByRole('button', { name: '編集' })[1]);
+    await waitFor(() =>
+      expect(screen.getByLabelText('店舗情報を編集')).toHaveFocus()
+    );
     fireEvent.change(screen.getByPlaceholderText('例: 山田 太郎'), {
       target: { value: clinicAdminName },
     });
@@ -386,8 +396,7 @@ describe('AdminTenantsPage', () => {
       clinic_type: 'child',
       child_count: 0,
     };
-    const fieldError =
-      'パスワードには大文字を1文字以上含める必要があります';
+    const fieldError = 'パスワードには大文字を1文字以上含める必要があります';
 
     mockFetch
       .mockResolvedValueOnce(
@@ -535,23 +544,32 @@ describe('AdminTenantsPage', () => {
     });
 
     fireEvent.click(screen.getAllByRole('button', { name: '編集' })[1]);
-    await user.click(screen.getByRole('radio', { name: /既存ユーザーを割り当て/ }));
-    fireEvent.change(screen.getByPlaceholderText('氏名・メールアドレスで検索'), {
-      target: { value: candidate.email },
-    });
+    await user.click(
+      screen.getByRole('radio', { name: /既存ユーザーを割り当て/ })
+    );
+    fireEvent.change(
+      screen.getByPlaceholderText('氏名・メールアドレスで検索'),
+      {
+        target: { value: candidate.email },
+      }
+    );
 
     await act(async () => {
       jest.advanceTimersByTime(250);
     });
 
-    await user.click(await screen.findByRole('option', { name: /既存 管理者/ }));
+    await user.click(
+      await screen.findByRole('option', { name: /既存 管理者/ })
+    );
     fireEvent.click(
       screen.getByRole('button', { name: '店舗管理者を設定する' })
     );
 
     await waitFor(() => {
       expect(
-        screen.getByText('既存ユーザーをこのテナントの管理者として割り当てました')
+        screen.getByText(
+          '既存ユーザーをこのテナントの管理者として割り当てました'
+        )
       ).toBeInTheDocument();
     });
 

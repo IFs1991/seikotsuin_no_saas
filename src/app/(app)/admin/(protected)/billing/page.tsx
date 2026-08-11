@@ -6,6 +6,7 @@ import {
 } from '@/components/admin/billing-page-client';
 import {
   getEnabledBillingPlans,
+  isBillingEnabled,
   isBillingUpgradeEnabled,
   isBillingUiEnabled,
 } from '@/lib/billing/config';
@@ -14,6 +15,7 @@ import {
   fetchBillingSubscription,
   resolveOrgRootClinicForBilling,
 } from '@/lib/billing/admin';
+import { fetchGroupBillingPriceCatalog } from '@/lib/billing/price-catalog';
 import { withAuthorityUnavailableRedirect } from '@/lib/auth/authority-unavailable';
 import { createClient, getUserAccessContext } from '@/lib/supabase';
 import {
@@ -21,7 +23,26 @@ import {
   ScopeNotConfiguredError,
 } from '@/lib/supabase/scoped-admin';
 
-export default async function AdminBillingPage() {
+type AdminBillingPageProps = {
+  searchParams: Promise<{
+    checkout?: string | string[];
+  }>;
+};
+
+function parseCheckoutResult(
+  value: string | string[] | undefined
+): AdminBillingSnapshot['checkoutResult'] {
+  if (value === 'success' || value === 'cancelled') {
+    return value;
+  }
+
+  return null;
+}
+
+export default async function AdminBillingPage({
+  searchParams,
+}: AdminBillingPageProps) {
+  const query = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -54,7 +75,9 @@ export default async function AdminBillingPage() {
     client: adminCtx.client,
     scopedClinicIds: adminCtx.scopedClinicIds,
   });
-  const [subscription, activeBillableStoreCount] = await Promise.all([
+  const billingEnabled = isBillingEnabled() && isBillingUiEnabled();
+  const enabledPlans = getEnabledBillingPlans();
+  const [subscription, activeBillableStoreCount, pricing] = await Promise.all([
     fetchBillingSubscription({
       client: adminCtx.client,
       orgRootClinicId: orgRootClinic.id,
@@ -63,20 +86,25 @@ export default async function AdminBillingPage() {
       client: adminCtx.client,
       orgRootClinicId: orgRootClinic.id,
     }),
+    billingEnabled && enabledPlans.includes('group')
+      ? fetchGroupBillingPriceCatalog().catch(() => null)
+      : Promise.resolve(null),
   ]);
   const snapshot: AdminBillingSnapshot = {
-    billingEnabled: isBillingUiEnabled(),
+    billingEnabled,
     upgradeEnabled: isBillingUpgradeEnabled(),
-    enabledPlans: getEnabledBillingPlans(),
+    enabledPlans,
+    pricing,
+    checkoutResult: parseCheckoutResult(query.checkout),
     subscription: subscription
       ? {
           planCode: subscription.plan_code,
           billingState: subscription.billing_state,
           stripeStatus: subscription.stripe_status,
-          stripeCustomerId: subscription.stripe_customer_id,
-          stripeSubscriptionId: subscription.stripe_subscription_id,
+          hasStripeCustomer: subscription.stripe_customer_id !== null,
           currentPeriodEnd: subscription.current_period_end,
           trialEnd: subscription.trial_end,
+          trialConsumed: subscription.trial_consumed,
           cancelAtPeriodEnd: subscription.cancel_at_period_end,
           includedStoreQuantity: subscription.included_store_quantity,
           paidExtraStoreQuantity: subscription.paid_extra_store_quantity,
@@ -87,8 +115,8 @@ export default async function AdminBillingPage() {
 
   return (
     <AdminPageShell
-      title='Billing'
-      description='Stripe Billing の契約状態、店舗数、Checkout / Customer Portal を管理します。'
+      title='契約・料金'
+      description='現在の契約状態、料金の内訳、支払い方法を確認・管理します。'
     >
       <AdminBillingPageClient snapshot={snapshot} />
     </AdminPageShell>

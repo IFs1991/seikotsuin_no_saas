@@ -11,6 +11,7 @@ const mockCreateAdminClient = jest.fn();
 const mockResolveOrgRootClinicForBilling = jest.fn();
 const mockFetchBillingSubscription = jest.fn();
 const mockCountActiveChildClinics = jest.fn();
+const mockCountUnresolvedBillingChildClinics = jest.fn();
 const mockHasBlockingBillingState = jest.fn();
 const mockBuildBillingLineItems = jest.fn();
 const mockGetStripeClient = jest.fn();
@@ -21,6 +22,7 @@ const mockEnsureStripeStoreAddOnQuantity = jest.fn();
 const mockActivateBillableStoreIfCapacity = jest.fn();
 const mockIsTenantBillingGuardActive = jest.fn();
 const mockMarkClinicBillingActivationFailed = jest.fn();
+const mockFetchGroupBillingPriceCatalog = jest.fn();
 const mockLogAdminAction = jest.fn();
 const mockUpgradeSingleToGroupSubscription = jest.fn();
 
@@ -71,14 +73,19 @@ jest.mock('@/lib/billing/upgrade', () => {
 
 jest.mock('@/lib/billing/admin', () => ({
   countActiveChildClinics: mockCountActiveChildClinics,
+  countUnresolvedBillingChildClinics: mockCountUnresolvedBillingChildClinics,
   fetchBillingSubscription: mockFetchBillingSubscription,
   hasBlockingBillingState: mockHasBlockingBillingState,
   resolveOrgRootClinicForBilling: mockResolveOrgRootClinicForBilling,
 }));
 
-jest.mock('@/lib/billing/plans', () => ({
-  buildBillingLineItems: mockBuildBillingLineItems,
-}));
+jest.mock('@/lib/billing/plans', () => {
+  const actual = jest.requireActual('@/lib/billing/plans');
+  return {
+    ...actual,
+    buildBillingLineItems: mockBuildBillingLineItems,
+  };
+});
 
 jest.mock('@/lib/stripe/server', () => ({
   getStripeClient: mockGetStripeClient,
@@ -113,6 +120,10 @@ jest.mock('@/lib/billing/tenant-activation', () => ({
   fetchTenantBillingSubscription: mockFetchTenantBillingSubscription,
   isTenantBillingGuardActive: mockIsTenantBillingGuardActive,
   markClinicBillingActivationFailed: mockMarkClinicBillingActivationFailed,
+}));
+
+jest.mock('@/lib/billing/price-catalog', () => ({
+  fetchGroupBillingPriceCatalog: mockFetchGroupBillingPriceCatalog,
 }));
 
 jest.mock('@/lib/audit-logger', () => ({
@@ -468,6 +479,7 @@ describe('admin tenant billing audit events', () => {
     mockWriteBillingAuditLog.mockResolvedValue(undefined);
     mockIsTenantBillingGuardActive.mockReturnValue(true);
     mockCountActiveChildClinics.mockResolvedValue(5);
+    mockCountUnresolvedBillingChildClinics.mockResolvedValue(0);
     mockFetchTenantBillingSubscription.mockResolvedValue({
       org_root_clinic_id: 'root-clinic-1',
       plan_code: 'group',
@@ -492,6 +504,211 @@ describe('admin tenant billing audit events', () => {
       subscriptionItemId: 'si_new',
     });
     mockLogAdminAction.mockResolvedValue(undefined);
+    mockFetchGroupBillingPriceCatalog.mockResolvedValue({
+      groupBase: {
+        currency: 'jpy',
+        unitAmount: 78_000,
+        interval: 'month',
+        intervalCount: 1,
+        taxBehavior: 'unspecified',
+      },
+      storeAddon: {
+        currency: 'jpy',
+        unitAmount: 8_000,
+        interval: 'month',
+        intervalCount: 1,
+        taxBehavior: 'unspecified',
+      },
+    });
+  });
+
+  function setupPreInsertRequest(body: Record<string, unknown>) {
+    const rootClinicId = '11111111-1111-4111-8111-111111111111';
+    const parentQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: {
+          id: rootClinicId,
+          name: 'Root Clinic',
+          parent_id: null,
+          is_active: true,
+        },
+        error: null,
+      }),
+    };
+    const from = jest.fn((table: string) => {
+      if (table !== 'clinics') {
+        throw new Error(`Unexpected table: ${table}`);
+      }
+      return parentQuery;
+    });
+
+    mockAdminAuth(body);
+    mockCreateScopedAdminContext.mockReturnValue({
+      client: { from },
+      scopedClinicIds: [rootClinicId],
+      assertClinicInScope: jest.fn(),
+    });
+    mockCreateAdminClient.mockReturnValue({
+      auth: { admin: { createUser: jest.fn(), deleteUser: jest.fn() } },
+      from: jest.fn(),
+    });
+
+    return { rootClinicId, from };
+  }
+
+  test('unresolved billing activation fails before clinic insert', async () => {
+    const { rootClinicId, from } = setupPreInsertRequest({
+      name: 'Child Clinic',
+      parent_id: '11111111-1111-4111-8111-111111111111',
+    });
+    mockCountUnresolvedBillingChildClinics.mockResolvedValue(1);
+
+    const { POST } = await import('@/app/api/admin/tenants/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/tenants', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Child Clinic',
+          parent_id: rootClinicId,
+        }),
+      })
+    );
+
+    expect(response.status).toBe(409);
+    expect(from).toHaveBeenCalledTimes(1);
+    expect(mockFetchGroupBillingPriceCatalog).not.toHaveBeenCalled();
+    expect(mockEnsureStripeStoreAddOnQuantity).not.toHaveBeenCalled();
+  });
+
+  test('paid increase without explicit confirmation fails before clinic insert', async () => {
+    const { rootClinicId, from } = setupPreInsertRequest({
+      name: 'Child Clinic',
+      parent_id: '11111111-1111-4111-8111-111111111111',
+    });
+
+    const { POST } = await import('@/app/api/admin/tenants/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/tenants', {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Child Clinic', parent_id: rootClinicId }),
+      })
+    );
+
+    expect(response.status).toBe(409);
+    expect(from).toHaveBeenCalledTimes(1);
+    expect(mockFetchGroupBillingPriceCatalog).not.toHaveBeenCalled();
+    expect(mockEnsureStripeStoreAddOnQuantity).not.toHaveBeenCalled();
+  });
+
+  test('stale paid confirmation fails before clinic insert', async () => {
+    const staleConfirmation = {
+      acknowledged_paid_increase: true as const,
+      active_store_count: 4,
+      target_paid_extra_store_quantity: 1,
+      store_addon_unit_amount: 8_000,
+      monthly_increase: 8_000,
+      standard_monthly_total: 86_000,
+    };
+    const { rootClinicId, from } = setupPreInsertRequest({
+      name: 'Child Clinic',
+      parent_id: '11111111-1111-4111-8111-111111111111',
+      billing_confirmation: staleConfirmation,
+    });
+
+    const { POST } = await import('@/app/api/admin/tenants/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/tenants', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Child Clinic',
+          parent_id: rootClinicId,
+          billing_confirmation: staleConfirmation,
+        }),
+      })
+    );
+
+    expect(response.status).toBe(409);
+    expect(from).toHaveBeenCalledTimes(1);
+    expect(mockFetchGroupBillingPriceCatalog).toHaveBeenCalledTimes(1);
+    expect(mockEnsureStripeStoreAddOnQuantity).not.toHaveBeenCalled();
+  });
+
+  test('missing Stripe quantity update target fails before clinic insert', async () => {
+    const confirmation = {
+      acknowledged_paid_increase: true as const,
+      active_store_count: 5,
+      target_paid_extra_store_quantity: 1,
+      store_addon_unit_amount: 8_000,
+      monthly_increase: 8_000,
+      standard_monthly_total: 86_000,
+    };
+    const { rootClinicId, from } = setupPreInsertRequest({
+      name: 'Child Clinic',
+      parent_id: '11111111-1111-4111-8111-111111111111',
+      billing_confirmation: confirmation,
+    });
+    mockFetchTenantBillingSubscription.mockResolvedValue({
+      org_root_clinic_id: rootClinicId,
+      plan_code: 'group',
+      billing_state: 'active',
+      stripe_subscription_id: null,
+      stripe_store_subscription_item_id: null,
+      included_store_quantity: 5,
+      paid_extra_store_quantity: 0,
+    });
+
+    const { POST } = await import('@/app/api/admin/tenants/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/tenants', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Child Clinic',
+          parent_id: rootClinicId,
+          billing_confirmation: confirmation,
+        }),
+      })
+    );
+
+    expect(response.status).toBe(409);
+    expect(from).toHaveBeenCalledTimes(1);
+    expect(mockFetchGroupBillingPriceCatalog).not.toHaveBeenCalled();
+    expect(mockEnsureStripeStoreAddOnQuantity).not.toHaveBeenCalled();
+  });
+
+  test('current store count exceeding contracted quantity fails before clinic insert', async () => {
+    const confirmation = {
+      acknowledged_paid_increase: true as const,
+      active_store_count: 6,
+      target_paid_extra_store_quantity: 2,
+      store_addon_unit_amount: 8_000,
+      monthly_increase: 16_000,
+      standard_monthly_total: 94_000,
+    };
+    const { rootClinicId, from } = setupPreInsertRequest({
+      name: 'Child Clinic',
+      parent_id: '11111111-1111-4111-8111-111111111111',
+      billing_confirmation: confirmation,
+    });
+    mockCountActiveChildClinics.mockResolvedValue(6);
+
+    const { POST } = await import('@/app/api/admin/tenants/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/tenants', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Child Clinic',
+          parent_id: rootClinicId,
+          billing_confirmation: confirmation,
+        }),
+      })
+    );
+
+    expect(response.status).toBe(409);
+    expect(from).toHaveBeenCalledTimes(1);
+    expect(mockFetchGroupBillingPriceCatalog).not.toHaveBeenCalled();
+    expect(mockEnsureStripeStoreAddOnQuantity).not.toHaveBeenCalled();
   });
 
   test('tenant add path writes pending and Stripe quantity audit logs', async () => {
@@ -551,6 +768,14 @@ describe('admin tenant billing audit events', () => {
     mockAdminAuth({
       name: 'Child Clinic',
       parent_id: rootClinicId,
+      billing_confirmation: {
+        acknowledged_paid_increase: true,
+        active_store_count: 5,
+        target_paid_extra_store_quantity: 1,
+        store_addon_unit_amount: 8_000,
+        monthly_increase: 8_000,
+        standard_monthly_total: 86_000,
+      },
     });
     const assertClinicInScope = jest.fn();
     mockCreateScopedAdminContext.mockReturnValue({
@@ -578,6 +803,14 @@ describe('admin tenant billing audit events', () => {
         body: JSON.stringify({
           name: 'Child Clinic',
           parent_id: rootClinicId,
+          billing_confirmation: {
+            acknowledged_paid_increase: true,
+            active_store_count: 5,
+            target_paid_extra_store_quantity: 1,
+            store_addon_unit_amount: 8_000,
+            monthly_increase: 8_000,
+            standard_monthly_total: 86_000,
+          },
         }),
       })
     );
