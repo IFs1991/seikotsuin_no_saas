@@ -143,6 +143,11 @@ export const mutatingRoutePolicies = [
   billed('/api/care-episodes/recalculate-visit-stages', ['POST']),
   billed('/api/chat', ['POST'], 'ai-operations'),
   billed('/api/customers', ['POST', 'PATCH']),
+  billed(
+    '/api/customers/identity-aliases',
+    ['POST', 'DELETE'],
+    'patient-identity'
+  ),
   billed('/api/customers/[customerId]/insurance-coverages', ['POST']),
   billed('/api/customers/[customerId]/insurance-coverages/[coverageId]', [
     'PATCH',
@@ -169,6 +174,7 @@ export const mutatingRoutePolicies = [
   billed('/api/resources', ['POST', 'PATCH', 'DELETE'], 'scheduling'),
   billed('/api/revenue-estimates/recalculate', ['POST']),
   billed('/api/staff', ['POST'], 'workforce-scheduling'),
+  billed('/api/staff/availability-events', ['POST'], 'workforce-scheduling'),
   billed('/api/staff/preferences', ['POST'], 'workforce-scheduling'),
   billed('/api/staff/shift-request-periods', ['POST'], 'workforce-scheduling'),
   billed(
@@ -451,6 +457,14 @@ export const mutatingRoutePolicies = [
     ['PATCH'],
     'derived',
     'Patient consent updates must remain available regardless of clinic billing state.',
+    'patient-safety',
+    'line-my-page-token'
+  ),
+  unbilled(
+    '/api/public/staff-preferences',
+    ['PUT'],
+    'derived',
+    'Patient staff notification preferences must remain available regardless of clinic billing state.',
     'patient-safety',
     'line-my-page-token'
   ),

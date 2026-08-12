@@ -1,4 +1,9 @@
 import { getLineChannelAccessToken } from '@/lib/line/token-manager';
+import {
+  createCrmAdminClient,
+  type CrmSupabaseClient,
+} from '@/lib/crm-line/db';
+import { updateStaffAvailabilityNotificationDelivery } from '@/lib/services/staff-availability-service';
 import { createLogger } from '@/lib/logger';
 import { enqueueEmail } from '@/lib/notifications/email/enqueue-email';
 import type { EmailTemplateType } from '@/lib/notifications/email/types';
@@ -30,6 +35,7 @@ export type ProcessLineOutboxOptions = {
   now?: Date;
   fetcher?: LineFetch;
   accessTokenResolver?: AccessTokenResolver;
+  availabilityDeliveryClient?: CrmSupabaseClient;
 };
 
 export type ProcessLineOutboxResult = {
@@ -106,6 +112,7 @@ export async function processLineOutbox(
         now,
         errorMessage: `line_access_token_unavailable:${token.reason}`,
         retryAfterSeconds: Math.ceil(TOKEN_RETRY_DELAY_MS / 1000),
+        availabilityDeliveryClient: options.availabilityDeliveryClient,
       });
       result[resolveFailureResultKey(failure)] += 1;
       if (failure.fallbackEnqueued) {
@@ -124,11 +131,13 @@ export async function processLineOutbox(
 
     if (pushResult.ok === true) {
       const sentAt = new Date().toISOString();
-      await updateLineJob(supabase, job.id, {
+      await finalizeLineDelivery(supabase, {
+        job,
+        payload,
         status: 'sent',
-        sent_at: sentAt,
-        last_error: null,
-        next_attempt_at: sentAt,
+        sentAt,
+        lastError: null,
+        availabilityDeliveryClient: options.availabilityDeliveryClient,
       });
       await updateOutreachRecipientDelivery(supabase, {
         outreach: payload.outreach,
@@ -147,6 +156,7 @@ export async function processLineOutbox(
       now,
       errorMessage: pushResult.errorMessage,
       retryAfterSeconds: pushResult.retryAfterSeconds,
+      availabilityDeliveryClient: options.availabilityDeliveryClient,
     });
     result[resolveFailureResultKey(failure)] += 1;
     if (failure.fallbackEnqueued) {
@@ -318,13 +328,17 @@ async function handleLineDeliveryFailure(
     now: Date;
     errorMessage: string;
     retryAfterSeconds: number | null;
+    availabilityDeliveryClient?: CrmSupabaseClient;
   }
 ): Promise<FailureOutcome> {
   if (params.attempts >= MAX_LINE_ATTEMPTS) {
-    await updateLineJob(supabase, params.job.id, {
+    await finalizeLineDelivery(supabase, {
+      job: params.job,
+      payload: params.payload,
       status: 'failed',
-      last_error: params.errorMessage,
-      next_attempt_at: params.now.toISOString(),
+      sentAt: null,
+      lastError: params.errorMessage,
+      availabilityDeliveryClient: params.availabilityDeliveryClient,
     });
     await updateOutreachRecipientDelivery(supabase, {
       outreach: params.payload.outreach,
@@ -488,6 +502,7 @@ function readLineMessagePayload(value: Json): LineMessagePayload | null {
 
   const fallbackEmail = readLineEmailFallback(value.fallbackEmail);
   const outreach = readOutreachPayload(value.outreach);
+  const availability = readAvailabilityPayload(value.availability);
 
   return {
     text: value.text,
@@ -496,7 +511,60 @@ function readLineMessagePayload(value: Json): LineMessagePayload | null {
       : {}),
     ...(fallbackEmail ? { fallbackEmail } : {}),
     ...(outreach ? { outreach } : {}),
+    ...(availability ? { availability } : {}),
   };
+}
+
+function readAvailabilityPayload(
+  value: unknown
+): LineMessagePayload['availability'] | undefined {
+  if (!isRecord(value)) return undefined;
+  if (
+    typeof value.eventId !== 'string' ||
+    typeof value.notificationId !== 'string' ||
+    typeof value.customerId !== 'string'
+  ) {
+    return undefined;
+  }
+  return {
+    eventId: value.eventId,
+    notificationId: value.notificationId,
+    customerId: value.customerId,
+  };
+}
+
+async function finalizeLineDelivery(
+  supabase: LineProcessorClient,
+  params: {
+    job: LineOutboxRow;
+    payload: LineMessagePayload;
+    status: 'sent' | 'failed';
+    sentAt: string | null;
+    lastError: string | null;
+    availabilityDeliveryClient?: CrmSupabaseClient;
+  }
+): Promise<void> {
+  const availability = params.payload.availability;
+  if (availability) {
+    const client = params.availabilityDeliveryClient ?? createCrmAdminClient();
+    await updateStaffAvailabilityNotificationDelivery(client, {
+      notificationId: availability.notificationId,
+      outboxId: params.job.id,
+      clinicId: params.job.clinic_id,
+      status: params.status,
+      sentAt: params.sentAt,
+      lastError: params.lastError,
+    });
+    return;
+  }
+
+  const completedAt = params.sentAt ?? new Date().toISOString();
+  await updateLineJob(supabase, params.job.id, {
+    status: params.status,
+    sent_at: params.status === 'sent' ? completedAt : null,
+    last_error: params.status === 'failed' ? params.lastError : null,
+    next_attempt_at: completedAt,
+  });
 }
 
 function readOutreachPayload(

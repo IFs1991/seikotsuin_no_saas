@@ -79,6 +79,20 @@ export const myReservationsConsentUpdateSchema = z.object({
   consent_marketing: z.boolean(),
 });
 
+export const publicStaffPreferencesQuerySchema = z.object({
+  clinic_id: clinicIdSchema,
+});
+
+export const publicStaffAvailabilityEventQuerySchema = z.object({
+  clinic_id: clinicIdSchema,
+});
+
+export const publicStaffPreferenceUpdateSchema = z.object({
+  clinic_id: clinicIdSchema,
+  staff_id: z.string().uuid('staff_id must be a valid UUID'),
+  notification_enabled: z.boolean(),
+});
+
 export const publicReservationCancelSchema = z.object({
   clinic_id: clinicIdSchema,
 });
@@ -143,6 +157,10 @@ export const reservationCreateSchema = z.object({
   line_id_token: z.string().trim().min(1).max(5000).optional(),
   turnstile_token: z.string().trim().min(1).max(4096).optional(),
   campaign_id: z.string().uuid('campaign_id must be a valid UUID').optional(),
+  availability_event_id: z
+    .string()
+    .uuid('availability_event_id must be a valid UUID')
+    .optional(),
 });
 
 export type ReservationCreateDTO = z.infer<typeof reservationCreateSchema>;

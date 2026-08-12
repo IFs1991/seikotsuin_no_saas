@@ -1,6 +1,7 @@
 export {
   createClient,
   createAdminClient,
+  createAdminClientForDatabase,
   getServerClient,
   getCurrentUser,
   getUserPermissions,

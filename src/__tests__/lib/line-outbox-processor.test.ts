@@ -5,6 +5,12 @@ import {
 } from '@/lib/notifications/line-processor';
 import type { Database, Json } from '@/types/supabase';
 
+const mockAvailabilityRpc = jest.fn();
+
+jest.mock('@/lib/crm-line/db', () => ({
+  createCrmAdminClient: jest.fn(() => ({ rpc: mockAvailabilityRpc })),
+}));
+
 type LineProcessorClient = Parameters<typeof processLineOutbox>[0];
 type LineOutboxRow = Database['public']['Tables']['line_message_outbox']['Row'];
 
@@ -152,6 +158,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 describe('LINE outbox processor', () => {
+  beforeEach(() => {
+    mockAvailabilityRpc.mockReset();
+    mockAvailabilityRpc.mockResolvedValue({ error: null });
+  });
+
   it('sends pending LINE push jobs and marks them sent', async () => {
     const fixture = createProcessorClient([createLineJob()]);
     const fetcher = jest.fn(async (_input: string, _init: RequestInit) =>
@@ -188,6 +199,48 @@ describe('LINE outbox processor', () => {
         expect.objectContaining({ status: 'sent' }),
       ])
     );
+  });
+
+  it('空き枠通知の原子的delivery更新エラーを無視しない', async () => {
+    const fixture = createProcessorClient([
+      createLineJob({
+        message_type: 'staff_availability',
+        payload: {
+          text: '空き枠のお知らせ',
+          availability: {
+            eventId: 'event-001',
+            notificationId: 'notification-001',
+            customerId: 'customer-001',
+          },
+        },
+      }),
+    ]);
+    mockAvailabilityRpc.mockResolvedValue({
+      error: { message: 'delivery transaction failed' },
+    });
+
+    await expect(
+      processLineOutbox(fixture.client, {
+        now: NOW,
+        fetcher: jest.fn(async () => new Response('', { status: 200 })),
+        accessTokenResolver: createAccessTokenResolver(),
+      })
+    ).rejects.toThrow('delivery transaction failed');
+
+    expect(mockAvailabilityRpc).toHaveBeenCalledWith(
+      'finalize_staff_availability_delivery',
+      expect.objectContaining({
+        p_clinic_id: 'clinic-001',
+        p_outbox_id: 'line-job-001',
+        p_notification_id: 'notification-001',
+        p_status: 'sent',
+      })
+    );
+    expect(
+      fixture.lineUpdates.some(
+        update => isRecord(update) && update.status === 'sent'
+      )
+    ).toBe(false);
   });
 
   it('marks outreach recipients as sent when outreach LINE push succeeds', async () => {

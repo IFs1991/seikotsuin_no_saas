@@ -4,14 +4,14 @@
   "sourceRoot": "src/app/api",
   "policyStatus": "ENFORCED",
   "summary": {
-    "scannedRouteFiles": 143,
-    "mutationRouteFiles": 91,
-    "mutationHandlers": 117,
+    "scannedRouteFiles": 148,
+    "mutationRouteFiles": 94,
+    "mutationHandlers": 121,
     "methodCounts": {
-      "POST": 74,
-      "PUT": 7,
+      "POST": 76,
+      "PUT": 8,
       "PATCH": 24,
-      "DELETE": 12
+      "DELETE": 13
     },
     "unclassifiedHandlers": 0,
     "sideEffectingGetCandidates": 9
@@ -4155,6 +4155,178 @@
       }
     },
     {
+      "id": "POST /api/customers/identity-aliases",
+      "route": "/api/customers/identity-aliases",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/customers/identity-aliases/route.ts",
+        "line": 62,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/customers/identity-aliases/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody"
+        ],
+        "serviceRole": [],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "approved": {
+        "auth": [
+          "@/lib/route-helpers#processClinicScopedBody"
+        ],
+        "adminRole": [],
+        "clinicScope": [
+          "@/lib/route-helpers#processClinicScopedBody"
+        ],
+        "clinicScopeCoverage": [
+          "@/lib/route-helpers#processClinicScopedBody"
+        ],
+        "billing": [
+          "@/lib/route-helpers#processClinicScopedBody"
+        ],
+        "validation": [
+          "@/lib/route-helpers#processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "lineAuth": [],
+        "webhookSignature": [],
+        "idempotency": [],
+        "rateLimit": [],
+        "noMutation": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "AUTH_SCOPED_BILLED",
+      "unknowns": [],
+      "policy": {
+        "route": "/api/customers/identity-aliases",
+        "methods": [
+          "POST",
+          "DELETE"
+        ],
+        "classification": "AUTH_SCOPED_BILLED",
+        "clinicScope": "required",
+        "billing": "required",
+        "auth": "supabase-user",
+        "idempotency": "recommended",
+        "rateLimit": "middleware",
+        "owner": "patient-identity"
+      }
+    },
+    {
+      "id": "DELETE /api/customers/identity-aliases",
+      "route": "/api/customers/identity-aliases",
+      "method": "DELETE",
+      "source": {
+        "path": "src/app/api/customers/identity-aliases/route.ts",
+        "line": 84,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/customers/identity-aliases/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody"
+        ],
+        "serviceRole": [],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "delete"
+        ],
+        "sideEffectCall": []
+      },
+      "approved": {
+        "auth": [
+          "@/lib/route-helpers#processClinicScopedBody"
+        ],
+        "adminRole": [],
+        "clinicScope": [
+          "@/lib/route-helpers#processClinicScopedBody"
+        ],
+        "clinicScopeCoverage": [
+          "@/lib/route-helpers#processClinicScopedBody"
+        ],
+        "billing": [
+          "@/lib/route-helpers#processClinicScopedBody"
+        ],
+        "validation": [
+          "@/lib/route-helpers#processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "lineAuth": [],
+        "webhookSignature": [],
+        "idempotency": [],
+        "rateLimit": [],
+        "noMutation": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "AUTH_SCOPED_BILLED",
+      "unknowns": [],
+      "policy": {
+        "route": "/api/customers/identity-aliases",
+        "methods": [
+          "POST",
+          "DELETE"
+        ],
+        "classification": "AUTH_SCOPED_BILLED",
+        "clinicScope": "required",
+        "billing": "required",
+        "auth": "supabase-user",
+        "idempotency": "recommended",
+        "rateLimit": "middleware",
+        "owner": "patient-identity"
+      }
+    },
+    {
       "id": "POST /api/daily-reports",
       "route": "/api/daily-reports",
       "method": "POST",
@@ -8081,7 +8253,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/public/reservations/route.ts",
-        "line": 82,
+        "line": 89,
         "exportKind": "function"
       },
       "executionPath": {
@@ -8106,6 +8278,7 @@
         "writes": [
           "delete",
           "insert",
+          "rpc",
           "update"
         ],
         "sideEffectCall": []
@@ -8240,6 +8413,92 @@
         "idempotency": "recommended",
         "rateLimit": "middleware",
         "exceptionReason": "Patient cancellation must remain available regardless of clinic billing state.",
+        "owner": "patient-safety"
+      }
+    },
+    {
+      "id": "PUT /api/public/staff-preferences",
+      "route": "/api/public/staff-preferences",
+      "method": "PUT",
+      "source": {
+        "path": "src/app/api/public/staff-preferences/route.ts",
+        "line": 101,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/public/staff-preferences/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "verifyPublicLineMyPageAuth"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "approved": {
+        "auth": [
+          "@/lib/line/public-my-page-auth#verifyPublicLineMyPageAuth"
+        ],
+        "adminRole": [],
+        "clinicScope": [
+          "@/lib/line/public-my-page-auth#verifyPublicLineMyPageAuth",
+          "@/lib/supabase/scoped-admin#createPublicClinicContext"
+        ],
+        "clinicScopeCoverage": [
+          "@/lib/line/public-my-page-auth#verifyPublicLineMyPageAuth",
+          "@/lib/supabase/scoped-admin#createPublicClinicContext"
+        ],
+        "billing": [],
+        "validation": [
+          "@/lib/line/public-my-page-auth#verifyPublicLineMyPageAuth",
+          "AST schema.safeParse"
+        ],
+        "internalSecret": [],
+        "lineAuth": [
+          "@/lib/line/public-my-page-auth#verifyPublicLineMyPageAuth"
+        ],
+        "webhookSignature": [],
+        "idempotency": [],
+        "rateLimit": [],
+        "noMutation": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "AUTH_SCOPED_UNBILLED",
+      "unknowns": [],
+      "policy": {
+        "route": "/api/public/staff-preferences",
+        "methods": [
+          "PUT"
+        ],
+        "classification": "AUTH_SCOPED_UNBILLED",
+        "clinicScope": "derived",
+        "billing": "explicit-exception",
+        "auth": "line-my-page-token",
+        "idempotency": "recommended",
+        "rateLimit": "middleware",
+        "exceptionReason": "Patient staff notification preferences must remain available regardless of clinic billing state.",
         "owner": "patient-safety"
       }
     },
@@ -9077,6 +9336,93 @@
       "unknowns": [],
       "policy": {
         "route": "/api/staff",
+        "methods": [
+          "POST"
+        ],
+        "classification": "AUTH_SCOPED_BILLED",
+        "clinicScope": "required",
+        "billing": "required",
+        "auth": "supabase-user",
+        "idempotency": "recommended",
+        "rateLimit": "middleware",
+        "owner": "workforce-scheduling"
+      }
+    },
+    {
+      "id": "POST /api/staff/availability-events",
+      "route": "/api/staff/availability-events",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/staff/availability-events/route.ts",
+        "line": 22,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/staff/availability-events/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody",
+          "validation helper"
+        ],
+        "serviceRole": [],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "rpc"
+        ],
+        "sideEffectCall": []
+      },
+      "approved": {
+        "auth": [
+          "@/lib/route-helpers#processClinicScopedBody"
+        ],
+        "adminRole": [],
+        "clinicScope": [
+          "@/lib/route-helpers#processClinicScopedBody"
+        ],
+        "clinicScopeCoverage": [
+          "@/lib/route-helpers#processClinicScopedBody"
+        ],
+        "billing": [
+          "@/lib/route-helpers#processClinicScopedBody"
+        ],
+        "validation": [
+          "@/lib/route-helpers#processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "lineAuth": [],
+        "webhookSignature": [],
+        "idempotency": [],
+        "rateLimit": [],
+        "noMutation": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "AUTH_SCOPED_BILLED",
+      "unknowns": [],
+      "policy": {
+        "route": "/api/staff/availability-events",
         "methods": [
           "POST"
         ],

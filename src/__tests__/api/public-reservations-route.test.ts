@@ -11,6 +11,7 @@ const mockCreatePublicClinicContext = jest.fn();
 const mockVerifyLineIdTokenForClinic = jest.fn();
 const mockResolveOutreachAttribution = jest.fn();
 const mockMarkOutreachRecipientBooked = jest.fn();
+const mockCreateStaffAvailabilityReservation = jest.fn();
 const ORIGINAL_TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY;
 const ORIGINAL_TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 const ORIGINAL_TURNSTILE_BYPASS = process.env.TURNSTILE_BYPASS_NON_PRODUCTION;
@@ -54,6 +55,21 @@ jest.mock('@/lib/outreach', () => ({
     mockMarkOutreachRecipientBooked(...args),
 }));
 
+jest.mock('@/lib/crm-line/db', () => ({
+  createCrmAdminClient: jest.fn(() => ({ source: 'crm-test-client' })),
+}));
+
+jest.mock('@/lib/services/staff-availability-service', () => {
+  const actual = jest.requireActual<
+    typeof import('@/lib/services/staff-availability-service')
+  >('@/lib/services/staff-availability-service');
+  return {
+    ...actual,
+    createStaffAvailabilityReservation: (...args: unknown[]) =>
+      mockCreateStaffAvailabilityReservation(...args),
+  };
+});
+
 jest.mock('@sentry/nextjs', () => ({
   captureException: jest.fn(),
 }));
@@ -65,6 +81,7 @@ const VALID_CUSTOMER_ID = '00000000-0000-0000-0000-000000000401';
 const VALID_RESERVATION_ID = '00000000-0000-0000-0000-000000000501';
 const VALID_CAMPAIGN_ID = '00000000-0000-4000-8000-000000000601';
 const VALID_RECIPIENT_ID = '00000000-0000-4000-8000-000000000701';
+const VALID_AVAILABILITY_EVENT_ID = '00000000-0000-4000-8000-000000000801';
 const EMPTY_LIST = { data: [], error: null };
 const NO_CONFLICT = { count: 0, error: null };
 
@@ -77,6 +94,7 @@ type CustomerTableMock = {
   select: jest.Mock;
   insert: jest.Mock;
   update?: jest.Mock;
+  delete?: jest.Mock;
 };
 
 type PublicReservationRouteRequest = {
@@ -416,6 +434,9 @@ function buildMockSupabase(overrides: Record<string, unknown> = {}) {
           select: tables.customers.select,
           insert: tables.customers.insert,
           update: tables.customers.update,
+          delete:
+            tables.customers.delete ??
+            jest.fn(() => createThenableQuery({ data: null, error: null })),
         };
       }
       if (table === 'reservation_notifications') {
@@ -467,6 +488,13 @@ describe('POST /api/public/reservations', () => {
     });
     mockResolveOutreachAttribution.mockResolvedValue(null);
     mockMarkOutreachRecipientBooked.mockResolvedValue(undefined);
+    mockCreateStaffAvailabilityReservation.mockResolvedValue({
+      id: VALID_RESERVATION_ID,
+      start_time: '2026-07-10T01:00:00.000Z',
+      end_time: '2026-07-10T02:00:00.000Z',
+      status: 'unconfirmed',
+      updated_at: '2026-07-05T00:00:00.000Z',
+    });
     // Dynamic import to pick up mocks
     jest.resetModules();
     const mod = await import('@/app/api/public/reservations/route');
@@ -860,6 +888,64 @@ describe('POST /api/public/reservations', () => {
       code: 'CAPTCHA_FAILED',
     });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('availability_event_id付き予約は有効なLINE tokenがなければ401を返す', async () => {
+    mockVerifyLineIdTokenForClinic.mockResolvedValue({
+      ok: false,
+      reason: 'aud_mismatch',
+    });
+    const supabase = buildMockSupabase();
+    setupClinicContext(supabase);
+
+    const response = await POST(
+      buildRequest({
+        ...buildValidBody(),
+        availability_event_id: VALID_AVAILABILITY_EVENT_ID,
+        line_id_token: 'invalid-line-token',
+      })
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data).toEqual({
+      success: false,
+      error: '空き枠通知からの予約には有効なLINE認証が必要です',
+    });
+    expect(mockCreateStaffAvailabilityReservation).not.toHaveBeenCalled();
+  });
+
+  it('通知と異なる担当・開始日時は原子的予約RPCの競合として409を返す', async () => {
+    mockVerifyLineIdTokenForClinic.mockResolvedValue({
+      ok: true,
+      lineUserId: 'Uline-user-001',
+      displayName: 'LINE 太郎',
+      audience: '2000000001',
+    });
+    const { StaffAvailabilityClaimConflictError } =
+      await import('@/lib/services/staff-availability-service');
+    mockCreateStaffAvailabilityReservation.mockRejectedValue(
+      new StaffAvailabilityClaimConflictError()
+    );
+    const supabase = buildMockSupabase();
+    setupClinicContext(supabase);
+
+    const response = await POST(
+      buildRequest({
+        ...buildValidBody(),
+        availability_event_id: VALID_AVAILABILITY_EVENT_ID,
+        line_id_token: 'line-id-token-001',
+      })
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(data).toEqual({
+      success: false,
+      error:
+        '通知された担当者・開始日時と一致しないか、空き枠は既に予約済みです',
+    });
+    expect(findReservationInsertPayload(supabase)).toBeNull();
   });
 
   it('LINE IDトークン検証失敗でもTurnstile成功時はweb予約として201を返す', async () => {

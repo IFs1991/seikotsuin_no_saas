@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PublicBookingForm } from '@/app/(public)/booking/[clinic_id]/page';
 import type { PublicBookingFormSettings } from '@/lib/booking-form/settings';
+import { toJSTDateString } from '@/lib/jst';
 
 const mockLiffIsInClient = jest.fn();
 const mockLiffInit = jest.fn();
@@ -23,6 +24,9 @@ const MENU_ID = '00000000-0000-0000-0000-000000000201';
 const STAFF_ID = '00000000-0000-0000-0000-000000000301';
 const RESERVATION_ID = '00000000-0000-0000-0000-000000000401';
 const CAMPAIGN_ID = '00000000-0000-4000-8000-000000000501';
+const AVAILABILITY_EVENT_ID = '00000000-0000-4000-8000-000000000601';
+const AVAILABILITY_EVENT_DATE = toJSTDateString();
+const AVAILABILITY_EVENT_DATETIME = `${AVAILABILITY_EVENT_DATE}T01:00:00.000Z`;
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -49,11 +53,13 @@ describe('PublicBookingForm wizard', () => {
   let fetchMock: jest.SpiedFunction<typeof fetch>;
   let bookingFormData: PublicBookingFormSettings;
   let bookingFormStatus: number;
+  let availabilityEventStatus: number;
   let queuedReservationResponses: Response[];
 
   beforeEach(() => {
     bookingFormData = defaultBookingFormData();
     bookingFormStatus = 200;
+    availabilityEventStatus = 200;
     queuedReservationResponses = [];
     mockLiffIsInClient.mockReturnValue(true);
     mockLiffInit.mockResolvedValue(undefined);
@@ -138,6 +144,30 @@ describe('PublicBookingForm wizard', () => {
                 ],
               },
             ],
+          },
+        });
+      }
+
+      if (
+        url.pathname ===
+        `/api/public/staff-availability-events/${AVAILABILITY_EVENT_ID}`
+      ) {
+        if (availabilityEventStatus !== 200) {
+          return jsonResponse(
+            {
+              success: false,
+              error: 'この空き枠は予約済み、取消済み、または期限切れです',
+            },
+            availabilityEventStatus
+          );
+        }
+        return jsonResponse({
+          success: true,
+          data: {
+            eventId: AVAILABILITY_EVENT_ID,
+            staffId: STAFF_ID,
+            staffName: '田中先生',
+            availableDatetime: AVAILABILITY_EVENT_DATETIME,
           },
         });
       }
@@ -487,6 +517,85 @@ describe('PublicBookingForm wizard', () => {
       line_id_token?: string;
     };
     expect(body.line_id_token).toBeUndefined();
+  });
+
+  it('有効なLINE空き枠では担当者と開始日時を固定してevent IDを送信する', async () => {
+    bookingFormData = {
+      ...defaultBookingFormData(),
+      liff_id: '2000000000-AbCdEfGh',
+    };
+    mockLiffGetIDToken.mockReturnValue('line-id-token-001');
+    const user = userEvent.setup();
+
+    render(
+      <PublicBookingForm
+        clinicId={CLINIC_ID}
+        availabilityEventId={AVAILABILITY_EVENT_ID}
+      />
+    );
+
+    expect(await screen.findByText('LINE通知の限定空き枠')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+    expect(screen.getByText('担当者を選択')).toBeInTheDocument();
+    expect(
+      screen.getByText('この通知枠では担当者を変更できません。')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /指名なし/ })
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+    expect(screen.getByText('日時を選択')).toBeInTheDocument();
+    expect(
+      screen.getByText('この通知枠では日時を変更できません。')
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /次へ/ })).toBeEnabled();
+    });
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+    await user.type(screen.getByPlaceholderText('山田 太郎'), '山田 太郎');
+    await user.type(screen.getByPlaceholderText('09012345678'), '09012345678');
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+    await user.click(
+      screen.getByRole('button', { name: '予約リクエストを送信' })
+    );
+
+    expect(
+      await screen.findByText('予約リクエストを受け付けました。')
+    ).toBeInTheDocument();
+    const reservationCall = getReservationPostCalls(fetchMock)[0];
+    const body = parseReservationBody(reservationCall);
+    expect(body.availability_event_id).toBe(AVAILABILITY_EVENT_ID);
+    expect(body.resource_id).toBe(STAFF_ID);
+    expect(body.start_time).toBe(`${AVAILABILITY_EVENT_DATE}T10:00:00+09:00`);
+  });
+
+  it('無効な通知枠は自動降格せず明示操作で通常予約へ切り替える', async () => {
+    bookingFormData = {
+      ...defaultBookingFormData(),
+      liff_id: '2000000000-AbCdEfGh',
+    };
+    mockLiffGetIDToken.mockReturnValue('line-id-token-001');
+    availabilityEventStatus = 409;
+    const user = userEvent.setup();
+
+    render(
+      <PublicBookingForm
+        clinicId={CLINIC_ID}
+        availabilityEventId={AVAILABILITY_EVENT_ID}
+      />
+    );
+
+    expect(
+      await screen.findByText(
+        'この空き枠は予約済み、取消済み、または期限切れです'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /次へ/ })).toBeDisabled();
+    await user.click(
+      screen.getByRole('button', { name: '通常予約に切り替える' })
+    );
+    expect(screen.getByRole('button', { name: /次へ/ })).toBeEnabled();
   });
 });
 
