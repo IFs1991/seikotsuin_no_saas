@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Loader2,
   MessageCircle,
+  UserRound,
 } from 'lucide-react';
 import { Button, buttonClassName } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -38,6 +39,15 @@ type MyReservationsData = {
     consent_marketing: boolean;
   } | null;
   reservations: MyReservation[];
+};
+
+type StaffPreferenceData = {
+  customerId: string;
+  staff: Array<{
+    id: string;
+    name: string;
+    notificationEnabled: boolean;
+  }>;
 };
 
 type MyPageState =
@@ -79,6 +89,11 @@ function buildBookingFormUrl(clinicId: string): string {
 function buildMyReservationsUrl(clinicId: string): string {
   const params = new URLSearchParams({ clinic_id: clinicId });
   return `/api/public/my-reservations?${params.toString()}`;
+}
+
+function buildStaffPreferencesUrl(clinicId: string): string {
+  const params = new URLSearchParams({ clinic_id: clinicId });
+  return `/api/public/staff-preferences?${params.toString()}`;
 }
 
 function formatDateTime(value: string): string {
@@ -163,8 +178,11 @@ export function PublicBookingMyPage({ clinicId }: PublicBookingMyPageProps) {
   });
   const [lineIdToken, setLineIdToken] = useState<string | null>(null);
   const [data, setData] = useState<MyReservationsData | null>(null);
+  const [staffPreferenceData, setStaffPreferenceData] =
+    useState<StaffPreferenceData | null>(null);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [savingConsent, setSavingConsent] = useState(false);
+  const [savingStaffId, setSavingStaffId] = useState<string | null>(null);
 
   const bookingHref = useMemo(
     () => (clinicId ? `/booking/${clinicId}` : '/'),
@@ -181,6 +199,18 @@ export function PublicBookingMyPage({ clinicId }: PublicBookingMyPageProps) {
         }
       );
       setData(nextData);
+    },
+    [clinicId]
+  );
+
+  const loadStaffPreferences = useCallback(
+    async (token: string) => {
+      if (!clinicId) return;
+      const nextData = await fetchJson<StaffPreferenceData>(
+        buildStaffPreferencesUrl(clinicId),
+        { headers: getAuthHeaders(token) }
+      );
+      setStaffPreferenceData(nextData);
     },
     [clinicId]
   );
@@ -202,6 +232,7 @@ export function PublicBookingMyPage({ clinicId }: PublicBookingMyPageProps) {
         message: 'LINE連携を確認しています...',
       });
       setData(null);
+      setStaffPreferenceData(null);
       setLineIdToken(null);
 
       try {
@@ -238,6 +269,11 @@ export function PublicBookingMyPage({ clinicId }: PublicBookingMyPageProps) {
         if (cancelled) return;
         setLineIdToken(token);
         await loadReservations(token);
+        try {
+          await loadStaffPreferences(token);
+        } catch {
+          // Reservation history remains usable when staff preference data is unavailable.
+        }
         if (!cancelled) {
           setState({ status: 'ready', message: null });
         }
@@ -259,7 +295,59 @@ export function PublicBookingMyPage({ clinicId }: PublicBookingMyPageProps) {
     return () => {
       cancelled = true;
     };
-  }, [clinicId, loadReservations]);
+  }, [clinicId, loadReservations, loadStaffPreferences]);
+
+  const handleStaffPreferenceChange = async (
+    staffId: string,
+    notificationEnabled: boolean
+  ) => {
+    if (!clinicId || !lineIdToken) return;
+    setSavingStaffId(staffId);
+    setState({ status: 'ready', message: null });
+    try {
+      await fetchJson<{ staff_id: string; notification_enabled: boolean }>(
+        '/api/public/staff-preferences',
+        {
+          method: 'PUT',
+          headers: {
+            ...getAuthHeaders(lineIdToken),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            clinic_id: clinicId,
+            staff_id: staffId,
+            notification_enabled: notificationEnabled,
+          }),
+        }
+      );
+      setStaffPreferenceData(prev =>
+        prev
+          ? {
+              ...prev,
+              staff: prev.staff.map(staff =>
+                staff.id === staffId ? { ...staff, notificationEnabled } : staff
+              ),
+            }
+          : prev
+      );
+      setState({
+        status: 'ready',
+        message: notificationEnabled
+          ? '指名スタッフの空き枠通知を受け取る設定にしました。'
+          : '指名スタッフの空き枠通知を停止しました。',
+      });
+    } catch (error) {
+      setState({
+        status: 'ready',
+        message:
+          error instanceof Error
+            ? error.message
+            : '指名スタッフ設定を更新できませんでした。',
+      });
+    } finally {
+      setSavingStaffId(null);
+    }
+  };
 
   const handleConsentChange = async (checked: boolean) => {
     if (!clinicId || !lineIdToken || !data?.customer) return;
@@ -472,6 +560,41 @@ export function PublicBookingMyPage({ clinicId }: PublicBookingMyPageProps) {
               )}
             </Card>
           ))}
+        </section>
+
+        <section className='space-y-3 px-4 sm:px-0'>
+          <div className='flex items-center gap-2 text-sm font-semibold text-slate-900'>
+            <UserRound className='h-4 w-4' />
+            指名スタッフの空き枠通知
+          </div>
+          <Card className='space-y-3 rounded-lg p-4 shadow-sm'>
+            <p className='text-xs leading-5 text-slate-600'>
+              過去に担当したスタッフの空き枠が出たときに、LINEでお知らせします。
+            </p>
+            {staffPreferenceData?.staff.length === 0 && (
+              <p className='text-sm leading-6 text-slate-700'>
+                現在登録できるスタッフはいません。
+              </p>
+            )}
+            {staffPreferenceData?.staff.map(staff => (
+              <div
+                key={staff.id}
+                className='flex items-center justify-between gap-4 border-t border-slate-100 pt-3'
+              >
+                <span className='text-sm font-medium text-slate-900'>
+                  {staff.name}
+                </span>
+                <Switch
+                  aria-label={`${staff.name}さんの空き枠通知を受け取る`}
+                  checked={staff.notificationEnabled}
+                  disabled={savingStaffId === staff.id}
+                  onCheckedChange={checked =>
+                    void handleStaffPreferenceChange(staff.id, checked)
+                  }
+                />
+              </div>
+            ))}
+          </Card>
         </section>
 
         <section className='px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:px-0'>

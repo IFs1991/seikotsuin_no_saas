@@ -17,7 +17,7 @@ import type {
 
 // API モック
 jest.mock('@/app/(app)/reservations/api', () => ({
-  fetchCustomers: jest.fn().mockResolvedValue([]),
+  fetchPatientIdentityCandidates: jest.fn().mockResolvedValue([]),
   createCustomer: jest
     .fn()
     .mockResolvedValue({ id: 'customer-1', name: '山田 太郎' }),
@@ -28,13 +28,12 @@ jest.mock('@/app/(app)/reservations/api', () => ({
 }));
 
 // モック参照（三角測量テストで status を変更するため）
-const { createCustomer, createReservation, fetchCustomers } = jest.requireMock(
-  '@/app/(app)/reservations/api'
-) as {
-  createCustomer: jest.Mock;
-  createReservation: jest.Mock;
-  fetchCustomers: jest.Mock;
-};
+const { createCustomer, createReservation, fetchPatientIdentityCandidates } =
+  jest.requireMock('@/app/(app)/reservations/api') as {
+    createCustomer: jest.Mock;
+    createReservation: jest.Mock;
+    fetchPatientIdentityCandidates: jest.Mock;
+  };
 
 afterEach(() => {
   jest.clearAllMocks();
@@ -44,7 +43,7 @@ afterEach(() => {
     status: 'unconfirmed',
   });
   createCustomer.mockResolvedValue({ id: 'customer-1', name: '山田 太郎' });
-  fetchCustomers.mockResolvedValue([]);
+  fetchPatientIdentityCandidates.mockResolvedValue([]);
 });
 
 const mockResources: SchedulerResource[] = [
@@ -281,9 +280,7 @@ describe('料金表示', () => {
       ],
     });
 
-    fireEvent.click(
-      screen.getByRole('checkbox', { name: /この施術者を指名/ })
-    );
+    fireEvent.click(screen.getByRole('checkbox', { name: /この施術者を指名/ }));
 
     expect(screen.getByText('6,200円')).toBeInTheDocument();
     expect(
@@ -342,25 +339,31 @@ describe('料金表示', () => {
 });
 
 describe('患者紐付け', () => {
-  it('電話番号が同じでも名前が違う場合は既存患者に紐付けず新規患者を作成する', async () => {
-    fetchCustomers.mockResolvedValue([
-      {
-        id: 'existing-customer',
-        name: '佐藤 花子',
-        phone: '090-1234-5678',
-      },
-    ]);
-    createCustomer.mockResolvedValue({
-      id: 'new-customer',
-      name: '山田 太郎',
-    });
+  const identityCandidate = {
+    customerId: 'existing-customer',
+    displayName: '山田 太郎',
+    phoneticName: 'やまだ たろう',
+    score: 95,
+    scoreBreakdown: {
+      lineUserId: 0,
+      phone: 60,
+      name: 25,
+      alias: 0,
+      staffHistory: 10,
+      menuHistory: 0,
+    },
+    visitCount: 3,
+    lastVisitAt: '2026-01-10T01:00:00.000Z',
+    averageVisitIntervalDays: 30,
+    staffHistory: [{ staffId: 'resource-1', staffName: '田中 花子' }],
+    menuHistory: [{ menuId: 'menu-1', menuName: '全身矯正' }],
+  };
+
+  it('候補選択前は患者も予約も作成しない', async () => {
+    fetchPatientIdentityCandidates.mockResolvedValue([identityCandidate]);
 
     renderForm();
-    fillRequiredFields({
-      phone: '090-1234-5678',
-      lastName: '山田',
-      firstName: '太郎',
-    });
+    fillRequiredFields({});
 
     const form = screen
       .getByRole('button', { name: '登録する' })
@@ -371,33 +374,19 @@ describe('患者紐付け', () => {
     fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(createCustomer).toHaveBeenCalledWith({
-        clinicId: 'clinic-1',
-        name: '山田 太郎',
-        phone: '090-1234-5678',
-        customAttributes: undefined,
-      });
+      expect(
+        screen.getByText('患者候補を確認してください')
+      ).toBeInTheDocument();
     });
-    expect(createReservation).toHaveBeenCalledWith(
-      expect.objectContaining({ customerId: 'new-customer' })
-    );
+    expect(createCustomer).not.toHaveBeenCalled();
+    expect(createReservation).not.toHaveBeenCalled();
   });
 
-  it('電話番号と名前が同じ場合だけ既存患者を再利用する', async () => {
-    fetchCustomers.mockResolvedValue([
-      {
-        id: 'existing-customer',
-        name: '山田 太郎',
-        phone: '090-1234-5678',
-      },
-    ]);
+  it('既存患者を明示選択して予約に使用する', async () => {
+    fetchPatientIdentityCandidates.mockResolvedValue([identityCandidate]);
 
     renderForm();
-    fillRequiredFields({
-      phone: '090-1234-5678',
-      lastName: '山田',
-      firstName: '太郎',
-    });
+    fillRequiredFields({});
 
     const form = screen
       .getByRole('button', { name: '登録する' })
@@ -406,6 +395,10 @@ describe('患者紐付け', () => {
       throw new Error('form not found');
     }
     fireEvent.submit(form);
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'この患者を使用' })
+    );
 
     await waitFor(() => {
       expect(createReservation).toHaveBeenCalledWith(
@@ -413,6 +406,52 @@ describe('患者紐付け', () => {
       );
     });
     expect(createCustomer).not.toHaveBeenCalled();
+  });
+
+  it('新規患者として明示選択した場合だけ患者を作成する', async () => {
+    fetchPatientIdentityCandidates.mockResolvedValue([identityCandidate]);
+    renderForm();
+    fillRequiredFields({});
+
+    fireEvent.submit(
+      screen.getByRole('button', { name: '登録する' }).closest('form')!
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: '新規患者として登録' })
+    );
+
+    await waitFor(() => {
+      expect(createCustomer).toHaveBeenCalledWith(
+        expect.objectContaining({ name: '山田 太郎' })
+      );
+      expect(createReservation).toHaveBeenCalledWith(
+        expect.objectContaining({ customerId: 'customer-1' })
+      );
+    });
+  });
+
+  it('候補表示後に氏名を変更すると以前の候補選択を破棄する', async () => {
+    fetchPatientIdentityCandidates.mockResolvedValue([identityCandidate]);
+    renderForm();
+    fillRequiredFields({});
+    const form = screen
+      .getByRole('button', { name: '登録する' })
+      .closest('form')!;
+    fireEvent.submit(form);
+    await screen.findByText('患者候補を確認してください');
+
+    fireEvent.change(screen.getByPlaceholderText('姓 (例: 山田)'), {
+      target: { value: '佐藤' },
+    });
+    expect(
+      screen.queryByText('患者候補を確認してください')
+    ).not.toBeInTheDocument();
+
+    fireEvent.submit(form);
+    await waitFor(() => {
+      expect(fetchPatientIdentityCandidates).toHaveBeenCalledTimes(2);
+    });
+    expect(createReservation).not.toHaveBeenCalled();
   });
 });
 

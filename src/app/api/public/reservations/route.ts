@@ -45,6 +45,13 @@ import {
 } from '@/lib/outreach';
 import { reservationCreateSchema } from '../schema';
 import { ensureBusinessWriteAccess } from '@/lib/billing/business-write';
+import { createCrmAdminClient } from '@/lib/crm-line/db';
+import {
+  createStaffAvailabilityReservation,
+  StaffAvailabilityClaimConflictError,
+  StaffAvailabilityNotFoundError,
+} from '@/lib/services/staff-availability-service';
+import type { Json } from '@/types/supabase';
 
 function formatIntakeResponseValue(
   value: IntakeResponseSnapshot['value']
@@ -122,6 +129,7 @@ export async function POST(request: NextRequest) {
       line_id_token,
       turnstile_token,
       campaign_id,
+      availability_event_id,
     } = parsed.data;
     let channel: 'web' | 'line' = 'web';
 
@@ -217,6 +225,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (availability_event_id && !lineProfile) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '空き枠通知からの予約には有効なLINE認証が必要です',
+        },
+        { status: 401 }
+      );
+    }
+
     const turnstileResult = await verifyTurnstileForPublicReservation({
       token: turnstile_token,
       skipForVerifiedLine: lineProfile !== undefined,
@@ -307,6 +325,15 @@ export async function POST(request: NextRequest) {
     }
 
     const isAutoAssign = resource_id === 'any';
+    if (availability_event_id && isAutoAssign) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '通知された担当スタッフを選択してください',
+        },
+        { status: 409 }
+      );
+    }
     let assignedResourceId = resource_id;
     let retryAssignedResourceId: string | null = null;
 
@@ -407,19 +434,57 @@ export async function POST(request: NextRequest) {
     // Create reservation
     let reservation: ReservationResult;
     try {
-      reservation = await service.createReservation({
-        customerId: customerResult.customerId,
-        menuId: menu_id,
-        resourceId: assignedResourceId,
-        startIso,
-        endIso,
-        notes: notes ?? null,
-        channel,
-        isStaffRequested: !isAutoAssign,
-        intakeResponses: intakeResponseSnapshots,
-        campaignId: outreachAttribution?.campaignId ?? null,
-      });
+      if (availability_event_id && lineProfile) {
+        const intakeResponsesJson: Json = intakeResponseSnapshots.map(
+          snapshot => ({
+            id: snapshot.id,
+            label: snapshot.label,
+            value: snapshot.value,
+          })
+        );
+        reservation = await createStaffAvailabilityReservation(
+          createCrmAdminClient(),
+          {
+            clinicId: clinic_id,
+            eventId: availability_event_id,
+            customerId: customerResult.customerId,
+            lineUserId: lineProfile.lineUserId,
+            menuId: menu_id,
+            staffId: assignedResourceId,
+            startTime: startIso,
+            endTime: endIso,
+            notes: notes ?? null,
+            intakeResponses: intakeResponsesJson,
+            campaignId: outreachAttribution?.campaignId ?? null,
+          }
+        );
+      } else {
+        reservation = await service.createReservation({
+          customerId: customerResult.customerId,
+          menuId: menu_id,
+          resourceId: assignedResourceId,
+          startIso,
+          endIso,
+          notes: notes ?? null,
+          channel,
+          isStaffRequested: !isAutoAssign,
+          intakeResponses: intakeResponseSnapshots,
+          campaignId: outreachAttribution?.campaignId ?? null,
+        });
+      }
     } catch (e) {
+      if (
+        e instanceof StaffAvailabilityClaimConflictError ||
+        e instanceof StaffAvailabilityNotFoundError
+      ) {
+        if (customerResult.created) {
+          await service.rollbackCustomer(customerResult.customerId);
+        }
+        return NextResponse.json(
+          { success: false, error: e.message },
+          { status: 409 }
+        );
+      }
       if (e instanceof SlotConflictError) {
         if (isAutoAssign) {
           try {

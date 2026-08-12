@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Appointment,
   MenuItem,
@@ -6,7 +6,20 @@ import {
   SchedulerResource,
 } from '../types';
 
-import { createCustomer, createReservation, fetchCustomers } from '../api';
+import {
+  createCustomer,
+  createReservation,
+  fetchPatientIdentityCandidates,
+  type PatientIdentityCandidate,
+} from '../api';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { statusToColor } from '../hooks/statusToColor';
 import {
   calculateEndTime,
@@ -65,9 +78,6 @@ const isSelectableResource = (resource: SchedulerResource) =>
 const formatResourceLabel = (resource: SchedulerResource) =>
   `${resource.name}${resource.capacity ? ` (${resource.capacity})` : ''}`;
 
-const normalizeCustomerIdentity = (value: string) =>
-  value.replace(/\s+/g, '').trim();
-
 const normalizePriceAmount = (amount: number) =>
   Number.isFinite(amount) ? amount : 0;
 
@@ -79,6 +89,35 @@ const formatPriceDelta = (amount: number) => {
   const prefix = amount > 0 ? '+' : '-';
   return ` (${prefix}${formatYen(Math.abs(amount))})`;
 };
+
+type PatientIdentityChoice =
+  | {
+      fingerprint: string;
+      kind: 'existing';
+      candidate: PatientIdentityCandidate;
+    }
+  | { fingerprint: string; kind: 'new' };
+
+function candidateMatchReasons(candidate: PatientIdentityCandidate): string {
+  const reasons = [
+    candidate.scoreBreakdown.phone > 0 ? '電話番号' : null,
+    candidate.scoreBreakdown.name > 0 ? '氏名' : null,
+    candidate.scoreBreakdown.alias > 0 ? '別名' : null,
+    candidate.scoreBreakdown.staffHistory > 0 ? '担当履歴' : null,
+    candidate.scoreBreakdown.menuHistory > 0 ? 'メニュー履歴' : null,
+  ].filter((value): value is string => value !== null);
+  return reasons.length > 0 ? reasons.join('・') : '関連候補';
+}
+
+function formatCandidateVisitDate(value: string | null): string {
+  if (!value) return '来院履歴なし';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '日時不明';
+  return new Intl.DateTimeFormat('ja-JP', {
+    dateStyle: 'medium',
+    timeZone: 'Asia/Tokyo',
+  }).format(date);
+}
 
 interface Props {
   clinicId: string;
@@ -108,6 +147,13 @@ export const AppointmentForm: React.FC<Props> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [, setIdentityChoice] = useState<PatientIdentityChoice | null>(null);
+  const identityChoiceRef = useRef<PatientIdentityChoice | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [identityCandidates, setIdentityCandidates] = useState<
+    PatientIdentityCandidate[]
+  >([]);
+  const [identityDialogOpen, setIdentityDialogOpen] = useState(false);
 
   // Today's date YYYY-MM-DD
   const todayStr = new Date().toISOString().split('T')[0];
@@ -178,6 +224,23 @@ export const AppointmentForm: React.FC<Props> = ({
     () =>
       selectableResources.find(resource => resource.id === formData.resourceId),
     [selectableResources, formData.resourceId]
+  );
+  const identityFingerprint = useMemo(
+    () =>
+      JSON.stringify([
+        formData.lastName.trim(),
+        formData.firstName.trim(),
+        formData.phone.trim(),
+        formData.resourceId,
+        formData.menuId,
+      ]),
+    [
+      formData.firstName,
+      formData.lastName,
+      formData.menuId,
+      formData.phone,
+      formData.resourceId,
+    ]
   );
 
   const optionItems = useMemo<MenuOptionItem[]>(() => {
@@ -306,33 +369,50 @@ export const AppointmentForm: React.FC<Props> = ({
           ]
         : [];
 
+    let selectedIdentity =
+      identityChoiceRef.current?.fingerprint === identityFingerprint
+        ? identityChoiceRef.current
+        : null;
     setLoading(true);
     try {
-      const customers = await fetchCustomers(clinicId, normalizedPhone).catch(
-        error => {
+      if (!selectedIdentity) {
+        const candidates = await fetchPatientIdentityCandidates({
+          clinicId,
+          name: customerName,
+          phone: normalizedPhone,
+          staffId: formData.resourceId,
+          menuId: formData.menuId,
+        }).catch(error => {
           throw new Error(
-            `患者データの検索に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`
+            `患者候補の検索に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`
           );
+        });
+        if (candidates.length > 0) {
+          setIdentityCandidates(candidates);
+          setIdentityDialogOpen(true);
+          return;
         }
-      );
-      const normalizedCustomerName = normalizeCustomerIdentity(customerName);
-      const matchedCustomer = customers.find(
-        customer =>
-          customer.phone === normalizedPhone &&
-          normalizeCustomerIdentity(customer.name) === normalizedCustomerName
-      );
-      const customer = matchedCustomer
-        ? { id: matchedCustomer.id, name: matchedCustomer.name }
-        : await createCustomer({
-            clinicId,
-            name: customerName,
-            phone: normalizedPhone,
-            customAttributes: customAttributesPayload,
-          }).catch(error => {
-            throw new Error(
-              `患者データの作成に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`
-            );
-          });
+        selectedIdentity = { fingerprint: identityFingerprint, kind: 'new' };
+        identityChoiceRef.current = selectedIdentity;
+        setIdentityChoice(selectedIdentity);
+      }
+
+      const customer =
+        selectedIdentity.kind === 'existing'
+          ? {
+              id: selectedIdentity.candidate.customerId,
+              name: selectedIdentity.candidate.displayName,
+            }
+          : await createCustomer({
+              clinicId,
+              name: customerName,
+              phone: normalizedPhone,
+              customAttributes: customAttributesPayload,
+            }).catch(error => {
+              throw new Error(
+                `患者データの作成に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`
+              );
+            });
 
       const startTime = new Date(formData.date);
       startTime.setHours(formData.startHour, formData.startMinute, 0, 0);
@@ -356,7 +436,7 @@ export const AppointmentForm: React.FC<Props> = ({
         );
       });
 
-      const displayName = matchedCustomer?.name ?? customerName;
+      const displayName = customer.name;
       const resourceName = resources.find(
         r => r.id === formData.resourceId
       )?.name;
@@ -410,6 +490,18 @@ export const AppointmentForm: React.FC<Props> = ({
     value: AppointmentFormState[K]
   ) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    if (
+      field === 'lastName' ||
+      field === 'firstName' ||
+      field === 'phone' ||
+      field === 'resourceId' ||
+      field === 'menuId'
+    ) {
+      setIdentityChoice(null);
+      identityChoiceRef.current = null;
+      setIdentityCandidates([]);
+      setIdentityDialogOpen(false);
+    }
   };
 
   const handleCustomAttributeChange = (key: string, value: string) => {
@@ -420,6 +512,13 @@ export const AppointmentForm: React.FC<Props> = ({
         [key]: value,
       },
     }));
+  };
+
+  const confirmIdentityChoice = (choice: PatientIdentityChoice) => {
+    identityChoiceRef.current = choice;
+    setIdentityChoice(choice);
+    setIdentityDialogOpen(false);
+    queueMicrotask(() => formRef.current?.requestSubmit());
   };
 
   return (
@@ -444,7 +543,7 @@ export const AppointmentForm: React.FC<Props> = ({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className='space-y-6'>
+      <form ref={formRef} onSubmit={handleSubmit} className='space-y-6'>
         {/* Date */}
         <div>
           <label
@@ -764,6 +863,79 @@ export const AppointmentForm: React.FC<Props> = ({
           </button>
         </div>
       </form>
+      <Dialog open={identityDialogOpen} onOpenChange={setIdentityDialogOpen}>
+        <DialogContent className='max-h-[85vh] max-w-2xl overflow-y-auto'>
+          <DialogHeader>
+            <DialogTitle>患者候補を確認してください</DialogTitle>
+            <DialogDescription>
+              同一患者の重複登録を防ぐため、既存患者を使用するか、新規患者として登録するかを選択してください。
+            </DialogDescription>
+          </DialogHeader>
+          <div className='space-y-3'>
+            {identityCandidates.map(candidate => (
+              <div
+                key={candidate.customerId}
+                className='rounded-md border border-gray-200 bg-white p-4'
+              >
+                <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
+                  <div className='space-y-1 text-sm text-gray-700'>
+                    <p className='font-semibold text-gray-900'>
+                      {candidate.displayName}
+                      {candidate.phoneticName
+                        ? `（${candidate.phoneticName}）`
+                        : ''}
+                    </p>
+                    <p>一致理由: {candidateMatchReasons(candidate)}</p>
+                    <p>
+                      来院 {candidate.visitCount}回／最終来院{' '}
+                      {formatCandidateVisitDate(candidate.lastVisitAt)}
+                    </p>
+                    <p>
+                      担当履歴:{' '}
+                      {candidate.staffHistory
+                        .map(item => item.staffName ?? '名称不明')
+                        .join('、') || 'なし'}
+                    </p>
+                    <p>
+                      メニュー履歴:{' '}
+                      {candidate.menuHistory
+                        .map(item => item.menuName ?? '名称不明')
+                        .join('、') || 'なし'}
+                    </p>
+                  </div>
+                  <button
+                    type='button'
+                    className='shrink-0 rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2'
+                    onClick={() =>
+                      confirmIdentityChoice({
+                        fingerprint: identityFingerprint,
+                        kind: 'existing',
+                        candidate,
+                      })
+                    }
+                  >
+                    この患者を使用
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <button
+              type='button'
+              className='rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2'
+              onClick={() =>
+                confirmIdentityChoice({
+                  fingerprint: identityFingerprint,
+                  kind: 'new',
+                })
+              }
+            >
+              新規患者として登録
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

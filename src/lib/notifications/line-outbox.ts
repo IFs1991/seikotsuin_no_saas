@@ -3,7 +3,10 @@ import type { ReservationNotificationType } from '@/lib/notifications/reservatio
 import type { SupabaseServerClient } from '@/lib/supabase';
 import type { Database, Json } from '@/types/supabase';
 
-export type LineMessageType = ReservationNotificationType | 'outreach';
+export type LineMessageType =
+  | ReservationNotificationType
+  | 'outreach'
+  | 'staff_availability';
 
 export type LineEmailFallbackPayload = {
   clinicId: string;
@@ -23,6 +26,11 @@ export type LineMessagePayload = {
   outreach?: {
     campaignId: string;
     recipientId: string;
+    customerId: string;
+  };
+  availability?: {
+    eventId: string;
+    notificationId: string;
     customerId: string;
   };
 };

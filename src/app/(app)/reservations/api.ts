@@ -42,6 +42,30 @@ interface CustomerApiPage {
   nextCursor: string | null;
 }
 
+export interface PatientIdentityCandidate {
+  customerId: string;
+  displayName: string;
+  phoneticName: string | null;
+  score: number;
+  scoreBreakdown: {
+    lineUserId: number;
+    phone: number;
+    name: number;
+    alias: number;
+    staffHistory: number;
+    menuHistory: number;
+  };
+  visitCount: number;
+  lastVisitAt: string | null;
+  averageVisitIntervalDays: number | null;
+  staffHistory: Array<{ staffId: string; staffName: string | null }>;
+  menuHistory: Array<{ menuId: string; menuName: string | null }>;
+}
+
+interface PatientIdentityCandidateResponse {
+  candidates: PatientIdentityCandidate[];
+}
+
 class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) {
@@ -121,6 +145,27 @@ export const fetchCustomers = async (
   const res = await fetch(`/api/customers?${params.toString()}`);
   const page = await handleJson<CustomerApiPage>(res);
   return page.items;
+};
+
+export const fetchPatientIdentityCandidates = async (params: {
+  clinicId: string;
+  name: string;
+  phone: string;
+  staffId: string;
+  menuId: string;
+}): Promise<PatientIdentityCandidate[]> => {
+  const query = new URLSearchParams({
+    clinic_id: params.clinicId,
+    name: params.name,
+    phone: params.phone,
+    staff_id: params.staffId,
+    menu_id: params.menuId,
+  });
+  const response = await fetch(
+    `/api/customers/identity-candidates?${query.toString()}`
+  );
+  const data = await handleJson<PatientIdentityCandidateResponse>(response);
+  return data.candidates;
 };
 
 export const createCustomer = async (payload: {

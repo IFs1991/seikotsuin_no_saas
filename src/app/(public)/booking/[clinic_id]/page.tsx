@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { addJSTCalendarDays, toJSTDateString } from '@/lib/jst';
+import { addJSTCalendarDays, JST_OFFSET_MS, toJSTDateString } from '@/lib/jst';
 import type {
   BookingFormQuestion,
   BookingFormResponseValue,
@@ -80,6 +80,19 @@ type SubmitState =
   | { status: 'success'; message: string; reservationId: string }
   | { status: 'error'; message: string; reservationId?: never };
 
+type StaffAvailabilityEventData = {
+  eventId: string;
+  staffId: string;
+  staffName: string;
+  availableDatetime: string;
+};
+
+type StaffAvailabilityEventState =
+  | { status: 'inactive' }
+  | { status: 'loading' }
+  | { status: 'ready'; event: StaffAvailabilityEventData }
+  | { status: 'unavailable'; message: string };
+
 type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 interface PublicBookingFormProps {
@@ -89,6 +102,7 @@ interface PublicBookingFormProps {
   previewMode?: boolean;
   bookingFormOverride?: PublicBookingFormSettings;
   campaignId?: string | null;
+  availabilityEventId?: string | null;
 }
 
 const EMPTY_MENUS: PublicMenu[] = [];
@@ -175,6 +189,34 @@ const getResourceLabel = (
 
 const createStartTimeIso = (date: string, time: string) =>
   `${date}T${time}:00+09:00`;
+
+const getJSTEventParts = (value: string) => {
+  const date = new Date(value);
+  const shifted = new Date(date.getTime() + JST_OFFSET_MS);
+  return {
+    date: shifted.toISOString().slice(0, 10),
+    time: shifted.toISOString().slice(11, 16),
+  };
+};
+
+const isStaffAvailabilityEventData = (
+  value: unknown
+): value is StaffAvailabilityEventData => {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.eventId === 'string' &&
+    typeof candidate.staffId === 'string' &&
+    typeof candidate.staffName === 'string' &&
+    typeof candidate.availableDatetime === 'string'
+  );
+};
+
+const readApiErrorMessage = (value: unknown): string | null => {
+  if (typeof value !== 'object' || value === null) return null;
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.error === 'string' ? candidate.error : null;
+};
 
 const normalizeCampaignId = (value: string | null | undefined) => {
   const trimmed = value?.trim();
@@ -619,6 +661,7 @@ export function PublicBookingForm({
   previewMode = false,
   bookingFormOverride,
   campaignId,
+  availabilityEventId,
 }: PublicBookingFormProps) {
   const todayString = useMemo(() => toJSTDateString(), []);
   const dateOptions = useMemo(
@@ -666,9 +709,25 @@ export function PublicBookingForm({
     Record<string, boolean>
   >({});
   const [lineIdToken, setLineIdToken] = useState<string | null>(null);
+  const [lineAuthResolved, setLineAuthResolved] = useState(false);
+  const [activeAvailabilityEventId, setActiveAvailabilityEventId] = useState<
+    string | null
+  >(availabilityEventId ?? null);
+  const [availabilityEventState, setAvailabilityEventState] =
+    useState<StaffAvailabilityEventState>(
+      availabilityEventId ? { status: 'loading' } : { status: 'inactive' }
+    );
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileResetSignal, setTurnstileResetSignal] = useState(0);
   const [captchaFallbackRequired, setCaptchaFallbackRequired] = useState(false);
+
+  useEffect(() => {
+    const nextEventId = availabilityEventId ?? null;
+    setActiveAvailabilityEventId(nextEventId);
+    setAvailabilityEventState(
+      nextEventId ? { status: 'loading' } : { status: 'inactive' }
+    );
+  }, [availabilityEventId]);
 
   useEffect(() => {
     if (!clinicId) {
@@ -742,8 +801,10 @@ export function PublicBookingForm({
   useEffect(() => {
     const liffId = bookingData?.bookingForm.liff_id;
     setLineIdToken(null);
+    setLineAuthResolved(false);
 
     if (!liffId || previewMode) {
+      setLineAuthResolved(true);
       return;
     }
 
@@ -781,6 +842,8 @@ export function PublicBookingForm({
         }
       } catch {
         setLineIdToken(null);
+      } finally {
+        if (!cancelled) setLineAuthResolved(true);
       }
     };
 
@@ -790,6 +853,75 @@ export function PublicBookingForm({
       cancelled = true;
     };
   }, [bookingData?.bookingForm.liff_id, previewMode]);
+
+  useEffect(() => {
+    if (!activeAvailabilityEventId) {
+      setAvailabilityEventState({ status: 'inactive' });
+      return;
+    }
+    if (!clinicId || !lineAuthResolved || !bookingData) return;
+    if (!lineIdToken) {
+      setAvailabilityEventState({
+        status: 'unavailable',
+        message: 'この空き枠はLINEアプリで本人確認後に予約できます。',
+      });
+      return;
+    }
+
+    const controller = new AbortController();
+    const loadEvent = async () => {
+      setAvailabilityEventState({ status: 'loading' });
+      try {
+        const query = new URLSearchParams({ clinic_id: clinicId });
+        const response = await fetch(
+          `/api/public/staff-availability-events/${encodeURIComponent(activeAvailabilityEventId)}?${query.toString()}`,
+          {
+            headers: { Authorization: `Bearer ${lineIdToken}` },
+            signal: controller.signal,
+          }
+        );
+        const body: unknown = await response.json();
+        if (
+          typeof body !== 'object' ||
+          body === null ||
+          !('success' in body) ||
+          body.success !== true ||
+          !('data' in body) ||
+          !isStaffAvailabilityEventData(body.data)
+        ) {
+          const message =
+            readApiErrorMessage(body) ?? '空き枠通知を確認できませんでした';
+          throw new Error(message);
+        }
+        const event = body.data;
+        const parts = getJSTEventParts(event.availableDatetime);
+        setFormData(prev => ({
+          ...prev,
+          resourceId: event.staffId,
+          date: parts.date,
+          time: parts.time,
+        }));
+        setAvailabilityEventState({ status: 'ready', event });
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return;
+        setAvailabilityEventState({
+          status: 'unavailable',
+          message:
+            error instanceof Error
+              ? error.message
+              : '空き枠通知を確認できませんでした',
+        });
+      }
+    };
+    void loadEvent();
+    return () => controller.abort();
+  }, [
+    activeAvailabilityEventId,
+    bookingData,
+    clinicId,
+    lineAuthResolved,
+    lineIdToken,
+  ]);
 
   useEffect(() => {
     setTurnstileToken(null);
@@ -884,8 +1016,15 @@ export function PublicBookingForm({
 
   const hasBookableChoices = menus.length > 0 && resources.length > 0;
   const canContinue = useMemo(() => {
+    if (
+      activeAvailabilityEventId &&
+      availabilityEventState.status !== 'ready'
+    ) {
+      return false;
+    }
     if (step === 1) return Boolean(formData.menuId);
     if (step === 2) {
+      if (availabilityEventState.status === 'ready') return true;
       if (bookingForm.staffSelection === 'hidden') return true;
       if (bookingForm.staffSelection === 'required') {
         return Boolean(
@@ -894,7 +1033,20 @@ export function PublicBookingForm({
       }
       return Boolean(formData.resourceId);
     }
-    if (step === 3) return Boolean(formData.date && formData.time);
+    if (step === 3) {
+      if (availabilityEventState.status === 'ready') {
+        const fixed = getJSTEventParts(
+          availabilityEventState.event.availableDatetime
+        );
+        return Boolean(
+          selectedSlot &&
+          formData.resourceId === availabilityEventState.event.staffId &&
+          formData.date === fixed.date &&
+          formData.time === fixed.time
+        );
+      }
+      return Boolean(formData.date && formData.time);
+    }
     if (step === 4) {
       if (!formData.customerName.trim()) return false;
       if (
@@ -963,12 +1115,15 @@ export function PublicBookingForm({
     }
     return false;
   }, [
+    activeAvailabilityEventId,
+    availabilityEventState,
     bookingForm,
     consentResponses,
     formData,
     isTurnstileRequired,
     previewMode,
     questionResponses,
+    selectedSlot,
     step,
     submitting,
     turnstileToken,
@@ -981,6 +1136,18 @@ export function PublicBookingForm({
     },
     []
   );
+
+  const switchToRegularBooking = useCallback(() => {
+    setActiveAvailabilityEventId(null);
+    setAvailabilityEventState({ status: 'inactive' });
+    setAvailabilityError(null);
+    setFormData(prev => ({
+      ...prev,
+      resourceId: ANY_RESOURCE_ID,
+      date: todayString,
+      time: '',
+    }));
+  }, [todayString]);
 
   const setQuestionResponse = useCallback(
     (questionId: string, value: BookingFormResponseValue) => {
@@ -1119,6 +1286,10 @@ export function PublicBookingForm({
           line_id_token: lineIdToken ?? undefined,
           turnstile_token: isTurnstileRequired ? turnstileToken : undefined,
           campaign_id: normalizedCampaignId,
+          availability_event_id:
+            availabilityEventState.status === 'ready'
+              ? (activeAvailabilityEventId ?? undefined)
+              : undefined,
         }),
       });
       const json = (await response.json()) as ApiEnvelope<{
@@ -1170,6 +1341,8 @@ export function PublicBookingForm({
     isTurnstileRequired,
     lineIdToken,
     normalizedCampaignId,
+    activeAvailabilityEventId,
+    availabilityEventState,
     questionResponses,
     consentResponses,
     selectedMenu,
@@ -1266,6 +1439,54 @@ export function PublicBookingForm({
       clinicName={bookingData.clinicName}
       step={step}
     >
+      {activeAvailabilityEventId &&
+        availabilityEventState.status === 'loading' && (
+          <div className='mb-4 flex items-center rounded-md border border-sky-200 bg-sky-50 px-3 py-3 text-sm text-sky-800'>
+            <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+            LINE通知の空き枠を確認しています。
+          </div>
+        )}
+      {activeAvailabilityEventId &&
+        availabilityEventState.status === 'unavailable' && (
+          <div
+            className='mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900'
+            role='status'
+          >
+            <p>{availabilityEventState.message}</p>
+            <Button
+              type='button'
+              variant='outline'
+              className='mt-3 bg-white'
+              onClick={switchToRegularBooking}
+            >
+              通常予約に切り替える
+            </Button>
+          </div>
+        )}
+      {availabilityEventState.status === 'ready' && (
+        <div className='mb-4 rounded-md border border-sky-200 bg-sky-50 px-3 py-3 text-sm text-sky-900'>
+          <p className='font-semibold'>LINE通知の限定空き枠</p>
+          <p className='mt-1'>
+            {availabilityEventState.event.staffName}／
+            {formatDateLabel(
+              getJSTEventParts(availabilityEventState.event.availableDatetime)
+                .date
+            )}{' '}
+            {
+              getJSTEventParts(availabilityEventState.event.availableDatetime)
+                .time
+            }
+          </p>
+          <Button
+            type='button'
+            variant='outline'
+            className='mt-3 bg-white'
+            onClick={switchToRegularBooking}
+          >
+            通常予約に切り替える
+          </Button>
+        </div>
+      )}
       {submitState.status === 'error' && (
         <div
           className='mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700'
@@ -1295,7 +1516,14 @@ export function PublicBookingForm({
                 ].join(' ')}
                 onClick={() => {
                   setField('menuId', menu.id);
-                  setField('time', '');
+                  setField(
+                    'time',
+                    availabilityEventState.status === 'ready'
+                      ? getJSTEventParts(
+                          availabilityEventState.event.availableDatetime
+                        ).time
+                      : ''
+                  );
                 }}
               >
                 <div className='font-semibold text-slate-950'>{menu.name}</div>
@@ -1328,54 +1556,65 @@ export function PublicBookingForm({
             </h2>
           </div>
           <div className='grid gap-3'>
-            {bookingForm.staffSelection === 'hidden' && (
-              <div className='rounded-md border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600'>
-                担当者は院側で割り当てます。
+            {availabilityEventState.status === 'ready' && (
+              <div className='rounded-md border border-sky-200 bg-sky-50 p-4 text-sm leading-6 text-sky-900'>
+                <p className='font-semibold'>
+                  {availabilityEventState.event.staffName}
+                </p>
+                <p>この通知枠では担当者を変更できません。</p>
               </div>
             )}
-            {bookingForm.staffSelection === 'optional' && (
-              <button
-                type='button'
-                className={[
-                  'rounded-md border p-4 text-left transition',
-                  formData.resourceId === ANY_RESOURCE_ID
-                    ? 'border-sky-600 bg-sky-50'
-                    : 'border-slate-200 bg-white active:bg-slate-50',
-                ].join(' ')}
-                onClick={() => {
-                  setField('resourceId', ANY_RESOURCE_ID);
-                  setField('time', '');
-                }}
-              >
-                <div className='flex items-center gap-2 font-semibold text-slate-950'>
-                  <UserRound className='h-4 w-4' />
-                  指名なし
+            {availabilityEventState.status !== 'ready' &&
+              bookingForm.staffSelection === 'hidden' && (
+                <div className='rounded-md border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600'>
+                  担当者は院側で割り当てます。
                 </div>
-                <p className='mt-2 text-sm leading-6 text-slate-600'>
-                  空いている担当者を院側で割り当てます。
-                </p>
-              </button>
-            )}
-            {resources.map(resource => (
-              <button
-                key={resource.id}
-                type='button'
-                className={[
-                  'rounded-md border p-4 text-left transition',
-                  formData.resourceId === resource.id
-                    ? 'border-sky-600 bg-sky-50'
-                    : 'border-slate-200 bg-white active:bg-slate-50',
-                ].join(' ')}
-                onClick={() => {
-                  setField('resourceId', resource.id);
-                  setField('time', '');
-                }}
-              >
-                <div className='font-semibold text-slate-950'>
-                  {resource.name}
-                </div>
-              </button>
-            ))}
+              )}
+            {availabilityEventState.status !== 'ready' &&
+              bookingForm.staffSelection === 'optional' && (
+                <button
+                  type='button'
+                  className={[
+                    'rounded-md border p-4 text-left transition',
+                    formData.resourceId === ANY_RESOURCE_ID
+                      ? 'border-sky-600 bg-sky-50'
+                      : 'border-slate-200 bg-white active:bg-slate-50',
+                  ].join(' ')}
+                  onClick={() => {
+                    setField('resourceId', ANY_RESOURCE_ID);
+                    setField('time', '');
+                  }}
+                >
+                  <div className='flex items-center gap-2 font-semibold text-slate-950'>
+                    <UserRound className='h-4 w-4' />
+                    指名なし
+                  </div>
+                  <p className='mt-2 text-sm leading-6 text-slate-600'>
+                    空いている担当者を院側で割り当てます。
+                  </p>
+                </button>
+              )}
+            {availabilityEventState.status !== 'ready' &&
+              resources.map(resource => (
+                <button
+                  key={resource.id}
+                  type='button'
+                  className={[
+                    'rounded-md border p-4 text-left transition',
+                    formData.resourceId === resource.id
+                      ? 'border-sky-600 bg-sky-50'
+                      : 'border-slate-200 bg-white active:bg-slate-50',
+                  ].join(' ')}
+                  onClick={() => {
+                    setField('resourceId', resource.id);
+                    setField('time', '');
+                  }}
+                >
+                  <div className='font-semibold text-slate-950'>
+                    {resource.name}
+                  </div>
+                </button>
+              ))}
           </div>
           <NavigationButtons
             step={step}
@@ -1391,26 +1630,36 @@ export function PublicBookingForm({
           <div>
             <h2 className='text-xl font-semibold text-slate-950'>日時を選択</h2>
           </div>
-          <div className='flex gap-2 overflow-x-auto pb-1'>
-            {dateOptions.map(date => (
-              <button
-                key={date}
-                type='button'
-                className={[
-                  'min-h-12 min-w-24 rounded-md border px-3 text-sm font-semibold',
-                  formData.date === date
-                    ? 'border-sky-600 bg-sky-600 text-white'
-                    : 'border-slate-200 bg-white text-slate-700',
-                ].join(' ')}
-                onClick={() => {
-                  setField('date', date);
-                  setField('time', '');
-                }}
-              >
-                {formatDateLabel(date)}
-              </button>
-            ))}
-          </div>
+          {availabilityEventState.status === 'ready' && (
+            <div className='rounded-md border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900'>
+              <p className='font-semibold'>
+                {formatDateLabel(formData.date)} {formData.time}
+              </p>
+              <p className='mt-1'>この通知枠では日時を変更できません。</p>
+            </div>
+          )}
+          {availabilityEventState.status !== 'ready' && (
+            <div className='flex gap-2 overflow-x-auto pb-1'>
+              {dateOptions.map(date => (
+                <button
+                  key={date}
+                  type='button'
+                  className={[
+                    'min-h-12 min-w-24 rounded-md border px-3 text-sm font-semibold',
+                    formData.date === date
+                      ? 'border-sky-600 bg-sky-600 text-white'
+                      : 'border-slate-200 bg-white text-slate-700',
+                  ].join(' ')}
+                  onClick={() => {
+                    setField('date', date);
+                    setField('time', '');
+                  }}
+                >
+                  {formatDateLabel(date)}
+                </button>
+              ))}
+            </div>
+          )}
 
           {availabilityError && (
             <div
@@ -1428,40 +1677,65 @@ export function PublicBookingForm({
             </div>
           )}
 
-          {!availabilityLoading && selectedDay?.is_closed && (
-            <div className='rounded-md border border-dashed border-slate-300 p-5 text-sm text-slate-600'>
-              この日は受付できる時間がありません。
-            </div>
-          )}
+          {!availabilityLoading &&
+            availabilityEventState.status !== 'ready' &&
+            selectedDay?.is_closed && (
+              <div className='rounded-md border border-dashed border-slate-300 p-5 text-sm text-slate-600'>
+                この日は受付できる時間がありません。
+              </div>
+            )}
 
-          {!availabilityLoading && selectedDay && !selectedDay.is_closed && (
-            <div className='grid grid-cols-3 gap-2 sm:grid-cols-4'>
-              {selectedDay.slots.map(slot => (
-                <button
-                  key={slot.start}
+          {!availabilityLoading &&
+            availabilityEventState.status !== 'ready' &&
+            selectedDay &&
+            !selectedDay.is_closed && (
+              <div className='grid grid-cols-3 gap-2 sm:grid-cols-4'>
+                {selectedDay.slots.map(slot => (
+                  <button
+                    key={slot.start}
+                    type='button'
+                    disabled={!slot.available}
+                    className={[
+                      'min-h-12 rounded-md border text-sm font-semibold transition',
+                      formData.time === slot.start
+                        ? 'border-sky-600 bg-sky-600 text-white'
+                        : slot.available
+                          ? 'border-slate-200 bg-white text-slate-800 active:bg-slate-50'
+                          : 'border-slate-100 bg-slate-100 text-slate-400',
+                    ].join(' ')}
+                    onClick={() => handleSelectSlot(slot)}
+                  >
+                    {slot.start}
+                  </button>
+                ))}
+              </div>
+            )}
+
+          {!availabilityLoading &&
+            availabilityEventState.status !== 'ready' &&
+            !selectedDay && (
+              <div className='rounded-md border border-dashed border-slate-300 p-5 text-sm text-slate-600'>
+                空き枠を取得できませんでした。
+              </div>
+            )}
+
+          {!availabilityLoading &&
+            availabilityEventState.status === 'ready' &&
+            !selectedSlot && (
+              <div className='rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900'>
+                <p>
+                  選択中のメニューはこの枠に収まりません。別のメニューを選ぶか、通常予約へ切り替えてください。
+                </p>
+                <Button
                   type='button'
-                  disabled={!slot.available}
-                  className={[
-                    'min-h-12 rounded-md border text-sm font-semibold transition',
-                    formData.time === slot.start
-                      ? 'border-sky-600 bg-sky-600 text-white'
-                      : slot.available
-                        ? 'border-slate-200 bg-white text-slate-800 active:bg-slate-50'
-                        : 'border-slate-100 bg-slate-100 text-slate-400',
-                  ].join(' ')}
-                  onClick={() => handleSelectSlot(slot)}
+                  variant='outline'
+                  className='mt-3 bg-white'
+                  onClick={switchToRegularBooking}
                 >
-                  {slot.start}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {!availabilityLoading && !selectedDay && (
-            <div className='rounded-md border border-dashed border-slate-300 p-5 text-sm text-slate-600'>
-              空き枠を取得できませんでした。
-            </div>
-          )}
+                  通常予約に切り替える
+                </Button>
+              </div>
+            )}
 
           <NavigationButtons
             step={step}
@@ -1842,6 +2116,10 @@ export default function PublicBookingPage() {
   const clinicId = getFirstParam(params?.clinic_id);
 
   return (
-    <PublicBookingForm clinicId={clinicId} campaignId={searchParams.get('c')} />
+    <PublicBookingForm
+      clinicId={clinicId}
+      campaignId={searchParams.get('c')}
+      availabilityEventId={searchParams.get('availability_event_id')}
+    />
   );
 }

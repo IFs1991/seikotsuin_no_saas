@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import type { Session, User } from '@supabase/supabase-js';
+import type { Session, SupabaseClient, User } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 import { assertEnv } from '@/lib/env';
@@ -94,8 +94,10 @@ export async function createClient(): Promise<SupabaseServerClient> {
   return await getServerClient();
 }
 
-export function createAdminClient(): SupabaseServerClient {
-  return createServerClient<Database>(
+export function createAdminClientForDatabase<
+  TDatabase extends { public: object },
+>(): SupabaseClient<TDatabase> {
+  return createServerClient<TDatabase>(
     assertEnv('NEXT_PUBLIC_SUPABASE_URL'),
     assertEnv('SUPABASE_SERVICE_ROLE_KEY'),
     {
@@ -110,6 +112,10 @@ export function createAdminClient(): SupabaseServerClient {
       },
     }
   );
+}
+
+export function createAdminClient(): SupabaseServerClient {
+  return createAdminClientForDatabase<Database>();
 }
 
 export async function getCurrentUser(client?: SupabaseServerClient) {

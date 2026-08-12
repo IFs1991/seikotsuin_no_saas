@@ -3276,6 +3276,71 @@ export type Database = {
           },
         ];
       };
+      patient_identity_aliases: {
+        Row: {
+          alias: string;
+          alias_type: string;
+          clinic_id: string;
+          created_at: string;
+          customer_id: string;
+          id: string;
+          normalized_alias: string;
+          source: string;
+          updated_at: string;
+        };
+        Insert: {
+          alias: string;
+          alias_type?: string;
+          clinic_id: string;
+          created_at?: string;
+          customer_id: string;
+          id?: string;
+          normalized_alias: string;
+          source?: string;
+          updated_at?: string;
+        };
+        Update: {
+          alias?: string;
+          alias_type?: string;
+          clinic_id?: string;
+          created_at?: string;
+          customer_id?: string;
+          id?: string;
+          normalized_alias?: string;
+          source?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'patient_identity_aliases_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'patient_identity_aliases_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'patient_identity_aliases_customer_clinic_fkey';
+            columns: ['customer_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'customers';
+            referencedColumns: ['id', 'clinic_id'];
+          },
+          {
+            foreignKeyName: 'patient_identity_aliases_customer_clinic_fkey';
+            columns: ['customer_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'patient_visit_summary';
+            referencedColumns: ['patient_id', 'clinic_id'];
+          },
+        ];
+      };
       patient_outreach_campaigns: {
         Row: {
           clinic_id: string;
@@ -3399,6 +3464,79 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'patient_visit_summary';
             referencedColumns: ['patient_id', 'clinic_id'];
+          },
+        ];
+      };
+      patient_staff_preferences: {
+        Row: {
+          clinic_id: string;
+          customer_id: string;
+          id: string;
+          notification_enabled: boolean;
+          registered_at: string;
+          staff_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          clinic_id: string;
+          customer_id: string;
+          id?: string;
+          notification_enabled?: boolean;
+          registered_at?: string;
+          staff_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          clinic_id?: string;
+          customer_id?: string;
+          id?: string;
+          notification_enabled?: boolean;
+          registered_at?: string;
+          staff_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'patient_staff_preferences_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'patient_staff_preferences_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'patient_staff_preferences_customer_clinic_fkey';
+            columns: ['customer_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'customers';
+            referencedColumns: ['id', 'clinic_id'];
+          },
+          {
+            foreignKeyName: 'patient_staff_preferences_customer_clinic_fkey';
+            columns: ['customer_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'patient_visit_summary';
+            referencedColumns: ['patient_id', 'clinic_id'];
+          },
+          {
+            foreignKeyName: 'patient_staff_preferences_staff_clinic_fkey';
+            columns: ['staff_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'resources';
+            referencedColumns: ['id', 'clinic_id'];
+          },
+          {
+            foreignKeyName: 'patient_staff_preferences_staff_clinic_fkey';
+            columns: ['staff_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_performance_summary';
+            referencedColumns: ['staff_id', 'clinic_id'];
           },
         ];
       };
@@ -3736,6 +3874,68 @@ export type Database = {
           },
           {
             foreignKeyName: 'reservation_notifications_reservation_id_fkey';
+            columns: ['reservation_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'reservations';
+            referencedColumns: ['id', 'clinic_id'];
+          },
+        ];
+      };
+      reservation_rewards: {
+        Row: {
+          clinic_id: string;
+          created_at: string;
+          id: string;
+          metadata: Json;
+          reservation_id: string;
+          reward_type: string;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          clinic_id: string;
+          created_at?: string;
+          id?: string;
+          metadata?: Json;
+          reservation_id: string;
+          reward_type: string;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          clinic_id?: string;
+          created_at?: string;
+          id?: string;
+          metadata?: Json;
+          reservation_id?: string;
+          reward_type?: string;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'reservation_rewards_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reservation_rewards_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reservation_rewards_reservation_clinic_fkey';
+            columns: ['reservation_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'reservation_list_view';
+            referencedColumns: ['id', 'clinic_id'];
+          },
+          {
+            foreignKeyName: 'reservation_rewards_reservation_clinic_fkey';
             columns: ['reservation_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'reservations';
@@ -4997,6 +5197,170 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'clinics';
             referencedColumns: ['id'];
+          },
+        ];
+      };
+      staff_availability_events: {
+        Row: {
+          available_datetime: string;
+          clinic_id: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          reward_type: string;
+          staff_id: string;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          available_datetime: string;
+          clinic_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          reward_type?: string;
+          staff_id: string;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          available_datetime?: string;
+          clinic_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          reward_type?: string;
+          staff_id?: string;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'staff_availability_events_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_availability_events_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_availability_events_staff_clinic_fkey';
+            columns: ['staff_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'resources';
+            referencedColumns: ['id', 'clinic_id'];
+          },
+          {
+            foreignKeyName: 'staff_availability_events_staff_clinic_fkey';
+            columns: ['staff_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_performance_summary';
+            referencedColumns: ['staff_id', 'clinic_id'];
+          },
+        ];
+      };
+      staff_availability_notifications: {
+        Row: {
+          availability_event_id: string;
+          booked_at: string | null;
+          booked_reservation_id: string | null;
+          clinic_id: string;
+          created_at: string;
+          customer_id: string;
+          id: string;
+          line_outbox_id: string | null;
+          line_user_id: string;
+          sent_at: string | null;
+          status: string;
+        };
+        Insert: {
+          availability_event_id: string;
+          booked_at?: string | null;
+          booked_reservation_id?: string | null;
+          clinic_id: string;
+          created_at?: string;
+          customer_id: string;
+          id?: string;
+          line_outbox_id?: string | null;
+          line_user_id: string;
+          sent_at?: string | null;
+          status?: string;
+        };
+        Update: {
+          availability_event_id?: string;
+          booked_at?: string | null;
+          booked_reservation_id?: string | null;
+          clinic_id?: string;
+          created_at?: string;
+          customer_id?: string;
+          id?: string;
+          line_outbox_id?: string | null;
+          line_user_id?: string;
+          sent_at?: string | null;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'staff_availability_notifications_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_availability_notifications_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_availability_notifications_customer_clinic_fkey';
+            columns: ['customer_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'customers';
+            referencedColumns: ['id', 'clinic_id'];
+          },
+          {
+            foreignKeyName: 'staff_availability_notifications_customer_clinic_fkey';
+            columns: ['customer_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'patient_visit_summary';
+            referencedColumns: ['patient_id', 'clinic_id'];
+          },
+          {
+            foreignKeyName: 'staff_availability_notifications_event_clinic_fkey';
+            columns: ['availability_event_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_availability_events';
+            referencedColumns: ['id', 'clinic_id'];
+          },
+          {
+            foreignKeyName: 'staff_availability_notifications_outbox_clinic_fkey';
+            columns: ['line_outbox_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'line_message_outbox';
+            referencedColumns: ['id', 'clinic_id'];
+          },
+          {
+            foreignKeyName: 'staff_availability_notifications_reservation_clinic_fkey';
+            columns: ['booked_reservation_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'reservation_list_view';
+            referencedColumns: ['id', 'clinic_id'];
+          },
+          {
+            foreignKeyName: 'staff_availability_notifications_reservation_clinic_fkey';
+            columns: ['booked_reservation_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'reservations';
+            referencedColumns: ['id', 'clinic_id'];
           },
         ];
       };
@@ -6460,6 +6824,53 @@ export type Database = {
         };
         Returns: Json;
       };
+      create_staff_availability_event: {
+        Args: {
+          p_available_datetime: string;
+          p_clinic_id: string;
+          p_created_by: string;
+          p_event_id: string;
+          p_recipients: Json;
+          p_reward_type: string;
+          p_staff_id: string;
+        };
+        Returns: {
+          available_datetime: string;
+          clinic_id: string;
+          created_at: string;
+          created_by: string;
+          id: string;
+          recipient_count: number;
+          reward_type: string;
+          staff_id: string;
+          status: string;
+          updated_at: string;
+        }[];
+      };
+      create_staff_availability_reservation: {
+        Args: {
+          p_campaign_id: string;
+          p_channel: string;
+          p_clinic_id: string;
+          p_customer_id: string;
+          p_end_time: string;
+          p_event_id: string;
+          p_intake_responses: Json;
+          p_is_staff_requested: boolean;
+          p_line_user_id: string;
+          p_menu_id: string;
+          p_notes: string;
+          p_staff_id: string;
+          p_start_time: string;
+        };
+        Returns: {
+          end_time: string;
+          id: string;
+          start_time: string;
+          status: string;
+          updated_at: string;
+        }[];
+      };
       custom_access_token_hook: { Args: { event: Json }; Returns: Json };
       decrypt_mfa_secret: { Args: { encrypted_text: string }; Returns: string };
       decrypt_patient_data: {
@@ -6468,6 +6879,17 @@ export type Database = {
       };
       encrypt_mfa_secret: { Args: { secret_text: string }; Returns: string };
       encrypt_patient_data: { Args: { plain_text: string }; Returns: string };
+      finalize_staff_availability_delivery: {
+        Args: {
+          p_clinic_id: string;
+          p_last_error: string;
+          p_notification_id: string;
+          p_outbox_id: string;
+          p_sent_at: string;
+          p_status: string;
+        };
+        Returns: undefined;
+      };
       get_available_time_slots: {
         Args: {
           p_date: string;
