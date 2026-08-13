@@ -1,4 +1,4 @@
-const mockCreateAdminClient = jest.fn();
+const mockCreateLineIntegrationAdminClient = jest.fn();
 const mockProcessLineOutbox = jest.fn();
 
 jest.mock('next/server', () => ({
@@ -10,8 +10,9 @@ jest.mock('next/server', () => ({
   },
 }));
 
-jest.mock('@/lib/supabase', () => ({
-  createAdminClient: () => mockCreateAdminClient(),
+jest.mock('@/lib/line/integration-db', () => ({
+  createLineIntegrationAdminClient: () =>
+    mockCreateLineIntegrationAdminClient(),
 }));
 
 jest.mock('@/lib/notifications/line-processor', () => ({
@@ -53,7 +54,7 @@ describe('GET /api/internal/process-line-outbox', () => {
 
   it('processes LINE outbox for authorized cron requests', async () => {
     const client = { from: jest.fn() };
-    mockCreateAdminClient.mockReturnValue(client);
+    mockCreateLineIntegrationAdminClient.mockReturnValue(client);
     mockProcessLineOutbox.mockResolvedValue({
       processed: 1,
       sent: 1,
@@ -84,7 +85,7 @@ describe('GET /api/internal/process-line-outbox', () => {
   });
 
   it('does not expose processor error details', async () => {
-    mockCreateAdminClient.mockReturnValue({ from: jest.fn() });
+    mockCreateLineIntegrationAdminClient.mockReturnValue({ from: jest.fn() });
     mockProcessLineOutbox.mockRejectedValue(
       new Error('database password=secret')
     );

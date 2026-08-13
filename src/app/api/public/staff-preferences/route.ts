@@ -83,6 +83,7 @@ export async function GET(request: NextRequest) {
 
     const data = await listLineStaffPreferences(createCrmAdminClient(), {
       clinicId: parsed.data.clinic_id,
+      credentialGenerationId: auth.credentialGenerationId,
       lineUserId: auth.lineUserId,
     });
     return noStoreJson({ success: true, data });
@@ -139,6 +140,7 @@ export async function PUT(request: NextRequest) {
 
     const row = await setLineStaffPreference(createCrmAdminClient(), {
       clinicId: parsed.data.clinic_id,
+      credentialGenerationId: auth.credentialGenerationId,
       lineUserId: auth.lineUserId,
       staffId: parsed.data.staff_id,
       notificationEnabled: parsed.data.notification_enabled,

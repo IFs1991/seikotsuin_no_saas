@@ -825,6 +825,7 @@ describe('POST /api/public/reservations', () => {
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'turnstile-site-key';
     mockVerifyLineIdTokenForClinic.mockResolvedValue({
       ok: true,
+      credentialGenerationId: '22222222-2222-4222-8222-222222222222',
       lineUserId: 'Uline-user-001',
       displayName: 'LINE 太郎',
       audience: '2000000001',
@@ -918,6 +919,7 @@ describe('POST /api/public/reservations', () => {
   it('通知と異なる担当・開始日時は原子的予約RPCの競合として409を返す', async () => {
     mockVerifyLineIdTokenForClinic.mockResolvedValue({
       ok: true,
+      credentialGenerationId: '22222222-2222-4222-8222-222222222222',
       lineUserId: 'Uline-user-001',
       displayName: 'LINE 太郎',
       audience: '2000000001',
@@ -988,6 +990,7 @@ describe('POST /api/public/reservations', () => {
   it('LINE IDトークン検証成功時は顧客にLINE IDを保存して予約を継続する', async () => {
     mockVerifyLineIdTokenForClinic.mockResolvedValue({
       ok: true,
+      credentialGenerationId: '22222222-2222-4222-8222-222222222222',
       lineUserId: 'Uline-user-001',
       displayName: 'LINE 太郎',
       audience: '2000000001',

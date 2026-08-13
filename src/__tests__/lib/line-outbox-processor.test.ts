@@ -3,23 +3,22 @@ import {
   processLineOutbox,
   type ProcessLineOutboxOptions,
 } from '@/lib/notifications/line-processor';
-import type { Database, Json } from '@/types/supabase';
-
-const mockAvailabilityRpc = jest.fn();
-
-jest.mock('@/lib/crm-line/db', () => ({
-  createCrmAdminClient: jest.fn(() => ({ rpc: mockAvailabilityRpc })),
-}));
+import type { LineNotificationOutboxRow } from '@/lib/line/integration-db';
+import type { Json } from '@/types/supabase';
 
 type LineProcessorClient = Parameters<typeof processLineOutbox>[0];
-type LineOutboxRow = Database['public']['Tables']['line_message_outbox']['Row'];
+type LineOutboxRow = LineNotificationOutboxRow;
 
 const NOW = new Date('2026-07-05T00:00:00.000Z');
 
 function createLineJob(overrides: Partial<LineOutboxRow> = {}): LineOutboxRow {
   return {
     id: 'line-job-001',
+    claimed_at: null,
+    claim_token: null,
     clinic_id: 'clinic-001',
+    credential_generation_id: 'generation-001',
+    customer_id: 'customer-001',
     line_user_id: 'U1234567890',
     message_type: 'received',
     payload: {
@@ -54,6 +53,22 @@ function createLineJob(overrides: Partial<LineOutboxRow> = {}): LineOutboxRow {
 
 function createProcessorClient(jobs: LineOutboxRow[]) {
   const lineUpdates: Json[] = [];
+  const rpc = jest.fn((name: string, args: Record<string, unknown>) => {
+    if (name === 'claim_line_notification_outbox') {
+      return Promise.resolve({ data: 'claim-token-001', error: null });
+    }
+    if (name === 'renew_line_notification_claim') {
+      return Promise.resolve({ data: true, error: null });
+    }
+    if (name === 'finalize_line_notification_outbox') {
+      lineUpdates.push(args as Json);
+      return Promise.resolve({ data: null, error: null });
+    }
+    return Promise.resolve({
+      data: null,
+      error: { message: 'unexpected rpc' },
+    });
+  });
   const emailInsert = jest.fn().mockReturnValue({
     select: jest.fn().mockReturnValue({
       single: jest.fn().mockResolvedValue({
@@ -68,48 +83,16 @@ function createProcessorClient(jobs: LineOutboxRow[]) {
       eq: jest.fn().mockReturnValue({ eq: secondEq }),
     };
   });
-  const outreachRecipientUpdateChain = {
-    eq: jest.fn(() => outreachRecipientUpdateChain),
-  };
-  outreachRecipientUpdateChain.eq.mockImplementation(() => {
-    if (outreachRecipientUpdateChain.eq.mock.calls.length >= 4) {
-      return Promise.resolve({ error: null });
-    }
-    return outreachRecipientUpdateChain;
-  });
-  const outreachRecipientUpdate = jest.fn(() => outreachRecipientUpdateChain);
-
   const fetchQuery = {
     eq: jest.fn(() => fetchQuery),
     lte: jest.fn(() => fetchQuery),
     order: jest.fn(() => fetchQuery),
     limit: jest.fn().mockResolvedValue({ data: jobs, error: null }),
   };
-  const claimQuery = {
-    eq: jest.fn(() => claimQuery),
-    select: jest.fn().mockReturnValue({
-      maybeSingle: jest.fn().mockResolvedValue({
-        data: { id: jobs[0]?.id ?? 'line-job-001' },
-        error: null,
-      }),
-    }),
-  };
-  const finalQuery = {
-    eq: jest.fn().mockResolvedValue({ error: null }),
-  };
-  const lineUpdate = jest.fn((value: Json) => {
-    lineUpdates.push(value);
-    if (isRecord(value) && 'attempts' in value && !('status' in value)) {
-      return claimQuery;
-    }
-    return finalQuery;
-  });
-
   const from = jest.fn((table: string) => {
     if (table === 'line_message_outbox') {
       return {
         select: jest.fn().mockReturnValue(fetchQuery),
-        update: lineUpdate,
       };
     }
     if (table === 'email_outbox') {
@@ -118,18 +101,18 @@ function createProcessorClient(jobs: LineOutboxRow[]) {
     if (table === 'reservation_notifications') {
       return { update: notificationUpdate };
     }
-    if (table === 'patient_outreach_recipients') {
-      return { update: outreachRecipientUpdate };
-    }
     throw new Error(`Unexpected table: ${table}`);
   });
 
   return {
-    client: { from: from as LineProcessorClient['from'] },
+    client: {
+      from: from as LineProcessorClient['from'],
+      rpc: rpc as LineProcessorClient['rpc'],
+    },
+    rpc,
     lineUpdates,
     emailInsert,
     notificationUpdate,
-    outreachRecipientUpdate,
   };
 }
 
@@ -153,16 +136,7 @@ function createUnavailableAccessTokenResolver(): NonNullable<
   }));
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 describe('LINE outbox processor', () => {
-  beforeEach(() => {
-    mockAvailabilityRpc.mockReset();
-    mockAvailabilityRpc.mockResolvedValue({ error: null });
-  });
-
   it('sends pending LINE push jobs and marks them sent', async () => {
     const fixture = createProcessorClient([createLineJob()]);
     const fetcher = jest.fn(async (_input: string, _init: RequestInit) =>
@@ -190,18 +164,17 @@ describe('LINE outbox processor', () => {
         headers: expect.objectContaining({
           authorization: 'Bearer line-access-token',
           'content-type': 'application/json',
+          'x-line-retry-key': 'line-job-001',
         }),
+        signal: expect.any(AbortSignal),
       })
     );
     expect(fixture.lineUpdates).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ attempts: 1 }),
-        expect.objectContaining({ status: 'sent' }),
-      ])
+      expect.arrayContaining([expect.objectContaining({ p_status: 'sent' })])
     );
   });
 
-  it('空き枠通知の原子的delivery更新エラーを無視しない', async () => {
+  it('空き枠通知もclaim token付きの共通RPCで原子的に更新する', async () => {
     const fixture = createProcessorClient([
       createLineJob({
         message_type: 'staff_availability',
@@ -215,35 +188,24 @@ describe('LINE outbox processor', () => {
         },
       }),
     ]);
-    mockAvailabilityRpc.mockResolvedValue({
-      error: { message: 'delivery transaction failed' },
+    await processLineOutbox(fixture.client, {
+      now: NOW,
+      fetcher: jest.fn(async () => new Response('', { status: 200 })),
+      accessTokenResolver: createAccessTokenResolver(),
     });
 
-    await expect(
-      processLineOutbox(fixture.client, {
-        now: NOW,
-        fetcher: jest.fn(async () => new Response('', { status: 200 })),
-        accessTokenResolver: createAccessTokenResolver(),
-      })
-    ).rejects.toThrow('delivery transaction failed');
-
-    expect(mockAvailabilityRpc).toHaveBeenCalledWith(
-      'finalize_staff_availability_delivery',
+    expect(fixture.rpc).toHaveBeenCalledWith(
+      'finalize_line_notification_outbox',
       expect.objectContaining({
         p_clinic_id: 'clinic-001',
         p_outbox_id: 'line-job-001',
-        p_notification_id: 'notification-001',
+        p_claim_token: 'claim-token-001',
         p_status: 'sent',
       })
     );
-    expect(
-      fixture.lineUpdates.some(
-        update => isRecord(update) && update.status === 'sent'
-      )
-    ).toBe(false);
   });
 
-  it('marks outreach recipients as sent when outreach LINE push succeeds', async () => {
+  it('finalizes outreach success through the atomic delivery RPC', async () => {
     const fixture = createProcessorClient([
       createLineJob({
         message_type: 'outreach',
@@ -270,10 +232,11 @@ describe('LINE outbox processor', () => {
     });
 
     expect(result.sent).toBe(1);
-    expect(fixture.outreachRecipientUpdate).toHaveBeenCalledWith(
+    expect(fixture.rpc).toHaveBeenCalledWith(
+      'finalize_line_notification_outbox',
       expect.objectContaining({
-        delivery_status: 'sent',
-        sent_at: expect.any(String),
+        p_status: 'sent',
+        p_sent_at: expect.any(String),
       })
     );
   });
@@ -294,9 +257,9 @@ describe('LINE outbox processor', () => {
     expect(fixture.lineUpdates).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          status: 'pending',
-          last_error: expect.stringContaining('status 500'),
-          next_attempt_at: '2026-07-05T00:05:00.000Z',
+          p_status: 'pending',
+          p_last_error: expect.stringContaining('status 500'),
+          p_next_attempt_at: '2026-07-05T00:05:00.000Z',
         }),
       ])
     );
@@ -319,9 +282,9 @@ describe('LINE outbox processor', () => {
     expect(fixture.lineUpdates).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          status: 'pending',
-          last_error: 'LINE push request failed: network down',
-          next_attempt_at: '2026-07-05T00:05:00.000Z',
+          p_status: 'pending',
+          p_last_error: 'LINE push request failed: network down',
+          p_next_attempt_at: '2026-07-05T00:05:00.000Z',
         }),
       ])
     );
@@ -347,8 +310,8 @@ describe('LINE outbox processor', () => {
     expect(fixture.lineUpdates).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          status: 'pending',
-          next_attempt_at: '2026-07-05T00:02:00.000Z',
+          p_status: 'pending',
+          p_next_attempt_at: '2026-07-05T00:02:00.000Z',
         }),
       ])
     );
@@ -371,8 +334,8 @@ describe('LINE outbox processor', () => {
     expect(fixture.lineUpdates).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          status: 'failed',
-          last_error: expect.stringContaining('status 500'),
+          p_status: 'failed',
+          p_last_error: expect.stringContaining('status 500'),
         }),
       ])
     );
@@ -397,7 +360,7 @@ describe('LINE outbox processor', () => {
     );
   });
 
-  it('marks outreach recipients as failed after the third LINE failure', async () => {
+  it('finalizes outreach terminal failure through the atomic delivery RPC', async () => {
     const fixture = createProcessorClient([
       createLineJob({
         attempts: 2,
@@ -423,9 +386,10 @@ describe('LINE outbox processor', () => {
     });
 
     expect(result.failed).toBe(1);
-    expect(fixture.outreachRecipientUpdate).toHaveBeenCalledWith(
+    expect(fixture.rpc).toHaveBeenCalledWith(
+      'finalize_line_notification_outbox',
       expect.objectContaining({
-        delivery_status: 'failed',
+        p_status: 'failed',
       })
     );
   });
@@ -446,8 +410,8 @@ describe('LINE outbox processor', () => {
     expect(fixture.lineUpdates).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          status: 'failed',
-          last_error: 'line_access_token_unavailable:token_issue_failed',
+          p_status: 'failed',
+          p_last_error: 'line_access_token_unavailable:token_issue_failed',
         }),
       ])
     );

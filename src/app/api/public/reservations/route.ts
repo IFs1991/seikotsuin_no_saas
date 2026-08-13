@@ -52,6 +52,7 @@ import {
   StaffAvailabilityNotFoundError,
 } from '@/lib/services/staff-availability-service';
 import type { Json } from '@/types/supabase';
+import { toLineIntegrationClient } from '@/lib/line/integration-db';
 
 function formatIntakeResponseValue(
   value: IntakeResponseSnapshot['value']
@@ -172,7 +173,10 @@ export async function POST(request: NextRequest) {
       throw error;
     }
 
-    const service = new PublicReservationService(clinicCtx.client, clinic_id);
+    const service = new PublicReservationService(
+      toLineIntegrationClient(clinicCtx.client),
+      clinic_id
+    );
 
     // Check booking settings
     try {
@@ -192,7 +196,11 @@ export async function POST(request: NextRequest) {
     }
 
     let lineProfile:
-      | { lineUserId: string; displayName: string | null }
+      | {
+          credentialGenerationId: string;
+          lineUserId: string;
+          displayName: string | null;
+        }
       | undefined;
     if (line_id_token) {
       try {
@@ -204,6 +212,7 @@ export async function POST(request: NextRequest) {
         if (lineVerification.ok === true) {
           channel = 'line';
           lineProfile = {
+            credentialGenerationId: lineVerification.credentialGenerationId,
             lineUserId: lineVerification.lineUserId,
             displayName: lineVerification.displayName,
           };

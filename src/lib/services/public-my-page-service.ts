@@ -1,9 +1,9 @@
 import { DEFAULT_SETTINGS } from '@/lib/admin-settings/defaults';
 import { RESERVATION_CONFLICT_STATUS_FILTER } from '@/lib/reservations/conflict';
-import type { SupabaseServerClient } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
+import type { LineIntegrationClient } from '@/lib/line/integration-db';
 
-type PublicMyPageClient = Pick<SupabaseServerClient, 'from'>;
+type PublicMyPageClient = Pick<LineIntegrationClient, 'from'>;
 
 type BookingCalendarCancellationSettings = {
   allowCancellation: boolean;
@@ -176,9 +176,13 @@ export class PublicMyPageService {
   ) {}
 
   async getMyReservations(
-    lineUserId: string
+    lineUserId: string,
+    credentialGenerationId: string
   ): Promise<PublicMyReservationsResult> {
-    const customer = await this.findCustomerByLineUserId(lineUserId);
+    const customer = await this.findCustomerByLineUserId(
+      lineUserId,
+      credentialGenerationId
+    );
     if (!customer) {
       return { customer: null, reservations: [] };
     }
@@ -211,9 +215,13 @@ export class PublicMyPageService {
 
   async updateMarketingConsent(
     lineUserId: string,
+    credentialGenerationId: string,
     consentMarketing: boolean
   ): Promise<{ consent_marketing: boolean }> {
-    const customer = await this.findCustomerByLineUserId(lineUserId);
+    const customer = await this.findCustomerByLineUserId(
+      lineUserId,
+      credentialGenerationId
+    );
     if (!customer) {
       throw new PublicMyPageCustomerNotFoundError();
     }
@@ -227,6 +235,7 @@ export class PublicMyPageService {
       .eq('id', customer.id)
       .eq('clinic_id', this.clinicId)
       .eq('line_user_id', lineUserId)
+      .eq('line_credential_generation_id', credentialGenerationId)
       .eq('is_deleted', false)
       .select('consent_marketing')
       .maybeSingle();
@@ -244,7 +253,8 @@ export class PublicMyPageService {
 
   async cancelReservation(
     reservationId: string,
-    lineUserId: string
+    lineUserId: string,
+    credentialGenerationId: string
   ): Promise<PublicMyPageCancellationResult> {
     const reservation = await this.findReservation(reservationId);
     if (!reservation) {
@@ -253,7 +263,8 @@ export class PublicMyPageService {
 
     const customer = await this.findCustomerByIdAndLineUserId(
       reservation.customer_id,
-      lineUserId
+      lineUserId,
+      credentialGenerationId
     );
     if (!customer) {
       throw new PublicMyPageReservationNotFoundError();
@@ -308,13 +319,15 @@ export class PublicMyPageService {
   }
 
   private async findCustomerByLineUserId(
-    lineUserId: string
+    lineUserId: string,
+    credentialGenerationId: string
   ): Promise<MyPageCustomerRow | null> {
     const { data, error } = await this.client
       .from('customers')
       .select('id, name, email, consent_marketing')
       .eq('clinic_id', this.clinicId)
       .eq('line_user_id', lineUserId)
+      .eq('line_credential_generation_id', credentialGenerationId)
       .eq('is_deleted', false)
       .limit(1)
       .maybeSingle();
@@ -328,7 +341,8 @@ export class PublicMyPageService {
 
   private async findCustomerByIdAndLineUserId(
     customerId: string,
-    lineUserId: string
+    lineUserId: string,
+    credentialGenerationId: string
   ): Promise<MyPageCustomerRow | null> {
     const { data, error } = await this.client
       .from('customers')
@@ -336,6 +350,7 @@ export class PublicMyPageService {
       .eq('id', customerId)
       .eq('clinic_id', this.clinicId)
       .eq('line_user_id', lineUserId)
+      .eq('line_credential_generation_id', credentialGenerationId)
       .eq('is_deleted', false)
       .maybeSingle();
 

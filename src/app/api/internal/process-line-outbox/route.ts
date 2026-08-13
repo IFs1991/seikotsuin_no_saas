@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processLineOutbox } from '@/lib/notifications/line-processor';
 import { captureOperationalError } from '@/lib/monitoring/sentry';
-import { createAdminClient } from '@/lib/supabase';
+import { createLineIntegrationAdminClient } from '@/lib/line/integration-db';
 
 /**
  * GET /api/internal/process-line-outbox
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await processLineOutbox(createAdminClient());
+    const result = await processLineOutbox(createLineIntegrationAdminClient());
     return NextResponse.json({
       success: true,
       ...result,

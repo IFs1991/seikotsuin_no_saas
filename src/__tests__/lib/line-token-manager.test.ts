@@ -6,6 +6,7 @@ const CLINIC_ID = '11111111-1111-4111-8111-111111111111';
 
 type TokenCredentialRow = {
   clinic_id: string;
+  credential_generation_id: string;
   is_active: boolean;
   messaging_channel_id: string;
   assertion_private_key_encrypted: string;
@@ -34,6 +35,7 @@ async function createCredentialRow(
   const { encryptLineCredential } = await import('@/lib/line/crypto');
   return {
     clinic_id: CLINIC_ID,
+    credential_generation_id: '22222222-2222-4222-8222-222222222222',
     is_active: true,
     messaging_channel_id: '2000000000',
     assertion_private_key_encrypted: encryptLineCredential(
@@ -51,8 +53,13 @@ function createTokenClientFixture(row: TokenCredentialRow) {
   const returns = jest.fn(() => ({ maybeSingle }));
   const eqSelect = jest.fn(() => ({ returns }));
   const select = jest.fn(() => ({ eq: eqSelect }));
-  const eqUpdate = jest.fn(async () => ({ error: null }));
-  const update = jest.fn((_payload: TableUpdatePayload) => ({ eq: eqUpdate }));
+  const updateMaybeSingle = jest.fn(async () => ({ data: row, error: null }));
+  const updateSelect = jest.fn(() => ({ maybeSingle: updateMaybeSingle }));
+  const updateChain = {
+    eq: jest.fn(() => updateChain),
+    select: updateSelect,
+  };
+  const update = jest.fn((_payload: TableUpdatePayload) => updateChain);
   const from = jest.fn((tableName: string) => {
     if (tableName !== 'clinic_line_credentials') {
       throw new Error(`Unexpected table: ${tableName}`);
@@ -62,7 +69,7 @@ function createTokenClientFixture(row: TokenCredentialRow) {
 
   return {
     client: { from },
-    assertions: { from, select, update, eqUpdate },
+    assertions: { from, select, update, updateChain },
   };
 }
 

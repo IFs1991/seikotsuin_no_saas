@@ -1,6 +1,6 @@
 import { enqueueEmail } from '@/lib/notifications/email/enqueue-email';
 import { normalizeCommunicationSettings } from '@/lib/admin-settings/normalize';
-import { resolveLineBookingGate } from '@/lib/line/gate';
+import { getLineCredentialsEncryptionStatus } from '@/lib/line/crypto';
 import {
   enqueueLineMessage,
   type LineEmailFallbackPayload,
@@ -227,19 +227,33 @@ export async function enqueuePatientReservationEmail(
 
 async function shouldUseLineNotification(
   supabase: NotificationSupabaseClient,
-  params: { clinicId: string; lineUserId?: string | null }
+  params: {
+    clinicId: string;
+    customerId: string;
+    lineUserId?: string | null;
+  }
 ): Promise<{ enabled: true } | { enabled: false; reasons: string[] }> {
   if (!params.lineUserId) {
     return { enabled: false, reasons: ['no_line_user_id'] };
   }
 
-  const [communicationLineEnabled, gate] = await Promise.all([
-    fetchClinicCommunicationLineEnabled(supabase, params.clinicId),
-    resolveLineBookingGate({ supabase, clinicId: params.clinicId }),
-  ]);
+  const [communicationLineEnabled, notificationEnabled, identityCurrent] =
+    await Promise.all([
+      fetchClinicCommunicationLineEnabled(supabase, params.clinicId),
+      fetchClinicLineNotificationEnabled(supabase, params.clinicId),
+      fetchLineIdentityCurrent(supabase, {
+        clinicId: params.clinicId,
+        customerId: params.customerId,
+        lineUserId: params.lineUserId,
+      }),
+    ]);
   const reasons = [
     ...(communicationLineEnabled ? [] : ['communication_line_disabled']),
-    ...gate.disabledReasons,
+    ...(notificationEnabled ? [] : ['line_notification_disabled']),
+    ...(identityCurrent ? [] : ['line_identity_stale']),
+    ...(getLineCredentialsEncryptionStatus() === 'ready'
+      ? []
+      : ['encryption_key_unavailable']),
   ];
 
   return reasons.length === 0 ? { enabled: true } : { enabled: false, reasons };
@@ -305,6 +319,10 @@ function buildReservationLinePayload(
 
   return {
     text: lines.join('\n'),
+    reservation: {
+      notificationType: input.notificationType,
+      reservationId: input.reservationId,
+    },
     ...(confirmationUrl ? { confirmationUrl } : {}),
     ...createLineEmailFallback(input),
   };
@@ -316,6 +334,7 @@ export async function enqueuePatientReservationNotification(
 ): Promise<'enqueued' | 'skipped' | 'duplicate'> {
   const lineDecision = await shouldUseLineNotification(supabase, {
     clinicId: input.clinicId,
+    customerId: input.customerId,
     lineUserId: input.lineUserId,
   });
   const lineUserId = input.lineUserId;
@@ -339,6 +358,7 @@ export async function enqueuePatientReservationNotification(
   try {
     const outbox = await enqueueLineMessage(supabase, {
       clinicId: input.clinicId,
+      customerId: input.customerId,
       lineUserId,
       messageType: input.notificationType,
       payload: buildReservationLinePayload(input),
@@ -444,6 +464,90 @@ async function fetchClinicCommunicationLineEnabled(
   return normalizeCommunicationSettings(data?.settings).channels.lineEnabled;
 }
 
+async function fetchClinicLineNotificationEnabled(
+  supabase: NotificationSupabaseClient,
+  clinicId: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('clinic_feature_flags')
+    .select('*')
+    .eq('clinic_id', clinicId)
+    .maybeSingle();
+
+  if (error) {
+    logger.warn('Failed to load LINE notification feature flag', {
+      clinicId,
+      error: error.message,
+    });
+    return false;
+  }
+
+  const value: unknown = data;
+  return readBooleanProperty(value, 'line_notification_enabled') === true;
+}
+
+async function fetchLineIdentityCurrent(
+  supabase: NotificationSupabaseClient,
+  params: { clinicId: string; customerId: string; lineUserId: string }
+): Promise<boolean> {
+  const [customerResult, credentialResult] = await Promise.all([
+    supabase
+      .from('customers')
+      .select('*')
+      .eq('id', params.customerId)
+      .eq('clinic_id', params.clinicId)
+      .eq('is_deleted', false)
+      .maybeSingle(),
+    supabase
+      .from('clinic_line_credentials')
+      .select('*')
+      .eq('clinic_id', params.clinicId)
+      .eq('is_active', true)
+      .maybeSingle(),
+  ]);
+
+  if (customerResult.error || credentialResult.error) {
+    logger.warn('Failed to validate LINE patient provider generation', {
+      clinicId: params.clinicId,
+      customerId: params.customerId,
+    });
+    return false;
+  }
+
+  const customer: unknown = customerResult.data;
+  const credentials: unknown = credentialResult.data;
+  const customerGeneration = readStringProperty(
+    customer,
+    'line_credential_generation_id'
+  );
+  const credentialGeneration = readStringProperty(
+    credentials,
+    'credential_generation_id'
+  );
+
+  return (
+    readStringProperty(customer, 'line_user_id') === params.lineUserId &&
+    customerGeneration !== null &&
+    customerGeneration === credentialGeneration
+  );
+}
+
+function readStringProperty(value: unknown, key: string): string | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const property = (value as Record<string, unknown>)[key];
+  return typeof property === 'string' ? property : null;
+}
+
+function readBooleanProperty(value: unknown, key: string): boolean | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const property = (value as Record<string, unknown>)[key];
+  return typeof property === 'boolean' ? property : null;
+}
+
 async function fetchResourceName(
   supabase: NotificationSupabaseClient,
   clinicId: string,
@@ -499,7 +603,7 @@ async function fetchCustomerNotificationProfile(
 ): Promise<CustomerNotificationProfile | null> {
   const { data, error } = await supabase
     .from('customers')
-    .select('email, line_user_id')
+    .select('*')
     .eq('id', customerId)
     .eq('clinic_id', clinicId)
     .eq('is_deleted', false)
@@ -535,6 +639,7 @@ export async function enqueuePublicReservationNotifications(
     input.clinicId,
     input.customerId
   );
+  const lineUserId = notificationProfile?.lineUserId ?? null;
 
   const patientPayload: ReservationEmailPayload = {
     customerName: input.customerName,
@@ -550,7 +655,7 @@ export async function enqueuePublicReservationNotifications(
     reservationId: input.reservationId,
     customerId: input.customerId,
     toEmail: notificationProfile?.email ?? input.customerEmail,
-    lineUserId: notificationProfile?.lineUserId ?? null,
+    lineUserId,
     notificationType: 'received',
     templateType: 'reservation_created',
     payload: patientPayload,

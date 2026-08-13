@@ -1,9 +1,4 @@
 import { getLineChannelAccessToken } from '@/lib/line/token-manager';
-import {
-  createCrmAdminClient,
-  type CrmSupabaseClient,
-} from '@/lib/crm-line/db';
-import { updateStaffAvailabilityNotificationDelivery } from '@/lib/services/staff-availability-service';
 import { createLogger } from '@/lib/logger';
 import { enqueueEmail } from '@/lib/notifications/email/enqueue-email';
 import type { EmailTemplateType } from '@/lib/notifications/email/types';
@@ -12,21 +7,22 @@ import type {
   LineMessagePayload,
 } from '@/lib/notifications/line-outbox';
 import type { ReservationNotificationType } from '@/lib/notifications/reservation-notifications';
-import type { SupabaseServerClient } from '@/lib/supabase';
-import type { Database, Json } from '@/types/supabase';
+import type {
+  LineIntegrationClient,
+  LineNotificationOutboxRow,
+  LineNotificationOutboxUpdate,
+} from '@/lib/line/integration-db';
+import type { Json } from '@/types/supabase';
 
 const LINE_PUSH_ENDPOINT = 'https://api.line.me/v2/bot/message/push';
 const MAX_LINE_ATTEMPTS = 3;
-const CLAIM_VISIBILITY_TIMEOUT_MS = 2 * 60 * 1000;
 const DEFAULT_RETRY_DELAYS_MS = [5 * 60 * 1000, 15 * 60 * 1000];
 const TOKEN_RETRY_DELAY_MS = 15 * 60 * 1000;
+const LINE_PUSH_TIMEOUT_MS = 30 * 1000;
 
-type LineProcessorClient = Pick<SupabaseServerClient, 'from'>;
-type LineOutboxRow = Database['public']['Tables']['line_message_outbox']['Row'];
-type LineOutboxUpdate =
-  Database['public']['Tables']['line_message_outbox']['Update'];
-type OutreachRecipientUpdate =
-  Database['public']['Tables']['patient_outreach_recipients']['Update'];
+type LineProcessorClient = LineIntegrationClient;
+type LineOutboxRow = LineNotificationOutboxRow;
+type LineOutboxUpdate = LineNotificationOutboxUpdate;
 type LineFetch = (input: string, init: RequestInit) => Promise<Response>;
 type AccessTokenResolver = typeof getLineChannelAccessToken;
 
@@ -35,7 +31,6 @@ export type ProcessLineOutboxOptions = {
   now?: Date;
   fetcher?: LineFetch;
   accessTokenResolver?: AccessTokenResolver;
-  availabilityDeliveryClient?: CrmSupabaseClient;
 };
 
 export type ProcessLineOutboxResult = {
@@ -88,9 +83,15 @@ export async function processLineOutbox(
       continue;
     }
 
+    const claimToken = job.claim_token;
+    if (!claimToken || !job.credential_generation_id || !job.customer_id) {
+      result.skipped += 1;
+      continue;
+    }
+
     const payload = readLineMessagePayload(job.payload);
     if (!payload) {
-      await updateLineJob(supabase, job.id, {
+      await updateLineJob(supabase, job, {
         status: 'failed',
         last_error: 'Invalid LINE message payload',
         next_attempt_at: now.toISOString(),
@@ -102,17 +103,17 @@ export async function processLineOutbox(
     const token = await accessTokenResolver({
       supabase,
       clinicId: job.clinic_id,
+      credentialGenerationId: job.credential_generation_id,
       now,
     });
     if (token.ok === false) {
       const failure = await handleLineDeliveryFailure(supabase, {
         job,
         payload,
-        attempts: job.attempts + 1,
+        attempts: job.attempts,
         now,
         errorMessage: `line_access_token_unavailable:${token.reason}`,
         retryAfterSeconds: Math.ceil(TOKEN_RETRY_DELAY_MS / 1000),
-        availabilityDeliveryClient: options.availabilityDeliveryClient,
       });
       result[resolveFailureResultKey(failure)] += 1;
       if (failure.fallbackEnqueued) {
@@ -121,11 +122,17 @@ export async function processLineOutbox(
       continue;
     }
 
+    if (!(await renewLineJobClaim(supabase, job))) {
+      result.skipped += 1;
+      continue;
+    }
+
     const pushResult = await sendLinePushMessage({
       fetcher,
       accessToken: token.accessToken,
       lineUserId: job.line_user_id,
       payload,
+      retryKey: job.id,
       now,
     });
 
@@ -137,13 +144,6 @@ export async function processLineOutbox(
         status: 'sent',
         sentAt,
         lastError: null,
-        availabilityDeliveryClient: options.availabilityDeliveryClient,
-      });
-      await updateOutreachRecipientDelivery(supabase, {
-        outreach: payload.outreach,
-        clinicId: job.clinic_id,
-        status: 'sent',
-        sentAt,
       });
       result.sent += 1;
       continue;
@@ -152,11 +152,10 @@ export async function processLineOutbox(
     const failure = await handleLineDeliveryFailure(supabase, {
       job,
       payload,
-      attempts: job.attempts + 1,
+      attempts: job.attempts,
       now,
       errorMessage: pushResult.errorMessage,
       retryAfterSeconds: pushResult.retryAfterSeconds,
-      availabilityDeliveryClient: options.availabilityDeliveryClient,
     });
     result[resolveFailureResultKey(failure)] += 1;
     if (failure.fallbackEnqueued) {
@@ -172,6 +171,7 @@ export async function sendLinePushMessage(params: {
   accessToken: string;
   lineUserId: string;
   payload: LineMessagePayload;
+  retryKey: string;
   now: Date;
 }): Promise<LinePushResult> {
   const body = {
@@ -185,14 +185,18 @@ export async function sendLinePushMessage(params: {
   };
 
   let response: Response;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), LINE_PUSH_TIMEOUT_MS);
   try {
     response = await params.fetcher(LINE_PUSH_ENDPOINT, {
       method: 'POST',
       headers: {
         authorization: `Bearer ${params.accessToken}`,
         'content-type': 'application/json',
+        'x-line-retry-key': params.retryKey,
       },
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
   } catch (error) {
     return {
@@ -201,9 +205,13 @@ export async function sendLinePushMessage(params: {
       retryAfterSeconds: null,
       errorMessage: `LINE push request failed: ${getErrorMessage(error)}`,
     };
+  } finally {
+    clearTimeout(timeoutId);
   }
 
-  if (response.ok) {
+  // LINE returns 409 when this retry key was already accepted. Treat it as
+  // success so a worker restart finalizes the durable outbox without resending.
+  if (response.ok || response.status === 409) {
     return { ok: true };
   }
 
@@ -270,21 +278,11 @@ async function claimLineJob(
   job: LineOutboxRow,
   now: Date
 ): Promise<boolean> {
-  const attempts = job.attempts + 1;
-  const { data, error } = await supabase
-    .from('line_message_outbox')
-    .update({
-      attempts,
-      next_attempt_at: new Date(
-        now.getTime() + CLAIM_VISIBILITY_TIMEOUT_MS
-      ).toISOString(),
-      last_error: null,
-    })
-    .eq('id', job.id)
-    .eq('status', 'pending')
-    .eq('attempts', job.attempts)
-    .select('id')
-    .maybeSingle();
+  const { data, error } = await supabase.rpc('claim_line_notification_outbox', {
+    p_clinic_id: job.clinic_id,
+    p_outbox_id: job.id,
+    p_expected_attempts: job.attempts,
+  });
 
   if (error) {
     log.warn('Failed to claim LINE outbox job', {
@@ -294,25 +292,80 @@ async function claimLineJob(
     return false;
   }
 
-  return Boolean(data);
+  if (typeof data !== 'string' || data.length === 0) {
+    return false;
+  }
+
+  job.claim_token = data;
+  job.claimed_at = now.toISOString();
+  job.attempts += 1;
+  return true;
+}
+
+async function renewLineJobClaim(
+  supabase: LineProcessorClient,
+  job: LineOutboxRow
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc('renew_line_notification_claim', {
+    p_clinic_id: job.clinic_id,
+    p_outbox_id: job.id,
+    p_claim_token: inferRequiredString(job.claim_token, 'claim_token'),
+  });
+
+  if (error || data !== true) {
+    log.warn('LINE outbox claim expired before delivery', {
+      jobId: job.id,
+      error: error?.message,
+    });
+    return false;
+  }
+
+  return true;
 }
 
 async function updateLineJob(
   supabase: LineProcessorClient,
-  jobId: string,
+  job: LineOutboxRow,
   update: LineOutboxUpdate
 ): Promise<void> {
-  const { error } = await supabase
-    .from('line_message_outbox')
-    .update(update)
-    .eq('id', jobId);
+  if (
+    update.status !== 'pending' &&
+    update.status !== 'sent' &&
+    update.status !== 'failed'
+  ) {
+    throw new Error('Invalid LINE outbox final status');
+  }
+
+  const { error } = await supabase.rpc('finalize_line_notification_outbox', {
+    p_clinic_id: job.clinic_id,
+    p_outbox_id: job.id,
+    p_claim_token: inferRequiredString(job.claim_token, 'claim_token'),
+    p_status: update.status,
+    p_sent_at: update.sent_at ?? null,
+    p_last_error: update.last_error ?? null,
+    p_next_attempt_at: inferRequiredString(
+      update.next_attempt_at,
+      'next_attempt_at'
+    ),
+  });
 
   if (error) {
     log.warn('Failed to update LINE outbox job', {
-      jobId,
+      jobId: job.id,
       error: error.message,
     });
+    throw new Error(error.message);
   }
+}
+
+function inferRequiredString(
+  value: string | null | undefined,
+  fieldName: string
+): string {
+  if (!value) {
+    throw new Error(`Missing LINE outbox ${fieldName}`);
+  }
+  return value;
 }
 
 type FailureOutcome =
@@ -328,7 +381,6 @@ async function handleLineDeliveryFailure(
     now: Date;
     errorMessage: string;
     retryAfterSeconds: number | null;
-    availabilityDeliveryClient?: CrmSupabaseClient;
   }
 ): Promise<FailureOutcome> {
   if (params.attempts >= MAX_LINE_ATTEMPTS) {
@@ -338,13 +390,6 @@ async function handleLineDeliveryFailure(
       status: 'failed',
       sentAt: null,
       lastError: params.errorMessage,
-      availabilityDeliveryClient: params.availabilityDeliveryClient,
-    });
-    await updateOutreachRecipientDelivery(supabase, {
-      outreach: params.payload.outreach,
-      clinicId: params.job.clinic_id,
-      status: 'failed',
-      sentAt: null,
     });
     const fallback = await enqueueEmailFallback(
       supabase,
@@ -354,7 +399,7 @@ async function handleLineDeliveryFailure(
     return { kind: 'failed', fallbackEnqueued: fallback === 'enqueued' };
   }
 
-  await updateLineJob(supabase, params.job.id, {
+  await updateLineJob(supabase, params.job, {
     status: 'pending',
     last_error: params.errorMessage,
     next_attempt_at: getNextAttemptAt(
@@ -422,42 +467,6 @@ async function enqueueEmailFallback(
   });
 
   return 'enqueued';
-}
-
-async function updateOutreachRecipientDelivery(
-  supabase: LineProcessorClient,
-  params: {
-    outreach: LineMessagePayload['outreach'] | undefined;
-    clinicId: string;
-    status: 'sent' | 'failed';
-    sentAt: string | null;
-  }
-): Promise<void> {
-  if (!params.outreach) {
-    return;
-  }
-
-  const update: OutreachRecipientUpdate = {
-    delivery_status: params.status,
-    ...(params.sentAt ? { sent_at: params.sentAt } : {}),
-  };
-
-  const { error } = await supabase
-    .from('patient_outreach_recipients')
-    .update(update)
-    .eq('id', params.outreach.recipientId)
-    .eq('campaign_id', params.outreach.campaignId)
-    .eq('clinic_id', params.clinicId)
-    .eq('customer_id', params.outreach.customerId);
-
-  if (error) {
-    log.warn('Failed to update outreach recipient delivery status', {
-      clinicId: params.clinicId,
-      campaignId: params.outreach.campaignId,
-      recipientId: params.outreach.recipientId,
-      error: error.message,
-    });
-  }
 }
 
 async function updateReservationNotificationFallbackDetail(
@@ -541,25 +550,10 @@ async function finalizeLineDelivery(
     status: 'sent' | 'failed';
     sentAt: string | null;
     lastError: string | null;
-    availabilityDeliveryClient?: CrmSupabaseClient;
   }
 ): Promise<void> {
-  const availability = params.payload.availability;
-  if (availability) {
-    const client = params.availabilityDeliveryClient ?? createCrmAdminClient();
-    await updateStaffAvailabilityNotificationDelivery(client, {
-      notificationId: availability.notificationId,
-      outboxId: params.job.id,
-      clinicId: params.job.clinic_id,
-      status: params.status,
-      sentAt: params.sentAt,
-      lastError: params.lastError,
-    });
-    return;
-  }
-
   const completedAt = params.sentAt ?? new Date().toISOString();
-  await updateLineJob(supabase, params.job.id, {
+  await updateLineJob(supabase, params.job, {
     status: params.status,
     sent_at: params.status === 'sent' ? completedAt : null,
     last_error: params.status === 'failed' ? params.lastError : null,

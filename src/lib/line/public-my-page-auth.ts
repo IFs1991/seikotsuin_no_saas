@@ -6,6 +6,7 @@ export type PublicLineMyPageAuthResult =
       ok: true;
       lineUserId: string;
       displayName: string | null;
+      credentialGenerationId: string;
     }
   | {
       ok: false;
@@ -50,5 +51,6 @@ export async function verifyPublicLineMyPageAuth(params: {
     ok: true,
     lineUserId: verification.lineUserId,
     displayName: verification.displayName,
+    credentialGenerationId: verification.credentialGenerationId,
   };
 }
