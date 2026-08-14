@@ -28,7 +28,11 @@
 - 秘密JWKの暗号化と24時間の短期保管
 - 公開JWK、Webhook URL、リダイレクトURLのコピー表示
 - 入力されたチャネル情報の検証
-- token、bot metadata、optional push、Webhook受信の段階テスト
+- Messaging API token・bot metadataの確認
+- LINE予約を使う場合のLINE Login ID token subjectとpush送信先の同一性確認
+- setup session単位の安定retry keyによるテスト送信重複防止
+- ID token照合後・push直前にテスト送信の宛先と固定文をSHA-256 digestでsessionへ固定し、push前の設定修正を許しつつ、同一pushへのLINE既受付応答だけを安全に再開
+- Webhook受信の段階テスト
 - 検証済み資格情報の店舗別保存
 - LINE予約・通知・チャットの店舗別有効化
 
@@ -68,11 +72,15 @@ LINE user IDの同一性はProvider境界に依存するため、異なるProvid
 ### PR2: 店舗向けセットアップウィザード
 
 - `GET/POST /api/admin/line-setup`
+- `PATCH /api/admin/line-setup`（予約・通知の店舗別ON/OFF）
+- `DELETE /api/admin/line-setup`（未完了の接続確認を破棄し、新しいretry keyで再準備）
 - `POST /api/admin/line-setup/verify`
 - `POST /api/admin/line-setup/complete`
 - `GET/PATCH /api/admin/line-chat/settings`
 - 設定 > 患者コミュニケーション > LINE連携へ既存UIをEXTEND
 - Provider確認、LINE Console手順、検証、有効化の4段階表示
+- 再接続時は機能選択をOFFへ戻し、新Providerの検証結果を明示選択してから再有効化
+- 24時間を超えたsetup秘密は既存LINE定期ジョブから全店舗対象で自動消去
 
 ### PR3: Webhook・テキストチャット
 
@@ -94,6 +102,13 @@ LINE user IDの同一性はProvider境界に依存するため、異なるProvid
 - APIはユーザー入力のclinic IDだけで認可せず、DBのactive profile、role、clinic scope、会話担当を毎回検証する
 - 新規テーブルはservice-roleのみ。ブラウザからの直接Data APIアクセスを許可しない
 - 特権RPCは `PUBLIC` / `anon` / `authenticated` のEXECUTEを明示revokeする
+- setup接続確認はDB claimで直列化し、外部通信前にclaimを取得する。最大4回の30秒外部通信を含むため5分を超えたclaimだけ回収し、テストpushはsession固定retry keyを再利用する
+- テストpush直前にProvider/チャネル識別子・Bot ID・宛先・固定本文のdigestをsessionへ固定し、LINEに受理済みの同一要求だけを409応答から安全に回復する。bind後に設定を変更する場合は管理画面からsessionを破棄し、新しいretry keyで再準備する
+- LINE MINI Appでも公開予約画面を `liff.init` する実行用LIFF IDを必須保存し、予約有効化後に公開メタデータへ返す
+- 外部LINE API呼び出しは30秒でtimeoutし、検証失敗時はclaimを解放する
+- `line_booking_enabled` はLINE Login ID tokenの`aud`とChannel ID、`sub`とMessaging APIテスト送信先が一致した資格情報だけONにできる。Messaging API確認だけでは予約をONにしない
+- 公開LINE予約gateはfeature flagと現行credential世代・Provider検証・実行用LIFF/Login metadataを単一SQL snapshotで取得し、Provider切替中の新旧状態混在を許さない
+- Channel secretはWebhook署名を初めて受信するまで検証済みと扱わず、`line_chat_enabled` は引き続きOFFに固定する
 - 本部admin用の本文なし運用情報は、チャット本文テーブルと分離された集計APIのみで返す
 - 患者・連絡先はclinicとLINE IDの複合参照、Webhook・会話・メッセージはcontactの複合参照で同一人物性を固定する
 - 送信outboxは宛先や本文を複製せず、conversation→contactとmessageから送信時に導出する
@@ -147,7 +162,7 @@ LINE user IDの同一性はProvider境界に依存するため、異なるProvid
 
 ### Copy change
 
-「自動設定完了」ではなく、手動操作と自動検証を区別する。「LINE Consoleでの登録が必要」「接続確認済み」「有効化済み」を別状態として表示する。
+「自動設定完了」ではなく、手動操作と自動検証を区別する。「LINE Consoleでの登録が必要」「Messaging API確認済み」「Provider同一性確認済み」「Webhook確認済み」「有効化済み」を別状態として表示する。
 
 ### Ethics Gate
 
@@ -179,11 +194,12 @@ LINE user IDの同一性はProvider境界に依存するため、異なるProvid
 ## 8. テスト契約
 
 - Jest: migration/spec/rollbackの静的契約、API認証・role・clinic scope、UI状態遷移
-- pgTAP: RLS、テーブル権限、function EXECUTE、複合clinic FK、店舗内LINE ID一意性、setup 24時間制約、保持期間
+- pgTAP: RLS、テーブル権限、function EXECUTE、複合clinic FK、店舗内LINE ID一意性、setup 24時間制約、期限切れ秘密消去、検証claim/lease、安定retry key、Provider同一性なしの予約拒否、保持期間
 - Webhook: raw body signature、重複イベント、redelivery、unsend、非text、他店舗secret拒否
 - Chat: clinic_admin/manager全件、担当者のみ、未担当者拒否、本部admin本文拒否、空文/5000超過拒否
 - Outbox: 全成功または状態整合、最大3回、lease回収、最終試行中断のterminal化、送信前claim再検証、安定retry key、患者/credential/clinic不一致拒否、Provider切替との相互排他、既存未検証pendingの送信拒否とterminal履歴保持
 - Provider rotation: 検証済みsetup sessionのみ、資格情報・世代・秘密鍵消去の原子性、旧会話・message・outboxの同時失効、患者再リンク境界
+- Setup verification concurrency: 2接続から同一sessionをclaimし、成功1件・拒否1件・外部push最大1回となること
 
 ## 9. DoD v0.1 対応
 

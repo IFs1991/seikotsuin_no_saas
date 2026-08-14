@@ -5,13 +5,9 @@ import {
 } from '@/lib/line/gate';
 import { getLineCredentialsEncryptionStatus } from '@/lib/line/crypto';
 import { createLogger } from '@/lib/logger';
-import type { SupabaseServerClient } from '@/lib/supabase';
+import type { LineIntegrationClient } from '@/lib/line/integration-db';
 
-type PublicLineBookingClient = Pick<SupabaseServerClient, 'from'>;
-
-type LineFeatureFlagRow = {
-  line_booking_enabled: boolean;
-};
+type PublicLineBookingClient = Pick<LineIntegrationClient, 'rpc'>;
 
 type LinePublicCredentialRow = {
   credential_generation_id: string;
@@ -19,6 +15,15 @@ type LinePublicCredentialRow = {
   liff_id: string | null;
   login_channel_id: string | null;
   oa_basic_id: string | null;
+  provider_identity_verified_at: string | null;
+};
+
+type LinePublicContextRow = Omit<
+  LinePublicCredentialRow,
+  'credential_generation_id'
+> & {
+  credential_generation_id: string | null;
+  line_booking_enabled: boolean;
 };
 
 export type PublicLineBookingMetadata = {
@@ -38,44 +43,40 @@ export async function resolveLinePublicBookingContext(params: {
   supabase: PublicLineBookingClient;
   clinicId: string;
 }): Promise<LinePublicBookingContext> {
-  const [flagResult, credentialResult] = await Promise.all([
-    params.supabase
-      .from('clinic_feature_flags')
-      .select('line_booking_enabled')
-      .eq('clinic_id', params.clinicId)
-      .maybeSingle(),
-    params.supabase
-      .from('clinic_line_credentials')
-      .select(
-        'credential_generation_id, is_active, liff_id, login_channel_id, oa_basic_id'
-      )
-      .eq('clinic_id', params.clinicId)
-      .maybeSingle(),
-  ]);
+  const { data, error } = await params.supabase
+    .rpc('get_line_public_booking_context', {
+      p_clinic_id: params.clinicId,
+    })
+    .maybeSingle();
 
-  if (flagResult.error) {
-    log.warn('Failed to read LINE booking feature flag', {
+  if (error) {
+    log.warn('Failed to read atomic public LINE booking context', {
       clinicId: params.clinicId,
-      errorCode: readErrorCode(flagResult.error),
+      errorCode: readErrorCode(error),
     });
   }
 
-  if (credentialResult.error) {
-    log.warn('Failed to read public LINE credential metadata', {
-      clinicId: params.clinicId,
-      errorCode: readErrorCode(credentialResult.error),
-    });
-  }
-
-  const flag = isLineFeatureFlagRow(flagResult.data) ? flagResult.data : null;
-  const credentials = isLinePublicCredentialRow(credentialResult.data)
-    ? credentialResult.data
+  const context = isLinePublicContextRow(data) ? data : null;
+  const credentials = context?.credential_generation_id
+    ? {
+        credential_generation_id: context.credential_generation_id,
+        is_active: context.is_active,
+        liff_id: context.liff_id,
+        login_channel_id: context.login_channel_id,
+        oa_basic_id: context.oa_basic_id,
+        provider_identity_verified_at: context.provider_identity_verified_at,
+      }
     : null;
 
   const decision = evaluateLineBookingGate({
     globalKillSwitchEnabled: isLineBookingGlobalKillSwitchEnabled(),
-    lineBookingEnabled: flag?.line_booking_enabled === true,
+    lineBookingEnabled: context?.line_booking_enabled === true,
     credentialsActive: credentials?.is_active === true,
+    providerIdentityVerified:
+      typeof credentials?.provider_identity_verified_at === 'string',
+    runtimeMetadataReady:
+      Boolean(credentials?.liff_id?.trim()) &&
+      Boolean(credentials?.login_channel_id?.trim()),
     encryptionReady: getLineCredentialsEncryptionStatus() === 'ready',
   });
 
@@ -105,18 +106,7 @@ export async function getPublicLineBookingMetadata(params: {
   };
 }
 
-function isLineFeatureFlagRow(value: unknown): value is LineFeatureFlagRow {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  const candidate = value as { line_booking_enabled?: unknown };
-  return typeof candidate.line_booking_enabled === 'boolean';
-}
-
-function isLinePublicCredentialRow(
-  value: unknown
-): value is LinePublicCredentialRow {
+function isLinePublicContextRow(value: unknown): value is LinePublicContextRow {
   if (!value || typeof value !== 'object') {
     return false;
   }
@@ -127,13 +117,17 @@ function isLinePublicCredentialRow(
     liff_id?: unknown;
     login_channel_id?: unknown;
     oa_basic_id?: unknown;
+    provider_identity_verified_at?: unknown;
+    line_booking_enabled?: unknown;
   };
   return (
-    typeof candidate.credential_generation_id === 'string' &&
+    isNullableString(candidate.credential_generation_id) &&
     typeof candidate.is_active === 'boolean' &&
+    typeof candidate.line_booking_enabled === 'boolean' &&
     isNullableString(candidate.liff_id) &&
     isNullableString(candidate.login_channel_id) &&
-    isNullableString(candidate.oa_basic_id)
+    isNullableString(candidate.oa_basic_id) &&
+    isNullableString(candidate.provider_identity_verified_at)
   );
 }
 

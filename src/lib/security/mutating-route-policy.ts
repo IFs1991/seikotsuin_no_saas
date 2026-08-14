@@ -216,10 +216,38 @@ export const mutatingRoutePolicies = [
     'platform-administration'
   ),
   admin(
+    '/api/admin/line-chat/settings',
+    ['PATCH'],
+    'derived',
+    'Clinic LINE chat safety and retention settings must remain available during billing lock.',
+    'messaging-operations'
+  ),
+  admin(
     '/api/admin/line-credentials',
     ['PUT'],
     'derived',
     'Credential rotation is a security control and must remain available during billing lock.',
+    'messaging-operations'
+  ),
+  admin(
+    '/api/admin/line-setup',
+    ['POST', 'PATCH', 'DELETE'],
+    'derived',
+    'Clinic LINE credential preparation is a security control and must remain available during billing lock.',
+    'messaging-operations'
+  ),
+  admin(
+    '/api/admin/line-setup/complete',
+    ['POST'],
+    'derived',
+    'Clinic LINE activation is an administrative security control.',
+    'messaging-operations'
+  ),
+  admin(
+    '/api/admin/line-setup/verify',
+    ['POST'],
+    'derived',
+    'Provider-bound LINE credential verification is an administrative security control.',
     'messaging-operations'
   ),
   admin(

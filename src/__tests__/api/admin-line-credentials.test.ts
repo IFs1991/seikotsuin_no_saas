@@ -51,6 +51,7 @@ type LineCredentialsRow = {
   login_channel_id: string | null;
   messaging_channel_id: string;
   oa_basic_id: string | null;
+  provider_identity_verified_at: string | null;
   token_expires_at: string | null;
   updated_at: string;
   updated_by: string | null;
@@ -60,12 +61,6 @@ type LineCredentialsInsert = Omit<
   LineCredentialsRow,
   'created_at' | 'updated_at'
 >;
-
-type FeatureFlagInsert = {
-  clinic_id: string;
-  line_booking_enabled?: boolean;
-  updated_by?: string | null;
-};
 
 type ProcessApiSuccessMock = {
   success: true;
@@ -114,6 +109,7 @@ async function buildLineRow(
     access_token_encrypted: encryptLineCredential('plain-access-token'),
     token_expires_at: '2026-08-01T00:00:00.000Z',
     oa_basic_id: '@clinic',
+    provider_identity_verified_at: '2026-08-14T00:00:00.000Z',
     is_active: true,
     created_at: '2026-07-05T00:00:00.000Z',
     updated_at: '2026-07-05T00:00:00.000Z',
@@ -150,6 +146,7 @@ function mockProcessSuccess(params: { role?: string; body?: unknown } = {}) {
 function createAdminClientFixture(params: {
   lineRows: Map<string, LineCredentialsRow>;
   featureFlags: Map<string, boolean>;
+  featureRpcError?: { message: string } | null;
 }) {
   let requestedLineClinicId = CLINIC_ID;
   const lineMaybeSingle = jest.fn(async () => ({
@@ -165,6 +162,7 @@ function createAdminClientFixture(params: {
   const lineUpsert = jest.fn(async (payload: LineCredentialsInsert) => {
     const existing = params.lineRows.get(payload.clinic_id);
     params.lineRows.set(payload.clinic_id, {
+      ...existing,
       ...payload,
       created_at: existing?.created_at ?? '2026-07-05T00:00:00.000Z',
       updated_at: '2026-07-05T01:00:00.000Z',
@@ -177,6 +175,7 @@ function createAdminClientFixture(params: {
     data: {
       line_booking_enabled:
         params.featureFlags.get(requestedFeatureClinicId) ?? false,
+      line_notification_enabled: false,
     },
     error: null,
   }));
@@ -186,29 +185,42 @@ function createAdminClientFixture(params: {
     return { returns: featureReturns };
   });
   const featureSelect = jest.fn(() => ({ eq: featureEq }));
-  const featureUpsert = jest.fn(async (payload: FeatureFlagInsert) => {
-    params.featureFlags.set(
-      payload.clinic_id,
-      payload.line_booking_enabled === true
-    );
-    return { error: null };
-  });
+  const featureRpc = jest.fn(
+    async (
+      functionName: string,
+      args: {
+        p_clinic_id: string;
+        p_enable_booking: boolean;
+        p_enable_notifications: boolean;
+        p_updated_by: string;
+      }
+    ) => {
+      if (functionName !== 'update_line_feature_settings') {
+        throw new Error(`Unexpected RPC: ${functionName}`);
+      }
+      if (params.featureRpcError) {
+        return { data: null, error: params.featureRpcError };
+      }
+      params.featureFlags.set(args.p_clinic_id, args.p_enable_booking);
+      return { data: null, error: null };
+    }
+  );
 
   const from = jest.fn((tableName: string) => {
     if (tableName === 'clinic_line_credentials') {
       return { select: lineSelect, upsert: lineUpsert };
     }
     if (tableName === 'clinic_feature_flags') {
-      return { select: featureSelect, upsert: featureUpsert };
+      return { select: featureSelect };
     }
     throw new Error(`Unexpected table: ${tableName}`);
   });
 
   return {
-    client: { from },
+    client: { from, rpc: featureRpc },
     assertions: {
       lineUpsert,
-      featureUpsert,
+      featureRpc,
       lineEq,
       featureEq,
     },
@@ -295,10 +307,10 @@ describe('/api/admin/line-credentials', () => {
     expect(assertClinicInScope).toHaveBeenCalledWith(CLINIC_ID);
   });
 
-  it('encrypts credential secrets and writes the rollout flag on PUT', async () => {
+  it('encrypts credential secrets for a first-time disabled legacy import', async () => {
     lineRows.clear();
     featureFlags.set(CLINIC_ID, false);
-    const payload = basePayload();
+    const payload = basePayload({ line_booking_enabled: false });
     mockProcessSuccess({ body: payload });
     const fixture = createAdminClientFixture({ lineRows, featureFlags });
     mockScopedAdminContext(fixture);
@@ -322,19 +334,59 @@ describe('/api/admin/line-credentials', () => {
     expect(
       decryptLineCredential(upsertPayload.access_token_encrypted ?? '')
     ).toBe('plain-access-token');
-    expect(fixture.assertions.featureUpsert).toHaveBeenCalledWith(
-      {
-        clinic_id: CLINIC_ID,
-        line_booking_enabled: true,
-        updated_by: ADMIN_USER_ID,
-      },
-      { onConflict: 'clinic_id' }
-    );
+    expect(fixture.assertions.featureRpc).not.toHaveBeenCalled();
     expect(body.data.credentials.secrets.channel_secret.masked).toBe(
       '****cret'
     );
     expect(serializedAudit).not.toContain('plain-channel-secret');
     expect(serializedAudit).not.toContain('plain-access-token');
+  });
+
+  it('rejects legacy booking activation without partially writing credentials', async () => {
+    lineRows.clear();
+    featureFlags.set(CLINIC_ID, false);
+    const payload = basePayload();
+    mockProcessSuccess({ body: payload });
+    const fixture = createAdminClientFixture({
+      lineRows,
+      featureFlags,
+    });
+    mockScopedAdminContext(fixture);
+
+    const { PUT } = await import('@/app/api/admin/line-credentials/route');
+    const response = await PUT(
+      buildRequest('PUT', 'http://localhost/api/admin/line-credentials')
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      success: false,
+      error:
+        'LINE予約を有効にするには店舗別セットアップでProvider同一性を確認してください',
+    });
+    expect(featureFlags.get(CLINIC_ID)).toBe(false);
+    expect(fixture.assertions.lineUpsert).not.toHaveBeenCalled();
+  });
+
+  it('requires existing providers to use the atomic reconnection setup', async () => {
+    mockProcessSuccess({
+      body: basePayload({ liff_id: '2000000000-Replaced' }),
+    });
+    const fixture = createAdminClientFixture({ lineRows, featureFlags });
+    mockScopedAdminContext(fixture);
+
+    const { PUT } = await import('@/app/api/admin/line-credentials/route');
+    const response = await PUT(
+      buildRequest('PUT', 'http://localhost/api/admin/line-credentials')
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      success: false,
+      error: '既存のLINE連携は店舗別セットアップから再接続してください',
+    });
+    expect(fixture.assertions.lineUpsert).not.toHaveBeenCalled();
+    expect(lineRows.get(CLINIC_ID)?.liff_id).toBe('2000000000-AbCdEfGh');
   });
 
   it('rejects clinic_admin attempts to change the rollout flag', async () => {

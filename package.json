@@ -51,6 +51,7 @@
     "scan:secrets": "node scripts/scan-secrets.mjs",
     "verify:supabase": "node scripts/verify-supabase-connection.mjs",
     "verify:crm-line-growth:concurrency": "node scripts/verify-crm-line-growth-concurrency.mjs",
+    "verify:line-setup:concurrency": "node scripts/verify-line-setup-concurrency.mjs",
     "commercial:inventory:routes": "node scripts/commercial-hardening/generate-mutating-route-inventory.mjs --write",
     "commercial:inventory:routes:check": "node scripts/commercial-hardening/generate-mutating-route-inventory.mjs --check",
     "security:verify-mutating-routes": "node scripts/commercial-hardening/verify-mutating-routes.mjs",

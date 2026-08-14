@@ -175,7 +175,10 @@ describe('reservation email enqueue helpers', () => {
           eq: jest.fn().mockReturnValue({
             returns: jest.fn().mockReturnValue({
               maybeSingle: jest.fn().mockResolvedValue({
-                data: { is_active: true },
+                data: {
+                  is_active: true,
+                  provider_identity_verified_at: '2026-08-14T00:00:00.000Z',
+                },
                 error: null,
               }),
             }),
