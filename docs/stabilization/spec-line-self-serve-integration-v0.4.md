@@ -91,15 +91,21 @@ LINE user IDの同一性はProvider境界に依存するため、異なるProvid
 - `POST /api/internal/process-line-chat-outbox`
 - `POST /api/internal/cleanup-line-chat`
 - 店舗内会話一覧・本文・返信UI
+- `20260814010908_line_chat_runtime_contract.sql` で署名確認後イベント処理、返信enqueue、claim付き送信確定、24時間単位cleanupを原子的に実装する
+- raw bodyは署名確認後だけJSON parseし、保存するWebhook情報はevent ID・type・digest・処理状態に限定する
+- 同一会話の固定自動返信は店舗単位transaction lock下で24時間に1回だけ作成し、messageとoutboxを同時作成する
+- 送信workerはoutbox UUIDをretry keyとして固定し、LINEの409はaccepted request IDがある場合だけ成功として回復する
+- 既存の2分定期ジョブからchat outbox処理を実行し、本文保持cleanupはheartbeatで24時間に1回へ制限する
+- forward-fix rollbackは本文履歴を削除せず、4つのruntime関数のowner・実行モード・search path・完全ACLを再固定する
 
 ## 5. セキュリティ契約
 
 - LINE secret、秘密JWK、access token、Webhook raw body、reply tokenをログやAPIレスポンスへ出さない
 - Webhook署名はJSON parse前のraw bodyで検証する
 - `webhookEventId` を `(clinic_id, webhook_event_id)` で一意化し、再送を冪等処理する
-- `unsend` 受信時は対象本文を消去し、`status = 'unsent'` とする
+- `unsend` 受信時はチャット機能OFF中でも対象本文を消去し、`status = 'unsent'` とする
 - 公開WebhookはURLのclinic IDだけを信用せず、その店舗資格情報のsecretで署名を検証する
-- APIはユーザー入力のclinic IDだけで認可せず、DBのactive profile、role、clinic scope、会話担当を毎回検証する
+- APIはユーザー入力のclinic IDだけで認可せず、DBのactive profile、role、canonical clinic scope、会話担当を毎回検証する
 - 新規テーブルはservice-roleのみ。ブラウザからの直接Data APIアクセスを許可しない
 - 特権RPCは `PUBLIC` / `anon` / `authenticated` のEXECUTEを明示revokeする
 - setup接続確認はDB claimで直列化し、外部通信前にclaimを取得する。最大4回の30秒外部通信を含むため5分を超えたclaimだけ回収し、テストpushはsession固定retry keyを再利用する
@@ -119,6 +125,10 @@ LINE user IDの同一性はProvider境界に依存するため、異なるProvid
 - Provider再リンクは旧連絡先と同じ患者、または未紐付けの旧連絡先だけを許可し、別患者の紐付け解除を拒否する
 - `line_chat_enabled` はenqueueと送信claimの双方で再検証し、OFF時のpendingと失効済みprocessingをmessage/outboxともfail-closedで終端する
 - 送信claim直前にmessageがoutbound・text・queued・本文ありであることを再検証し、状態不整合は送信せず終端する
+- チャットoutboxは1店舗1件ずつclaimし、token取得前と外部push直前にclaim・機能ON・現行Provider世代・contact状態をDBで再検証する
+- 担当会話の本文参照・返信・担当変更はactorの有効所属・権限・現在担当を同一DB transactionで検証する。managerはactive `manager_clinic_assignments`、clinic_adminは権限行のclinic hierarchyを正本としてロックし、manager割当更新と同じadvisory lockで取消を直列化する。membership経路はtherapist/staffだけに限定し、権限ロールのfallbackを拒否する
+- group/room sourceは個人会話へ変換せず、本文・contact・outboxを保存しない
+- unsendはmessage IDのSHA-256 digestだけを通常保持期間の対象外となる専用tombstoneへ保持し、元messageより先またはcleanup後に届いても後着本文を保存しない。follow/unfollowはチャット機能OFF中も処理し、occurred_atの新しい状態を優先する
 - 患者のLINE ID・Provider世代はtriggerで保護し、service-roleを含む汎用UPDATEから変更できないようにする。固定search_pathのservice-role限定definer RPCだけが、旧contactと患者の整合を検証して再リンクする
 - 空き枠通知・休眠患者キャンペーンは現在のactive Provider世代へ再リンク済みの患者だけを抽出する。未再リンク患者は送信対象からfail-closedで除外し、正常な対象者の通知処理を妨げない
 - 休眠患者キャンペーン送信はcampaign claim・対象者のsent/skipped更新・LINE outbox作成をservice-role限定RPCの1トランザクションで行い、途中失敗と再実行による二重送信を防ぐ
@@ -128,7 +138,7 @@ LINE user IDの同一性はProvider境界に依存するため、異なるProvid
 
 ## 6. データ保持
 
-`clinic_line_chat_settings.retention_days` を1〜365日に制限し、初期値90日とする。設定行が欠落していてもcleanupは90日をfail-closed defaultとして適用する。cleanupは店舗別保持日数より古い `line_messages` と、参照がなくなった `line_webhook_events` を削除する。連絡先と会話の監査可能な外形情報は削除対象に含めない。
+`clinic_line_chat_settings.retention_days` を1〜365日に制限し、初期値90日とする。設定行が欠落していてもcleanupは90日をfail-closed defaultとして適用する。cleanupは店舗別保持日数より古い `line_messages` と、参照がなくなった `line_webhook_events` を削除する。ただしpending/processing outboxが参照するmessageは外部送信確定まで保持する。連絡先と会話の監査可能な外形情報、および本文や生のmessage IDを含まない `line_unsend_tombstones` は削除対象に含めない。
 
 ## 7. UI/UX Design Rationale
 
@@ -194,9 +204,9 @@ LINE user IDの同一性はProvider境界に依存するため、異なるProvid
 ## 8. テスト契約
 
 - Jest: migration/spec/rollbackの静的契約、API認証・role・clinic scope、UI状態遷移
-- pgTAP: RLS、テーブル権限、function EXECUTE、複合clinic FK、店舗内LINE ID一意性、setup 24時間制約、期限切れ秘密消去、検証claim/lease、安定retry key、Provider同一性なしの予約拒否、保持期間
-- Webhook: raw body signature、重複イベント、redelivery、unsend、非text、他店舗secret拒否
-- Chat: clinic_admin/manager全件、担当者のみ、未担当者拒否、本部admin本文拒否、空文/5000超過拒否
+- pgTAP: RLS、テーブル権限、function EXECUTE、複合clinic FK、店舗内LINE ID一意性、setup 24時間制約、期限切れ秘密消去、検証claim/lease、安定retry key、Provider同一性なしの予約拒否、保持期間、永続unsend digest tombstone
+- Webhook: raw body signature、重複イベント、redelivery、逆順/機能OFF/cleanup後unsend、非text、他店舗secret拒否
+- Chat: canonical clinic hierarchyのclinic_admin、active店舗割当manager、担当者のみ、未担当者・取消済みmanager・他階層clinic_admin拒否、本部admin本文拒否、空文/5000超過拒否
 - Outbox: 全成功または状態整合、最大3回、lease回収、最終試行中断のterminal化、送信前claim再検証、安定retry key、患者/credential/clinic不一致拒否、Provider切替との相互排他、既存未検証pendingの送信拒否とterminal履歴保持
 - Provider rotation: 検証済みsetup sessionのみ、資格情報・世代・秘密鍵消去の原子性、旧会話・message・outboxの同時失効、患者再リンク境界
 - Setup verification concurrency: 2接続から同一sessionをclaimし、成功1件・拒否1件・外部push最大1回となること

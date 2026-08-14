@@ -7617,6 +7617,100 @@ function collectApprovedEvidence(checker, startNode, sourceFile, observed) {
       return;
     }
 
+    if (key === '@/lib/line/webhook-service#verifyLineWebhookRequest') {
+      const input = call.arguments[0];
+      const body = getObjectProperty(input, 'body');
+      const client = getObjectProperty(input, 'client');
+      const signature = getObjectProperty(input, 'signature');
+      const clinicId = getObjectProperty(input, 'clinicId');
+      const resultSymbol = callResultSymbol(checker, call);
+      const boundary = findContainingFunction(call);
+      let persistenceCall;
+      if (resultSymbol && boundary) {
+        function findPersistenceCall(node) {
+          if (persistenceCall) return;
+          if (node !== boundary && ts.isFunctionLike(node)) return;
+          if (ts.isCallExpression(node) && node.getStart() > call.getEnd()) {
+            const callee = unwrapExpression(node.expression);
+            if (ts.isIdentifier(callee)) {
+              const persistenceBinding = imports.get(callee.text);
+              const persistenceInput = node.arguments[0];
+              const persistedClient = getObjectProperty(
+                persistenceInput,
+                'client'
+              );
+              const persistedClinicId = getObjectProperty(
+                persistenceInput,
+                'clinicId'
+              );
+              const generationId = getObjectProperty(
+                persistenceInput,
+                'credentialGenerationId'
+              );
+              const events = getObjectProperty(persistenceInput, 'events');
+              if (
+                isExactImportIdentifier(checker, callee, persistenceBinding) &&
+                persistenceBinding?.moduleName ===
+                  '@/lib/line/webhook-service' &&
+                persistenceBinding.importedName ===
+                  'persistLineWebhookDelivery' &&
+                isAwaitedCall(node) &&
+                throwingCallFailsClosed(node) &&
+                persistedClient &&
+                client &&
+                expressionsHaveStableSameValue(persistedClient, client, node) &&
+                persistedClinicId &&
+                clinicId &&
+                expressionsHaveStableSameValue(
+                  persistedClinicId,
+                  clinicId,
+                  node
+                ) &&
+                generationId &&
+                events &&
+                rootValueSymbol(generationId) ===
+                  resolveTargetSymbol(checker, resultSymbol) &&
+                rootValueSymbol(events) ===
+                  resolveTargetSymbol(checker, resultSymbol) &&
+                symbolIsStableBeforeUse(
+                  checker,
+                  resolveTargetSymbol(checker, resultSymbol),
+                  node,
+                  call
+                )
+              ) {
+                persistenceCall = node;
+                return;
+              }
+            }
+          }
+          ts.forEachChild(node, findPersistenceCall);
+        }
+        findPersistenceCall(boundary);
+      }
+      if (
+        !isAwaitedPreWriteCall(call) ||
+        !throwingCallFailsClosed(call) ||
+        !body ||
+        !signature ||
+        !clinicId ||
+        !expressionIsRequestDerived(body, call) ||
+        !expressionIsExactRootRequestHeaderValue(signature, call) ||
+        !hasProvablyNonNullClinicTarget(checker, clinicId) ||
+        !persistenceCall
+      ) {
+        return;
+      }
+      add('webhookSignature', key, call);
+      add(
+        'idempotency',
+        '@/lib/line/webhook-service#persistLineWebhookDelivery',
+        call
+      );
+      add('clinicScope', key, call, clinicId);
+      return;
+    }
+
     if (key === '@/lib/stripe/server#constructStripeWebhookEvent') {
       const input = call.arguments[0];
       const payload = getObjectProperty(input, 'payload');

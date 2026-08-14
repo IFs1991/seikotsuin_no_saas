@@ -56,7 +56,7 @@ describe('commercial PR-10 mutating route policy', () => {
     const result = runVerifier();
 
     expect(result.status).toBe(0);
-    expect(result.output).toContain('117 mutating handlers classified');
+    expect(result.output).toContain('132 mutating handlers classified');
     expect(result.output).toContain('9 side-effecting GET handlers classified');
   });
 
