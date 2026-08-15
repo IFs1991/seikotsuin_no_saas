@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { processLineOutbox } from '@/lib/notifications/line-processor';
 import { captureOperationalError } from '@/lib/monitoring/sentry';
 import { createLineIntegrationAdminClient } from '@/lib/line/integration-db';
+import { processLineChatOutbox } from '@/lib/line/chat-outbox-processor';
+import { cleanupLineChatData } from '@/lib/line/chat-cleanup-service';
 
 /**
  * GET /api/internal/process-line-outbox
@@ -23,11 +25,17 @@ export async function GET(request: NextRequest) {
       { p_clinic_id: null }
     );
     if (expiryError) throw expiryError;
-    const result = await processLineOutbox(client);
+    const [result, chatResult] = await Promise.all([
+      processLineOutbox(client),
+      processLineChatOutbox(client),
+    ]);
+    const cleanupResult = await cleanupLineChatData(client);
     return NextResponse.json({
       success: true,
       expiredSetupSessions: expiredSetupSessions ?? 0,
-      ...result,
+      notifications: result,
+      chat: chatResult,
+      cleanup: cleanupResult,
     });
   } catch (error) {
     await captureOperationalError(error, {

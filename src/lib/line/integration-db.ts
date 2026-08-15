@@ -266,7 +266,16 @@ export type LineWebhookEventRow = {
   payload_digest: string;
   processed_at: string | null;
   status: 'received' | 'processed' | 'ignored' | 'failed';
+  unsend_message_id: string | null;
   webhook_event_id: string;
+};
+
+export type LineUnsendTombstoneRow = {
+  clinic_id: string;
+  created_at: string;
+  credential_generation_id: string;
+  line_message_digest: string;
+  unsent_at: string;
 };
 
 export type LineMessageRow = {
@@ -437,6 +446,18 @@ type LineIntegrationTables = {
       >,
     Partial<LineMessageRow>
   >;
+  line_unsend_tombstones: TableContract<
+    LineUnsendTombstoneRow,
+    Partial<LineUnsendTombstoneRow> &
+      Pick<
+        LineUnsendTombstoneRow,
+        | 'clinic_id'
+        | 'credential_generation_id'
+        | 'line_message_digest'
+        | 'unsent_at'
+      >,
+    Partial<LineUnsendTombstoneRow>
+  >;
   line_webhook_events: TableContract<
     LineWebhookEventRow,
     Partial<LineWebhookEventRow> &
@@ -466,6 +487,14 @@ type LineIntegrationFunctions = {
       oa_basic_id: string | null;
       provider_identity_verified_at: string | null;
     }>;
+  };
+  process_line_webhook_delivery: {
+    Args: {
+      p_clinic_id: string;
+      p_credential_generation_id: string;
+      p_events: Json;
+    };
+    Returns: Json;
   };
   claim_line_setup_verification: {
     Args: { p_clinic_id: string; p_setup_session_id: string };
@@ -536,6 +565,46 @@ type LineIntegrationFunctions = {
       outbox_id: string;
       text_content: string;
     }>;
+  };
+  renew_line_chat_outbox_claim: {
+    Args: {
+      p_claim_token: string;
+      p_clinic_id: string;
+      p_outbox_id: string;
+    };
+    Returns: Array<{
+      credential_generation_id: string;
+      line_user_id: string;
+      text_content: string;
+    }>;
+  };
+  list_authorized_line_chat_messages: {
+    Args: {
+      p_actor_user_id: string;
+      p_clinic_id: string;
+      p_conversation_id: string;
+    };
+    Returns: Array<{
+      direction: LineMessageDirection;
+      id: string;
+      message_type: LineMessageType;
+      occurred_at: string;
+      status: LineMessageStatus;
+      text_content: string | null;
+    }>;
+  };
+  assign_line_chat_conversation: {
+    Args: {
+      p_actor_user_id: string;
+      p_assigned_membership_id?: string | null;
+      p_clinic_id: string;
+      p_conversation_id: string;
+    };
+    Returns: undefined;
+  };
+  list_line_chat_delivery_clinics: {
+    Args: { p_limit?: number };
+    Returns: Array<{ clinic_id: string }>;
   };
   close_line_setup_session: {
     Args: {
@@ -622,6 +691,14 @@ type LineIntegrationFunctions = {
     Returns: Array<{
       deleted_messages: number;
       deleted_webhook_events: number;
+    }>;
+  };
+  run_line_chat_cleanup_if_due: {
+    Args: Record<string, never>;
+    Returns: Array<{
+      deleted_messages: number;
+      deleted_webhook_events: number;
+      skipped: boolean;
     }>;
   };
   rotate_line_credential_generation: {

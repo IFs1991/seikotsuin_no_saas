@@ -1813,6 +1813,11 @@ values (
   'home'
 );
 
+update public.line_conversations
+set assigned_membership_id = 'a8130000-0000-4000-8000-000000000081'
+where id = 'a8130000-0000-4000-8000-000000000041'
+  and clinic_id = 'a8130000-0000-4000-8000-000000000001';
+
 select throws_ok(
   $$
     select public.enqueue_line_chat_message(
@@ -2242,7 +2247,7 @@ select lives_ok(
       'a8130000-0000-4000-8000-000000000010'
     )
   $$,
-  'a valid clinic member can atomically enqueue chat'
+  'the current assigned clinic member can atomically enqueue chat'
 );
 
 select is(

@@ -29,6 +29,7 @@ const PROTECTED_ROUTE_PREFIXES = [
   '/multi-store',
   '/master-data',
   '/mobile-uiux',
+  '/line-chat',
 ] as const;
 
 /**

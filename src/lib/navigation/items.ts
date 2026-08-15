@@ -62,6 +62,7 @@ export const OPERATION_MENU_ITEMS: readonly NavigationItem[] = [
     ],
   },
   { id: 'patients', label: '患者分析', href: '/patients' },
+  { id: 'line-chat', label: 'LINEチャット', href: '/line-chat' },
   { id: 'revenue', label: '収益分析', href: '/revenue' },
   { id: 'staff', label: 'スタッフ分析', href: '/staff' },
   { id: 'shift-requests', label: '希望シフト', href: '/staff/shift-requests' },
@@ -96,6 +97,7 @@ const THERAPIST_OPERATION_MENU_ITEM_IDS = [
   'reservations',
   'daily-reports',
   'shift-requests',
+  'line-chat',
 ] as const;
 
 const THERAPIST_OPERATION_MENU_ITEMS = pickNavigationItemsFromMap(
