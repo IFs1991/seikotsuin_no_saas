@@ -71,7 +71,11 @@ function toPriceSnapshot(
 }
 
 function isValidParentClinic(
-  clinic: ParentClinicRow | null
+  clinic:
+    | (Omit<ParentClinicRow, 'is_active'> & {
+        is_active: boolean | null;
+      })
+    | null
 ): clinic is ParentClinicRow {
   return Boolean(
     clinic && clinic.parent_id === null && clinic.is_active === true

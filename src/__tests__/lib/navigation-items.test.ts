@@ -286,13 +286,14 @@ describe('navigation items', () => {
     );
   });
 
-  it('therapist の店舗運用メニューは予約管理、日報管理、希望シフトだけに限定する', () => {
+  it('therapist の店舗運用メニューは業務必要項目と LINE チャットに限定する', () => {
     const therapistOperationItems = getOperationMenuItemsForRole('therapist');
 
     expect(therapistOperationItems.map(item => item.id)).toEqual([
       'reservations',
       'daily-reports',
       'shift-requests',
+      'line-chat',
     ]);
     expect(therapistOperationItems.map(item => item.id)).not.toEqual(
       expect.arrayContaining([
@@ -324,7 +325,12 @@ describe('navigation items', () => {
 
     expect(
       getOperationMenuItemsForRole('therapist').map(item => item.id)
-    ).toEqual(['reservations', 'daily-reports', 'shift-requests']);
+    ).toEqual([
+      'reservations',
+      'daily-reports',
+      'shift-requests',
+      'line-chat',
+    ]);
   });
 
   it('therapist は管理セクション非表示時も therapist 用の店舗運用メニューを使う', () => {
@@ -339,6 +345,7 @@ describe('navigation items', () => {
       'reservations',
       'daily-reports',
       'shift-requests',
+      'line-chat',
     ]);
   });
 

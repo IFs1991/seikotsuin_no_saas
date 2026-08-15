@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
   let stripeQuantitySyncStatus: string = 'not_required';
   if (plan.requiresStripeQuantityIncrease && subscription) {
     const syncResult = await ensureStripeStoreAddOnQuantity({
+      orgRootClinicId,
       subscription,
       targetPaidExtraStoreQuantity: plan.targetPaidExtraStoreQuantity,
     });

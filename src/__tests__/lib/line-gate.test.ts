@@ -11,6 +11,8 @@ function decisionFor(
     globalKillSwitchEnabled: true,
     lineBookingEnabled,
     credentialsActive,
+    providerIdentityVerified: true,
+    runtimeMetadataReady: true,
     encryptionReady: true,
   });
 }
@@ -35,6 +37,8 @@ describe('LINE booking gate', () => {
       globalKillSwitchEnabled: false,
       lineBookingEnabled: true,
       credentialsActive: true,
+      providerIdentityVerified: true,
+      runtimeMetadataReady: true,
       encryptionReady: false,
     });
 
@@ -42,6 +46,36 @@ describe('LINE booking gate', () => {
     expect(decision.disabledReasons).toEqual([
       'global_kill_switch_off',
       'encryption_key_unavailable',
+    ]);
+  });
+
+  it('fails closed until the LINE Login and Messaging provider identity is verified', () => {
+    const decision = evaluateLineBookingGate({
+      globalKillSwitchEnabled: true,
+      lineBookingEnabled: true,
+      credentialsActive: true,
+      providerIdentityVerified: false,
+      runtimeMetadataReady: true,
+      encryptionReady: true,
+    });
+
+    expect(decision.enabled).toBe(false);
+    expect(decision.disabledReasons).toEqual(['provider_identity_unverified']);
+  });
+
+  it('fails closed when execution LIFF or Login metadata is missing', () => {
+    const decision = evaluateLineBookingGate({
+      globalKillSwitchEnabled: true,
+      lineBookingEnabled: true,
+      credentialsActive: true,
+      providerIdentityVerified: true,
+      runtimeMetadataReady: false,
+      encryptionReady: true,
+    });
+
+    expect(decision.enabled).toBe(false);
+    expect(decision.disabledReasons).toEqual([
+      'booking_runtime_metadata_missing',
     ]);
   });
 });

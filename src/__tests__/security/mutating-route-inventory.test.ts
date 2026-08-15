@@ -9,6 +9,7 @@ type InventoryHandler = {
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   classification: 'UNKNOWN';
   observed: Record<string, string[]>;
+  approved: Record<string, string[]>;
   hints: Record<string, string[]>;
   executionPath: { status: 'RESOLVED' | 'UNRESOLVED'; path: string | null };
 };
@@ -52,13 +53,15 @@ describe('mutating route inventory generator', () => {
       'POST /api/example',
       'PATCH /api/example',
       'DELETE /api/example',
+      'POST /api/line-webhook',
+      'PUT /api/line-webhook',
       'POST /api/mixed',
     ]);
     expect(inventory.summary).toMatchObject({
-      scannedRouteFiles: 3,
-      mutationRouteFiles: 2,
-      mutationHandlers: 4,
-      unclassifiedHandlers: 4,
+      scannedRouteFiles: 4,
+      mutationRouteFiles: 3,
+      mutationHandlers: 6,
+      unclassifiedHandlers: 6,
       sideEffectingGetCandidates: 1,
     });
     expect(inventory.sideEffectingGetCandidates).toEqual([
@@ -94,6 +97,30 @@ describe('mutating route inventory generator', () => {
     expect(deleteHandler?.observed.clinicScope).toContain('ensureClinicAccess');
     expect(deleteHandler?.observed.writes).toContain('delete');
     expect(deleteHandler?.hints.idempotency).toContain('upsert call');
+
+    const verifiedWebhook = inventory.handlers.find(
+      handler => handler.id === 'POST /api/line-webhook'
+    );
+    const disconnectedWebhook = inventory.handlers.find(
+      handler => handler.id === 'PUT /api/line-webhook'
+    );
+    expect(verifiedWebhook?.approved.webhookSignature).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('#verifyLineWebhookRequest'),
+      ])
+    );
+    expect(verifiedWebhook?.approved.idempotency).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('#persistLineWebhookDelivery'),
+      ])
+    );
+    expect(verifiedWebhook?.approved.clinicScope).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('#verifyLineWebhookRequest'),
+      ])
+    );
+    expect(disconnectedWebhook?.approved.webhookSignature).toEqual([]);
+    expect(disconnectedWebhook?.approved.idempotency).toEqual([]);
   });
 
   it('emits deterministic output', () => {

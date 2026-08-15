@@ -216,10 +216,52 @@ export const mutatingRoutePolicies = [
     'platform-administration'
   ),
   admin(
+    '/api/admin/line-chat/settings',
+    ['PATCH'],
+    'derived',
+    'Clinic LINE chat safety and retention settings must remain available during billing lock.',
+    'messaging-operations'
+  ),
+  unbilled(
+    '/api/admin/line-chat/conversations/[id]/messages',
+    ['POST'],
+    'required',
+    'Clinic-scoped LINE replies are limited by role, assignment, and the tenant feature gate.',
+    'messaging-operations'
+  ),
+  unbilled(
+    '/api/admin/line-chat/conversations/[id]/assignment',
+    ['PATCH'],
+    'required',
+    'Conversation assignment is a clinic-scoped operational control.',
+    'messaging-operations'
+  ),
+  admin(
     '/api/admin/line-credentials',
     ['PUT'],
     'derived',
     'Credential rotation is a security control and must remain available during billing lock.',
+    'messaging-operations'
+  ),
+  admin(
+    '/api/admin/line-setup',
+    ['POST', 'PATCH', 'DELETE'],
+    'derived',
+    'Clinic LINE credential preparation is a security control and must remain available during billing lock.',
+    'messaging-operations'
+  ),
+  admin(
+    '/api/admin/line-setup/complete',
+    ['POST'],
+    'derived',
+    'Clinic LINE activation is an administrative security control.',
+    'messaging-operations'
+  ),
+  admin(
+    '/api/admin/line-setup/verify',
+    ['POST'],
+    'derived',
+    'Provider-bound LINE credential verification is an administrative security control.',
     'messaging-operations'
   ),
   admin(
@@ -508,6 +550,29 @@ export const mutatingRoutePolicies = [
   internal('/api/internal/billing/revoke-override'),
 
   {
+    route: '/api/internal/process-line-chat-outbox',
+    methods: ['POST'],
+    classification: 'INTERNAL_SECRET',
+    clinicScope: 'not-applicable',
+    billing: 'not-applicable',
+    auth: 'cron-secret',
+    idempotency: 'recommended',
+    rateLimit: 'not-applicable',
+    owner: 'messaging-operations',
+  },
+  {
+    route: '/api/internal/cleanup-line-chat',
+    methods: ['POST'],
+    classification: 'INTERNAL_SECRET',
+    clinicScope: 'not-applicable',
+    billing: 'not-applicable',
+    auth: 'cron-secret',
+    idempotency: 'recommended',
+    rateLimit: 'not-applicable',
+    owner: 'messaging-operations',
+  },
+
+  {
     route: '/api/stripe/webhook',
     methods: ['POST'],
     classification: 'SIGNED_WEBHOOK',
@@ -531,6 +596,19 @@ export const mutatingRoutePolicies = [
     rateLimit: 'not-applicable',
     exceptionReason:
       'Resend delivery is authenticated by its Svix signature and is intentionally excluded from authenticated mutation middleware.',
+    owner: 'messaging-operations',
+  },
+  {
+    route: '/api/webhooks/line/[clinicId]',
+    methods: ['POST'],
+    classification: 'SIGNED_WEBHOOK',
+    clinicScope: 'derived',
+    billing: 'not-applicable',
+    auth: 'webhook-signature',
+    idempotency: 'required',
+    rateLimit: 'not-applicable',
+    exceptionReason:
+      'LINE signs the raw body and webhook event IDs are deduplicated inside the clinic-scoped transaction.',
     owner: 'messaging-operations',
   },
 

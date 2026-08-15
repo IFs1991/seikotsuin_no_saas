@@ -58,6 +58,7 @@ type SettingsItemId =
   | 'booking-form'
   | 'booking-display'
   | 'comm-email'
+  | 'comm-line'
   | 'comm-announcement'
   | 'comm-survey'
   | 'system-general'
@@ -128,6 +129,7 @@ const IMPLEMENTED_SETTINGS_ITEM_IDS = new Set<SettingsItemId>([
   'booking-slots',
   'booking-form',
   'comm-email',
+  'comm-line',
   'system-general',
   'system-security',
   'system-backup',
@@ -140,6 +142,7 @@ const AREA_MANAGER_SETTINGS_ITEM_IDS = new Set<SettingsItemId>([
   'insurance-types',
   'booking-slots',
   'comm-email',
+  'comm-line',
 ]);
 
 const AREA_MANAGER_CATEGORY_TITLES: Partial<
@@ -265,6 +268,11 @@ const SETTINGS_CATEGORIES: readonly SettingsCategoryDefinition[] = [
         title: '自動通知メール',
         description:
           '予約完了時、予約前日のリマインダーメールの文面テンプレート設定',
+      },
+      {
+        id: 'comm-line',
+        title: 'LINE連携',
+        description: '店舗のLINE公式アカウント接続、通知、チャットの設定',
       },
       {
         id: 'comm-announcement',
@@ -475,6 +483,13 @@ const SETTINGS_COMPONENTS: Partial<Record<SettingsItemId, SettingsComponent>> =
       () =>
         import('@/components/admin/communication-settings').then(
           m => m.CommunicationSettings
+        ),
+      { loading: SettingsLoadingCard }
+    ),
+    'comm-line': dynamic(
+      () =>
+        import('@/components/admin/line-integration-settings').then(
+          m => m.LineIntegrationSettings
         ),
       { loading: SettingsLoadingCard }
     ),

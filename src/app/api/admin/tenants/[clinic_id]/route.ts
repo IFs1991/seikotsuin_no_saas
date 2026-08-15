@@ -559,6 +559,7 @@ export async function PATCH(
       if (plan.requiresStripeQuantityIncrease && subscription) {
         try {
           await ensureStripeStoreAddOnQuantity({
+            orgRootClinicId: targetParentId,
             subscription,
             targetPaidExtraStoreQuantity: plan.targetPaidExtraStoreQuantity,
           });

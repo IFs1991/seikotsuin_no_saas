@@ -33,6 +33,7 @@ type LineTokenFetch = (input: string, init: RequestInit) => Promise<Response>;
 type LineTokenEndpointResponse = {
   access_token: string;
   expires_in: number;
+  key_id?: string;
   token_type?: string;
 };
 
@@ -267,6 +268,22 @@ async function issueLineChannelAccessToken(params: {
   return isLineTokenEndpointResponse(payload) ? payload : null;
 }
 
+export async function issueLineChannelAccessTokenForSetup(params: {
+  assertionKid: string;
+  assertionPrivateJwk: JsonWebKey;
+  fetcher?: LineTokenFetch;
+  messagingChannelId: string;
+  now?: Date;
+}): Promise<LineTokenEndpointResponse | null> {
+  return issueLineChannelAccessToken({
+    assertionKid: params.assertionKid,
+    assertionPrivateJwk: params.assertionPrivateJwk,
+    fetcher: params.fetcher ?? fetch,
+    messagingChannelId: params.messagingChannelId,
+    now: params.now ?? new Date(),
+  });
+}
+
 function createLineChannelAccessTokenAssertion(params: {
   messagingChannelId: string;
   assertionKid: string;
@@ -322,12 +339,14 @@ function isLineTokenEndpointResponse(
   const candidate = value as {
     access_token?: unknown;
     expires_in?: unknown;
+    key_id?: unknown;
     token_type?: unknown;
   };
   return (
     typeof candidate.access_token === 'string' &&
     typeof candidate.expires_in === 'number' &&
     candidate.expires_in > 0 &&
+    (candidate.key_id === undefined || typeof candidate.key_id === 'string') &&
     (candidate.token_type === undefined ||
       typeof candidate.token_type === 'string')
   );

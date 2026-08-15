@@ -1,11 +1,11 @@
 import { createLogger } from '@/lib/logger';
 import { resolveLinePublicBookingContext } from '@/lib/line/public-booking';
-import type { SupabaseServerClient } from '@/lib/supabase';
+import type { LineIntegrationClient } from '@/lib/line/integration-db';
 
 const LINE_ID_TOKEN_VERIFY_ENDPOINT = 'https://api.line.me/oauth2/v2.1/verify';
 const DEFAULT_VERIFY_TIMEOUT_MS = 3000;
 
-type LineIdTokenClient = Pick<SupabaseServerClient, 'from'>;
+type LineIdTokenClient = Pick<LineIntegrationClient, 'rpc'>;
 type LineIdTokenFetch = (input: string, init: RequestInit) => Promise<Response>;
 
 type LineIdTokenVerifyPayload = {
@@ -51,8 +51,9 @@ export async function verifyLineIdTokenForClinic(params: {
     supabase: params.supabase,
     clinicId: params.clinicId,
   });
-  const loginChannelId = context.credentials?.login_channel_id ?? null;
-  if (!context.enabled || !loginChannelId) {
+  const credentials = context.credentials;
+  const loginChannelId = credentials?.login_channel_id ?? null;
+  if (!context.enabled || !credentials || !loginChannelId) {
     return { ok: false, reason: 'not_configured' };
   }
 
@@ -103,7 +104,7 @@ export async function verifyLineIdTokenForClinic(params: {
     lineUserId: payload.sub,
     displayName: payload.name?.trim() || null,
     audience: payload.aud,
-    credentialGenerationId: context.credentials.credential_generation_id,
+    credentialGenerationId: credentials.credential_generation_id,
   };
 }
 

@@ -47,6 +47,7 @@ export type LineCredentialsRow = GeneratedLineCredentials['Row'] & {
   last_token_test_error: string | null;
   last_token_verified_at: string | null;
   last_webhook_received_at: string | null;
+  provider_identity_verified_at: string | null;
   setup_completed_at: string | null;
   webhook_verified_at: string | null;
 };
@@ -70,6 +71,7 @@ export type LineCredentialsInsert = GeneratedLineCredentials['Insert'] &
       | 'last_token_test_error'
       | 'last_token_verified_at'
       | 'last_webhook_received_at'
+      | 'provider_identity_verified_at'
       | 'setup_completed_at'
       | 'webhook_verified_at'
     >
@@ -94,6 +96,7 @@ export type LineCredentialsUpdate = GeneratedLineCredentials['Update'] &
       | 'last_token_test_error'
       | 'last_token_verified_at'
       | 'last_webhook_received_at'
+      | 'provider_identity_verified_at'
       | 'setup_completed_at'
       | 'webhook_verified_at'
     >
@@ -133,12 +136,18 @@ export type LineSetupSessionRow = {
   created_by: string;
   credential_fingerprint: string;
   encrypted_private_jwk: string | null;
+  encrypted_verification_payload: string | null;
   expires_at: string;
   id: string;
+  provider_identity_verified: boolean;
   public_jwk: Json;
   public_key_kid: string | null;
+  push_test_retry_key: string;
   status: LineSetupStatus;
   updated_at: string;
+  verification_claim_token: string | null;
+  verification_claimed_at: string | null;
+  verification_request_digest: string | null;
   verified_at: string | null;
 };
 
@@ -155,17 +164,32 @@ export type LineSetupSessionInsert = {
   created_by: string;
   credential_fingerprint: string;
   encrypted_private_jwk: string;
+  encrypted_verification_payload?: string | null;
   expires_at?: string;
   id?: string;
+  provider_identity_verified?: boolean;
   public_jwk: Json;
   public_key_kid?: string | null;
+  push_test_retry_key?: string;
   status?: LineSetupStatus;
+  verification_claim_token?: string | null;
+  verification_claimed_at?: string | null;
+  verification_request_digest?: string | null;
 };
 
 export type LineSetupSessionUpdate = Partial<
   Pick<
     LineSetupSessionRow,
-    'consumed_at' | 'expires_at' | 'public_key_kid' | 'status' | 'verified_at'
+    | 'consumed_at'
+    | 'encrypted_verification_payload'
+    | 'expires_at'
+    | 'provider_identity_verified'
+    | 'public_key_kid'
+    | 'status'
+    | 'verification_claim_token'
+    | 'verification_claimed_at'
+    | 'verification_request_digest'
+    | 'verified_at'
   >
 >;
 
@@ -242,7 +266,16 @@ export type LineWebhookEventRow = {
   payload_digest: string;
   processed_at: string | null;
   status: 'received' | 'processed' | 'ignored' | 'failed';
+  unsend_message_id: string | null;
   webhook_event_id: string;
+};
+
+export type LineUnsendTombstoneRow = {
+  clinic_id: string;
+  created_at: string;
+  credential_generation_id: string;
+  line_message_digest: string;
+  unsent_at: string;
 };
 
 export type LineMessageRow = {
@@ -314,242 +347,7 @@ export type LineJobHeartbeatRow = {
   updated_at: string;
 };
 
-type TableContract<Row, Insert, Update, Relationships = []> = {
-  Insert: Insert;
-  Relationships: Relationships;
-  Row: Row;
-  Update: Update;
-};
-
-type LineIntegrationTables = {
-  clinic_feature_flags: TableContract<
-    LineFeatureFlagsRow,
-    LineFeatureFlagsInsert,
-    LineFeatureFlagsUpdate,
-    GeneratedFeatureFlags['Relationships']
-  >;
-  clinic_line_chat_settings: TableContract<
-    LineChatSettingsRow,
-    LineChatSettingsInsert,
-    LineChatSettingsUpdate
-  >;
-  clinic_line_credential_generations: TableContract<
-    LineCredentialGenerationRow,
-    Partial<LineCredentialGenerationRow> &
-      Pick<LineCredentialGenerationRow, 'clinic_id' | 'id'>,
-    Partial<LineCredentialGenerationRow>
-  >;
-  clinic_line_credentials: TableContract<
-    LineCredentialsRow,
-    LineCredentialsInsert,
-    LineCredentialsUpdate,
-    GeneratedLineCredentials['Relationships']
-  >;
-  clinic_line_setup_sessions: TableContract<
-    LineSetupSessionRow,
-    LineSetupSessionInsert,
-    LineSetupSessionUpdate
-  >;
-  customers: TableContract<
-    LineCustomerRow,
-    LineCustomerInsert,
-    LineCustomerUpdate,
-    GeneratedCustomers['Relationships']
-  >;
-  line_chat_outbox: TableContract<
-    LineChatOutboxRow,
-    Partial<LineChatOutboxRow> &
-      Pick<
-        LineChatOutboxRow,
-        | 'clinic_id'
-        | 'conversation_id'
-        | 'credential_generation_id'
-        | 'message_id'
-      >,
-    Partial<LineChatOutboxRow>
-  >;
-  line_contacts: TableContract<
-    LineContactRow,
-    Partial<LineContactRow> &
-      Pick<
-        LineContactRow,
-        'clinic_id' | 'credential_generation_id' | 'line_user_id'
-      >,
-    Partial<LineContactRow>
-  >;
-  line_conversations: TableContract<
-    LineConversationRow,
-    Partial<LineConversationRow> &
-      Pick<
-        LineConversationRow,
-        'clinic_id' | 'contact_id' | 'credential_generation_id'
-      >,
-    Partial<LineConversationRow>
-  >;
-  line_job_heartbeats: TableContract<
-    LineJobHeartbeatRow,
-    Partial<LineJobHeartbeatRow> & Pick<LineJobHeartbeatRow, 'job_name'>,
-    Partial<LineJobHeartbeatRow>
-  >;
-  line_message_outbox: TableContract<
-    LineNotificationOutboxRow,
-    LineNotificationOutboxInsert,
-    LineNotificationOutboxUpdate,
-    GeneratedLineMessageOutbox['Relationships']
-  >;
-  line_messages: TableContract<
-    LineMessageRow,
-    Partial<LineMessageRow> &
-      Pick<
-        LineMessageRow,
-        | 'clinic_id'
-        | 'contact_id'
-        | 'conversation_id'
-        | 'credential_generation_id'
-        | 'direction'
-        | 'message_type'
-        | 'occurred_at'
-        | 'status'
-      >,
-    Partial<LineMessageRow>
-  >;
-  line_webhook_events: TableContract<
-    LineWebhookEventRow,
-    Partial<LineWebhookEventRow> &
-      Pick<
-        LineWebhookEventRow,
-        | 'clinic_id'
-        | 'event_type'
-        | 'credential_generation_id'
-        | 'is_redelivery'
-        | 'payload_digest'
-        | 'status'
-        | 'webhook_event_id'
-      >,
-    Partial<LineWebhookEventRow>
-  >;
-};
-
-type LineIntegrationFunctions = {
-  enqueue_outreach_campaign: {
-    Args: {
-      p_campaign_id: string;
-      p_clinic_id: string;
-      p_deliveries: Json;
-      p_expected_message_body: string;
-    };
-    Returns: Array<{ enqueued_count: number; sent_at: string }>;
-  };
-  claim_line_notification_outbox: {
-    Args: {
-      p_clinic_id: string;
-      p_expected_attempts: number;
-      p_outbox_id: string;
-    };
-    Returns: string | null;
-  };
-  quarantine_unverified_line_notification_history: {
-    Args: Record<string, never>;
-    Returns: undefined;
-  };
-  claim_line_chat_outbox: {
-    Args: { p_clinic_id: string; p_limit?: number };
-    Returns: Array<{
-      claim_token: string;
-      line_user_id: string;
-      outbox_id: string;
-      text_content: string;
-    }>;
-  };
-  close_line_setup_session: {
-    Args: {
-      p_clinic_id: string;
-      p_setup_session_id: string;
-      p_status: 'consumed' | 'revoked';
-    };
-    Returns: undefined;
-  };
-  enqueue_line_chat_message: {
-    Args: {
-      p_clinic_id: string;
-      p_conversation_id: string;
-      p_sent_by: string;
-      p_text: string;
-    };
-    Returns: string;
-  };
-  expire_line_setup_sessions: {
-    Args: { p_clinic_id?: string | null };
-    Returns: number;
-  };
-  finalize_line_chat_outbox: {
-    Args: {
-      p_claim_token: string;
-      p_clinic_id: string;
-      p_error_code?: string | null;
-      p_line_message_id?: string | null;
-      p_outbox_id: string;
-      p_succeeded: boolean;
-    };
-    Returns: undefined;
-  };
-  finalize_line_notification_outbox: {
-    Args: {
-      p_claim_token: string;
-      p_clinic_id: string;
-      p_last_error: string | null;
-      p_next_attempt_at: string;
-      p_outbox_id: string;
-      p_sent_at: string | null;
-      p_status: 'pending' | 'sent' | 'failed';
-    };
-    Returns: undefined;
-  };
-  renew_line_notification_claim: {
-    Args: {
-      p_claim_token: string;
-      p_clinic_id: string;
-      p_outbox_id: string;
-    };
-    Returns: boolean;
-  };
-  purge_expired_line_chat_data: {
-    Args: { p_clinic_id?: string | null };
-    Returns: Array<{
-      deleted_messages: number;
-      deleted_webhook_events: number;
-    }>;
-  };
-  rotate_line_credential_generation: {
-    Args: {
-      p_clinic_id: string;
-      p_credentials: Json;
-      p_new_generation_id: string;
-      p_setup_session_id: string;
-      p_updated_by: string;
-    };
-    Returns: string;
-  };
-  relink_line_contact_generation: {
-    Args: {
-      p_clinic_id: string;
-      p_customer_id?: string | null;
-      p_line_user_id: string;
-      p_previous_contact_id: string | null;
-    };
-    Returns: string;
-  };
-};
-
-type GeneratedPublic = Database['public'];
-
-export type LineIntegrationDatabase = Omit<Database, 'public'> & {
-  public: Omit<GeneratedPublic, 'Functions' | 'Tables'> & {
-    Functions: GeneratedPublic['Functions'] & LineIntegrationFunctions;
-    Tables: Omit<GeneratedTables, keyof LineIntegrationTables> &
-      LineIntegrationTables;
-  };
-};
+export type LineIntegrationDatabase = Database;
 
 export type LineIntegrationClient = SupabaseClient<LineIntegrationDatabase>;
 
@@ -557,9 +355,8 @@ export function createLineIntegrationAdminClient(): LineIntegrationClient {
   return createAdminClientForDatabase<LineIntegrationDatabase>();
 }
 
-/** Temporary typed overlay until migration replay regenerates Database. */
 export function toLineIntegrationClient(
   client: SupabaseServerClient
 ): LineIntegrationClient {
-  return client as LineIntegrationClient;
+  return client;
 }

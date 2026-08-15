@@ -4,14 +4,14 @@
   "sourceRoot": "src/app/api",
   "policyStatus": "ENFORCED",
   "summary": {
-    "scannedRouteFiles": 148,
-    "mutationRouteFiles": 94,
-    "mutationHandlers": 121,
+    "scannedRouteFiles": 159,
+    "mutationRouteFiles": 103,
+    "mutationHandlers": 132,
     "methodCounts": {
-      "POST": 76,
+      "POST": 83,
       "PUT": 8,
-      "PATCH": 24,
-      "DELETE": 13
+      "PATCH": 27,
+      "DELETE": 14
     },
     "unclassifiedHandlers": 0,
     "sideEffectingGetCandidates": 9
@@ -23,7 +23,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/admin/billing/checkout/route.ts",
-        "line": 46,
+        "line": 47,
         "exportKind": "function"
       },
       "executionPath": {
@@ -373,6 +373,261 @@
       }
     },
     {
+      "id": "PATCH /api/admin/line-chat/conversations/[id]/assignment",
+      "route": "/api/admin/line-chat/conversations/[id]/assignment",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/admin/line-chat/conversations/[id]/assignment/route.ts",
+        "line": 31,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/line-chat/conversations/[id]/assignment/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "rpc"
+        ],
+        "sideEffectCall": []
+      },
+      "approved": {
+        "auth": [
+          "@/lib/api-helpers#processApiRequest"
+        ],
+        "adminRole": [
+          "@/lib/api-helpers#processApiRequest:allowedRoles"
+        ],
+        "clinicScope": [
+          "AST scoped admin assertion"
+        ],
+        "clinicScopeCoverage": [
+          "AST scoped admin assertion"
+        ],
+        "billing": [],
+        "validation": [
+          "AST schema.safeParse"
+        ],
+        "internalSecret": [],
+        "lineAuth": [],
+        "webhookSignature": [],
+        "idempotency": [],
+        "rateLimit": [],
+        "noMutation": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "AUTH_SCOPED_UNBILLED",
+      "unknowns": [],
+      "policy": {
+        "route": "/api/admin/line-chat/conversations/[id]/assignment",
+        "methods": [
+          "PATCH"
+        ],
+        "classification": "AUTH_SCOPED_UNBILLED",
+        "clinicScope": "required",
+        "billing": "explicit-exception",
+        "auth": "supabase-user",
+        "idempotency": "recommended",
+        "rateLimit": "middleware",
+        "exceptionReason": "Conversation assignment is a clinic-scoped operational control.",
+        "owner": "messaging-operations"
+      }
+    },
+    {
+      "id": "POST /api/admin/line-chat/conversations/[id]/messages",
+      "route": "/api/admin/line-chat/conversations/[id]/messages",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/line-chat/conversations/[id]/messages/route.ts",
+        "line": 75,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/line-chat/conversations/[id]/messages/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "rpc"
+        ],
+        "sideEffectCall": []
+      },
+      "approved": {
+        "auth": [
+          "@/lib/api-helpers#processApiRequest"
+        ],
+        "adminRole": [],
+        "clinicScope": [
+          "AST scoped admin assertion"
+        ],
+        "clinicScopeCoverage": [
+          "AST scoped admin assertion"
+        ],
+        "billing": [],
+        "validation": [
+          "AST schema.safeParse"
+        ],
+        "internalSecret": [],
+        "lineAuth": [],
+        "webhookSignature": [],
+        "idempotency": [],
+        "rateLimit": [],
+        "noMutation": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "AUTH_SCOPED_UNBILLED",
+      "unknowns": [],
+      "policy": {
+        "route": "/api/admin/line-chat/conversations/[id]/messages",
+        "methods": [
+          "POST"
+        ],
+        "classification": "AUTH_SCOPED_UNBILLED",
+        "clinicScope": "required",
+        "billing": "explicit-exception",
+        "auth": "supabase-user",
+        "idempotency": "recommended",
+        "rateLimit": "middleware",
+        "exceptionReason": "Clinic-scoped LINE replies are limited by role, assignment, and the tenant feature gate.",
+        "owner": "messaging-operations"
+      }
+    },
+    {
+      "id": "PATCH /api/admin/line-chat/settings",
+      "route": "/api/admin/line-chat/settings",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/admin/line-chat/settings/route.ts",
+        "line": 94,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/line-chat/settings/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "rpc"
+        ],
+        "sideEffectCall": [
+          "@/lib/audit-logger#AuditLogger.logAdminAction"
+        ]
+      },
+      "approved": {
+        "auth": [
+          "@/lib/api-helpers#processApiRequest"
+        ],
+        "adminRole": [
+          "@/lib/api-helpers#processApiRequest:allowedRoles"
+        ],
+        "clinicScope": [
+          "AST scoped admin assertion"
+        ],
+        "clinicScopeCoverage": [
+          "AST scoped admin assertion"
+        ],
+        "billing": [],
+        "validation": [],
+        "internalSecret": [],
+        "lineAuth": [],
+        "webhookSignature": [],
+        "idempotency": [],
+        "rateLimit": [],
+        "noMutation": [],
+        "sideEffectCall": [
+          "@/lib/audit-logger#AuditLogger.logAdminAction"
+        ]
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "ADMIN_SCOPED",
+      "unknowns": [],
+      "policy": {
+        "route": "/api/admin/line-chat/settings",
+        "methods": [
+          "PATCH"
+        ],
+        "classification": "ADMIN_SCOPED",
+        "clinicScope": "derived",
+        "billing": "explicit-exception",
+        "auth": "admin-role",
+        "idempotency": "recommended",
+        "rateLimit": "middleware",
+        "exceptionReason": "Clinic LINE chat safety and retention settings must remain available during billing lock.",
+        "owner": "messaging-operations"
+      }
+    },
+    {
       "id": "PUT /api/admin/line-credentials",
       "route": "/api/admin/line-credentials",
       "method": "PUT",
@@ -461,6 +716,469 @@
         "idempotency": "recommended",
         "rateLimit": "middleware",
         "exceptionReason": "Credential rotation is a security control and must remain available during billing lock.",
+        "owner": "messaging-operations"
+      }
+    },
+    {
+      "id": "POST /api/admin/line-setup",
+      "route": "/api/admin/line-setup",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/line-setup/route.ts",
+        "line": 77,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/line-setup/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse",
+          "validation helper"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert",
+          "rpc"
+        ],
+        "sideEffectCall": [
+          "@/lib/audit-logger#AuditLogger.logAdminAction"
+        ]
+      },
+      "approved": {
+        "auth": [
+          "@/lib/api-helpers#processApiRequest"
+        ],
+        "adminRole": [
+          "@/lib/api-helpers#processApiRequest:allowedRoles"
+        ],
+        "clinicScope": [
+          "AST scoped admin assertion"
+        ],
+        "clinicScopeCoverage": [
+          "AST scoped admin assertion"
+        ],
+        "billing": [],
+        "validation": [],
+        "internalSecret": [],
+        "lineAuth": [],
+        "webhookSignature": [],
+        "idempotency": [],
+        "rateLimit": [],
+        "noMutation": [],
+        "sideEffectCall": [
+          "@/lib/audit-logger#AuditLogger.logAdminAction"
+        ]
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "ADMIN_SCOPED",
+      "unknowns": [],
+      "policy": {
+        "route": "/api/admin/line-setup",
+        "methods": [
+          "POST",
+          "PATCH",
+          "DELETE"
+        ],
+        "classification": "ADMIN_SCOPED",
+        "clinicScope": "derived",
+        "billing": "explicit-exception",
+        "auth": "admin-role",
+        "idempotency": "recommended",
+        "rateLimit": "middleware",
+        "exceptionReason": "Clinic LINE credential preparation is a security control and must remain available during billing lock.",
+        "owner": "messaging-operations"
+      }
+    },
+    {
+      "id": "PATCH /api/admin/line-setup",
+      "route": "/api/admin/line-setup",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/admin/line-setup/route.ts",
+        "line": 120,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/line-setup/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse",
+          "validation helper"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "rpc"
+        ],
+        "sideEffectCall": [
+          "@/lib/audit-logger#AuditLogger.logAdminAction"
+        ]
+      },
+      "approved": {
+        "auth": [
+          "@/lib/api-helpers#processApiRequest"
+        ],
+        "adminRole": [
+          "@/lib/api-helpers#processApiRequest:allowedRoles"
+        ],
+        "clinicScope": [
+          "AST scoped admin assertion"
+        ],
+        "clinicScopeCoverage": [
+          "AST scoped admin assertion"
+        ],
+        "billing": [],
+        "validation": [],
+        "internalSecret": [],
+        "lineAuth": [],
+        "webhookSignature": [],
+        "idempotency": [],
+        "rateLimit": [],
+        "noMutation": [],
+        "sideEffectCall": [
+          "@/lib/audit-logger#AuditLogger.logAdminAction"
+        ]
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "ADMIN_SCOPED",
+      "unknowns": [],
+      "policy": {
+        "route": "/api/admin/line-setup",
+        "methods": [
+          "POST",
+          "PATCH",
+          "DELETE"
+        ],
+        "classification": "ADMIN_SCOPED",
+        "clinicScope": "derived",
+        "billing": "explicit-exception",
+        "auth": "admin-role",
+        "idempotency": "recommended",
+        "rateLimit": "middleware",
+        "exceptionReason": "Clinic LINE credential preparation is a security control and must remain available during billing lock.",
+        "owner": "messaging-operations"
+      }
+    },
+    {
+      "id": "DELETE /api/admin/line-setup",
+      "route": "/api/admin/line-setup",
+      "method": "DELETE",
+      "source": {
+        "path": "src/app/api/admin/line-setup/route.ts",
+        "line": 171,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/line-setup/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse",
+          "validation helper"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "rpc"
+        ],
+        "sideEffectCall": [
+          "@/lib/audit-logger#AuditLogger.logAdminAction"
+        ]
+      },
+      "approved": {
+        "auth": [
+          "@/lib/api-helpers#processApiRequest"
+        ],
+        "adminRole": [
+          "@/lib/api-helpers#processApiRequest:allowedRoles"
+        ],
+        "clinicScope": [
+          "AST scoped admin assertion"
+        ],
+        "clinicScopeCoverage": [
+          "AST scoped admin assertion"
+        ],
+        "billing": [],
+        "validation": [],
+        "internalSecret": [],
+        "lineAuth": [],
+        "webhookSignature": [],
+        "idempotency": [],
+        "rateLimit": [],
+        "noMutation": [],
+        "sideEffectCall": [
+          "@/lib/audit-logger#AuditLogger.logAdminAction"
+        ]
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "ADMIN_SCOPED",
+      "unknowns": [],
+      "policy": {
+        "route": "/api/admin/line-setup",
+        "methods": [
+          "POST",
+          "PATCH",
+          "DELETE"
+        ],
+        "classification": "ADMIN_SCOPED",
+        "clinicScope": "derived",
+        "billing": "explicit-exception",
+        "auth": "admin-role",
+        "idempotency": "recommended",
+        "rateLimit": "middleware",
+        "exceptionReason": "Clinic LINE credential preparation is a security control and must remain available during billing lock.",
+        "owner": "messaging-operations"
+      }
+    },
+    {
+      "id": "POST /api/admin/line-setup/complete",
+      "route": "/api/admin/line-setup/complete",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/line-setup/complete/route.ts",
+        "line": 34,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/line-setup/complete/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse",
+          "validation helper"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "rpc"
+        ],
+        "sideEffectCall": [
+          "@/lib/audit-logger#AuditLogger.logAdminAction"
+        ]
+      },
+      "approved": {
+        "auth": [
+          "@/lib/api-helpers#processApiRequest"
+        ],
+        "adminRole": [
+          "@/lib/api-helpers#processApiRequest:allowedRoles"
+        ],
+        "clinicScope": [
+          "AST scoped admin assertion"
+        ],
+        "clinicScopeCoverage": [
+          "AST scoped admin assertion"
+        ],
+        "billing": [],
+        "validation": [],
+        "internalSecret": [],
+        "lineAuth": [],
+        "webhookSignature": [],
+        "idempotency": [],
+        "rateLimit": [],
+        "noMutation": [],
+        "sideEffectCall": [
+          "@/lib/audit-logger#AuditLogger.logAdminAction"
+        ]
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [
+          "generic parse call"
+        ],
+        "idempotency": []
+      },
+      "classification": "ADMIN_SCOPED",
+      "unknowns": [],
+      "policy": {
+        "route": "/api/admin/line-setup/complete",
+        "methods": [
+          "POST"
+        ],
+        "classification": "ADMIN_SCOPED",
+        "clinicScope": "derived",
+        "billing": "explicit-exception",
+        "auth": "admin-role",
+        "idempotency": "recommended",
+        "rateLimit": "middleware",
+        "exceptionReason": "Clinic LINE activation is an administrative security control.",
+        "owner": "messaging-operations"
+      }
+    },
+    {
+      "id": "POST /api/admin/line-setup/verify",
+      "route": "/api/admin/line-setup/verify",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/line-setup/verify/route.ts",
+        "line": 83,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/line-setup/verify/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [
+          "internal bearer comparison"
+        ],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse",
+          "validation helper"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "rpc"
+        ],
+        "sideEffectCall": [
+          "@/lib/audit-logger#AuditLogger.logAdminAction"
+        ]
+      },
+      "approved": {
+        "auth": [
+          "@/lib/api-helpers#processApiRequest"
+        ],
+        "adminRole": [
+          "@/lib/api-helpers#processApiRequest:allowedRoles"
+        ],
+        "clinicScope": [
+          "AST scoped admin assertion"
+        ],
+        "clinicScopeCoverage": [
+          "AST scoped admin assertion"
+        ],
+        "billing": [],
+        "validation": [],
+        "internalSecret": [],
+        "lineAuth": [],
+        "webhookSignature": [],
+        "idempotency": [],
+        "rateLimit": [],
+        "noMutation": [],
+        "sideEffectCall": [
+          "@/lib/audit-logger#AuditLogger.logAdminAction"
+        ]
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [
+          "generic parse call"
+        ],
+        "idempotency": []
+      },
+      "classification": "ADMIN_SCOPED",
+      "unknowns": [],
+      "policy": {
+        "route": "/api/admin/line-setup/verify",
+        "methods": [
+          "POST"
+        ],
+        "classification": "ADMIN_SCOPED",
+        "clinicScope": "derived",
+        "billing": "explicit-exception",
+        "auth": "admin-role",
+        "idempotency": "recommended",
+        "rateLimit": "middleware",
+        "exceptionReason": "Provider-bound LINE credential verification is an administrative security control.",
         "owner": "messaging-operations"
       }
     },
@@ -1974,7 +2692,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/admin/tenants/route.ts",
-        "line": 897,
+        "line": 915,
         "exportKind": "function"
       },
       "executionPath": {
@@ -2002,7 +2720,9 @@
           "processApiRequest"
         ],
         "rateLimit": [],
-        "idempotency": [],
+        "idempotency": [
+          "idempotency key"
+        ],
         "writes": [
           "delete",
           "insert",
@@ -2022,9 +2742,11 @@
           "@/lib/api-helpers#processApiRequest:allowedRoles"
         ],
         "clinicScope": [
+          "@/lib/supabase/scoped-admin#resolveChildClinicInScope",
           "AST scoped admin assertion"
         ],
         "clinicScopeCoverage": [
+          "@/lib/supabase/scoped-admin#resolveChildClinicInScope",
           "AST scoped admin assertion"
         ],
         "billing": [],
@@ -2101,7 +2823,9 @@
           "processApiRequest"
         ],
         "rateLimit": [],
-        "idempotency": [],
+        "idempotency": [
+          "idempotency key"
+        ],
         "writes": [
           "rpc",
           "update",
@@ -5335,7 +6059,9 @@
         ],
         "origin": [],
         "rateLimit": [],
-        "idempotency": [],
+        "idempotency": [
+          "idempotency key"
+        ],
         "writes": [
           "insert",
           "rpc",
@@ -5637,6 +6363,150 @@
         "idempotency": "recommended",
         "rateLimit": "not-applicable",
         "owner": "billing-operations"
+      }
+    },
+    {
+      "id": "POST /api/internal/cleanup-line-chat",
+      "route": "/api/internal/cleanup-line-chat",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/internal/cleanup-line-chat/route.ts",
+        "line": 10,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/internal/cleanup-line-chat/route.ts"
+      },
+      "observed": {
+        "auth": [],
+        "internalSecret": [
+          "CRON_SECRET",
+          "internal bearer comparison"
+        ],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "rpc"
+        ],
+        "sideEffectCall": []
+      },
+      "approved": {
+        "auth": [
+          "AST CRON_SECRET bearer denial guard"
+        ],
+        "adminRole": [],
+        "clinicScope": [],
+        "clinicScopeCoverage": [],
+        "billing": [],
+        "validation": [],
+        "internalSecret": [
+          "AST CRON_SECRET bearer denial guard"
+        ],
+        "lineAuth": [],
+        "webhookSignature": [],
+        "idempotency": [],
+        "rateLimit": [],
+        "noMutation": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "INTERNAL_SECRET",
+      "unknowns": [],
+      "policy": {
+        "route": "/api/internal/cleanup-line-chat",
+        "methods": [
+          "POST"
+        ],
+        "classification": "INTERNAL_SECRET",
+        "clinicScope": "not-applicable",
+        "billing": "not-applicable",
+        "auth": "cron-secret",
+        "idempotency": "recommended",
+        "rateLimit": "not-applicable",
+        "owner": "messaging-operations"
+      }
+    },
+    {
+      "id": "POST /api/internal/process-line-chat-outbox",
+      "route": "/api/internal/process-line-chat-outbox",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/internal/process-line-chat-outbox/route.ts",
+        "line": 10,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/internal/process-line-chat-outbox/route.ts"
+      },
+      "observed": {
+        "auth": [],
+        "internalSecret": [
+          "CRON_SECRET",
+          "internal bearer comparison"
+        ],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "rpc"
+        ],
+        "sideEffectCall": []
+      },
+      "approved": {
+        "auth": [
+          "AST CRON_SECRET bearer denial guard"
+        ],
+        "adminRole": [],
+        "clinicScope": [],
+        "clinicScopeCoverage": [],
+        "billing": [],
+        "validation": [],
+        "internalSecret": [
+          "AST CRON_SECRET bearer denial guard"
+        ],
+        "lineAuth": [],
+        "webhookSignature": [],
+        "idempotency": [],
+        "rateLimit": [],
+        "noMutation": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "INTERNAL_SECRET",
+      "unknowns": [],
+      "policy": {
+        "route": "/api/internal/process-line-chat-outbox",
+        "methods": [
+          "POST"
+        ],
+        "classification": "INTERNAL_SECRET",
+        "clinicScope": "not-applicable",
+        "billing": "not-applicable",
+        "auth": "cron-secret",
+        "idempotency": "recommended",
+        "rateLimit": "not-applicable",
+        "owner": "messaging-operations"
       }
     },
     {
@@ -7780,7 +8650,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/outreach/campaigns/route.ts",
-        "line": 74,
+        "line": 75,
         "exportKind": "function"
       },
       "executionPath": {
@@ -7874,7 +8744,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/outreach/campaigns/[id]/send/route.ts",
-        "line": 27,
+        "line": 28,
         "exportKind": "function"
       },
       "executionPath": {
@@ -7905,8 +8775,7 @@
         "rateLimit": [],
         "idempotency": [],
         "writes": [
-          "insert",
-          "update"
+          "rpc"
         ],
         "sideEffectCall": []
       },
@@ -8169,7 +9038,7 @@
       "method": "PATCH",
       "source": {
         "path": "src/app/api/public/my-reservations/route.ts",
-        "line": 106,
+        "line": 110,
         "exportKind": "function"
       },
       "executionPath": {
@@ -8210,8 +9079,7 @@
         ],
         "billing": [],
         "validation": [
-          "@/lib/line/public-my-page-auth#verifyPublicLineMyPageAuth",
-          "AST schema.safeParse"
+          "@/lib/line/public-my-page-auth#verifyPublicLineMyPageAuth"
         ],
         "internalSecret": [],
         "lineAuth": [
@@ -8253,7 +9121,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/public/reservations/route.ts",
-        "line": 89,
+        "line": 90,
         "exportKind": "function"
       },
       "executionPath": {
@@ -8335,7 +9203,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/public/reservations/[id]/cancel/route.ts",
-        "line": 59,
+        "line": 60,
         "exportKind": "function"
       },
       "executionPath": {
@@ -8379,8 +9247,7 @@
         ],
         "billing": [],
         "validation": [
-          "@/lib/line/public-my-page-auth#verifyPublicLineMyPageAuth",
-          "AST schema.safeParse"
+          "@/lib/line/public-my-page-auth#verifyPublicLineMyPageAuth"
         ],
         "internalSecret": [],
         "lineAuth": [
@@ -8422,7 +9289,7 @@
       "method": "PUT",
       "source": {
         "path": "src/app/api/public/staff-preferences/route.ts",
-        "line": 101,
+        "line": 102,
         "exportKind": "function"
       },
       "executionPath": {
@@ -8463,8 +9330,7 @@
         ],
         "billing": [],
         "validation": [
-          "@/lib/line/public-my-page-auth#verifyPublicLineMyPageAuth",
-          "AST schema.safeParse"
+          "@/lib/line/public-my-page-auth#verifyPublicLineMyPageAuth"
         ],
         "internalSecret": [],
         "lineAuth": [
@@ -10223,6 +11089,88 @@
       }
     },
     {
+      "id": "POST /api/webhooks/line/[clinicId]",
+      "route": "/api/webhooks/line/[clinicId]",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/webhooks/line/[clinicId]/route.ts",
+        "line": 17,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/webhooks/line/[clinicId]/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "webhook-signature"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse",
+          "validation helper"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "rpc"
+        ],
+        "sideEffectCall": []
+      },
+      "approved": {
+        "auth": [],
+        "adminRole": [],
+        "clinicScope": [
+          "@/lib/line/webhook-service#verifyLineWebhookRequest"
+        ],
+        "clinicScopeCoverage": [
+          "@/lib/line/webhook-service#verifyLineWebhookRequest"
+        ],
+        "billing": [],
+        "validation": [],
+        "internalSecret": [],
+        "lineAuth": [],
+        "webhookSignature": [
+          "@/lib/line/webhook-service#verifyLineWebhookRequest"
+        ],
+        "idempotency": [
+          "@/lib/line/webhook-service#persistLineWebhookDelivery"
+        ],
+        "rateLimit": [],
+        "noMutation": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [
+          "generic parse call"
+        ],
+        "idempotency": []
+      },
+      "classification": "SIGNED_WEBHOOK",
+      "unknowns": [],
+      "policy": {
+        "route": "/api/webhooks/line/[clinicId]",
+        "methods": [
+          "POST"
+        ],
+        "classification": "SIGNED_WEBHOOK",
+        "clinicScope": "derived",
+        "billing": "not-applicable",
+        "auth": "webhook-signature",
+        "idempotency": "required",
+        "rateLimit": "not-applicable",
+        "exceptionReason": "LINE signs the raw body and webhook event IDs are deduplicated inside the clinic-scoped transaction.",
+        "owner": "messaging-operations"
+      }
+    },
+    {
       "id": "POST /api/webhooks/resend",
       "route": "/api/webhooks/resend",
       "method": "POST",
@@ -10707,7 +11655,7 @@
       "method": "GET",
       "source": {
         "path": "src/app/api/internal/process-line-outbox/route.ts",
-        "line": 11,
+        "line": 13,
         "exportKind": "function"
       },
       "executionPath": {
@@ -10723,13 +11671,13 @@
         "clinicScope": [],
         "billing": [],
         "validation": [],
-        "serviceRole": [
-          "createAdminClient"
-        ],
+        "serviceRole": [],
         "origin": [],
         "rateLimit": [],
         "idempotency": [],
-        "writes": [],
+        "writes": [
+          "rpc"
+        ],
         "sideEffectCall": [
           "processLineOutbox"
         ]

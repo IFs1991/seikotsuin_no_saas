@@ -154,6 +154,7 @@ describe('billing tenant activation helpers', () => {
     const create = jest.fn(async () => ({ id: 'si_store_new' }));
 
     const result = await ensureStripeStoreAddOnQuantity({
+      orgRootClinicId: 'root-clinic-1',
       subscription: buildSubscription({
         stripe_store_subscription_item_id: 'si_store_existing',
         paid_extra_store_quantity: 1,
@@ -195,6 +196,7 @@ describe('billing tenant activation helpers', () => {
     const create = jest.fn(async () => ({ id: 'si_store_new' }));
 
     const result = await ensureStripeStoreAddOnQuantity({
+      orgRootClinicId: 'root-clinic-1',
       subscription: buildSubscription({
         stripe_store_subscription_item_id: null,
         paid_extra_store_quantity: 0,
@@ -231,6 +233,7 @@ describe('billing tenant activation helpers', () => {
     const create = jest.fn(async () => ({ id: 'si_store_new' }));
 
     const result = await ensureStripeStoreAddOnQuantity({
+      orgRootClinicId: 'root-clinic-1',
       subscription: buildSubscription({
         stripe_store_subscription_item_id: null,
         paid_extra_store_quantity: 0,
@@ -283,6 +286,7 @@ describe('billing tenant activation helpers', () => {
 
     await expect(
       ensureStripeStoreAddOnQuantity({
+        orgRootClinicId: 'root-clinic-1',
         subscription: buildSubscription({
           stripe_store_subscription_item_id: null,
           paid_extra_store_quantity: 0,
@@ -332,6 +336,7 @@ describe('billing tenant activation helpers', () => {
 
     await expect(
       ensureStripeStoreAddOnQuantity({
+        orgRootClinicId: 'root-clinic-1',
         subscription: buildSubscription({
           stripe_store_subscription_item_id: 'si_store_existing',
           paid_extra_store_quantity: 1,
@@ -373,6 +378,7 @@ describe('billing tenant activation helpers', () => {
 
     await expect(
       ensureStripeStoreAddOnQuantity({
+        orgRootClinicId: 'root-clinic-1',
         subscription: buildSubscription({
           stripe_store_subscription_item_id: null,
           paid_extra_store_quantity: 0,
@@ -403,6 +409,38 @@ describe('billing tenant activation helpers', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
+  test('rejects a database subscription outside the guarded organization root', async () => {
+    const { ensureStripeStoreAddOnQuantity } = await loadTenantActivation();
+    const retrieveSubscription = jest.fn();
+    const update = jest.fn();
+    const create = jest.fn();
+
+    await expect(
+      ensureStripeStoreAddOnQuantity({
+        orgRootClinicId: 'root-clinic-1',
+        subscription: buildSubscription({
+          org_root_clinic_id: 'another-root',
+          stripe_store_subscription_item_id: 'si_store_existing',
+          paid_extra_store_quantity: 1,
+        }),
+        targetPaidExtraStoreQuantity: 2,
+        stripe: {
+          subscriptions: { retrieve: retrieveSubscription },
+          subscriptionItems: {
+            retrieve: jest.fn(),
+            list: jest.fn(),
+            update,
+            create,
+          },
+        },
+      })
+    ).rejects.toThrow('Stripe store add-on clinic scope mismatch');
+
+    expect(retrieveSubscription).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
   test.each([
     {
       label: '別のサブスクリプション',
@@ -423,6 +461,7 @@ describe('billing tenant activation helpers', () => {
 
       await expect(
         ensureStripeStoreAddOnQuantity({
+          orgRootClinicId: 'root-clinic-1',
           subscription: buildSubscription({
             stripe_store_subscription_item_id: 'si_store_existing',
             paid_extra_store_quantity: 1,

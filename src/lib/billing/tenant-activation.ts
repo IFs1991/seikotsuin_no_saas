@@ -305,10 +305,15 @@ export function buildStoreActivationPlan(input: {
 }
 
 export async function ensureStripeStoreAddOnQuantity(input: {
+  orgRootClinicId: string;
   subscription: StoreAddOnSubscription;
   targetPaidExtraStoreQuantity: number;
   stripe?: StripeStoreAddOnClient;
 }): Promise<StoreAddOnQuantitySyncResult> {
+  if (input.subscription.org_root_clinic_id !== input.orgRootClinicId) {
+    throw new Error('Stripe store add-on clinic scope mismatch');
+  }
+
   if (
     input.targetPaidExtraStoreQuantity <=
     input.subscription.paid_extra_store_quantity

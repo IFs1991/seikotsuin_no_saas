@@ -1224,7 +1224,8 @@ select throws_ok(
 
 insert into public.clinic_line_setup_sessions (
   id, clinic_id, created_by, encrypted_private_jwk, public_jwk,
-  credential_fingerprint, public_key_kid, status, verified_at
+  credential_fingerprint, public_key_kid, status, verified_at,
+  encrypted_verification_payload
 )
 values (
   'a8130000-0000-4000-8000-000000000052',
@@ -1235,7 +1236,8 @@ values (
   'fingerprint-rotated',
   'kid-a-rotated',
   'verified',
-  now()
+  now(),
+  'encrypted-verified-draft'
 );
 
 select is(
@@ -1811,6 +1813,11 @@ values (
   'home'
 );
 
+update public.line_conversations
+set assigned_membership_id = 'a8130000-0000-4000-8000-000000000081'
+where id = 'a8130000-0000-4000-8000-000000000041'
+  and clinic_id = 'a8130000-0000-4000-8000-000000000001';
+
 select throws_ok(
   $$
     select public.enqueue_line_chat_message(
@@ -2240,7 +2247,7 @@ select lives_ok(
       'a8130000-0000-4000-8000-000000000010'
     )
   $$,
-  'a valid clinic member can atomically enqueue chat'
+  'the current assigned clinic member can atomically enqueue chat'
 );
 
 select is(
