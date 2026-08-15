@@ -264,8 +264,8 @@ async function finalizeChatOutbox(
   const { error } = await client.rpc('finalize_line_chat_outbox', {
     p_claim_token: params.job.claim_token,
     p_clinic_id: params.clinicId,
-    p_error_code: params.errorCode,
-    p_line_message_id: params.lineMessageId,
+    p_error_code: params.errorCode ?? undefined,
+    p_line_message_id: params.lineMessageId ?? undefined,
     p_outbox_id: params.job.outbox_id,
     p_succeeded: params.succeeded,
   });

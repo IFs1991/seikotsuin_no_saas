@@ -341,8 +341,8 @@ async function updateLineJob(
     p_outbox_id: job.id,
     p_claim_token: inferRequiredString(job.claim_token, 'claim_token'),
     p_status: update.status,
-    p_sent_at: update.sent_at ?? null,
-    p_last_error: update.last_error ?? null,
+    p_sent_at: update.sent_at ?? new Date().toISOString(),
+    p_last_error: update.last_error ?? '',
     p_next_attempt_at: inferRequiredString(
       update.next_attempt_at,
       'next_attempt_at'

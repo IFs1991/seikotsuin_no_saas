@@ -1,4 +1,6 @@
 const mockCreateLineIntegrationAdminClient = jest.fn();
+const mockCleanupLineChatData = jest.fn();
+const mockProcessLineChatOutbox = jest.fn();
 const mockProcessLineOutbox = jest.fn();
 
 jest.mock('next/server', () => ({
@@ -19,6 +21,15 @@ jest.mock('@/lib/notifications/line-processor', () => ({
   processLineOutbox: (...args: unknown[]) => mockProcessLineOutbox(...args),
 }));
 
+jest.mock('@/lib/line/chat-outbox-processor', () => ({
+  processLineChatOutbox: (...args: unknown[]) =>
+    mockProcessLineChatOutbox(...args),
+}));
+
+jest.mock('@/lib/line/chat-cleanup-service', () => ({
+  cleanupLineChatData: (...args: unknown[]) => mockCleanupLineChatData(...args),
+}));
+
 type RouteRequest = {
   headers: {
     get: (name: string) => string | null;
@@ -32,6 +43,16 @@ describe('GET /api/internal/process-line-outbox', () => {
     jest.resetModules();
     jest.clearAllMocks();
     process.env.CRON_SECRET = 'secret';
+    mockProcessLineChatOutbox.mockResolvedValue({
+      failed: 0,
+      processed: 0,
+      sent: 0,
+    });
+    mockCleanupLineChatData.mockResolvedValue({
+      deletedMessages: 0,
+      deletedWebhookEvents: 0,
+      skipped: false,
+    });
   });
 
   afterAll(() => {
@@ -78,17 +99,25 @@ describe('GET /api/internal/process-line-outbox', () => {
     expect(body).toEqual({
       success: true,
       expiredSetupSessions: 2,
-      processed: 1,
-      sent: 1,
-      retried: 0,
-      failed: 0,
-      fallbackEnqueued: 0,
-      skipped: 0,
+      notifications: {
+        processed: 1,
+        sent: 1,
+        retried: 0,
+        failed: 0,
+        fallbackEnqueued: 0,
+        skipped: 0,
+      },
+      chat: { failed: 0, processed: 0, sent: 0 },
+      cleanup: {
+        deletedMessages: 0,
+        deletedWebhookEvents: 0,
+        skipped: false,
+      },
     });
     expect(mockProcessLineOutbox).toHaveBeenCalledWith(client);
-    expect(client.rpc).toHaveBeenCalledWith('expire_line_setup_sessions', {
-      p_clinic_id: null,
-    });
+    expect(mockProcessLineChatOutbox).toHaveBeenCalledWith(client);
+    expect(mockCleanupLineChatData).toHaveBeenCalledWith(client);
+    expect(client.rpc).toHaveBeenCalledWith('expire_line_setup_sessions', {});
   });
 
   it('does not expose processor error details', async () => {

@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const client = createLineIntegrationAdminClient();
     const { data: expiredSetupSessions, error: expiryError } = await client.rpc(
       'expire_line_setup_sessions',
-      { p_clinic_id: null }
+      {}
     );
     if (expiryError) throw expiryError;
     const [result, chatResult] = await Promise.all([

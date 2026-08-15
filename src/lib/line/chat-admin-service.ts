@@ -221,7 +221,7 @@ export async function assignLineChatConversation(params: {
 }): Promise<void> {
   const { error } = await params.client.rpc('assign_line_chat_conversation', {
     p_actor_user_id: params.userId,
-    p_assigned_membership_id: params.assignedMembershipId,
+    p_assigned_membership_id: params.assignedMembershipId ?? undefined,
     p_clinic_id: params.clinicId,
     p_conversation_id: params.conversationId,
   });
