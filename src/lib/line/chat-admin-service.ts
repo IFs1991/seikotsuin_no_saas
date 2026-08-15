@@ -44,6 +44,42 @@ type ChatAccess = {
   privileged: boolean;
 };
 
+export function parseConversationStatus(value: string): 'open' | 'closed' {
+  if (value === 'open' || value === 'closed') return value;
+  throw new Error('Unexpected LINE conversation status');
+}
+
+export function parseMessageDirection(
+  value: string
+): LineChatMessageView['direction'] {
+  if (value === 'inbound' || value === 'outbound' || value === 'system') {
+    return value;
+  }
+  throw new Error('Unexpected LINE message direction');
+}
+
+export function parseMessageType(
+  value: string
+): LineChatMessageView['messageType'] {
+  if (value === 'text' || value === 'unsupported') return value;
+  throw new Error('Unexpected LINE message type');
+}
+
+export function parseMessageStatus(
+  value: string
+): LineChatMessageView['status'] {
+  if (
+    value === 'received' ||
+    value === 'queued' ||
+    value === 'sent' ||
+    value === 'failed' ||
+    value === 'unsent'
+  ) {
+    return value;
+  }
+  throw new Error('Unexpected LINE message status');
+}
+
 export async function listLineChatConversations(params: {
   client: LineIntegrationClient;
   clinicId: string;
@@ -115,7 +151,7 @@ export async function listLineChatConversations(params: {
           customerName || contact?.display_name?.trim() || 'LINE利用者',
         id: conversation.id,
         lastMessageAt: conversation.last_message_at,
-        status: conversation.status,
+        status: parseConversationStatus(conversation.status),
         unreadCount: conversation.unread_count,
       };
     }),
@@ -142,11 +178,11 @@ export async function listLineChatMessages(params: {
     throw error;
   }
   return (data ?? []).map(message => ({
-    direction: message.direction,
+    direction: parseMessageDirection(message.direction),
     id: message.id,
-    messageType: message.message_type,
+    messageType: parseMessageType(message.message_type),
     occurredAt: message.occurred_at,
-    status: message.status,
+    status: parseMessageStatus(message.status),
     text: message.text_content,
   }));
 }

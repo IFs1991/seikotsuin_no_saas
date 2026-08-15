@@ -8,7 +8,9 @@ import {
 } from '@/lib/line/crypto';
 import {
   toLineIntegrationClient,
+  type LineAppType,
   type LineIntegrationClient,
+  type LineSetupStatus,
   type LineSetupSessionRow,
 } from '@/lib/line/integration-db';
 import {
@@ -89,6 +91,24 @@ class LineSetupVerificationCleanupError extends Error {
   }
 }
 
+export function parseLineAppType(value: string): LineAppType {
+  if (value === 'mini_app' || value === 'liff') return value;
+  throw new Error('Unexpected LINE app type');
+}
+
+export function parseLineSetupStatus(value: string): LineSetupStatus {
+  if (
+    value === 'prepared' ||
+    value === 'verified' ||
+    value === 'consumed' ||
+    value === 'expired' ||
+    value === 'revoked'
+  ) {
+    return value;
+  }
+  throw new Error('Unexpected LINE setup status');
+}
+
 export async function getLineSetupState(params: {
   client: SupabaseServerClient | LineIntegrationClient;
   clinicId: string;
@@ -130,7 +150,7 @@ export async function getLineSetupState(params: {
         public_jwk: setupResult.data.public_jwk,
         public_key_kid: setupResult.data.public_key_kid,
         provider_identity_verified: setupResult.data.provider_identity_verified,
-        status: setupResult.data.status,
+        status: parseLineSetupStatus(setupResult.data.status),
         verified_at: setupResult.data.verified_at,
         ...buildLineSetupUrls(params.clinicId),
       }
@@ -139,7 +159,7 @@ export async function getLineSetupState(params: {
   const credentials = credentialsResult.data
     ? {
         app_endpoint_id: credentialsResult.data.app_endpoint_id,
-        app_type: credentialsResult.data.app_type,
+        app_type: parseLineAppType(credentialsResult.data.app_type),
         bot_display_name: credentialsResult.data.bot_display_name,
         bot_picture_url: credentialsResult.data.bot_picture_url,
         credentials_verified_at: credentialsResult.data.credentials_verified_at,
