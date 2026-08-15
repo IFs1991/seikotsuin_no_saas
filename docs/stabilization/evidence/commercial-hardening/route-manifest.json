@@ -6077,9 +6077,7 @@
         "clinicScope": [],
         "clinicScopeCoverage": [],
         "billing": [],
-        "validation": [
-          "AST schema.safeParse"
-        ],
+        "validation": [],
         "internalSecret": [
           "@/lib/billing/internal-auth#requireBillingInternalRequest"
         ],

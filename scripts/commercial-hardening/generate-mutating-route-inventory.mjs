@@ -8942,15 +8942,15 @@ export function buildInventory(sourceRoot) {
     }
   }
 
+  const compareRoute = (left, right) =>
+    left.route < right.route ? -1 : left.route > right.route ? 1 : 0;
   handlers.sort(
     (left, right) =>
-      left.route.localeCompare(right.route) ||
+      compareRoute(left, right) ||
       (METHOD_ORDER.get(left.method) ?? 99) -
         (METHOD_ORDER.get(right.method) ?? 99)
   );
-  sideEffectingGetCandidates.sort((left, right) =>
-    left.route.localeCompare(right.route)
-  );
+  sideEffectingGetCandidates.sort(compareRoute);
 
   const methodCounts = Object.fromEntries(
     MUTATION_METHODS.map(method => [
