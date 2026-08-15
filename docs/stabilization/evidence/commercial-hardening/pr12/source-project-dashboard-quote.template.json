@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "recordType": "PR12_SOURCE_PROJECT_DASHBOARD_QUOTE",
+  "status": "NOT_CAPTURED",
+  "organizationId": "NOT_CAPTURED",
+  "organizationSlug": "NOT_CAPTURED",
+  "organizationPlan": "NOT_CAPTURED",
+  "currency": "USD",
+  "lineItems": {
+    "planIncrementalUsd": "NOT_CAPTURED",
+    "sourceComputeMaximumUsd": 10.9224,
+    "computeCreditAppliedUsd": "NOT_CAPTURED",
+    "taxAndOtherChargesUsd": "NOT_CAPTURED"
+  },
+  "actualDashboardQuoteUsd": "NOT_CAPTURED",
+  "observedAt": "NOT_CAPTURED",
+  "validThrough": "NOT_CAPTURED",
+  "capturedBy": "UNASSIGNED",
+  "rawDashboardArtifactPersistedInRepository": false
+}

@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "contractId": "PR12-REPRESENTATIVE-DATA-PROPOSAL-001",
+  "status": "PROPOSED_OWNER_APPROVAL_REQUIRED",
+  "executionStatus": "NOT_RUN",
+  "classification": "SYNTHETIC",
+  "implementationStatus": "IMPLEMENTED_OFFLINE_VERIFIED",
+  "volume": "83 explicit persistent rows plus exactly 12 trigger-derived reservation_history rows = 95 snapshot rows; canonical PR11 probe rows are transaction-scoped and rolled back",
+  "fixturePlanSha256": "a2446817c50b1d2ada0c4701acedc7abd2e00623c2ba503873f325a78d421028",
+  "sourceSha256": "a2446817c50b1d2ada0c4701acedc7abd2e00623c2ba503873f325a78d421028",
+  "sourceSha256Method": "SHA-256 of the canonical PR12 fixture plan; the complete 19-relation runtime source snapshot SHA-256 is first captured by PR12-CMD-009",
+  "runtimeSourceSnapshotSha256": "NOT_CAPTURED",
+  "fixturePayloadAggregateSha256": "0c5c6237faa673171a618b9a815cba41f6ced4e5a8e89814e399f006fa747e39",
+  "actorTopologySha256": "beae5bba032aadcb88adacc21146b47c95ce4582407a19e2b68f6891dbba83a3",
+  "expiresAt": "NOT_CAPTURED",
+  "productionSnapshotAllowed": false,
+  "patientPiiAllowed": false,
+  "implementationArtifacts": [
+    {
+      "path": "scripts/commercial-hardening/pr12-representative-fixture-contract.mjs",
+      "purpose": "canonical 83+12 fixture, payload identity, topology, and CMD009 snapshot validator"
+    },
+    {
+      "path": "scripts/commercial-hardening/pr12-representative-fixture-adapter.mjs",
+      "purpose": "strict fixed-order local load executor contract"
+    }
+  ],
+  "forbiddenSourceEntrypoints": [
+    "scripts/e2e/seed-e2e-data.mjs",
+    "supabase/seed.sql"
+  ],
+  "explicitPersistentRowTargets": {
+    "combinedSubtotal": 83,
+    "byRelation": {
+      "auth.identities": 7,
+      "auth.users": 7,
+      "public.ai_comments": 1,
+      "public.audit_logs": 2,
+      "public.clinics": 4,
+      "public.customers": 5,
+      "public.manager_clinic_assignments": 1,
+      "public.menus": 2,
+      "public.patients": 5,
+      "public.profiles": 7,
+      "public.reservations": 12,
+      "public.resources": 3,
+      "public.security_events": 2,
+      "public.staff": 7,
+      "public.staff_preferences": 2,
+      "public.staff_shifts": 7,
+      "public.user_permissions": 7,
+      "public.user_sessions": 2
+    }
+  },
+  "derivedRows": {
+    "allowed": true,
+    "rule": "Exactly one trigger-derived public.reservation_history row must exist for each of the 12 explicit reservations; any other derived row is fixture drift.",
+    "exactCount": 12,
+    "byRelation": {
+      "public.reservation_history": 12
+    },
+    "snapshotTotal": 95,
+    "snapshotRelationCount": 19
+  },
+  "dataIntegrityHashContract": {
+    "contractId": "PR12-DATA-INTEGRITY-HASH-V1",
+    "status": "IMPLEMENTED_OFFLINE_VERIFIED_EXECUTION_NOT_AUTHORIZED",
+    "transaction": "REPEATABLE_READ_READ_ONLY",
+    "hashAlgorithm": "SHA-256",
+    "relationSet": "EXACT_KEYS_OF_ALL_ROW_COUNTS",
+    "relationOrder": "UTF8_BYTEWISE_ASCENDING_QUALIFIED_RELATION",
+    "primaryKeyOrder": "ASC_NULLS_FIRST_IN_DECLARED_PRIMARY_KEY_COLUMN_ORDER",
+    "missingPrimaryKeyPolicy": "ABORT",
+    "collectorPath": "NOT_CAPTURED",
+    "collectorSha256": "NOT_CAPTURED",
+    "relations": 19,
+    "rowProjection": "FULL_ROW_TO_JSONB_INCLUDING_PUBLIC_RESERVATIONS_UPDATED_AT",
+    "rowEncoding": "UTF8_BYTE_LENGTH_COLON_JSONB_TEXT_LF",
+    "queryEvidence": "OWNER_FROZEN_LITERAL_SQL_AND_UTF8_SHA256_PER_RELATION_REQUIRED",
+    "perRelationDigest": "SHA256_OF_CONCATENATED_ROW_ENCODINGS",
+    "aggregateEncoding": "UTF8 <relation> TAB <rowCount> TAB <querySha256> TAB <digestSha256> LF in relationOrder",
+    "aggregateDataHash": "SHA256_OF_AGGREGATE_ENCODING",
+    "schemaProjection": "NORMALIZED_COLUMN_CONSTRAINT_POLICY_TRIGGER_HELPER_FK_ACL_CATALOG_V1",
+    "aggregateSchemaHash": "SHA256_OF_AGGREGATE_ENCODING",
+    "physicalStructureProjection": "RELATION_AND_INDEX_NAMES_RELKIND_PERSISTENCE_ACCESS_METHOD_NORMALIZED_INDEX_DEFINITION_UNIQUE_PRIMARY_EXCLUSION_PREDICATE_VALID_READY_LIVE_ONLY",
+    "excludedVolatilePhysicalFields": [
+      "oid",
+      "relfilenode",
+      "bytes",
+      "pages",
+      "tuples",
+      "statistics"
+    ],
+    "aggregateEnvironmentPhysicalStructureHash": "SHA256_OF_AGGREGATE_ENCODING",
+    "rawRowsPersisted": false,
+    "watermarkColumn": "public.reservations.updated_at",
+    "watermarkColumnIncluded": true
+  },
+  "tenantShape": {
+    "qualificationTenantRoots": 2,
+    "totalPersistentRootClinics": 2,
+    "persistentClinics": 4,
+    "applicationAuthActors": 7,
+    "applicationRoles": [
+      "admin",
+      "clinic_admin",
+      "manager",
+      "therapist",
+      "staff"
+    ],
+    "tenantA": {
+      "rootRoles": ["admin", "clinic_admin"],
+      "childRoles": ["manager", "therapist", "staff"]
+    },
+    "tenantB": {
+      "childRoles": ["staff"]
+    },
+    "noClinicActors": 1,
+    "activeManagerAssignments": 1,
+    "requiredRolesMissingFromPersistentFixture": [],
+    "hostedAuthActorCreationContract": "IMPLEMENTED_OFFLINE_VERIFIED_EXECUTION_NOT_AUTHORIZED"
+  },
+  "canonicalProbeVolume": {
+    "contract": "frozen-pr11-performance-contract.json",
+    "transactionScoped": true,
+    "rolledBack": true,
+    "includes": [
+      "10,000 sparse plus 10,000 dense block rows, 20,000 total",
+      "10,000-row sparse and dense block inserts",
+      "2,000-row shift and RLS auxiliary writes",
+      "250-row RLS read stop"
+    ],
+    "mutationAllowed": false
+  },
+  "representativeness": {
+    "flowRepresentative": true,
+    "tenantBoundaryRepresentative": true,
+    "persistentCapacityRepresentative": false,
+    "limitation": "The strict PR12 synthetic fixture is intentionally small. It does not model 500 daily reservations, 50 resources, or multi-year retention.",
+    "ownerDecisionRequired": "Approve this as a flow/security qualification dataset or require a separately reviewed deterministic volume generator before execution."
+  },
+  "privacy": {
+    "syntheticNamesOnly": true,
+    "reservedOrNonDeliverableEmailDomainsOnly": true,
+    "syntheticPhoneValuesPresent": true,
+    "machineScanRequired": true,
+    "namedHumanReviewRequired": true,
+    "rawFixtureValuesAllowedInCommittedEvidence": false
+  },
+  "retention": {
+    "sourceMaximumHoursFromProjectProvisioning": 72,
+    "restoreMaximumHoursFromRestoreProjectCreation": 24,
+    "hoursAfterQualificationEnd": "NOT_USED_FOR_COST_BOUNDING",
+    "automaticDeletionAuthorized": false,
+    "cleanupRequiresSeparateOwnerApproval": true,
+    "executionRequiresFundedRetentionAndCleanupDecisionBeforeProvisioning": true,
+    "budgetCeilingEnforceableWithoutDeletionApproval": false
+  },
+  "implementationReadiness": {
+    "fixturePlanCompiler": "IMPLEMENTED_OFFLINE_VERIFIED",
+    "strictLoadOperationCompiler": "IMPLEMENTED_OFFLINE_VERIFIED",
+    "localCallbackExecutorContract": "IMPLEMENTED_OFFLINE_VERIFIED",
+    "postLoadExactRowAndHashValidator": "IMPLEMENTED_OFFLINE_VERIFIED",
+    "payloadIdentityBinding": "IMPLEMENTED_OFFLINE_VERIFIED",
+    "hostedTherapistActorProvisioning": "PLANNED_NOT_RUN",
+    "hostedEphemeralPasswordAdapter": "CONTRACT_IMPLEMENTED_PROVIDER_UNASSIGNED",
+    "fixtureEpoch": "NOT_CAPTURED",
+    "credentialProvider": "UNASSIGNED",
+    "sqlPayloadResolver": "NOT_IMPLEMENTED",
+    "runtimeDatabaseCollector": "NOT_IMPLEMENTED",
+    "executionAuthorized": false
+  }
+}

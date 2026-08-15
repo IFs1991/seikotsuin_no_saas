@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "exportType": "SUPABASE_SOURCE_ORGANIZATION_IDENTITY_SAFE_PROJECTION",
+  "status": "NOT_RUN",
+  "actionId": "PR12-ACTION-002",
+  "request": {
+    "method": "GET",
+    "endpoint": "https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug",
+    "bodyPresent": false,
+    "rawHttpHeadersPersisted": false
+  },
+  "response": {
+    "httpStatus": "NOT_CAPTURED",
+    "bodySha256": "NOT_CAPTURED",
+    "safeProjectionSha256": "NOT_CAPTURED",
+    "safeProjection": null,
+    "observedAt": "NOT_CAPTURED"
+  },
+  "productionBoundary": {
+    "organizationProjectEnumerationPerformed": false,
+    "productionProjectSpecificManagementApiContactCount": 0,
+    "productionProjectDataPlaneContactCount": 0,
+    "productionDatabaseContactCount": 0,
+    "productionCredentialAccessCount": 0
+  },
+  "rawProviderBodiesPersisted": false,
+  "capturedAt": "NOT_CAPTURED",
+  "capturedBy": "UNASSIGNED"
+}

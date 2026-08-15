@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 1,
+  "phase": "SOURCE_PROJECT_PROVISIONING",
+  "status": "NOT_RUN",
+  "authorization": {
+    "sourceProjectProvisioningAuthorized": false,
+    "isolatedStagingConnectionAuthorized": false,
+    "isolatedStagingExecutionAuthorized": false,
+    "restoreProjectCreationAuthorized": false,
+    "productionConnectionAuthorized": false,
+    "readyTransitionAuthorized": false,
+    "mergeAuthorized": false,
+    "commercialReleaseAuthorized": false,
+    "indexRetirementAuthorized": false
+  },
+  "provisioningAction": {
+    "actionId": "PR12-ACTION-003",
+    "resultType": "SOURCE_PROJECT_PROVISIONING_OPERATION",
+    "method": "OWNER_MANAGEMENT_API_CREATE_PROJECT",
+    "httpMethod": "POST",
+    "endpoint": "https://api.supabase.com/v1/projects",
+    "regionSelectionType": "specific",
+    "desiredInstanceSize": "large",
+    "databasePasswordSource": "OWNER_SECRET_STORE_RUNTIME_INJECTION",
+    "databasePasswordMinimumLength": 32,
+    "databasePasswordTransmission": "HTTPS_JSON_BODY_RUNTIME_INJECTION_REDACTED_BEFORE_CAPTURE",
+    "databasePasswordValueMayBeLoggedPersistedOrPassedInArguments": false,
+    "managementAccessTokenSource": "OWNER_SECRET_STORE_RUNTIME_INJECTION",
+    "managementAccessTokenValueMayBeLoggedPersistedOrPassedInArguments": false,
+    "rawSecretValuesMayBeCaptured": false,
+    "providerCreatedAtMaximumClockSkewSeconds": 300,
+    "documentedProviderOperationIdExpected": false,
+    "remoteContact": true,
+    "mutating": true,
+    "mutationScope": "SOURCE_PROJECT_CREATION",
+    "maximumExecutionCount": 1,
+    "databaseConnectionAuthorized": false,
+    "resultMustBeHashBound": true
+  },
+  "target": {
+    "gitCommit": "NOT_CAPTURED",
+    "baseCommit": "4475e1c641c2ff18f66021ee65cfecfceaa6b7ab"
+  },
+  "governanceProposal": {
+    "path": "staging-execution-approval-packet.yaml",
+    "sha256": "5396cf70a2b81d9e831b95460a28508d2ed271ed3e59f92e8025b9b454a87563"
+  },
+  "credentialControls": {
+    "credentialContract": {
+      "path": "integration-credential-contract.proposed.json",
+      "sha256": "NOT_CAPTURED"
+    },
+    "credentialProviderConfiguration": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "databasePasswordSecretName": "PR12_SOURCE_DB_PASSWORD",
+    "managementAccessTokenSecretName": "PR12_SUPABASE_ACCESS_TOKEN",
+    "providerConfigurationMustExistBeforeApproval": true,
+    "secretValuesCaptured": false
+  },
+  "environmentProposal": {
+    "organizationId": "NOT_CAPTURED",
+    "organizationSlug": "NOT_CAPTURED",
+    "organizationPlan": "PRO",
+    "projectName": "seikotsuin-pr12-isolated-qualification-20260719",
+    "region": "ap-northeast-1",
+    "databaseTier": "LARGE",
+    "postgresMajor": 17,
+    "prohibitedProjectRefs": ["qnanuoqveidwvacvbhqp"],
+    "dataApi": {
+      "enabled": true,
+      "exposedSchemas": ["public"],
+      "automaticallyExposeNewTablesAndFunctions": false,
+      "grantAndRlsPolicy": "migration_defined_explicit_grants_and_rls_no_owner_override"
+    },
+    "graphQl": {
+      "pgGraphqlEnabledAtProvisioning": false,
+      "introspectionEnabledAtProvisioning": false,
+      "changeRequiresReapproval": true
+    },
+    "auth": {
+      "anonymousSignInEnabled": false,
+      "realEmailSmsOrOAuthDeliveryConfigured": false,
+      "hostedFixturePasswords": "owner_secret_store_generated_ephemeral_minimum_32_characters",
+      "hostedUserJwtAcquisitionMethod": "HOSTED_AUTH_PASSWORD_SIGN_IN_AND_REFRESH",
+      "jwtSigningSecretAcquisitionAllowed": false,
+      "fabricatedUserJwtAllowed": false,
+      "tokenValueCaptureAllowed": false
+    }
+  },
+  "lifecycle": {
+    "sourceMaximumHoursFromCreation": 72,
+    "automaticDeletionAuthorized": false,
+    "deletionRequiresSeparateApproval": true,
+    "fundedRetentionAndCleanupDecisionRequiredBeforeProvisioning": true,
+    "paidProjectCannotBePaused": true
+  },
+  "retentionAndCleanupDecision": {
+    "disposition": "DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION",
+    "sourceFundedHours": 72,
+    "restoreFundedHours": 24,
+    "fundingMustCoverHoursAfterApprovalExpiry": 72,
+    "fundedThrough": "NOT_CAPTURED",
+    "fundingCeilingUsd": 50,
+    "extensionRequiresSeparateApproval": true,
+    "cleanupOwner": "UNASSIGNED"
+  },
+  "cost": {
+    "computeRateUsdPerProjectHour": 0.1517,
+    "sourceMaximumComputeUsd": 10.9224,
+    "restoreMaximumComputeUsd": 3.6408,
+    "newProPlanIfRequiredUsd": 25,
+    "proposedBudgetCeilingUsd": 50,
+    "actualDashboardQuoteUsd": "NOT_CAPTURED",
+    "ceilingEnforceableWithoutCleanupApproval": false
+  },
+  "approval": {
+    "approvedBy": "UNASSIGNED",
+    "approvedAt": "NOT_CAPTURED",
+    "expiresAt": "NOT_CAPTURED",
+    "evidencePath": "NOT_CAPTURED",
+    "evidenceSha256": "NOT_CAPTURED"
+  },
+  "owners": {
+    "commercialReleaseOwner": "UNASSIGNED",
+    "supabasePlatformOwner": "UNASSIGNED",
+    "databaseMigrationOperator": "UNASSIGNED",
+    "disasterRecoveryOperator": "UNASSIGNED",
+    "securityTenantReviewer": "UNASSIGNED",
+    "clinicalDataPrivacyReviewer": "UNASSIGNED",
+    "billingMessagingSandboxOwner": "UNASSIGNED",
+    "siteReliabilityOwner": "UNASSIGNED",
+    "incidentCommander": "UNASSIGNED",
+    "cleanupOwner": "UNASSIGNED",
+    "evidenceCustodian": "UNASSIGNED"
+  },
+  "separationOfDuties": {
+    "approvedByMustDifferFrom": [
+      "supabasePlatformOwner",
+      "databaseMigrationOperator",
+      "disasterRecoveryOperator",
+      "securityTenantReviewer",
+      "clinicalDataPrivacyReviewer",
+      "billingMessagingSandboxOwner",
+      "siteReliabilityOwner",
+      "incidentCommander",
+      "cleanupOwner",
+      "evidenceCustodian"
+    ]
+  },
+  "notes": "This template can authorize creation of one isolated source project only. Before approval, organization entitlement, current region availability, quote, funding, owners, and secret-store handling must be captured. It never authorizes linking, migration, seed, backup, restore, Ready, merge, production, or commercial release."
+}

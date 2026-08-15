@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "manifestType": "PR12_SOURCE_ORGANIZATION_IDENTITY_CAPTURE_EVIDENCE",
+  "status": "NOT_RUN",
+  "actionId": "PR12-ACTION-002",
+  "gitCommit": "NOT_CAPTURED",
+  "bindingMaterialSha256": "NOT_CAPTURED",
+  "requestSha256": "NOT_CAPTURED",
+  "artifacts": [],
+  "artifactCount": 0,
+  "rawProviderBodiesPersisted": false,
+  "rawHttpHeadersPersisted": false,
+  "sealedAt": "NOT_CAPTURED"
+}

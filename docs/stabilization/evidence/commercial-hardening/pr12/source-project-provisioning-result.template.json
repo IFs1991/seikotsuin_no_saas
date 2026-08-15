@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "phase": "SOURCE_PROJECT_PROVISIONING_RESULT",
+  "resultType": "SOURCE_PROJECT_PROVISIONING_OPERATION",
+  "status": "NOT_RUN",
+  "approval": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "actionId": "PR12-ACTION-003",
+  "gitCommit": "NOT_CAPTURED",
+  "providerOperationIdentifierAvailability": "NOT_EXPOSED_BY_DOCUMENTED_CREATE_RESPONSE",
+  "providerEvidence": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "createdEnvironment": {
+    "organizationId": "NOT_CAPTURED",
+    "organizationPlan": "PRO",
+    "projectRef": "NOT_CAPTURED",
+    "projectName": "seikotsuin-pr12-isolated-qualification-20260719",
+    "projectUrl": "NOT_CAPTURED",
+    "databaseHost": "NOT_CAPTURED",
+    "databaseConnectionMode": "DIRECT",
+    "databaseUser": "postgres",
+    "region": "ap-northeast-1",
+    "databaseTier": "LARGE",
+    "databaseVersion": "NOT_CAPTURED"
+  },
+  "databaseObservation": {
+    "databaseConnectionPerformed": false,
+    "systemIdentifierCaptured": false,
+    "databaseClockCaptured": false
+  },
+  "actionStartedAt": "NOT_CAPTURED",
+  "organizationEntitlementObservedAt": "NOT_CAPTURED",
+  "regionAvailabilityObservedAt": "NOT_CAPTURED",
+  "requestSentAt": "NOT_CAPTURED",
+  "createResponseReceivedAt": "NOT_CAPTURED",
+  "sourceCreatedAt": "NOT_CAPTURED",
+  "sourceProvisionedAt": "NOT_CAPTURED",
+  "capturedAt": "NOT_CAPTURED",
+  "operator": "UNASSIGNED",
+  "notes": "This result proves only the owner-approved project creation action, provider-created timestamp, organization entitlement, region availability, project identity/readiness, and Large compute observation. It must not claim Data API/Auth/GraphQL configuration, a database connection, system identifier, database clock, link, replay, or qualification."
+}

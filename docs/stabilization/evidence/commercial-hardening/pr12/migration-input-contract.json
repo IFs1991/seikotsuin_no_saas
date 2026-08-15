@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "contractId": "PR12-MIGRATION-INPUT-001",
+  "status": "FROZEN_AT_BASE",
+  "baseCommit": "4475e1c641c2ff18f66021ee65cfecfceaa6b7ab",
+  "migrationHead": "20260718011731",
+  "canonicalization": "sort filename ordinal ascending; sha256 lowercase; '<hash><two spaces><filename><LF>'; sha256 UTF-8 concatenation including final LF",
+  "migrationCount": 61,
+  "migrationSetSha256": "82aee8f14e126997b8361837587159a179964c460c0d3d18b975c3af17371c07",
+  "rollbackCount": 60,
+  "rollbackSetSha256": "dc586f355365ed02af1b5041bde9c20162f95230786f768af6e659e676b6d63f",
+  "rollbackParity": "ALL_NON_BASELINE_MIGRATIONS_PAIRED",
+  "historicalBaseline": {
+    "path": "scripts/commercial-hardening/migration-history-baseline.sha256",
+    "frozenMigrationCount": 50,
+    "appendedMigrationCount": 11,
+    "latestFrozenVersion": "20260707000200",
+    "note": "The historical PR-01 baseline remains unchanged. This PR12 contract additionally pins the exact complete current set."
+  },
+  "pr11Inputs": [
+    {
+      "migration": "supabase/migrations/20260716160342_commercial_performance_safe_fk_indexes.sql",
+      "migrationSha256": "d638168df8b5b525aa6410b96cc7584215f012aa651628a641fd318985e924ca",
+      "rollback": "supabase/rollbacks/20260716160342_commercial_performance_safe_fk_indexes_rollback.sql",
+      "rollbackSha256": "40c7aeef24face1c0f2837f9ee59ac18ae2802eb186212377e9fda4b8d79b47a"
+    },
+    {
+      "migration": "supabase/migrations/20260716160402_commercial_rls_plan_cleanup.sql",
+      "migrationSha256": "061178ce97700ae0105832bd645e4c1d053ff39d59d8718c283964842bb12cae",
+      "rollback": "supabase/rollbacks/20260716160402_commercial_rls_plan_cleanup_rollback.sql",
+      "rollbackSha256": "176fe002a66243098b037641a3738895bf6e757b1e3e1703752692f0a62b5325"
+    },
+    {
+      "migration": "supabase/migrations/20260718011731_commercial_pr11_fixed_performance_forward_fix.sql",
+      "migrationSha256": "15fde71cfdba9d335239ed77a11f12216b9754fc0f75f2a8fcb992005159660b",
+      "rollback": "supabase/rollbacks/20260718011731_commercial_pr11_fixed_performance_forward_fix_rollback.sql",
+      "rollbackSha256": "c994a796c49bb4a4f1ac840bd98e28f8a9b69eea17d56f53327e53a9746f6263"
+    }
+  ],
+  "nonMigrationInputs": {
+    "generatedTypes": {
+      "path": "src/types/supabase.ts",
+      "sha256": "9845fe3ee96c70d6116e4152b95335eb6e7792ff5eef256f8f3601fb1d4ac24f"
+    },
+    "seed": {
+      "path": "supabase/seed.sql",
+      "sha256": "376d2982befda40f5ac9781ccea5bf7049ee9d357f7ea9a9155ec36f2323ca5a",
+      "representativeHostedDataStatus": "NOT_CAPTURED"
+    },
+    "localConfig": {
+      "path": "supabase/config.toml",
+      "sha256": "9e91ffe418b610ea192b6f02d12671b088a6e5417ed96602efabdeae64b79fe3",
+      "hostedConfigurationEvidence": false
+    },
+    "packageManifest": {
+      "path": "package.json",
+      "sha256": "fa596a02c3eced90f2174f69d3bbf14a2ed7a2ad311017a992e5df6db9943c8d"
+    },
+    "packageLock": {
+      "path": "package-lock.json",
+      "sha256": "098ee73c073ff2b5882e08405526b431b9a8a0619e06f256b06d7609aae26edf"
+    }
+  },
+  "mutationPolicy": {
+    "migrationChangesAuthorized": false,
+    "rollbackChangesAuthorized": false,
+    "generatedTypesChangesAuthorized": false,
+    "seedChangesAuthorized": false,
+    "dependencyChangesAuthorized": false
+  }
+}

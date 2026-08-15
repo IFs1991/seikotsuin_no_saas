@@ -1,0 +1,435 @@
+{
+  "schemaVersion": 1,
+  "contractId": "PR12-COMM-GATE-EVIDENCE-MAP-001",
+  "status": "DESIGN_FROZEN_EXECUTION_BLOCKED",
+  "unknownClaimsFailClosed": true,
+  "familyResultTypes": {
+    "DB": "DATABASE_QUALIFICATION_RESULT",
+    "TENANT": "TENANT_ISOLATION_RESULT",
+    "AUTH": "AUTHORIZATION_BOUNDARY_RESULT",
+    "API": "API_EXPOSURE_RESULT",
+    "BILL": "BILLING_SANDBOX_RESULT",
+    "OPS": "OPERATIONS_DR_RESULT"
+  },
+  "familyDefaults": {
+    "DB": [],
+    "TENANT": [],
+    "AUTH": [],
+    "API": [],
+    "BILL": [
+      "INTEGRATION.STRIPE_TEST_MODE_NO_LIVE_KEY_NO_LIVE_CHARGE",
+      "INTEGRATION.EXTERNAL_SIDE_EFFECTS_DISABLED_OR_SANDBOXED",
+      "INTEGRATION.DUPLICATE_COUNT_ZERO"
+    ],
+    "OPS": []
+  },
+  "gates": [
+    {
+      "id": "COMM-DB-001",
+      "requires": [
+        "MIGRATION.REPOSITORY_SET_EXACT",
+        "MIGRATION.ROLLBACK_SET_EXACT",
+        "MIGRATION.APPEND_ONLY_AGAINST_BASE_SHA"
+      ]
+    },
+    {
+      "id": "COMM-DB-002",
+      "requires": [
+        "MIGRATION.CLEAN_FULL_REPLAY.PR12-CMD-007",
+        "MIGRATION.REPLAY_ORDERED_SET_EXACT"
+      ]
+    },
+    {
+      "id": "COMM-DB-003",
+      "requires": [
+        "MIGRATION.REPOSITORY_REMOTE_PARITY_EXACT",
+        "MIGRATION.HEAD.20260718011731"
+      ]
+    },
+    {
+      "id": "COMM-DB-004",
+      "requires": [
+        "TYPES.GENERATED_REPOSITORY_REMOTE_BYTE_EXACT",
+        "TYPES.DIFF_EMPTY.PR12-CMD-010"
+      ]
+    },
+    {
+      "id": "COMM-DB-005",
+      "requires": [
+        "SCHEMA.NORMALIZED_CATALOG_REPOSITORY_REMOTE_EXACT",
+        "SCHEMA.NORMALIZED_PHYSICAL_BASELINE_EXACT"
+      ]
+    },
+    {
+      "id": "COMM-DB-006",
+      "requires": [
+        "DATA.REPRESENTATIVE_CONTRACT_EXACT",
+        "DATA.EXPLICIT_DERIVED_TOTAL_ROWS_EXACT",
+        "DATA.LOGICAL_PHYSICAL_HASH_EXACT"
+      ]
+    },
+    {
+      "id": "COMM-DB-007",
+      "requires": [
+        "DB.PGTAP_FULL_SUITE.ZERO_NOT_OK",
+        "PERF.SEMANTIC.pgtap:52_ok_0_not_ok"
+      ]
+    },
+    {
+      "id": "COMM-DB-008",
+      "requires": [
+        "ENV.ISOLATED_STAGING_APPROVAL_EXACT",
+        "ENV.NON_PRODUCTION_TARGET",
+        "RUNTIME.ALL_SOURCE_RESULTS_SAME_PROJECT_AND_HEAD"
+      ]
+    },
+    {
+      "id": "COMM-TENANT-001",
+      "requires": [
+        "DB.RLS_EXPOSED_TENANT_RELATIONS_EXACT",
+        "SECURITY.TENANT_CRUD_MATRIX_EXACT",
+        "DATA_API.DIRECT_ROLE_RELATION_COLUMN_SMOKES_EXACT",
+        "DATA_API.DIRECT_ROLES_RLS_EXACT",
+        "GRAPHQL.DIRECT_ROLES_TENANT_BOUNDARY_EXACT"
+      ]
+    },
+    {
+      "id": "COMM-TENANT-002",
+      "requires": [
+        "DB.TABLE_GRANTS_AND_DEFAULT_PRIVILEGES_EXACT",
+        "DATA_API.SCHEMA_USAGE_OBJECT_ACL_EXACT"
+      ]
+    },
+    {
+      "id": "COMM-TENANT-003",
+      "requires": [
+        "DB.FUNCTION_EXECUTE_ALLOWLIST_EXACT",
+        "DB.FUNCTION_FIXED_SEARCH_PATH_EXACT"
+      ]
+    },
+    {
+      "id": "COMM-TENANT-004",
+      "requires": [
+        "DB.COMPOSITE_FK_CORE_AND_REPORTING_EXACT",
+        "PERF.PLAN.blocks:trigger_and_fk_each_10000_calls",
+        "SECURITY.CASE.auth_missing_resource",
+        "SECURITY.CASE.auth_null_resource",
+        "SECURITY.CASE.auth_resource_delete_cascade",
+        "SECURITY.CASE.auth_clinic_delete_cascade"
+      ]
+    },
+    {
+      "id": "COMM-TENANT-005",
+      "requires": [
+        "SECURITY.CASE.auth_parent_rehome",
+        "DB.PARENT_REHOME_ALL_PROTECTED_RELATIONS"
+      ]
+    },
+    {
+      "id": "COMM-TENANT-006",
+      "requires": ["SECURITY.TENANT_CRUD_MATRIX_EXACT"]
+    },
+    {
+      "id": "COMM-TENANT-007",
+      "requires": [
+        "DB.RELATION_CLASS.INTERNAL_EXACT",
+        "DIRECT_API.INTERNAL_RELATIONS_CLIENT_DENY_EXACT"
+      ]
+    },
+    {
+      "id": "COMM-TENANT-008",
+      "requires": [
+        "DB.RELATION_CLASS.SHARED_MASTER_EXACT",
+        "DIRECT_API.SHARED_MASTER_READ_ONLY_EXACT"
+      ]
+    },
+    {
+      "id": "COMM-TENANT-009",
+      "requires": [
+        "DB.LEGACY_QUARANTINE_STATIC_HASH_EXACT",
+        "DIRECT_API.LEGACY_RELATIONS_CLIENT_DENY_EXACT"
+      ]
+    },
+    {
+      "id": "COMM-AUTH-001",
+      "requires": [
+        "AUTH.DATABASE_AUTHORITY_NO_USER_METADATA",
+        "AUTH.DATABASE_AUTHORITY_POSITIVE",
+        "SECURITY.CASE.auth_missing_authority",
+        "SECURITY.CASE.auth_stale_jwt"
+      ]
+    },
+    {
+      "id": "COMM-AUTH-002",
+      "requires": [
+        "SECURITY.CASE.auth_permissions_query_error",
+        "SECURITY.CASE.auth_permissions_row_missing",
+        "SECURITY.CASE.auth_profile_status_query_error",
+        "SECURITY.CASE.auth_profile_row_missing"
+      ]
+    },
+    { "id": "COMM-AUTH-003", "requires": ["SECURITY.CASE.auth_stale_jwt"] },
+    {
+      "id": "COMM-AUTH-004",
+      "requires": ["SECURITY.CASE.auth_inactive_profile"]
+    },
+    {
+      "id": "COMM-AUTH-005",
+      "requires": [
+        "SECURITY.CASE.auth_expired_manager_assignment",
+        "SECURITY.CASE.auth_revoked_manager_assignment"
+      ]
+    },
+    {
+      "id": "COMM-AUTH-006",
+      "requires": [
+        "INVITE.ATOMIC_SUCCESS_EXACT",
+        "INVITE.FAILURE_ZERO_PARTIAL_WRITE"
+      ]
+    },
+    {
+      "id": "COMM-AUTH-007",
+      "requires": [
+        "INVITE.CONCURRENT_SINGLE_WINNER",
+        "INVITE.CONCURRENT_NO_DUPLICATE_MEMBERSHIP"
+      ]
+    },
+    {
+      "id": "COMM-AUTH-008",
+      "requires": [
+        "INVITE.FAILURE_ZERO_PARTIAL_WRITE",
+        "AUTH.FAILURE_ZERO_PARTIAL_WRITE"
+      ]
+    },
+    {
+      "id": "COMM-API-001",
+      "requires": [
+        "ROUTE.MUTATING_INVENTORY_EQUALS_FILESYSTEM",
+        "ROUTE.ALL_POST_PUT_PATCH_DELETE_CLASSIFIED"
+      ]
+    },
+    {
+      "id": "COMM-API-002",
+      "requires": [
+        "ROUTE.SIDE_EFFECT_GET_INVENTORY_EXACT",
+        "ROUTE.ALL_SIDE_EFFECT_GET_CLASSIFIED"
+      ]
+    },
+    {
+      "id": "COMM-API-003",
+      "requires": [
+        "ROUTE.CLINIC_SCOPE_DOMINATES_ALL_REACHABLE_WRITES",
+        "API.RUNTIME_CROSS_CLINIC_DENIED_NO_WRITE"
+      ]
+    },
+    {
+      "id": "COMM-API-004",
+      "requires": [
+        "ROUTE.BILLING_GUARD_DOMINATES_BILLED_WRITES",
+        "API.RUNTIME_BILLING_GUARD_DENIED_NO_WRITE"
+      ]
+    },
+    {
+      "id": "COMM-API-005",
+      "requires": [
+        "ROUTE.PUBLIC_VALIDATOR_OUTPUT_FEEDS_ALL_WRITES",
+        "API.RUNTIME_INVALID_PUBLIC_INPUT_DENIED_NO_WRITE"
+      ]
+    },
+    {
+      "id": "COMM-API-006",
+      "requires": [
+        "ROUTE.INTERNAL_SECRET_CHECK_BEFORE_WRITE",
+        "CREDENTIAL.SERVICE_ROLE_SERVER_ONLY",
+        "API.BROWSER_BUNDLE_NO_SERVER_SECRET",
+        "DATA_API.SERVICE_ROLE_RPC_SMOKE_EXACT",
+        "API.SERVICE_ROLE_NON_EXPOSURE_SCAN_EXACT"
+      ]
+    },
+    {
+      "id": "COMM-API-007",
+      "requires": [
+        "ROUTE.WEBHOOK_SIGNATURE_BEFORE_PROCESSING",
+        "ROUTE.IDEMPOTENCY_BEFORE_SIDE_EFFECT",
+        "BILLING.WEBHOOK_INVALID_SIGNATURE_DENIED",
+        "BILLING.WEBHOOK_DUPLICATE_SINGLE_EFFECT"
+      ]
+    },
+    {
+      "id": "COMM-API-008",
+      "requires": [
+        "ROUTE.RATE_LIMIT_BEFORE_PUBLIC_OR_HIGH_RISK_WRITE",
+        "API.RUNTIME_RATE_LIMIT_429_NO_EXTRA_WRITE"
+      ]
+    },
+    {
+      "id": "COMM-API-009",
+      "requires": [
+        "ROUTE.UNKNOWN_COUNT_ZERO",
+        "ROUTE.NEGATIVE_FIXTURE_UNCLASSIFIED_REJECTED"
+      ]
+    },
+    {
+      "id": "COMM-BILL-001",
+      "requires": [
+        "BILLING.CHECKOUT_TEST_MODE_SESSION_CREATED",
+        "BILLING.NO_LIVE_CHARGE"
+      ]
+    },
+    {
+      "id": "COMM-BILL-002",
+      "requires": [
+        "BILLING.WEBHOOK_INVALID_SIGNATURE_DENIED",
+        "BILLING.WEBHOOK_DUPLICATE_SINGLE_EFFECT",
+        "BILLING.WEBHOOK_OUT_OF_ORDER_CONVERGES"
+      ]
+    },
+    {
+      "id": "COMM-BILL-003",
+      "requires": [
+        "BILLING.PORTAL_TEST_MODE_SESSION_CREATED",
+        "BILLING.PORTAL_ADMIN_SAME_ORG_ONLY"
+      ]
+    },
+    {
+      "id": "COMM-BILL-004",
+      "requires": ["BILLING.CHECKOUT_EXPIRED_STATE_RECOVERED"]
+    },
+    {
+      "id": "COMM-BILL-005",
+      "requires": [
+        "BILLING.CANCELLATION_STATE_EXACT",
+        "BILLING.PAYMENT_FAILURE_GRACE_AND_LOCK_EXACT"
+      ]
+    },
+    {
+      "id": "COMM-BILL-006",
+      "requires": ["BILLING.SUBSCRIPTION_STATE_SYNC_EXACT"]
+    },
+    {
+      "id": "COMM-BILL-007",
+      "requires": [
+        "BILLING.TENANT_QUANTITY_BOUNDARY_EXACT",
+        "BILLING.CONCURRENT_ACTIVATION_SINGLE_EFFECT"
+      ]
+    },
+    {
+      "id": "COMM-BILL-008",
+      "requires": ["BILLING.EMERGENCY_DISABLE_BLOCKS_NEW_COMMERCIAL_WRITES"]
+    },
+    {
+      "id": "COMM-BILL-009",
+      "requires": [
+        "BILLING.CROSS_ORGANIZATION_DENIED",
+        "BILLING.NON_ADMIN_DENIED"
+      ]
+    },
+    {
+      "id": "COMM-OPS-001",
+      "requires": [
+        "ENV.ISOLATED_STAGING_APPROVAL_EXACT",
+        "ENV.NON_PRODUCTION_TARGET",
+        "INTEGRATION.DISABLED_OR_SANDBOXED_NO_REAL_SIDE_EFFECT"
+      ]
+    },
+    {
+      "id": "COMM-OPS-002",
+      "requires": [
+        "MIGRATION.CLEAN_FULL_REPLAY.PR12-CMD-007",
+        "PERF.PR11_CANONICAL_COMPLETE_EXACT",
+        "PERF.HOSTED_SLO_FROZEN_AND_PASS",
+        "ADVISOR.SECURITY_PERFORMANCE_DIFF_EXACT",
+        "ADVISOR.NEW_CRITICAL_ZERO"
+      ]
+    },
+    {
+      "id": "COMM-OPS-003",
+      "requires": [
+        "BACKUP.PHYSICAL_METADATA_BOUND",
+        "BACKUP.WATERMARK_BOUND",
+        "BACKUP.SOURCE_IDENTITY_EXACT"
+      ]
+    },
+    {
+      "id": "COMM-OPS-004",
+      "requires": [
+        "RESTORE.APPROVAL_AND_TARGET_ISOLATION_EXACT",
+        "RESTORE.SCHEMA_DATA_PARITY_EXACT",
+        "RESTORE.TENANT_AUTH_MATRIX_FRESH_EXACT",
+        "RESTORE.DATA_API_FRESH_EXACT",
+        "RESTORE.GRAPHQL_FRESH_EXACT"
+      ]
+    },
+    {
+      "id": "COMM-OPS-005",
+      "requires": [
+        "RESTORE.RTO_RECOMPUTED_WITHIN_THRESHOLD",
+        "RESTORE.RPO_RECOMPUTED_WITHIN_THRESHOLD",
+        "RESTORE.EVENT_CHRONOLOGY_EXACT"
+      ]
+    },
+    {
+      "id": "COMM-OPS-006",
+      "requires": [
+        "GITHUB.REQUIRED_8_JOBS_SAME_HEAD_PASS",
+        "GITHUB.BRANCH_PROTECTION_NO_DIRECT_OR_FORCE_PUSH",
+        "GITHUB.REVIEW_AND_CONVERSATION_RULES_PASS",
+        "GITHUB.HEAD_UP_TO_DATE_WITH_BASE"
+      ]
+    },
+    {
+      "id": "COMM-OPS-007",
+      "requires": [
+        "RELEASE.CANARY_PLAN_HASH_AND_OWNER_BOUND",
+        "RELEASE.APPLY_ORDER_WINDOW_COHORT_EXACT",
+        "RELEASE.ABORT_MONITOR_RECOVERY_OWNERS_CONCRETE"
+      ]
+    },
+    {
+      "id": "COMM-OPS-008",
+      "requires": [
+        "POSTDEPLOY.PRODUCTION_IDENTITY_EXACT",
+        "POSTDEPLOY.SMOKE_EXACT_CASE_SET_PASS"
+      ]
+    },
+    {
+      "id": "COMM-OPS-009",
+      "requires": [
+        "MONITORING.24H_COMPLETE_NO_CRITICAL_BREACH",
+        "MONITORING.72H_COMPLETE_NO_CRITICAL_BREACH"
+      ]
+    },
+    {
+      "id": "COMM-OPS-010",
+      "requires": [
+        "INCIDENT.RUNBOOK_REPOSITORY_HASH_EXACT",
+        "INCIDENT.ABORT_PATH_REHEARSED",
+        "INCIDENT.FORWARD_FIX_PATH_REHEARSED"
+      ]
+    },
+    {
+      "id": "COMM-OPS-011",
+      "resultMode": "FINAL_VERIFIER_DERIVED_FROM_SCANNED_CONDITIONAL_SIGNOFF",
+      "requires": [
+        "DERIVED.ALL_OTHER_53_COMM_GATES_PASS",
+        "PRIVACY.ZERO_FINDINGS_AND_MANUAL_REVIEW_PASS",
+        "RELEASE.COMMERCIAL_SIGNOFF_CURRENT_SHA_ENVIRONMENT_AND_EXPIRY_EXACT"
+      ]
+    }
+  ],
+  "unimplementedClaimFamilies": [
+    "ADVISOR",
+    "API",
+    "AUTH",
+    "BILLING",
+    "DB",
+    "DIRECT_API",
+    "GITHUB",
+    "INCIDENT",
+    "INVITE",
+    "MONITORING",
+    "POSTDEPLOY",
+    "RELEASE",
+    "ROUTE"
+  ]
+}

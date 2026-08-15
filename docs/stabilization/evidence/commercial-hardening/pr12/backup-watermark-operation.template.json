@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "resultType": "BACKUP_WATERMARK_OPERATION",
+  "status": "NOT_RUN",
+  "commandId": "PR12-CMD-017",
+  "sourceProjectRef": "NOT_CAPTURED",
+  "watermark": "NOT_CAPTURED",
+  "target": {
+    "relation": "public.reservations",
+    "primaryKey": "00000000-0000-0000-0000-00000000f005",
+    "timestampColumn": "updated_at"
+  },
+  "candidateSql": "update public.reservations set updated_at = clock_timestamp() where id = '00000000-0000-0000-0000-00000000f005';",
+  "beforeValue": "NOT_CAPTURED",
+  "afterValue": "NOT_CAPTURED",
+  "beforeObservedAt": "NOT_CAPTURED",
+  "afterObservedAt": "NOT_CAPTURED",
+  "affectedRows": null,
+  "baselineSourceIntegrity": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "postWatermarkSourceIntegrity": {
+    "schemaVersion": 1,
+    "resultType": "POST_WATERMARK_SOURCE_DATA_INTEGRITY",
+    "status": "NOT_RUN",
+    "capturedAt": "NOT_CAPTURED",
+    "runtimeIdentity": {
+      "projectRef": "NOT_CAPTURED",
+      "projectUrl": "NOT_CAPTURED",
+      "databaseHost": "NOT_CAPTURED",
+      "databaseConnectionMode": "DIRECT",
+      "databaseUser": "postgres",
+      "databaseVersion": "NOT_CAPTURED",
+      "systemIdentifier": "NOT_CAPTURED"
+    },
+    "explicitRowCounts": {},
+    "derivedRowCounts": {},
+    "allRowCounts": {},
+    "logicalHash": "NOT_CAPTURED",
+    "historicalNormalizedPhysicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86",
+    "environmentPhysicalStructureHash": "NOT_CAPTURED",
+    "schemaHash": "NOT_CAPTURED",
+    "dataHash": "NOT_CAPTURED",
+    "hashContractId": "PR12-DATA-INTEGRITY-HASH-V1",
+    "hashContractPath": "representative-data-contract.proposed.json",
+    "hashContractSha256": "NOT_CAPTURED",
+    "relationDigests": [],
+    "migrationHead": "20260718011731",
+    "orderedMigrations": [],
+    "generatedTypesSha256": "NOT_CAPTURED"
+  }
+}

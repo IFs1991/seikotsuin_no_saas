@@ -1,0 +1,341 @@
+{
+  "schemaVersion": 6,
+  "phase": "SOURCE_PROJECT_PROVISIONING",
+  "status": "NOT_RUN",
+  "authorization": {
+    "sourceProjectProvisioningAuthorized": false,
+    "isolatedStagingConnectionAuthorized": false,
+    "isolatedStagingExecutionAuthorized": false,
+    "restoreProjectCreationAuthorized": false,
+    "productionConnectionAuthorized": false,
+    "readyTransitionAuthorized": false,
+    "mergeAuthorized": false,
+    "commercialReleaseAuthorized": false,
+    "indexRetirementAuthorized": false
+  },
+  "provisioningAction": {
+    "actionId": "PR12-ACTION-003",
+    "resultType": "SOURCE_PROJECT_PROVISIONING_OPERATION",
+    "method": "OWNER_MANAGEMENT_API_CREATE_PROJECT",
+    "httpMethod": "POST",
+    "endpoint": "https://api.supabase.com/v1/projects",
+    "scheduledExecutionAt": "NOT_CAPTURED",
+    "maximumPostAttempts": 1,
+    "automaticPostRetryAllowed": false,
+    "providerIdempotencyKeyDocumented": false,
+    "remoteContact": true,
+    "mutating": true,
+    "mutationScope": "SOURCE_PROJECT_CREATION",
+    "databaseConnectionAuthorized": false,
+    "requestTimeoutMilliseconds": 30000,
+    "readinessObservationMaximumSeconds": 900,
+    "readinessPollIntervalSeconds": 15,
+    "providerCreatedAtMaximumClockSkewSeconds": 300
+  },
+  "target": {
+    "gitCommit": "NOT_CAPTURED",
+    "baseCommit": "4475e1c641c2ff18f66021ee65cfecfceaa6b7ab",
+    "cleanWorktreeRequired": true
+  },
+  "governanceProposal": {
+    "path": "docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml",
+    "sha256": "NOT_CAPTURED"
+  },
+  "implementationContracts": {
+    "contractPath": "scripts/commercial-hardening/pr12-source-project-provisioning-contract.mjs",
+    "contractSha256": "NOT_CAPTURED",
+    "wrapperPath": "scripts/commercial-hardening/run-pr12-source-project-provisioning.mjs",
+    "wrapperSha256": "NOT_CAPTURED",
+    "organizationIdentityContractPath": "scripts/commercial-hardening/pr12-source-organization-identity-capture-contract.mjs",
+    "organizationIdentityContractSha256": "NOT_CAPTURED",
+    "organizationIdentityVerifierPath": "scripts/commercial-hardening/verify-pr12-source-organization-identity-capture-evidence.mjs",
+    "organizationIdentityVerifierSha256": "NOT_CAPTURED"
+  },
+  "credentialControls": {
+    "provisioningCredentialConfiguration": {
+      "path": "source-project-provisioning-credential-configuration-v2.json",
+      "sha256": "NOT_CAPTURED",
+      "sourceIdentity": {
+        "pathSha256": "NOT_CAPTURED",
+        "resolvedPathSha256": "NOT_CAPTURED",
+        "device": "NOT_CAPTURED",
+        "inode": "NOT_CAPTURED",
+        "size": "NOT_CAPTURED",
+        "modifiedAtMilliseconds": "NOT_CAPTURED",
+        "contentSha256": "NOT_CAPTURED"
+      }
+    },
+    "requiredProviderId": "WINDOWS_DPAPI_CURRENT_USER_V1",
+    "requiredRetrievalChannel": "CLAIM_BOUND_CAPTURED_STDOUT_BINARY_V1",
+    "providerConfigurationMustExistBeforeApproval": true,
+    "credentialBootstrapCompleted": false,
+    "credentialBootstrapExecutionAuthorizedByThisBinding": false,
+    "credentialRetrievalAfterDurableClaimOnly": true,
+    "secretValuesCaptured": false
+  },
+  "approvedRequest": {
+    "canonicalization": "RFC8785_STYLE_SORTED_KEYS_UTF8_V1",
+    "projection": {
+      "db_pass": "RUNTIME_SECRET_NOT_IN_EVIDENCE",
+      "desired_instance_size": "large",
+      "name": "seikotsuin-pr12-isolated-qualification-20260719",
+      "organization_slug": "kbnsntifrawhimhfjrug",
+      "region_selection": {
+        "code": "ap-northeast-1",
+        "type": "specific"
+      }
+    },
+    "sha256": "NOT_CAPTURED",
+    "deprecatedOrIgnoredFieldsForbidden": [
+      "organization_id",
+      "plan",
+      "region",
+      "kps_enabled"
+    ]
+  },
+  "environmentProposal": {
+    "organizationId": "kbnsntifrawhimhfjrug",
+    "organizationSlug": "kbnsntifrawhimhfjrug",
+    "exactOrganizationAllowBinding": true,
+    "organizationPlan": "PRO",
+    "projectName": "seikotsuin-pr12-isolated-qualification-20260719",
+    "region": "ap-northeast-1",
+    "databaseTier": "LARGE",
+    "prohibitedProjectRefs": ["qnanuoqveidwvacvbhqp"],
+    "prohibitedOrganizationIds": ["kbnsntifrawhimhfjrug"],
+    "prohibitedOrganizationSlugs": ["kbnsntifrawhimhfjrug"]
+  },
+  "sameOrganizationException": {
+    "mode": "PHASE1_SAME_ORGANIZATION_PRODUCTION_PROJECT_DENY_EXCEPTION_V1",
+    "localPreparationAuthorized": true,
+    "localPreparationAuthorizedOn": "2026-07-25",
+    "targetOrganizationName": "IFs1991's Org",
+    "targetOrganizationSlug": "kbnsntifrawhimhfjrug",
+    "productionOrganizationId": "kbnsntifrawhimhfjrug",
+    "productionOrganizationSlug": "kbnsntifrawhimhfjrug",
+    "productionProjectName": "seikotsuin-management",
+    "productionProjectRef": "qnanuoqveidwvacvbhqp",
+    "productionProjectOrigin": "https://qnanuoqveidwvacvbhqp.supabase.co",
+    "organizationProjectEnumerationAllowed": true,
+    "organizationProjectEnumerationDataMinimization": "PRODUCTION_REF_ONLY_IN_MEMORY_NO_RAW_BODY_OR_METADATA_PERSISTENCE",
+    "productionProjectSpecificManagementApiContactAuthorized": false,
+    "productionProjectDataPlaneContactAuthorized": false,
+    "productionDatabaseContactAuthorized": false,
+    "productionCredentialAccessAuthorized": false,
+    "sharedOrganizationRiskAcceptanceRequiredForFinalAction": true
+  },
+  "organizationIdentityEvidence": {
+    "status": "PASS",
+    "actionId": "PR12-ACTION-002",
+    "terminalState": "TERMINAL_PASS",
+    "sourceGitCommit": "6edd6733756dd73e458cf705675895a5666c76e6",
+    "sourceBindingMaterialSha256": "56b07d3eb802d546df25be3b487e32b9c30f0aa7ac1f896bba483cb5e207eb3c",
+    "sourceRequestSha256": "95149b0f64407700298cbe842cbd15780300e9e357dc492f5d4d56e490490a8e",
+    "evidenceDirectoryName": "pr12-action-002-20260726T042518-786Z-95149b0f6440",
+    "manifestSha256": "66db9ed2b7fdb7573b76e79273c71d95551cdb7385e0ca8ee21724c56399f582",
+    "terminalSha256": "3fec7d3156c52e862602e9adb115e460c6959caeba38d5a1b290abe41513782e",
+    "claimSha256": "ae8dd41f4316317d5d22ecb8e1a3f3dc741f486a64b8128161329b86cc3b15ce",
+    "getIntentSha256": "045c663feea7ac2305bec6383fd4a2fe8de11e373b3f925d78154ecad1053bb7",
+    "completedAt": "2026-07-26T04:25:22.867Z",
+    "sealedAt": "2026-07-26T04:25:22.959Z",
+    "organization": {
+      "organizationId": "kbnsntifrawhimhfjrug",
+      "organizationName": "IFs1991's Org",
+      "organizationSlug": "kbnsntifrawhimhfjrug",
+      "plan": "PRO"
+    },
+    "providerResponseBodySha256": "83c6dc4b04892443255175fc7be3f82e068f17c15402433305606e5aab9e179a",
+    "providerSafeProjectionSha256": "fbda9b89c34154da871525265a9dca2261990863e91324395f7d304ce198d33e",
+    "providerObservedAt": "2026-07-26T04:25:22.867Z",
+    "evidenceDirectoryFingerprint": {
+      "pathSha256": "NOT_CAPTURED",
+      "resolvedPathSha256": "NOT_CAPTURED",
+      "device": "NOT_CAPTURED",
+      "inode": "NOT_CAPTURED",
+      "snapshotSha256": "NOT_CAPTURED"
+    },
+    "journalDirectoryFingerprint": {
+      "pathSha256": "NOT_CAPTURED",
+      "resolvedPathSha256": "NOT_CAPTURED",
+      "device": "NOT_CAPTURED",
+      "inode": "NOT_CAPTURED",
+      "snapshotSha256": "NOT_CAPTURED"
+    },
+    "remoteContactCount": 1,
+    "requestAttemptCount": 1,
+    "automaticRetryCount": 0
+  },
+  "initialPlatformPosture": {
+    "mutationsIncludedInPhase1": false,
+    "dataApiExpected": "OWNER_EXPECTATION_ONLY_NOT_OBSERVED",
+    "graphQlExpected": "OWNER_EXPECTATION_ONLY_NOT_OBSERVED",
+    "authExpected": "OWNER_EXPECTATION_ONLY_NOT_OBSERVED",
+    "integrationExpected": "OWNER_EXPECTATION_ONLY_NOT_OBSERVED",
+    "phase2ReadOnlyObservationRequired": true,
+    "mismatchAction": "STOP_NO_CONFIGURATION_MUTATION_REQUIRE_SEPARATE_APPROVAL"
+  },
+  "duplicateAndFailurePolicy": {
+    "atomicLocalClaimRequiredBeforeCredentialRetrieval": true,
+    "durableFileFlushAndReadbackRequired": true,
+    "postIntentDurableBeforeFetch": true,
+    "postIntentPermanentlyConsumesActionIdentity": true,
+    "credentialBrokerFailureConsumesActionIdentity": true,
+    "credentialBrokerAutomaticRetryAllowed": false,
+    "actionJournalDirectoryPathSha256": "NOT_CAPTURED",
+    "actionJournalDirectoryFingerprint": {
+      "pathSha256": "NOT_CAPTURED",
+      "resolvedPathSha256": "NOT_CAPTURED",
+      "device": "NOT_CAPTURED",
+      "inode": "NOT_CAPTURED",
+      "snapshotSha256": "NOT_CAPTURED"
+    },
+    "organizationProjectListAllPagesRequiredBeforePost": true,
+    "fixedNameDuplicateAction": "ABORT_POST_NOT_SENT",
+    "unknownRemoteOutcomeAction": "NO_RETRY_READ_ONLY_RECONCILIATION_AND_OWNER_DECISION",
+    "reconciliationOnlyMode": "--reconcile-dispatched-action",
+    "automaticCleanupAuthorized": false,
+    "destructiveRecoveryAuthorized": false,
+    "recoveryOwner": "UNASSIGNED"
+  },
+  "lifecycle": {
+    "sourceMaximumHoursFromCreation": 72,
+    "automaticDeletionAuthorized": false,
+    "deletionRequiresSeparateApproval": true,
+    "paidProjectCannotBePaused": true
+  },
+  "retentionAndCleanupDecision": {
+    "disposition": "DELETE_BEFORE_DEADLINE_OR_SEPARATELY_APPROVE_FUNDED_EXTENSION",
+    "sourceFundedHours": 72,
+    "fundedThrough": "NOT_CAPTURED",
+    "fundingCeilingUsdScaled": 500000,
+    "fundingApprovedAmountUsdScaled": 500000,
+    "fundingSource": "OWNER_REGISTERED_ORGANIZATION_PAYMENT_METHOD",
+    "cleanupOwner": "UNASSIGNED",
+    "deletionApprovalRequester": "UNASSIGNED",
+    "deletionApprovalRequestDeadline": "NOT_CAPTURED",
+    "billingEscalationOwner": "UNASSIGNED",
+    "fundedExtensionOwner": "UNASSIGNED"
+  },
+  "cost": {
+    "currency": "USD",
+    "moneyScale": 10000,
+    "computeRateUsdScaledPerProjectHour": 1517,
+    "sourceMaximumBillableHours": 72,
+    "sourceMaximumComputeUsdScaled": 109224,
+    "partialHourRounding": "ROUNDED_UP_TO_FULL_HOUR",
+    "organizationCurrentPlan": "PRO",
+    "planPurchaseOrChangeAuthorized": false,
+    "planIncrementalUsdScaled": 0,
+    "creditReliance": "NONE",
+    "computeCreditAppliedUsdScaled": 0,
+    "taxAndOtherChargesQuoted": false,
+    "unallocatedAuthorizationHeadroomUsdScaled": 390776,
+    "knownAdditionalChargesUsdScaled": 0,
+    "unknownChargesAcknowledged": false,
+    "ownerAuthorizationCeilingUsdScaled": 500000,
+    "providerSpendCapEnforced": false,
+    "ceilingMeaning": "OWNER_GOVERNANCE_AUTHORIZATION_NOT_PROVIDER_SPEND_CAP",
+    "pricingEvidence": {
+      "artifactPath": "NOT_CAPTURED",
+      "artifactSha256": "NOT_CAPTURED",
+      "freshThrough": "NOT_CAPTURED",
+      "sourceIdentity": {
+        "pathSha256": "NOT_CAPTURED",
+        "resolvedPathSha256": "NOT_CAPTURED",
+        "device": "NOT_CAPTURED",
+        "inode": "NOT_CAPTURED",
+        "size": "NOT_CAPTURED",
+        "modifiedAtMilliseconds": "NOT_CAPTURED",
+        "contentSha256": "NOT_CAPTURED"
+      }
+    }
+  },
+  "approval": {
+    "decision": "NOT_CAPTURED",
+    "attestationStatus": "NOT_CAPTURED",
+    "authorityPrincipalId": "UNASSIGNED",
+    "authorityAcceptedAt": "NOT_CAPTURED",
+    "derivedExecutionBindingGeneratedAt": "NOT_CAPTURED",
+    "expiresAt": "NOT_CAPTURED",
+    "authorityReceiptSha256": "NOT_CAPTURED",
+    "soleOperatorRiskAccepted": false,
+    "sameUserDpapiCredentialExposureRiskAccepted": false,
+    "providerSpendCapLimitationAcknowledged": false,
+    "sameOrganizationExceptionRiskAccepted": false,
+    "organizationListProductionRefObservationAccepted": false,
+    "sharedOrganizationIamBillingControlPlaneRiskAccepted": false,
+    "productionDirectContactProhibitionAcknowledged": false,
+    "unknownChargesAcknowledged": false,
+    "evidencePath": "NOT_CAPTURED",
+    "evidenceSha256": "NOT_CAPTURED",
+    "approvedActionId": "PR12-ACTION-003",
+    "derivedPayloadSha256": "NOT_CAPTURED",
+    "derivedBindingMaterialSha256": "NOT_CAPTURED"
+  },
+  "owners": {
+    "commercialReleaseOwner": "UNASSIGNED",
+    "provisioningOperator": "UNASSIGNED",
+    "supabasePlatformOwner": "UNASSIGNED",
+    "cleanupOwner": "UNASSIGNED",
+    "evidenceCustodian": "UNASSIGNED",
+    "databaseMigrationOperator": "UNASSIGNED",
+    "disasterRecoveryOperator": "UNASSIGNED",
+    "securityTenantReviewer": "UNASSIGNED",
+    "clinicalDataPrivacyReviewer": "UNASSIGNED",
+    "billingMessagingSandboxOwner": "UNASSIGNED",
+    "siteReliabilityOwner": "UNASSIGNED",
+    "incidentCommander": "UNASSIGNED"
+  },
+  "operatorControl": {
+    "mode": "PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1",
+    "principalDisplayName": "FUTOSHI IWASAWA",
+    "principalId": "owner:futoshi-iwasawa",
+    "principalIdType": "OWNER_DECLARED_STABLE_PRINCIPAL_ID",
+    "samePersonRoleKeys": [
+      "commercialReleaseOwner",
+      "provisioningOperator",
+      "supabasePlatformOwner",
+      "cleanupOwner",
+      "evidenceCustodian"
+    ],
+    "identitySeparationAvailable": false,
+    "independentHumanReviewClaimed": false,
+    "localPreparationExceptionAuthorized": true,
+    "localPreparationExceptionAuthorizedOn": "2026-07-24",
+    "finalActionSelfApprovalRequired": true,
+    "minimumCoolingOffSeconds": 0,
+    "maximumApprovalWindowSeconds": 3600,
+    "compensatingControls": [
+      "EXACT_HEAD_BASE_GOVERNANCE_CONTRACT_WRAPPER_AND_PAYLOAD_HASHES",
+      "ACTION_002_SEALED_EVIDENCE_AND_TERMINAL_JOURNAL_HASH_LINKAGE",
+      "SAME_ORGANIZATION_LIST_ONLY_EXCEPTION_WITH_CENTRAL_PRODUCTION_CONTACT_DENY",
+      "OUTBOUND_MANAGEMENT_API_ROUTE_METHOD_HOST_AND_QUERY_ALLOWLIST",
+      "ONE_DURABLE_CREATE_ONCE_CLAIM_NO_POST_RETRY",
+      "DPAPI_CURRENT_USER_CLAIM_BOUND_POST_CLAIM_RETRIEVAL",
+      "USD_50_OWNER_AUTHORIZATION_CEILING_FOR_72_HOURS",
+      "RELATIVE_APPROVAL_TTL_PLUS_73_HOURS_FUNDING_BINDING",
+      "PHASE2_AND_CLEANUP_DELETION_REMAIN_SEPARATELY_UNAUTHORIZED"
+    ]
+  },
+  "evidenceContract": {
+    "evidenceParentDirectoryPathSha256": "NOT_CAPTURED",
+    "evidenceParentDirectoryFingerprint": {
+      "pathSha256": "NOT_CAPTURED",
+      "resolvedPathSha256": "NOT_CAPTURED",
+      "device": "NOT_CAPTURED",
+      "inode": "NOT_CAPTURED",
+      "snapshotSha256": "NOT_CAPTURED"
+    },
+    "secretFreeProjectionOnly": true,
+    "rawHttpHeadersPersisted": false,
+    "rawProviderBodiesPersisted": false,
+    "unexpectedProviderFieldsAction": "FAIL_STOP_NO_BODY_PERSISTENCE",
+    "privacyAndSecretScanRequired": true,
+    "sha256ManifestRequired": true,
+    "atomicPartialThenRenameRequired": true,
+    "evidenceSealBeforeTerminalOutcomeRequired": true,
+    "partialEvidenceAutomaticDeletionAllowed": false,
+    "abortDuplicateAndPartialFailureEvidenceRequired": true
+  },
+  "notes": "Preparation template only. The sealed PR12-ACTION-002 PASS evidence captured organization kbnsntifrawhimhfjrug and is the sole Organization identity/plan source for Action-003; Action-003 must not repeat the Organization GET. The v6 runtime contract must verify the bound manifest and terminal journal plus raw-path-free directory fingerprints before credential retrieval or remote contact. Populated candidates set scheduledExecutionAt to the single approval instant, expire exactly 60 minutes later, and require fundedThrough to equal scheduledExecutionAt plus exactly 73 hours. The single approval must explicitly accept same-user DPAPI credential-exposure and non-guaranteed JavaScript/.NET zeroization residual risk. Production contact, Phase 2+, cleanup/deletion, Ready, merge, and commercial release remain unauthorized."
+}

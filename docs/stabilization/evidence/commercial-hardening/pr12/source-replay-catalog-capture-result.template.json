@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "phase": "ISOLATED_STAGING_SOURCE_REPLAY_CATALOG_CAPTURE_RESULT",
+  "status": "NOT_RUN",
+  "approval": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "environmentProjectRef": "NOT_CAPTURED",
+  "gitCommit": "NOT_CAPTURED",
+  "migrationHead": "20260718011731",
+  "executedCommandIds": [],
+  "completedAt": "NOT_CAPTURED",
+  "sourceIdentityClockCommandId": "PR12-CMD-004A",
+  "sourceIdentityClockOperation": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "preconditionCommandId": "PR12-CMD-004",
+  "preconditionResult": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "dryRunCommandId": "PR12-CMD-005",
+  "dryRunResult": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "migrationReplayCommandId": "PR12-CMD-007",
+  "migrationReplayOperation": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "catalogCaptureCommandId": "PR12-CMD-007A",
+  "catalogCapture": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "migrationHistoryCommandId": "PR12-CMD-008A",
+  "migrationHistoryResult": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "notes": "The capture envelope must bind the fresh public r/p plus auth target catalog, complete Data API ACL object catalog, exposed-schema settings, and GraphQL enabled/introspection settings. Full qualification approval may be issued only after owner review resolves every unknown classification against these exact artifacts."
+}
