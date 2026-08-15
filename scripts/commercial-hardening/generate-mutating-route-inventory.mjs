@@ -1130,6 +1130,80 @@ function findVariableDeclarationForCall(
   return undefined;
 }
 
+function findAssignedIdentifierForCall(
+  checker,
+  call,
+  allowSafeScopeTransforms = false
+) {
+  const declaration = findVariableDeclarationForCall(
+    checker,
+    call,
+    allowSafeScopeTransforms
+  );
+  if (declaration && ts.isIdentifier(declaration.name)) {
+    return declaration.name;
+  }
+
+  let current = call.parent;
+  while (current && !ts.isStatement(current)) {
+    if (
+      ts.isBinaryExpression(current) &&
+      current.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      ts.isIdentifier(current.left) &&
+      (callIsDirectExpressionValue(call, current.right) ||
+        (allowSafeScopeTransforms &&
+          callIsSafeScopeExpressionValue(checker, call, current.right)))
+    ) {
+      const assignedIdentifier = current.left;
+      const assignedSymbol = getIdentifierValueSymbol(
+        checker,
+        assignedIdentifier
+      );
+      const boundary = findContainingFunction(call);
+      if (!assignedSymbol || !boundary) return undefined;
+      const assignedTarget = resolveTargetSymbol(checker, assignedSymbol);
+      let immutableAlias;
+      function findAlias(node) {
+        if (immutableAlias) return;
+        if (node !== boundary && ts.isFunctionLike(node)) return;
+        if (node.getStart() <= current.getEnd()) {
+          ts.forEachChild(node, findAlias);
+          return;
+        }
+        if (
+          ts.isVariableDeclaration(node) &&
+          ts.isIdentifier(node.name) &&
+          node.initializer &&
+          ts.isVariableDeclarationList(node.parent) &&
+          Boolean(node.parent.flags & ts.NodeFlags.Const) &&
+          ts.isIdentifier(unwrapExpression(node.initializer)) &&
+          resolveTargetSymbol(
+            checker,
+            getIdentifierValueSymbol(
+              checker,
+              unwrapExpression(node.initializer)
+            )
+          ) === assignedTarget &&
+          symbolHasNoDirectMutationBeforeUse(
+            checker,
+            assignedTarget,
+            node.initializer,
+            call
+          )
+        ) {
+          immutableAlias = node.name;
+          return;
+        }
+        ts.forEachChild(node, findAlias);
+      }
+      findAlias(boundary);
+      return immutableAlias;
+    }
+    current = current.parent;
+  }
+  return undefined;
+}
+
 function hasFailClosedResultHandling(
   checker,
   call,
@@ -2199,7 +2273,8 @@ function symbolIsStableBeforeUse(checker, targetSymbol, useNode, sinceNode) {
       if (
         !containsOrigin &&
         ts.isBinaryExpression(node) &&
-        node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+        node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+        node.operatorToken.kind <= ts.SyntaxKind.LastAssignment &&
         expressionRootsAtSymbol(checker, node.left, targetSymbol)
       ) {
         mutated = true;
@@ -2327,7 +2402,8 @@ function symbolHasNoDirectMutationBeforeUse(
     if (
       !containsOrigin &&
       ts.isBinaryExpression(node) &&
-      node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+      node.operatorToken.kind <= ts.SyntaxKind.LastAssignment &&
       expressionRootsAtSymbol(checker, node.left, targetSymbol)
     ) {
       mutated = true;
@@ -3263,7 +3339,8 @@ function collectApprovedEvidence(checker, startNode, sourceFile, observed) {
           }
           if (
             ts.isBinaryExpression(node) &&
-            node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+            node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+            node.operatorToken.kind <= ts.SyntaxKind.LastAssignment &&
             ts.isIdentifier(unwrapExpression(node.left))
           ) {
             const leftSymbol = getIdentifierValueSymbol(
@@ -4459,6 +4536,13 @@ function collectApprovedEvidence(checker, startNode, sourceFile, observed) {
     }
 
     if (ts.isCallExpression(unwrapped)) {
+      const importedKey = exactImportedCallKey(checker, unwrapped);
+      if (
+        importedKey === '@/lib/supabase#resolveChildClinicInScope' ||
+        importedKey === '@/lib/supabase/scoped-admin#resolveChildClinicInScope'
+      ) {
+        return [];
+      }
       const externalShape = canonicalExternalMutationShape(unwrapped);
       if (externalShape) {
         const payload = unwrapped.arguments[externalShape.payloadIndex];
@@ -5861,6 +5945,43 @@ function collectApprovedEvidence(checker, startNode, sourceFile, observed) {
       candidateProtectsWritePath(candidate, writePath)
     );
     if (dominantCandidates.length === 0) return false;
+    const externalShape = canonicalExternalMutationShape(writePath.leaf);
+    const leafCallee = unwrapExpression(writePath.leaf.expression);
+    if (
+      externalShape &&
+      ts.isPropertyAccessExpression(leafCallee) &&
+      leafCallee.name.text === 'update' &&
+      writePath.callChain.some(call => {
+        if (
+          exactImportedCallKey(checker, call) !==
+          '@/lib/billing/tenant-activation#ensureStripeStoreAddOnQuantity'
+        ) {
+          return false;
+        }
+        const orgRootClinicId = getObjectProperty(
+          call.arguments[0],
+          'orgRootClinicId'
+        );
+        return Boolean(
+          orgRootClinicId &&
+          dominantCandidates.some(candidate => {
+            const bindings = clinicScopeCandidateBindings.get(candidate) ?? [];
+            return bindings.some(binding =>
+              expressionDependsOnGuardedValue(
+                orgRootClinicId,
+                binding,
+                orgRootClinicId,
+                new Set(),
+                0,
+                writePath
+              )
+            );
+          })
+        );
+      })
+    ) {
+      return true;
+    }
     // Audit rows are global observability records. They are still treated as
     // reachable persistence, so every applicable auth/scope gate must dominate
     // the canonical call, but the audit table itself does not have to carry the
@@ -5938,7 +6059,6 @@ function collectApprovedEvidence(checker, startNode, sourceFile, observed) {
     if (sinks.length === 0) {
       return false;
     }
-    const leafCallee = unwrapExpression(writePath.leaf.expression);
     const isUpdateWrite =
       ts.isPropertyAccessExpression(leafCallee) &&
       leafCallee.name.text === 'update';
@@ -8020,18 +8140,21 @@ function collectApprovedEvidence(checker, startNode, sourceFile, observed) {
       key === '@/lib/supabase/scoped-admin#resolveChildClinicInScope'
     ) {
       const context = unwrapExpression(call.arguments[0]);
-      const declaration = findVariableDeclarationForCall(checker, call, true);
+      const resultIdentifier = findAssignedIdentifierForCall(
+        checker,
+        call,
+        true
+      );
       if (
         !isAwaitedCall(call) ||
         !throwingCallFailsClosed(call) ||
         !ts.isIdentifier(context) ||
         !scopedAdminBindings.has(getIdentifierValueSymbol(checker, context)) ||
-        !declaration ||
-        !ts.isIdentifier(declaration.name)
+        !resultIdentifier
       ) {
         return;
       }
-      add('clinicScope', key, call, declaration.name);
+      add('clinicScope', key, call, resultIdentifier);
       return;
     }
 

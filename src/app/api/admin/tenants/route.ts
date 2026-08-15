@@ -1119,9 +1119,9 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('クリニックの作成に失敗しました', 500);
     }
 
-    let childClinicId: string;
+    let resolvedChildClinicId: string;
     try {
-      childClinicId = await resolveChildClinicInScope(
+      resolvedChildClinicId = await resolveChildClinicInScope(
         adminCtx,
         data.id,
         parentClinicId
@@ -1140,6 +1140,7 @@ export async function POST(request: NextRequest) {
       });
       return createErrorResponse('クリニックの作成に失敗しました', 500);
     }
+    const childClinicId = resolvedChildClinicId;
 
     if (
       tenantBillingGuardActive &&
@@ -1276,6 +1277,7 @@ export async function POST(request: NextRequest) {
             },
           });
           const storeAddOnResult = await ensureStripeStoreAddOnQuantity({
+            orgRootClinicId: parentClinicId,
             subscription: tenantBillingSubscription,
             targetPaidExtraStoreQuantity:
               storeActivationPlan.targetPaidExtraStoreQuantity,

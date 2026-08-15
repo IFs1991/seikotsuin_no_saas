@@ -1,6 +1,7 @@
 /** @jest-environment node */
 
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 type VerifierResult = {
@@ -16,6 +17,11 @@ const verifierPath = path.join(
 const fixtureRoot = path.join(
   __dirname,
   '../fixtures/commercial-pr10-mutating-route-policy'
+);
+
+const reconcileTenantQuantityRoute = path.join(
+  repoRoot,
+  'src/app/api/internal/billing/reconcile-tenant-quantity/route.ts'
 );
 
 function runVerifier(
@@ -655,6 +661,38 @@ describe('commercial PR-10 mutating route policy', () => {
 
   it('accepts collection scope checks bound to the written collection', () => {
     expect(runVerifier('bound-collection-scope-target').status).toBe(0);
+  });
+
+  it('accepts a fail-closed child scope result assigned once before writes', () => {
+    expect(runVerifier('assigned-child-scope-result').status).toBe(0);
+  });
+
+  it('rejects a child scope result changed by logical assignment before writes', () => {
+    expectContractFailure(
+      runVerifier('reassigned-child-scope-result'),
+      'COMM-ROUTE-004'
+    );
+  });
+
+  it('accepts a Stripe store update bound to the guarded org root', () => {
+    expect(runVerifier('scoped-stripe-store-addon-update').status).toBe(0);
+  });
+
+  it('rejects a Stripe store update bound to another org root', () => {
+    expectContractFailure(
+      runVerifier('unscoped-stripe-store-addon-update'),
+      'COMM-ROUTE-004'
+    );
+  });
+
+  it('passes the request-scoped org root into internal Stripe reconciliation', () => {
+    const source = readFileSync(reconcileTenantQuantityRoute, 'utf8');
+    expect(source).toMatch(
+      /ensureStripeStoreAddOnQuantity\(\{\s*orgRootClinicId,\s*subscription,/
+    );
+    expect(source).not.toContain(
+      'orgRootClinicId: subscription.org_root_clinic_id'
+    );
   });
 
   it('rejects a guarded clinic mixed into an unrelated write field', () => {
