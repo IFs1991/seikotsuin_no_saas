@@ -693,7 +693,7 @@
         },
         {
           "path": "src/lib/billing/tenant-activation.ts",
-          "line": 384,
+          "line": 389,
           "clientModule": false
         },
         {
@@ -3623,7 +3623,7 @@
       "calls": [
         {
           "path": "src/lib/billing/tenant-activation.ts",
-          "line": 402,
+          "line": 407,
           "clientModule": false
         }
       ]
