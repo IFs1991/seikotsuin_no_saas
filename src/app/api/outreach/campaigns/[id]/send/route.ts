@@ -17,6 +17,7 @@ import {
   sendOutreachCampaign,
 } from '@/lib/outreach';
 import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
+import { toLineIntegrationClient } from '@/lib/line/integration-db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -73,7 +74,7 @@ export async function POST(
     });
 
     const data = await sendOutreachCampaign(
-      createAdminClient(),
+      toLineIntegrationClient(createAdminClient()),
       {
         clinicId: parsedBody.data.clinic_id,
         campaignId: parsedId.data,

@@ -18,6 +18,7 @@ import {
   OUTREACH_ALLOWED_ROLES,
 } from '@/lib/outreach';
 import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
+import { toLineIntegrationClient } from '@/lib/line/integration-db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -107,7 +108,7 @@ export async function POST(request: NextRequest) {
     });
 
     const data = await createOutreachDraft(
-      createAdminClient(),
+      toLineIntegrationClient(createAdminClient()),
       parsedBody.data,
       authResult.auth.id
     );

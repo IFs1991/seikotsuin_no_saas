@@ -29,6 +29,7 @@ const RESERVATION_ID = '00000000-0000-0000-0000-000000000301';
 const MENU_ID = '00000000-0000-0000-0000-000000000401';
 const STAFF_ID = '00000000-0000-0000-0000-000000000501';
 const LINE_USER_ID = 'U1234567890abcdef';
+const CREDENTIAL_GENERATION_ID = '22222222-2222-4222-8222-222222222222';
 
 type QueryResult = {
   data: unknown;
@@ -317,6 +318,7 @@ describe('LIFF my-reservations public APIs', () => {
       lineUserId: LINE_USER_ID,
       displayName: 'LINE 太郎',
       audience: '2000000001',
+      credentialGenerationId: '22222222-2222-4222-8222-222222222222',
     });
     const myRoute = await import('@/app/api/public/my-reservations/route');
     const cancelRoute =
@@ -378,6 +380,10 @@ describe('LIFF my-reservations public APIs', () => {
       'line_user_id',
       LINE_USER_ID
     );
+    expect(client.customerSelectChains[0].eq).toHaveBeenCalledWith(
+      'line_credential_generation_id',
+      CREDENTIAL_GENERATION_ID
+    );
     expect(client.reservationSelectChains[0].eq).toHaveBeenCalledWith(
       'customer_id',
       CUSTOMER_ID
@@ -409,6 +415,10 @@ describe('LIFF my-reservations public APIs', () => {
     expect(client.customerSelectChains[0].eq).toHaveBeenCalledWith(
       'line_user_id',
       LINE_USER_ID
+    );
+    expect(client.customerSelectChains[0].eq).toHaveBeenCalledWith(
+      'line_credential_generation_id',
+      CREDENTIAL_GENERATION_ID
     );
     expect(client.reservationSelectChains).toHaveLength(0);
   });

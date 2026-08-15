@@ -15,6 +15,7 @@ import {
   PublicMyPageService,
 } from '@/lib/services/public-my-page-service';
 import { publicReservationCancelSchema } from '../../../schema';
+import { toLineIntegrationClient } from '@/lib/line/integration-db';
 
 const NO_STORE_HEADERS = {
   'Cache-Control': 'no-store',
@@ -116,12 +117,13 @@ export async function POST(
     }
 
     const service = new PublicMyPageService(
-      clinicCtx.client,
+      toLineIntegrationClient(clinicCtx.client),
       parsedBody.data.clinic_id
     );
     const result = await service.cancelReservation(
       parsedId.data,
-      auth.lineUserId
+      auth.lineUserId,
+      auth.credentialGenerationId
     );
 
     try {

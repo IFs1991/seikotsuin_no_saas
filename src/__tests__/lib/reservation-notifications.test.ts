@@ -99,7 +99,12 @@ describe('reservation notification idempotency', () => {
   });
 });
 
-function createLineNotificationClient(params: { lineEnabled: boolean }) {
+function createLineNotificationClient(params: {
+  lineEnabled: boolean;
+  notificationEnabled?: boolean;
+  identityGeneration?: string;
+}) {
+  const activeGeneration = 'generation-current';
   const notificationMaybeSingle = jest.fn().mockResolvedValue({
     data: { id: 'notification-001' },
     error: null,
@@ -149,11 +154,11 @@ function createLineNotificationClient(params: { lineEnabled: boolean }) {
       return {
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
-            returns: jest.fn().mockReturnValue({
-              maybeSingle: jest.fn().mockResolvedValue({
-                data: { line_booking_enabled: true },
-                error: null,
-              }),
+            maybeSingle: jest.fn().mockResolvedValue({
+              data: {
+                line_notification_enabled: params.notificationEnabled ?? true,
+              },
+              error: null,
             }),
           }),
         }),
@@ -163,15 +168,32 @@ function createLineNotificationClient(params: { lineEnabled: boolean }) {
       return {
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
-            returns: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
               maybeSingle: jest.fn().mockResolvedValue({
-                data: { is_active: true },
+                data: {
+                  is_active: true,
+                  credential_generation_id: activeGeneration,
+                },
                 error: null,
               }),
             }),
           }),
         }),
       };
+    }
+    if (table === 'customers') {
+      const customerQuery = {
+        eq: jest.fn(() => customerQuery),
+        maybeSingle: jest.fn().mockResolvedValue({
+          data: {
+            line_user_id: 'U1234567890',
+            line_credential_generation_id:
+              params.identityGeneration ?? activeGeneration,
+          },
+          error: null,
+        }),
+      };
+      return { select: jest.fn(() => customerQuery) };
     }
     if (table === 'reservation_notifications') {
       return {
@@ -238,12 +260,49 @@ describe('reservation notification channel priority', () => {
         status: 'pending',
       })
     );
+    expect(lineInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({ customerId: 'customer-001' }),
+      })
+    );
     expect(emailInsert).not.toHaveBeenCalled();
   });
 
   it('falls back to email when clinic communication LINE is disabled', async () => {
     const { client, lineInsert, emailInsert } = createLineNotificationClient({
       lineEnabled: false,
+    });
+
+    const result = await enqueuePatientReservationNotification(client, {
+      ...baseInput,
+      lineUserId: 'U1234567890',
+    });
+
+    expect(result).toBe('enqueued');
+    expect(lineInsert).not.toHaveBeenCalled();
+    expect(emailInsert).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to email when the clinic notification feature is disabled', async () => {
+    const { client, lineInsert, emailInsert } = createLineNotificationClient({
+      lineEnabled: true,
+      notificationEnabled: false,
+    });
+
+    const result = await enqueuePatientReservationNotification(client, {
+      ...baseInput,
+      lineUserId: 'U1234567890',
+    });
+
+    expect(result).toBe('enqueued');
+    expect(lineInsert).not.toHaveBeenCalled();
+    expect(emailInsert).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to email until the patient is relinked to the current provider', async () => {
+    const { client, lineInsert, emailInsert } = createLineNotificationClient({
+      lineEnabled: true,
+      identityGeneration: 'generation-replaced',
     });
 
     const result = await enqueuePatientReservationNotification(client, {

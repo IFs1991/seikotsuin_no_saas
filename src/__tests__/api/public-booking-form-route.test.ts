@@ -44,6 +44,7 @@ type PublicBookingFormClientOptions = {
   settingsError?: { message: string } | null;
   lineBookingEnabled?: boolean;
   lineCredentials?: {
+    credential_generation_id: string;
     is_active: boolean;
     liff_id: string | null;
     login_channel_id: string | null;
@@ -238,6 +239,7 @@ describe('GET /api/public/booking-form', () => {
       client: buildSettingsClient(null, {
         lineBookingEnabled: true,
         lineCredentials: {
+          credential_generation_id: '22222222-2222-4222-8222-222222222222',
           is_active: true,
           liff_id: '2000000000-AbCdEfGh',
           login_channel_id: '2000000001',

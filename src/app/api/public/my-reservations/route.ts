@@ -13,6 +13,7 @@ import {
   myReservationsConsentUpdateSchema,
   myReservationsQuerySchema,
 } from '../schema';
+import { toLineIntegrationClient } from '@/lib/line/integration-db';
 
 const NO_STORE_HEADERS = {
   'Cache-Control': 'no-store',
@@ -88,10 +89,13 @@ export async function GET(request: NextRequest) {
     }
 
     const service = new PublicMyPageService(
-      clinicCtx.client,
+      toLineIntegrationClient(clinicCtx.client),
       parsed.data.clinic_id
     );
-    const data = await service.getMyReservations(auth.lineUserId);
+    const data = await service.getMyReservations(
+      auth.lineUserId,
+      auth.credentialGenerationId
+    );
 
     return noStoreJson({ success: true, data });
   } catch (error) {
@@ -147,11 +151,12 @@ export async function PATCH(request: NextRequest) {
     }
 
     const service = new PublicMyPageService(
-      clinicCtx.client,
+      toLineIntegrationClient(clinicCtx.client),
       parsed.data.clinic_id
     );
     const data = await service.updateMarketingConsent(
       auth.lineUserId,
+      auth.credentialGenerationId,
       parsed.data.consent_marketing
     );
 

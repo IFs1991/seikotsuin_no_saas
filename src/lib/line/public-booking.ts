@@ -14,6 +14,7 @@ type LineFeatureFlagRow = {
 };
 
 type LinePublicCredentialRow = {
+  credential_generation_id: string;
   is_active: boolean;
   liff_id: string | null;
   login_channel_id: string | null;
@@ -45,7 +46,9 @@ export async function resolveLinePublicBookingContext(params: {
       .maybeSingle(),
     params.supabase
       .from('clinic_line_credentials')
-      .select('is_active, liff_id, login_channel_id, oa_basic_id')
+      .select(
+        'credential_generation_id, is_active, liff_id, login_channel_id, oa_basic_id'
+      )
       .eq('clinic_id', params.clinicId)
       .maybeSingle(),
   ]);
@@ -119,12 +122,14 @@ function isLinePublicCredentialRow(
   }
 
   const candidate = value as {
+    credential_generation_id?: unknown;
     is_active?: unknown;
     liff_id?: unknown;
     login_channel_id?: unknown;
     oa_basic_id?: unknown;
   };
   return (
+    typeof candidate.credential_generation_id === 'string' &&
     typeof candidate.is_active === 'boolean' &&
     isNullableString(candidate.liff_id) &&
     isNullableString(candidate.login_channel_id) &&

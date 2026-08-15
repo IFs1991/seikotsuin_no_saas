@@ -78,6 +78,7 @@ export async function GET(
       createCrmAdminClient(),
       {
         clinicId: parsedQuery.data.clinic_id,
+        credentialGenerationId: auth.credentialGenerationId,
         eventId: parsedEventId.data,
         lineUserId: auth.lineUserId,
       }

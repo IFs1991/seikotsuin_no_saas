@@ -61,6 +61,7 @@ describe('GET /api/public/staff-availability-events/[eventId]', () => {
       ok: true,
       lineUserId: 'Uline-user-001',
       displayName: 'LINE 太郎',
+      credentialGenerationId: '22222222-2222-4222-8222-222222222222',
     });
     eventMock.mockResolvedValue({
       eventId: EVENT_ID,
@@ -112,6 +113,7 @@ describe('GET /api/public/staff-availability-events/[eventId]', () => {
       expect.anything(),
       expect.objectContaining({
         clinicId: CLINIC_ID,
+        credentialGenerationId: '22222222-2222-4222-8222-222222222222',
         eventId: EVENT_ID,
         lineUserId: 'Uline-user-001',
       })

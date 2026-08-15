@@ -20,6 +20,7 @@ export type LineEmailFallbackPayload = {
 };
 
 export type LineMessagePayload = {
+  customerId?: string;
   text: string;
   confirmationUrl?: string;
   fallbackEmail?: LineEmailFallbackPayload;
@@ -27,6 +28,10 @@ export type LineMessagePayload = {
     campaignId: string;
     recipientId: string;
     customerId: string;
+  };
+  reservation?: {
+    notificationType: ReservationNotificationType;
+    reservationId: string;
   };
   availability?: {
     eventId: string;
@@ -37,6 +42,7 @@ export type LineMessagePayload = {
 
 export type EnqueueLineMessageInput = {
   clinicId: string;
+  customerId: string;
   lineUserId: string;
   messageType: LineMessageType;
   payload: LineMessagePayload;
@@ -54,7 +60,7 @@ export async function enqueueLineMessage(
     clinic_id: input.clinicId,
     line_user_id: input.lineUserId,
     message_type: input.messageType,
-    payload: input.payload,
+    payload: { ...input.payload, customerId: input.customerId },
     status: 'pending',
   };
 

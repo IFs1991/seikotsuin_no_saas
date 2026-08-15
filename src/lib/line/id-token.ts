@@ -29,6 +29,7 @@ export type LineIdTokenVerificationResult =
       lineUserId: string;
       displayName: string | null;
       audience: string;
+      credentialGenerationId: string;
     }
   | {
       ok: false;
@@ -102,6 +103,7 @@ export async function verifyLineIdTokenForClinic(params: {
     lineUserId: payload.sub,
     displayName: payload.name?.trim() || null,
     audience: payload.aud,
+    credentialGenerationId: context.credentials.credential_generation_id,
   };
 }
 

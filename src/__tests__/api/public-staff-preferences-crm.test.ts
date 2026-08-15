@@ -71,6 +71,7 @@ describe('/api/public/staff-preferences CRM rules', () => {
       ok: true,
       lineUserId: 'Uline-user-001',
       displayName: 'LINE 太郎',
+      credentialGenerationId: '22222222-2222-4222-8222-222222222222',
     });
   });
 
@@ -92,14 +93,13 @@ describe('/api/public/staff-preferences CRM rules', () => {
   });
 
   it('GETはcompleted/arrived担当履歴のあるactive・bookableスタッフだけを返す', async () => {
+    const customerQuery = query({
+      id: CUSTOMER_ID,
+      name: '山田 太郎',
+      line_user_id: 'Uline-user-001',
+    });
     mockFrom
-      .mockReturnValueOnce(
-        query({
-          id: CUSTOMER_ID,
-          name: '山田 太郎',
-          line_user_id: 'Uline-user-001',
-        })
-      )
+      .mockReturnValueOnce(customerQuery)
       .mockReturnValueOnce(query([{ staff_id: STAFF_ID }]))
       .mockReturnValueOnce(query([{ id: STAFF_ID, name: '田中先生' }]))
       .mockReturnValueOnce(
@@ -132,6 +132,10 @@ describe('/api/public/staff-preferences CRM rules', () => {
         staff: [{ id: STAFF_ID, name: '田中先生', notificationEnabled: true }],
       },
     });
+    expect(customerQuery.eq).toHaveBeenCalledWith(
+      'line_credential_generation_id',
+      '22222222-2222-4222-8222-222222222222'
+    );
   });
 
   it('PUTは過去担当履歴のないスタッフを409で拒否する', async () => {

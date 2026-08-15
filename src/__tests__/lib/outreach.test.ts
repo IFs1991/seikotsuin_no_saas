@@ -11,6 +11,7 @@ import {
 const CLINIC_ID = '11111111-1111-4111-8111-111111111111';
 const CUSTOMER_ID = '22222222-2222-4222-8222-222222222222';
 const CAMPAIGN_ID = '33333333-3333-4333-8333-333333333333';
+const CREDENTIAL_GENERATION_ID = '44444444-4444-4444-8444-444444444444';
 
 type QueryResult<T> = {
   data: T | null;
@@ -25,6 +26,7 @@ type CustomerCandidateRow = {
   lifetime_value: number | null;
   line_display_name: string | null;
   line_user_id: string | null;
+  line_credential_generation_id: string | null;
 };
 
 type CustomerRecipientRow = {
@@ -32,11 +34,27 @@ type CustomerRecipientRow = {
   name: string;
   last_visit_date: string | null;
   line_user_id: string | null;
+  line_credential_generation_id: string | null;
 };
 
 type FailedLineOutboxRow = {
   line_user_id: string;
 };
+
+function createCredentialQuery(
+  credentialGenerationId: string | null = CREDENTIAL_GENERATION_ID
+) {
+  const query = {
+    eq: jest.fn(() => query),
+    maybeSingle: jest.fn(async () => ({
+      data: credentialGenerationId
+        ? { credential_generation_id: credentialGenerationId }
+        : null,
+      error: null,
+    })),
+  };
+  return query;
+}
 
 function createCandidateQuery(rows: CustomerCandidateRow[]) {
   const query = {
@@ -92,6 +110,7 @@ function createRecipientCustomerQuery(rows: CustomerRecipientRow[]) {
 }
 
 function createDraftClient(rows: CustomerRecipientRow[]) {
+  const credentialQuery = createCredentialQuery();
   const customerQuery = createRecipientCustomerQuery(rows);
   const campaignInsert = jest.fn();
   const recipientInsert = jest.fn(async () => ({ error: null }));
@@ -108,6 +127,9 @@ function createDraftClient(rows: CustomerRecipientRow[]) {
   campaignInsert.mockReturnValue({ select: campaignSelect });
 
   const from = jest.fn((table: string) => {
+    if (table === 'clinic_line_credentials') {
+      return { select: jest.fn(() => credentialQuery) };
+    }
     if (table === 'customers') {
       return {
         select: jest.fn(() => customerQuery),
@@ -128,6 +150,7 @@ function createDraftClient(rows: CustomerRecipientRow[]) {
 
   return {
     client: { from },
+    credentialQuery,
     customerQuery,
     campaignInsert,
     recipientInsert,
@@ -149,6 +172,7 @@ type CustomerSendFixture = {
   id: string;
   name: string;
   line_user_id: string | null;
+  line_credential_generation_id: string | null;
   consent_marketing: boolean | null;
   is_deleted: boolean | null;
 };
@@ -190,49 +214,30 @@ function createSendClient(params: {
   customers: CustomerSendFixture[];
   recentRecipients?: FrequencyFixture[];
 }) {
+  const credentialQuery = createCredentialQuery();
   const recipientQuery = createRowsQuery(params.recipients);
   const recentQuery = createRowsQuery(params.recentRecipients ?? []);
   const customerQuery = createRowsQuery(params.customers);
-  const campaignMaybeSingle = jest.fn(
-    async (): Promise<QueryResult<CampaignFixture>> => ({
+  const campaignQuery = {
+    eq: jest.fn(() => campaignQuery),
+    maybeSingle: jest.fn(async () => ({
       data: params.campaign,
       error: null,
-    })
-  );
-  const campaignReturns = jest.fn(() => ({
-    maybeSingle: campaignMaybeSingle,
-  }));
-  const campaignUpdateChain = {
-    eq: jest.fn(() => campaignUpdateChain),
-    select: jest.fn(() => ({
-      returns: campaignReturns,
     })),
   };
-  const campaignUpdate = jest.fn(() => campaignUpdateChain);
-  const resetCampaignUpdateChain = {
-    eq: jest.fn(() => resetCampaignUpdateChain),
-    then<TResult1 = QueryResult<null>, TResult2 = never>(
-      onfulfilled?:
-        | ((value: QueryResult<null>) => TResult1 | PromiseLike<TResult1>)
-        | null,
-      onrejected?:
-        | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
-        | null
-    ): PromiseLike<TResult1 | TResult2> {
-      return Promise.resolve({ data: null, error: null }).then(
-        onfulfilled ?? undefined,
-        onrejected ?? undefined
-      );
+  const rpcSingle = jest.fn(async () => ({
+    data: {
+      enqueued_count: params.customers.length,
+      sent_at: '2026-07-06T00:00:00.000Z',
     },
-  };
-  const outboxInsert = jest.fn(async () => ({ error: null }));
-  const recipientUpdateChain = {
-    eq: jest.fn(() => recipientUpdateChain),
-    in: jest.fn(async () => ({ error: null })),
-  };
-  const recipientUpdate = jest.fn(() => recipientUpdateChain);
+    error: null,
+  }));
+  const rpc = jest.fn(() => ({ single: rpcSingle }));
 
   const from = jest.fn((table: string) => {
+    if (table === 'clinic_line_credentials') {
+      return { select: jest.fn(() => credentialQuery) };
+    }
     if (table === 'patient_outreach_recipients') {
       return {
         select: jest.fn((columns: string) =>
@@ -240,41 +245,26 @@ function createSendClient(params: {
             ? recentQuery
             : recipientQuery
         ),
-        update: recipientUpdate,
       };
     }
     if (table === 'customers') {
       return { select: jest.fn(() => customerQuery) };
     }
     if (table === 'patient_outreach_campaigns') {
-      return {
-        update: (update: unknown) => {
-          if (
-            typeof update === 'object' &&
-            update !== null &&
-            'status' in update &&
-            update.status === 'draft'
-          ) {
-            return resetCampaignUpdateChain;
-          }
-          return campaignUpdate(update);
-        },
-      };
-    }
-    if (table === 'line_message_outbox') {
-      return { insert: outboxInsert };
+      return { select: jest.fn(() => campaignQuery) };
     }
     throw new Error(`Unexpected table: ${table}`);
   });
 
   return {
-    client: { from },
+    client: { from, rpc },
+    credentialQuery,
     recipientQuery,
     recentQuery,
     customerQuery,
-    campaignUpdate,
-    outboxInsert,
-    recipientUpdate,
+    campaignQuery,
+    rpc,
+    rpcSingle,
   };
 }
 
@@ -355,10 +345,15 @@ describe('outreach dormant segment', () => {
         lifetime_value: 32000,
         line_display_name: 'LINE太郎',
         line_user_id: 'U111',
+        line_credential_generation_id: CREDENTIAL_GENERATION_ID,
       },
     ]);
     const failedLineQuery = createFailedLineQuery([{ line_user_id: 'U111' }]);
+    const credentialQuery = createCredentialQuery();
     const from = jest.fn((table: string) => {
+      if (table === 'clinic_line_credentials') {
+        return { select: jest.fn(() => credentialQuery) };
+      }
       if (table === 'customers') {
         return { select: jest.fn(() => query) };
       }
@@ -376,6 +371,10 @@ describe('outreach dormant segment', () => {
 
     expect(query.eq).toHaveBeenCalledWith('clinic_id', CLINIC_ID);
     expect(query.eq).toHaveBeenCalledWith('consent_marketing', true);
+    expect(query.eq).toHaveBeenCalledWith(
+      'line_credential_generation_id',
+      CREDENTIAL_GENERATION_ID
+    );
     expect(query.not).toHaveBeenCalledWith('line_user_id', 'is', null);
     expect(query.gte).toHaveBeenCalledWith('last_visit_date', '2026-05-07');
     expect(query.lte).toHaveBeenCalledWith('last_visit_date', '2026-06-06');
@@ -426,6 +425,7 @@ describe('outreach dormant segment', () => {
         name: '休眠 太郎',
         last_visit_date: '2026-05-20',
         line_user_id: 'U111',
+        line_credential_generation_id: CREDENTIAL_GENERATION_ID,
       },
     ]);
 
@@ -446,6 +446,10 @@ describe('outreach dormant segment', () => {
     expect(fixture.customerQuery.eq).toHaveBeenCalledWith(
       'consent_marketing',
       true
+    );
+    expect(fixture.customerQuery.eq).toHaveBeenCalledWith(
+      'line_credential_generation_id',
+      CREDENTIAL_GENERATION_ID
     );
     expect(fixture.customerQuery.not).toHaveBeenCalledWith(
       'line_user_id',
@@ -505,6 +509,7 @@ describe('outreach dormant segment', () => {
           id: CUSTOMER_ID,
           name: '休眠 太郎',
           line_user_id: 'U111',
+          line_credential_generation_id: CREDENTIAL_GENERATION_ID,
           consent_marketing: true,
           is_deleted: false,
         },
@@ -527,27 +532,89 @@ describe('outreach dormant segment', () => {
       enqueued_count: 1,
       sent_at: '2026-07-06T00:00:00.000Z',
     });
-    expect(fixture.outboxInsert).toHaveBeenCalledWith([
+    expect(fixture.rpc).toHaveBeenCalledWith(
+      'enqueue_outreach_campaign',
       expect.objectContaining({
+        p_campaign_id: CAMPAIGN_ID,
+        p_clinic_id: CLINIC_ID,
+        p_deliveries: [
+          expect.objectContaining({
+            recipient_id: 'recipient-001',
+            customer_id: CUSTOMER_ID,
+            line_user_id: 'U111',
+            payload: expect.objectContaining({
+              text: expect.stringContaining('休眠 太郎さん'),
+              confirmationUrl: `https://app.example.com/booking/${CLINIC_ID}?c=${CAMPAIGN_ID}`,
+            }),
+          }),
+        ],
+      })
+    );
+  });
+
+  it('未再リンク患者をskipし、現行世代の患者への配信を継続する', async () => {
+    const legacyCustomerId = '77777777-7777-4777-8777-777777777777';
+    const fixture = createSendClient({
+      campaign: {
+        id: CAMPAIGN_ID,
         clinic_id: CLINIC_ID,
-        line_user_id: 'U111',
-        message_type: 'outreach',
-        status: 'pending',
-        payload: expect.objectContaining({
-          text: expect.stringContaining('休眠 太郎さん'),
-          confirmationUrl: `https://app.example.com/booking/${CLINIC_ID}?c=${CAMPAIGN_ID}`,
-          outreach: {
-            campaignId: CAMPAIGN_ID,
-            recipientId: 'recipient-001',
-            customerId: CUSTOMER_ID,
-          },
-        }),
-      }),
-    ]);
-    expect(fixture.recipientUpdate).toHaveBeenCalledWith({
-      delivery_status: 'pending',
-      sent_at: '2026-07-06T00:00:00.000Z',
+        name: '休眠フォロー',
+        status: 'draft',
+        message_body: '{{name}}さん、ご予約をお待ちしています。',
+        created_at: '2026-07-06T00:00:00.000Z',
+        sent_at: null,
+      },
+      recipients: [
+        {
+          id: 'recipient-current',
+          campaign_id: CAMPAIGN_ID,
+          clinic_id: CLINIC_ID,
+          customer_id: CUSTOMER_ID,
+          line_user_id: 'U111',
+          delivery_status: 'pending',
+          booked_reservation_id: null,
+          sent_at: null,
+        },
+        {
+          id: 'recipient-legacy',
+          campaign_id: CAMPAIGN_ID,
+          clinic_id: CLINIC_ID,
+          customer_id: legacyCustomerId,
+          line_user_id: 'U-legacy',
+          delivery_status: 'pending',
+          booked_reservation_id: null,
+          sent_at: null,
+        },
+      ],
+      customers: [
+        {
+          id: CUSTOMER_ID,
+          name: '休眠 太郎',
+          line_user_id: 'U111',
+          line_credential_generation_id: CREDENTIAL_GENERATION_ID,
+          consent_marketing: true,
+          is_deleted: false,
+        },
+      ],
     });
+
+    const result = await sendOutreachCampaign(
+      fixture.client,
+      {
+        clinicId: CLINIC_ID,
+        campaignId: CAMPAIGN_ID,
+        appUrl: 'https://app.example.com',
+      },
+      new Date('2026-07-06T00:00:00.000Z')
+    );
+
+    expect(result.enqueued_count).toBe(1);
+    expect(fixture.rpc).toHaveBeenCalledWith(
+      'enqueue_outreach_campaign',
+      expect.objectContaining({
+        p_deliveries: [expect.objectContaining({ customer_id: CUSTOMER_ID })],
+      })
+    );
   });
 
   it('rejects outreach send when the same patient was contacted within 30 days', async () => {
@@ -578,6 +645,7 @@ describe('outreach dormant segment', () => {
           id: CUSTOMER_ID,
           name: '休眠 太郎',
           line_user_id: 'U111',
+          line_credential_generation_id: CREDENTIAL_GENERATION_ID,
           consent_marketing: true,
           is_deleted: false,
         },
@@ -603,8 +671,7 @@ describe('outreach dormant segment', () => {
       )
     ).rejects.toBeInstanceOf(OutreachDraftValidationError);
 
-    expect(fixture.campaignUpdate).not.toHaveBeenCalled();
-    expect(fixture.outboxInsert).not.toHaveBeenCalled();
+    expect(fixture.rpc).not.toHaveBeenCalled();
   });
 
   it('resolves attribution only when campaign and recipient match the customer', async () => {
