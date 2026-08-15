@@ -53,7 +53,10 @@ describe('GET /api/internal/process-line-outbox', () => {
   });
 
   it('processes LINE outbox for authorized cron requests', async () => {
-    const client = { from: jest.fn() };
+    const client = {
+      from: jest.fn(),
+      rpc: jest.fn().mockResolvedValue({ data: 2, error: null }),
+    };
     mockCreateLineIntegrationAdminClient.mockReturnValue(client);
     mockProcessLineOutbox.mockResolvedValue({
       processed: 1,
@@ -74,6 +77,7 @@ describe('GET /api/internal/process-line-outbox', () => {
     expect(response.status).toBe(200);
     expect(body).toEqual({
       success: true,
+      expiredSetupSessions: 2,
       processed: 1,
       sent: 1,
       retried: 0,
@@ -82,10 +86,16 @@ describe('GET /api/internal/process-line-outbox', () => {
       skipped: 0,
     });
     expect(mockProcessLineOutbox).toHaveBeenCalledWith(client);
+    expect(client.rpc).toHaveBeenCalledWith('expire_line_setup_sessions', {
+      p_clinic_id: null,
+    });
   });
 
   it('does not expose processor error details', async () => {
-    mockCreateLineIntegrationAdminClient.mockReturnValue({ from: jest.fn() });
+    mockCreateLineIntegrationAdminClient.mockReturnValue({
+      from: jest.fn(),
+      rpc: jest.fn().mockResolvedValue({ data: 0, error: null }),
+    });
     mockProcessLineOutbox.mockRejectedValue(
       new Error('database password=secret')
     );
@@ -103,5 +113,25 @@ describe('GET /api/internal/process-line-outbox', () => {
       error: 'Internal job failed',
       code: 'JOB_FAILED',
     });
+  });
+
+  it('does not continue when abandoned setup secret cleanup fails', async () => {
+    const client = {
+      from: jest.fn(),
+      rpc: jest.fn().mockResolvedValue({
+        data: null,
+        error: { code: 'XX000', message: 'cleanup failed' },
+      }),
+    };
+    mockCreateLineIntegrationAdminClient.mockReturnValue(client);
+    const { GET } =
+      await import('@/app/api/internal/process-line-outbox/route');
+
+    const response = await GET({
+      headers: { get: () => 'Bearer secret' },
+    } as RouteRequest);
+
+    expect(response.status).toBe(500);
+    expect(mockProcessLineOutbox).not.toHaveBeenCalled();
   });
 });

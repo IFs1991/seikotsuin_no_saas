@@ -19,39 +19,22 @@ function createQuery(result: QueryResult) {
 }
 
 function createLineBookingClient() {
-  const from = jest.fn((tableName: string) => {
-    if (tableName === 'clinic_feature_flags') {
-      return {
-        select: jest.fn(() =>
-          createQuery({
-            data: { line_booking_enabled: true },
-            error: null,
-          })
-        ),
-      };
-    }
-
-    if (tableName === 'clinic_line_credentials') {
-      return {
-        select: jest.fn(() =>
-          createQuery({
-            data: {
-              credential_generation_id: '22222222-2222-4222-8222-222222222222',
-              is_active: true,
-              liff_id: '2000000000-AbCdEfGh',
-              login_channel_id: LOGIN_CHANNEL_ID,
-              oa_basic_id: '@testclinic',
-            },
-            error: null,
-          })
-        ),
-      };
-    }
-
-    throw new Error(`Unexpected table: ${tableName}`);
-  });
-
-  return { from };
+  return {
+    rpc: jest.fn(() =>
+      createQuery({
+        data: {
+          credential_generation_id: '22222222-2222-4222-8222-222222222222',
+          is_active: true,
+          liff_id: '2000000000-AbCdEfGh',
+          line_booking_enabled: true,
+          login_channel_id: LOGIN_CHANNEL_ID,
+          oa_basic_id: '@testclinic',
+          provider_identity_verified_at: '2026-08-14T00:00:00.000Z',
+        },
+        error: null,
+      })
+    ),
+  };
 }
 
 describe('LINE ID token verification', () => {

@@ -47,6 +47,7 @@ export type LineCredentialsRow = GeneratedLineCredentials['Row'] & {
   last_token_test_error: string | null;
   last_token_verified_at: string | null;
   last_webhook_received_at: string | null;
+  provider_identity_verified_at: string | null;
   setup_completed_at: string | null;
   webhook_verified_at: string | null;
 };
@@ -70,6 +71,7 @@ export type LineCredentialsInsert = GeneratedLineCredentials['Insert'] &
       | 'last_token_test_error'
       | 'last_token_verified_at'
       | 'last_webhook_received_at'
+      | 'provider_identity_verified_at'
       | 'setup_completed_at'
       | 'webhook_verified_at'
     >
@@ -94,6 +96,7 @@ export type LineCredentialsUpdate = GeneratedLineCredentials['Update'] &
       | 'last_token_test_error'
       | 'last_token_verified_at'
       | 'last_webhook_received_at'
+      | 'provider_identity_verified_at'
       | 'setup_completed_at'
       | 'webhook_verified_at'
     >
@@ -133,12 +136,18 @@ export type LineSetupSessionRow = {
   created_by: string;
   credential_fingerprint: string;
   encrypted_private_jwk: string | null;
+  encrypted_verification_payload: string | null;
   expires_at: string;
   id: string;
+  provider_identity_verified: boolean;
   public_jwk: Json;
   public_key_kid: string | null;
+  push_test_retry_key: string;
   status: LineSetupStatus;
   updated_at: string;
+  verification_claim_token: string | null;
+  verification_claimed_at: string | null;
+  verification_request_digest: string | null;
   verified_at: string | null;
 };
 
@@ -155,17 +164,32 @@ export type LineSetupSessionInsert = {
   created_by: string;
   credential_fingerprint: string;
   encrypted_private_jwk: string;
+  encrypted_verification_payload?: string | null;
   expires_at?: string;
   id?: string;
+  provider_identity_verified?: boolean;
   public_jwk: Json;
   public_key_kid?: string | null;
+  push_test_retry_key?: string;
   status?: LineSetupStatus;
+  verification_claim_token?: string | null;
+  verification_claimed_at?: string | null;
+  verification_request_digest?: string | null;
 };
 
 export type LineSetupSessionUpdate = Partial<
   Pick<
     LineSetupSessionRow,
-    'consumed_at' | 'expires_at' | 'public_key_kid' | 'status' | 'verified_at'
+    | 'consumed_at'
+    | 'encrypted_verification_payload'
+    | 'expires_at'
+    | 'provider_identity_verified'
+    | 'public_key_kid'
+    | 'status'
+    | 'verification_claim_token'
+    | 'verification_claimed_at'
+    | 'verification_request_digest'
+    | 'verified_at'
   >
 >;
 
@@ -431,6 +455,58 @@ type LineIntegrationTables = {
 };
 
 type LineIntegrationFunctions = {
+  get_line_public_booking_context: {
+    Args: { p_clinic_id: string };
+    Returns: Array<{
+      credential_generation_id: string | null;
+      is_active: boolean;
+      liff_id: string | null;
+      line_booking_enabled: boolean;
+      login_channel_id: string | null;
+      oa_basic_id: string | null;
+      provider_identity_verified_at: string | null;
+    }>;
+  };
+  claim_line_setup_verification: {
+    Args: { p_clinic_id: string; p_setup_session_id: string };
+    Returns: Array<{
+      claim_token: string;
+      encrypted_private_jwk: string;
+      push_test_retry_key: string;
+    }>;
+  };
+  bind_line_setup_push_request: {
+    Args: {
+      p_claim_token: string;
+      p_clinic_id: string;
+      p_setup_session_id: string;
+      p_verification_request_digest: string;
+    };
+    Returns: undefined;
+  };
+  complete_line_self_serve_setup: {
+    Args: {
+      p_clinic_id: string;
+      p_credentials: Json;
+      p_enable_booking: boolean;
+      p_enable_notifications: boolean;
+      p_new_generation_id: string;
+      p_setup_session_id: string;
+      p_updated_by: string;
+    };
+    Returns: string | null;
+  };
+  finalize_line_setup_verification: {
+    Args: {
+      p_claim_token: string;
+      p_clinic_id: string;
+      p_encrypted_verification_payload: string;
+      p_provider_identity_verified: boolean;
+      p_public_key_kid: string;
+      p_setup_session_id: string;
+    };
+    Returns: undefined;
+  };
   enqueue_outreach_campaign: {
     Args: {
       p_campaign_id: string;
@@ -512,6 +588,34 @@ type LineIntegrationFunctions = {
       p_outbox_id: string;
     };
     Returns: boolean;
+  };
+  release_line_setup_verification_claim: {
+    Args: {
+      p_claim_token: string;
+      p_clinic_id: string;
+      p_setup_session_id: string;
+    };
+    Returns: undefined;
+  };
+  update_line_chat_settings: {
+    Args: {
+      p_auto_reply_enabled: boolean;
+      p_auto_reply_message: string;
+      p_clinic_id: string;
+      p_line_chat_enabled: boolean;
+      p_retention_days: number;
+      p_updated_by: string;
+    };
+    Returns: undefined;
+  };
+  update_line_feature_settings: {
+    Args: {
+      p_clinic_id: string;
+      p_enable_booking: boolean;
+      p_enable_notifications: boolean;
+      p_updated_by: string;
+    };
+    Returns: undefined;
   };
   purge_expired_line_chat_data: {
     Args: { p_clinic_id?: string | null };

@@ -17,9 +17,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await processLineOutbox(createLineIntegrationAdminClient());
+    const client = createLineIntegrationAdminClient();
+    const { data: expiredSetupSessions, error: expiryError } = await client.rpc(
+      'expire_line_setup_sessions',
+      { p_clinic_id: null }
+    );
+    if (expiryError) throw expiryError;
+    const result = await processLineOutbox(client);
     return NextResponse.json({
       success: true,
+      expiredSetupSessions: expiredSetupSessions ?? 0,
       ...result,
     });
   } catch (error) {

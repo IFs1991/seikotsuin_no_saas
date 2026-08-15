@@ -1224,7 +1224,8 @@ select throws_ok(
 
 insert into public.clinic_line_setup_sessions (
   id, clinic_id, created_by, encrypted_private_jwk, public_jwk,
-  credential_fingerprint, public_key_kid, status, verified_at
+  credential_fingerprint, public_key_kid, status, verified_at,
+  encrypted_verification_payload
 )
 values (
   'a8130000-0000-4000-8000-000000000052',
@@ -1235,7 +1236,8 @@ values (
   'fingerprint-rotated',
   'kid-a-rotated',
   'verified',
-  now()
+  now(),
+  'encrypted-verified-draft'
 );
 
 select is(

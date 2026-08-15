@@ -10,12 +10,18 @@ type ClinicLineCredentialsRow =
   Database['public']['Tables']['clinic_line_credentials']['Row'];
 
 type LineFeatureFlagRow = Pick<ClinicFeatureFlagsRow, 'line_booking_enabled'>;
-type LineCredentialGateRow = Pick<ClinicLineCredentialsRow, 'is_active'>;
+type LineCredentialGateRow = Pick<ClinicLineCredentialsRow, 'is_active'> & {
+  liff_id: string | null;
+  login_channel_id: string | null;
+  provider_identity_verified_at: string | null;
+};
 
 export type LineBookingDisabledReason =
   | 'global_kill_switch_off'
   | 'clinic_flag_disabled'
   | 'credentials_inactive'
+  | 'provider_identity_unverified'
+  | 'booking_runtime_metadata_missing'
   | 'encryption_key_unavailable';
 
 export type LineBookingGateDecision = {
@@ -27,6 +33,8 @@ export type LineBookingGateInput = {
   globalKillSwitchEnabled: boolean;
   lineBookingEnabled: boolean;
   credentialsActive: boolean;
+  providerIdentityVerified: boolean;
+  runtimeMetadataReady: boolean;
   encryptionReady: boolean;
 };
 
@@ -52,6 +60,12 @@ export function evaluateLineBookingGate(
   if (!input.credentialsActive) {
     disabledReasons.push('credentials_inactive');
   }
+  if (!input.providerIdentityVerified) {
+    disabledReasons.push('provider_identity_unverified');
+  }
+  if (!input.runtimeMetadataReady) {
+    disabledReasons.push('booking_runtime_metadata_missing');
+  }
   if (!input.encryptionReady) {
     disabledReasons.push('encryption_key_unavailable');
   }
@@ -75,7 +89,9 @@ export async function resolveLineBookingGate(params: {
       .maybeSingle(),
     params.supabase
       .from('clinic_line_credentials')
-      .select('is_active')
+      .select(
+        'is_active, liff_id, login_channel_id, provider_identity_verified_at'
+      )
       .eq('clinic_id', params.clinicId)
       .returns<LineCredentialGateRow>()
       .maybeSingle(),
@@ -104,11 +120,20 @@ export async function resolveLineBookingGate(params: {
   const credentialsActive =
     isLineCredentialGateRow(credentialData) &&
     credentialData.is_active === true;
+  const providerIdentityVerified =
+    isLineCredentialGateRow(credentialData) &&
+    typeof credentialData.provider_identity_verified_at === 'string';
+  const runtimeMetadataReady =
+    isLineCredentialGateRow(credentialData) &&
+    Boolean(credentialData.liff_id?.trim()) &&
+    Boolean(credentialData.login_channel_id?.trim());
 
   return evaluateLineBookingGate({
     globalKillSwitchEnabled: isLineBookingGlobalKillSwitchEnabled(),
     lineBookingEnabled,
     credentialsActive,
+    providerIdentityVerified,
+    runtimeMetadataReady,
     encryptionReady: getLineCredentialsEncryptionStatus() === 'ready',
   });
 }
@@ -129,8 +154,20 @@ function isLineCredentialGateRow(
     return false;
   }
 
-  const candidate = value as { is_active?: unknown };
-  return typeof candidate.is_active === 'boolean';
+  const candidate = value as {
+    is_active?: unknown;
+    liff_id?: unknown;
+    login_channel_id?: unknown;
+    provider_identity_verified_at?: unknown;
+  };
+  return (
+    typeof candidate.is_active === 'boolean' &&
+    (candidate.liff_id === null || typeof candidate.liff_id === 'string') &&
+    (candidate.login_channel_id === null ||
+      typeof candidate.login_channel_id === 'string') &&
+    (candidate.provider_identity_verified_at === null ||
+      typeof candidate.provider_identity_verified_at === 'string')
+  );
 }
 
 function getLineBookingGlobalKillSwitchValue(): string {
