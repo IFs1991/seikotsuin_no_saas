@@ -55,6 +55,8 @@ export function patchMobileUiuxDcScriptSource(
   source: string,
   options: DcScriptPatchOptions
 ): string {
+  source = stripUnsupportedProductionScriptLiterals(source, options.screen);
+
   if (source.includes(ORIGINAL_RENDER_VALS_METHOD)) {
     throw new Error('Mobile UIUX DC script is already patched');
   }
@@ -126,6 +128,28 @@ export function patchMobileUiuxDcScriptSource(
   }
 
   return applyReplacements(source, replacements);
+}
+
+function stripUnsupportedProductionScriptLiterals(
+  source: string,
+  screen: DcScriptPatchOptions['screen']
+): string {
+  if (screen === 'home') {
+    return removeAllLiteral(
+      removeAllLiteral(source, '予約画面へ移動します'),
+      'AIチャットを開きます'
+    );
+  }
+
+  if (screen === 'reservations') {
+    return removeAllLiteral(source, '表示密度・並び順は準備中です');
+  }
+
+  return source;
+}
+
+function removeAllLiteral(source: string, literal: string): string {
+  return source.split(literal).join('');
 }
 
 function extractSingleDcScript(html: string): ScriptBlock {
@@ -526,17 +550,20 @@ ${buildCanonicalRoleAdapterSource(HOME_DC_ROLE_BY_CANONICAL)}
     const hydratedVals = this.__mobileUiuxHydratedVals && typeof this.__mobileUiuxHydratedVals === 'object'
       ? this.__mobileUiuxHydratedVals
       : null;
-    return hydratedVals ? { ...originalVals, ...hydratedVals } : originalVals;
+    const mergedVals = hydratedVals ? { ...originalVals, ...hydratedVals } : originalVals;
+    return { ...mergedVals, ...this.__mobileUiuxBuildHomeRuntimeOverrides() };
   }
 
   componentDidMount() {
     this.__mobileUiuxRegisterReadHydration();
+    this.__mobileUiuxStartHomeClock();
     if (typeof this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD} === 'function') {
       return this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD}();
     }
   }
 
   componentWillUnmount() {
+    this.__mobileUiuxStopHomeClock();
     this.__mobileUiuxUnregisterReadHydration();
     if (typeof this.${ORIGINAL_COMPONENT_WILL_UNMOUNT_METHOD} === 'function') {
       return this.${ORIGINAL_COMPONENT_WILL_UNMOUNT_METHOD}();
@@ -586,6 +613,14 @@ ${buildCanonicalRoleAdapterSource(HOME_DC_ROLE_BY_CANONICAL)}
     };
     applyReadData.__mobileUiuxHydrationOwner = owner;
     window.__MOBILE_UIUX_APPLY_READ_DATA__ = applyReadData;
+    const inlineContext = window.__MOBILE_UIUX_CONTEXT__;
+    if (
+      component.__mobileUiuxIsRecord(inlineContext) &&
+      inlineContext.success === true &&
+      component.__mobileUiuxIsRecord(inlineContext.data)
+    ) {
+      applyReadData('context', inlineContext);
+    }
   }
 
   __mobileUiuxUnregisterReadHydration() {
@@ -599,16 +634,99 @@ ${buildCanonicalRoleAdapterSource(HOME_DC_ROLE_BY_CANONICAL)}
     this.__mobileUiuxHydrationOwner = null;
   }
 
+  __mobileUiuxStartHomeClock() {
+    this.__mobileUiuxStopHomeClock();
+    if (typeof setInterval !== 'function') return;
+    this.__mobileUiuxHomeClockTimer = setInterval(() => {
+      if (typeof this.setState === 'function') {
+        this.setState({ __mobileUiuxClockTick: Date.now() });
+      } else if (typeof this.forceUpdate === 'function') {
+        this.forceUpdate();
+      }
+    }, 60000);
+  }
+
+  __mobileUiuxStopHomeClock() {
+    if (this.__mobileUiuxHomeClockTimer !== undefined && typeof clearInterval === 'function') {
+      clearInterval(this.__mobileUiuxHomeClockTimer);
+    }
+    this.__mobileUiuxHomeClockTimer = undefined;
+  }
+
+  __mobileUiuxBuildHomeClockOverrides() {
+    const now = new Date();
+    const parts = this.__mobileUiuxJstDateTimeParts(now);
+    const context = this.__mobileUiuxContext;
+    const displayName = this.__mobileUiuxIsRecord(context) && typeof context.displayName === 'string' && context.displayName.trim().length > 0
+      ? context.displayName.trim()
+      : '';
+    const prefix = parts.hour >= 5 && parts.hour < 12
+      ? 'おはようございます'
+      : parts.hour >= 12 && parts.hour < 18
+        ? 'こんにちは'
+        : 'こんばんは';
+    return {
+      nowClock: parts.hour + ':' + String(parts.minute).padStart(2, '0'),
+      greeting: displayName ? prefix + '、' + displayName + 'さん' : prefix
+    };
+  }
+
+  __mobileUiuxJstDateTimeParts(value) {
+    const shifted = new Date(value.getTime() + 9 * 60 * 60 * 1000);
+    return {
+      year: shifted.getUTCFullYear(),
+      month: shifted.getUTCMonth() + 1,
+      day: shifted.getUTCDate(),
+      hour: shifted.getUTCHours(),
+      minute: shifted.getUTCMinutes()
+    };
+  }
+
+  __mobileUiuxBuildHomeRuntimeOverrides() {
+    return {
+      ...this.__mobileUiuxBuildHomeClockOverrides(),
+      ...this.__mobileUiuxBuildHomeAgendaRuntimeOverrides(),
+      ...this.__mobileUiuxBuildHomeDetailOverrides(),
+      goReservations: this.goReservations
+    };
+  }
+
+  __mobileUiuxNavigateTo(target) {
+    return () => {
+      const bridge = typeof window !== 'undefined' && window.MobileUiuxBridge
+        ? window.MobileUiuxBridge
+        : null;
+      return !!bridge && typeof bridge.navigateToTarget === 'function' && bridge.navigateToTarget(target) === true;
+    };
+  }
+
+  goReservations = () => {
+    if (typeof this.setState === 'function') {
+      this.setState({ detailId: null });
+    }
+    return this.__mobileUiuxNavigateTo('reservations')();
+  };
+
+  openDetail = (id) => () => {
+    const reservationState = this.__mobileUiuxHomeReservationState;
+    if (!this.__mobileUiuxIsRecord(reservationState) || !(reservationState.byId instanceof Map) || !reservationState.byId.has(id)) {
+      return false;
+    }
+    if (typeof this.setState === 'function') {
+      this.setState({ detailId: id });
+    }
+    return true;
+  };
+
   __mobileUiuxBuildHomeContextOverrides() {
     const context = this.__mobileUiuxContext;
     if (!this.__mobileUiuxIsRecord(context)) return null;
     const overrides = {};
-    const displayName = typeof context.displayName === 'string' && context.displayName.trim().length > 0
-      ? context.displayName.trim()
-      : null;
-    const isAfternoon = typeof this.NOW === 'number' && this.NOW >= 720;
-    const prefix = isAfternoon ? 'こんにちは' : 'おはようございます';
-    overrides.greeting = displayName ? prefix + '、' + displayName + 'さん' : prefix;
+    Object.assign(overrides, this.__mobileUiuxBuildHomeClockOverrides());
+
+    const canonical = this.__mobileUiuxCanonicalRole();
+    overrides.scopeTag = canonical === 'admin' ? '全社' : canonical === 'manager' ? '担当エリア' : '自院';
+    overrides.scopeSheetTitle = canonical === 'admin' ? '集計範囲' : canonical === 'manager' ? 'エリアを切り替え' : '店舗を切り替え';
 
     let scopeName = '';
     if (Array.isArray(context.accessibleClinics) && typeof context.defaultClinicId === 'string') {
@@ -744,6 +862,10 @@ ${buildCanonicalRoleAdapterSource(HOME_DC_ROLE_BY_CANONICAL)}
     overrides.showSignals = false;
     overrides.showPerfRows = false;
     overrides.showShortcuts = false;
+    overrides.quickActions = [
+      { icon: '予', label: '予約画面を開く', onTap: this.__mobileUiuxNavigateTo('reservations') },
+      { icon: '報', label: '日報を開く', onTap: this.__mobileUiuxNavigateTo('daily-reports') }
+    ];
 
     const clinicCardOverrides = this.__mobileUiuxBuildHomeClinicCardOverrides(data.clinicCards, role);
     Object.assign(overrides, clinicCardOverrides);
@@ -948,7 +1070,7 @@ ${buildCanonicalRoleAdapterSource(HOME_DC_ROLE_BY_CANONICAL)}
         { label: day + 'の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
         { label: day + 'の来院', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
         { label: '日報提出', value: reportDone + ' / ' + reportTotal, unit: '院', delta: '未提出 ' + reportMissing + '院', deltaColor: reportMissing > 0 ? down : up, deltaDot: dot(reportMissing > 0 ? down : up) },
-        { label: '要確認', value: String(attentionCount), unit: '件', delta: reportStatus ? '日報要確認 ' + reportStatus.review : 'BFF payload', deltaColor: attentionCount > 0 ? down : flat, deltaDot: dot(attentionCount > 0 ? down : flat) }
+        { label: '要確認', value: String(attentionCount), unit: '件', delta: reportStatus ? '日報要確認 ' + reportStatus.review + '件' : '比較データなし', deltaColor: attentionCount > 0 ? down : flat, deltaDot: dot(attentionCount > 0 ? down : flat) }
       ];
     }
 
@@ -957,14 +1079,14 @@ ${buildCanonicalRoleAdapterSource(HOME_DC_ROLE_BY_CANONICAL)}
         { label: day + 'の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
         { label: day + 'の来院', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
         { label: '日報提出', value: reportDone + ' / ' + reportTotal, unit: '院', delta: '未提出 ' + reportMissing + '院', deltaColor: reportMissing > 0 ? down : up, deltaDot: dot(reportMissing > 0 ? down : up) },
-        { label: '要注意院', value: String(attentionCount), unit: '院', delta: 'BFF payload', deltaColor: attentionCount > 0 ? down : flat, deltaDot: dot(attentionCount > 0 ? down : flat) }
+        { label: '要注意院', value: String(attentionCount), unit: '院', delta: attentionCount > 0 ? '要確認 ' + attentionCount + '件' : '確認済み', deltaColor: attentionCount > 0 ? down : flat, deltaDot: dot(attentionCount > 0 ? down : flat) }
       ];
     }
 
     return [
       { label: day + 'の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
       { label: '来院数', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
-      { label: day + 'の予約', value: String(reservationTotal), unit: '件', delta: 'BFF payload', deltaColor: flat, deltaDot: dot(flat) },
+      { label: day + 'の予約', value: String(reservationTotal), unit: '件', delta: '確定 ' + Math.max(0, reservationTotal - unconfirmed) + '件 / 未確定 ' + unconfirmed + '件', deltaColor: flat, deltaDot: dot(flat) },
       { label: '未確定予約', value: String(unconfirmed), unit: '件', delta: unconfirmed > 0 ? '要確認' : '確認済み', deltaColor: unconfirmed > 0 ? down : up, deltaDot: dot(unconfirmed > 0 ? down : up) }
     ];
   }
@@ -977,19 +1099,8 @@ ${buildCanonicalRoleAdapterSource(HOME_DC_ROLE_BY_CANONICAL)}
   }
 
   __mobileUiuxTodayJstDateKey() {
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Tokyo',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    }).formatToParts(new Date());
-    const values = {};
-    for (const part of parts) {
-      if (part.type !== 'literal') values[part.type] = part.value;
-    }
-    return values.year && values.month && values.day
-      ? values.year + '-' + values.month + '-' + values.day
-      : '';
+    const parts = this.__mobileUiuxJstDateTimeParts(new Date());
+    return parts.year + '-' + String(parts.month).padStart(2, '0') + '-' + String(parts.day).padStart(2, '0');
   }
 
   __mobileUiuxBuildHomeAttentions(attentionPayload, alerts) {
@@ -1027,8 +1138,7 @@ ${buildCanonicalRoleAdapterSource(HOME_DC_ROLE_BY_CANONICAL)}
       title,
       body,
       c: meta.c,
-      b: meta.b,
-      onTap: typeof this.link === 'function' ? this.link(title) : () => {}
+      b: meta.b
     };
   }
 
@@ -1067,7 +1177,7 @@ ${buildCanonicalRoleAdapterSource(HOME_DC_ROLE_BY_CANONICAL)}
       statusLabel: meta.label,
       c: meta.c,
       b: meta.b,
-      onTap: typeof this.link === 'function' ? this.link(name + 'の日報を開きます') : () => {}
+      onTap: this.__mobileUiuxNavigateTo('daily-reports')
     };
   }
 
@@ -1133,66 +1243,147 @@ ${buildCanonicalRoleAdapterSource(HOME_DC_ROLE_BY_CANONICAL)}
   }
 
   __mobileUiuxBuildHomeAgendaOverridesFromReservations(data) {
-    const agendaRows = [];
-    let agTotal = 0;
-    let agUnc = 0;
-    let agCancel = 0;
     const reservations = Array.isArray(data.reservations) ? data.reservations : [];
-
+    const ordered = [];
+    const byId = new Map();
     for (const reservation of reservations) {
       if (!this.__mobileUiuxIsRecord(reservation)) continue;
-      const status = this.__mobileUiuxNormalizeHomeAgendaStatus(reservation.status);
-      if (status === 'cancelled' || status === 'noshow') {
+      const id = typeof reservation.id === 'string' && reservation.id.length > 0 ? reservation.id : '';
+      const clinicId = typeof reservation.clinicId === 'string' && reservation.clinicId.length > 0 ? reservation.clinicId : '';
+      const times = this.__mobileUiuxHomeAgendaTimes(reservation.startTime, reservation.endTime);
+      if (!id || !clinicId || !times) continue;
+      const viewModel = {
+        id,
+        clinicId,
+        customerName: this.__mobileUiuxDisplayText(reservation.customerName || reservation.patientName, '患者名未設定'),
+        menuName: this.__mobileUiuxDisplayText(reservation.menuName, 'メニュー未設定'),
+        staffId: typeof reservation.staffId === 'string' ? reservation.staffId : null,
+        staffName: this.__mobileUiuxDisplayText(reservation.staffName, '担当未設定'),
+        startTime: reservation.startTime,
+        endTime: reservation.endTime,
+        startMs: times.startMs,
+        endMs: times.endMs,
+        startLabel: times.startLabel,
+        endLabel: times.endLabel,
+        status: this.__mobileUiuxNormalizeHomeAgendaStatus(reservation.status)
+      };
+      ordered.push(viewModel);
+      byId.set(id, viewModel);
+    }
+    ordered.sort((left, right) => left.startMs - right.startMs || left.id.localeCompare(right.id));
+    this.__mobileUiuxHomeReservationState = {
+      date: typeof data.date === 'string' ? data.date : '',
+      ordered,
+      byId
+    };
+    return this.__mobileUiuxBuildHomeAgendaRuntimeOverrides();
+  }
+
+  __mobileUiuxBuildHomeAgendaRuntimeOverrides() {
+    const reservationState = this.__mobileUiuxHomeReservationState;
+    if (!this.__mobileUiuxIsRecord(reservationState) || !Array.isArray(reservationState.ordered)) {
+      return {};
+    }
+    const selectedDate = typeof reservationState.date === 'string' ? reservationState.date : '';
+    const today = this.__mobileUiuxTodayJstDateKey();
+    const nowMs = Date.now();
+    const active = [];
+    const past = [];
+    const upcoming = [];
+    let agCancel = 0;
+    let agUnc = 0;
+    for (const reservation of reservationState.ordered) {
+      if (reservation.status === 'cancelled' || reservation.status === 'noshow') {
         agCancel += 1;
         continue;
       }
-      agTotal += 1;
-      if (status === 'unconfirmed') {
-        agUnc += 1;
-      }
-
-      const row = this.__mobileUiuxBuildHomeAgendaRow(reservation, status);
-      if (row) {
-        agendaRows.push(row);
+      active.push(reservation);
+      if (reservation.status === 'unconfirmed') agUnc += 1;
+      const completed = selectedDate < today || (selectedDate === today && reservation.endMs <= nowMs);
+      if (completed) past.push(reservation);
+      else upcoming.push(reservation);
+    }
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    const agendaRows = [];
+    if (state.pastOpen === true) {
+      for (const reservation of past) {
+        agendaRows.push(this.__mobileUiuxBuildHomeAgendaRow(reservation, true, false, false));
       }
     }
-
-    return { agendaRows, agTotal, agUnc, agCancel };
+    if (selectedDate === today) {
+      agendaRows.push({ isDivider: true, isAppt: false });
+    }
+    let nextTagged = false;
+    for (const reservation of upcoming) {
+      const inProgress = selectedDate === today && reservation.startMs <= nowMs && nowMs < reservation.endMs;
+      const isNext = !inProgress && !nextTagged;
+      if (isNext) nextTagged = true;
+      agendaRows.push(this.__mobileUiuxBuildHomeAgendaRow(reservation, false, inProgress, isNext));
+    }
+    const agPastCount = past.length;
+    return {
+      agendaRows,
+      agTotal: active.length,
+      agUnc,
+      agCancel,
+      agPastCount,
+      pastLabel: state.pastOpen === true ? '完了した予約を隠す' : '完了した予約 ' + agPastCount + '件を表示'
+    };
   }
 
-  __mobileUiuxBuildHomeAgendaRow(reservation, status) {
-    const patient = this.__mobileUiuxDisplayText(reservation.customerName || reservation.patientName, '患者名未設定');
-    const menu = this.__mobileUiuxDisplayText(reservation.menuName, 'メニュー未設定');
-    const ther = this.__mobileUiuxDisplayText(reservation.staffName, '担当未設定');
-    const meta = this.__mobileUiuxHomeAgendaStatusMeta(status);
-    const times = this.__mobileUiuxHomeAgendaTimes(reservation.startTime, reservation.endTime);
-
+  __mobileUiuxBuildHomeAgendaRow(reservation, isPast, inProgress, isNext) {
+    const meta = this.__mobileUiuxHomeAgendaStatusMeta(reservation.status);
+    const flag = inProgress ? '進行中' : isNext ? '次の予約' : '';
     return {
       isAppt: true,
       isDivider: false,
-      startT: times ? times.startLabel : '',
-      endT: times ? times.endLabel : '',
-      patient,
-      menu,
-      ther,
-      initial: typeof this.initial === 'function' ? this.initial(ther) : ther.charAt(0),
+      startT: reservation.startLabel,
+      endT: reservation.endLabel,
+      patient: reservation.customerName,
+      menu: reservation.menuName,
+      ther: reservation.staffName,
+      initial: typeof this.initial === 'function' ? this.initial(reservation.staffName) : reservation.staffName.charAt(0),
       statusLabel: meta.label,
       c: meta.c,
       b: meta.b,
-      dim: '1',
-      rowBg: 'transparent',
-      flag: '',
-      flagShow: false,
-      flagC: '',
-      flagB: '',
-      onTap: typeof this.openDetail === 'function' && typeof reservation.id === 'string'
-        ? this.openDetail(reservation.id)
-        : (typeof this.link === 'function' ? this.link(patient + 'の予約詳細を開きます') : () => {})
+      dim: isPast ? '0.6' : '1',
+      rowBg: inProgress ? 'var(--primary-soft)' : 'transparent',
+      flag,
+      flagShow: flag.length > 0,
+      flagC: inProgress ? 'var(--primary-fg)' : 'var(--on-primary-soft)',
+      flagB: inProgress ? 'var(--primary)' : 'var(--primary-soft)',
+      onTap: this.openDetail(reservation.id)
+    };
+  }
+
+  __mobileUiuxBuildHomeDetailOverrides() {
+    const reservationState = this.__mobileUiuxHomeReservationState;
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    const detailId = typeof state.detailId === 'string' ? state.detailId : '';
+    const reservation = this.__mobileUiuxIsRecord(reservationState) && reservationState.byId instanceof Map
+      ? reservationState.byId.get(detailId)
+      : null;
+    if (!reservation) return { detailOpen: false };
+    const meta = this.__mobileUiuxHomeAgendaStatusMeta(reservation.status);
+    const duration = Math.max(0, Math.round((reservation.endMs - reservation.startMs) / 60000));
+    return {
+      detailOpen: true,
+      dPatient: reservation.customerName,
+      dMenu: reservation.menuName,
+      dInitial: typeof this.initial === 'function' ? this.initial(reservation.staffName) : reservation.staffName.charAt(0),
+      dTime: reservation.startLabel + ' – ' + reservation.endLabel,
+      dDur: duration + '分',
+      dTher: reservation.staffName,
+      dTherRole: '',
+      dStatusLabel: meta.label,
+      dC: meta.c,
+      dB: meta.b
     };
   }
 
   __mobileUiuxNormalizeHomeAgendaStatus(value) {
-    if (value === 'confirmed' || value === 'arrived' || value === 'unconfirmed' || value === 'cancelled' || value === 'noshow') {
+    if (value === 'confirmed' || value === 'arrived' || value === 'completed' || value === 'unconfirmed' || value === 'cancelled' || value === 'noshow' || value === 'no_show') {
+      if (value === 'no_show') return 'noshow';
       return value;
     }
     return 'unconfirmed';
@@ -1200,7 +1391,8 @@ ${buildCanonicalRoleAdapterSource(HOME_DC_ROLE_BY_CANONICAL)}
 
   __mobileUiuxHomeAgendaStatusMeta(status) {
     if (this.STATUS && this.STATUS[status]) return this.STATUS[status];
-    if (status === 'confirmed' || status === 'arrived') return { label: '確定', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' };
+    if (status === 'confirmed') return { label: '確定', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' };
+    if (status === 'arrived' || status === 'completed') return { label: '来院済み', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' };
     if (status === 'cancelled' || status === 'noshow') return { label: 'キャンセル', c: 'var(--fg-3)', b: 'var(--s-cn-bg)' };
     return { label: '未確認', c: 'var(--s-uc)', b: 'var(--s-uc-bg)' };
   }
@@ -1210,8 +1402,11 @@ ${buildCanonicalRoleAdapterSource(HOME_DC_ROLE_BY_CANONICAL)}
     const start = new Date(startTime);
     const end = new Date(endTime);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
-    const fmt = (date) => String(date.getUTCHours()).padStart(2, '0') + ':' + String(date.getUTCMinutes()).padStart(2, '0');
-    return { startLabel: fmt(start), endLabel: fmt(end) };
+    const fmt = (date) => {
+      const parts = this.__mobileUiuxJstDateTimeParts(date);
+      return parts.hour + ':' + String(parts.minute).padStart(2, '0');
+    };
+    return { startLabel: fmt(start), endLabel: fmt(end), startMs: start.getTime(), endMs: end.getTime() };
   }
 `;
 }
@@ -1239,7 +1434,7 @@ ${buildCanonicalRoleAdapterSource(RESERVATIONS_DC_ROLE_BY_CANONICAL)}
     const mergedVals = hydratedVals
       ? { ...patchedVals, ...hydratedVals, submitForm: this.__mobileUiuxCreateReservation }
       : patchedVals;
-    return this.__mobileUiuxApplyDateScopeVals(mergedVals);
+    return this.__mobileUiuxApplyDateScopeVals(this.__mobileUiuxApplyReservationIntegrityVals(mergedVals));
   }
 
   componentDidMount() {
@@ -1320,6 +1515,14 @@ ${buildCanonicalRoleAdapterSource(RESERVATIONS_DC_ROLE_BY_CANONICAL)}
     };
     applyReadData.__mobileUiuxHydrationOwner = owner;
     window.__MOBILE_UIUX_APPLY_READ_DATA__ = applyReadData;
+    const inlineContext = window.__MOBILE_UIUX_CONTEXT__;
+    if (
+      component.__mobileUiuxIsRecord(inlineContext) &&
+      inlineContext.success === true &&
+      component.__mobileUiuxIsRecord(inlineContext.data)
+    ) {
+      applyReadData('context', inlineContext);
+    }
   }
 
   __mobileUiuxUnregisterReadHydration() {
@@ -1606,6 +1809,206 @@ ${buildCanonicalRoleAdapterSource(RESERVATIONS_DC_ROLE_BY_CANONICAL)}
     return year + '-' + month + '-' + day;
   }
 
+  __mobileUiuxCanWriteReservations() {
+    const context = this.__mobileUiuxContext;
+    if (!this.__mobileUiuxIsRecord(context) || !this.__mobileUiuxIsRecord(context.flags)) return false;
+    const canonical = this.__mobileUiuxCanonicalRole();
+    const roleAllowed = canonical === 'admin' || canonical === 'clinic_admin' || canonical === 'therapist' || canonical === 'staff';
+    return roleAllowed && context.flags.writeEnabled === true && context.flags.reservationWriteEnabled === true;
+  }
+
+  __mobileUiuxSelectedReservation() {
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    if (!Array.isArray(state.appts) || typeof state.detailId !== 'string') return null;
+    return state.appts.find((item) => this.__mobileUiuxIsRecord(item) && item.id === state.detailId) || null;
+  }
+
+  __mobileUiuxApplyReservationIntegrityVals(vals) {
+    if (!this.__mobileUiuxIsRecord(vals)) return vals;
+    const canWrite = this.__mobileUiuxCanWriteReservations();
+    const reservation = this.__mobileUiuxSelectedReservation();
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    const workingWindow = reservation ? this.__mobileUiuxWorkingWindowForReservation(reservation) : null;
+    const dCanChangeTime = canWrite && !!reservation && !!workingWindow;
+    const dCanChangeAssignee = canWrite && !!reservation && Array.isArray(this.THER) && this.THER.length > 0;
+    const arrivalOpts = canWrite && Array.isArray(vals.arrivalOpts)
+      ? vals.arrivalOpts.filter((option) => this.__mobileUiuxIsRecord(option) && option.label !== '遅刻')
+      : [];
+    return {
+      ...vals,
+      canWrite,
+      isReadOnly: !canWrite,
+      dReadonly: !canWrite,
+      dShowConfirm: canWrite && vals.dShowConfirm === true,
+      dShowCancel: canWrite && vals.dShowCancel === true,
+      fabShow: canWrite && vals.fabShow === true,
+      dCanChangeTime,
+      dCanChangeAssignee,
+      arrivalOpts,
+      showTimeline: false,
+      timeSheetOpen: dCanChangeTime && state.timeSheet === true,
+      assigneeSheetOpen: dCanChangeAssignee && state.assigneeSheet === true,
+      subOpen: (dCanChangeTime && state.timeSheet === true) || (dCanChangeAssignee && state.assigneeSheet === true),
+      moveSlots: dCanChangeTime && state.timeSheet === true ? this.__mobileUiuxBuildMoveSlots(reservation, workingWindow) : [],
+      assignOpts: dCanChangeAssignee && state.assigneeSheet === true ? this.__mobileUiuxBuildAssignOptions(reservation) : []
+    };
+  }
+
+  __mobileUiuxWorkingWindowForReservation(reservation) {
+    if (!this.__mobileUiuxIsRecord(reservation) || typeof reservation.res !== 'string' || !Array.isArray(this.THER)) return null;
+    const resource = this.THER.find((item) => this.__mobileUiuxIsRecord(item) && item.id === reservation.res);
+    if (!this.__mobileUiuxIsRecord(resource) || !this.__mobileUiuxIsRecord(resource.workingHours)) return null;
+    const dateKey = this.__mobileUiuxActiveHydratedDate();
+    const match = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(dateKey);
+    if (!match) return null;
+    const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    if (Number.isNaN(date.getTime())) return null;
+    const dayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const hours = resource.workingHours[dayKeys[date.getUTCDay()]];
+    if (!this.__mobileUiuxIsRecord(hours)) return null;
+    const start = this.__mobileUiuxParseClockMinutes(hours.start);
+    const end = this.__mobileUiuxParseClockMinutes(hours.end);
+    return start !== null && end !== null && end > start ? { start, end } : null;
+  }
+
+  __mobileUiuxParseClockMinutes(value) {
+    if (typeof value !== 'string') return null;
+    const match = /^(\\d{2}):(\\d{2})$/.exec(value);
+    if (!match) return null;
+    const hour = Number(match[1]);
+    const minute = Number(match[2]);
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+    return hour * 60 + minute;
+  }
+
+  __mobileUiuxBuildMoveSlots(reservation, workingWindow) {
+    const rows = [];
+    const pending = this.__mobileUiuxReservationSaving === true;
+    for (let start = workingWindow.start; start + reservation.dur <= workingWindow.end; start += 15) {
+      const current = start === reservation.start;
+      const conflict = this.__mobileUiuxResourceConflict(reservation.res, start, reservation.dur, reservation.id);
+      const disabled = pending || current || conflict;
+      rows.push({
+        label: typeof this.fmt === 'function' ? this.fmt(start) : Math.floor(start / 60) + ':' + String(start % 60).padStart(2, '0'),
+        onTap: disabled ? (() => false) : this.doMove(start),
+        style: 'all:unset;box-sizing:border-box;text-align:center;min-height:44px;display:flex;align-items:center;justify-content:center;border-radius:11px;font-size:13px;font-family:inherit;cursor:' + (disabled ? 'default' : 'pointer') + ';font-weight:' + (current ? '700' : '500') + ';background:' + (current ? 'var(--primary)' : conflict ? 'var(--surface-3)' : 'var(--surface-2)') + ';color:' + (current ? 'var(--primary-fg)' : conflict ? 'var(--fg-3)' : 'var(--fg)') + ';border:1px solid ' + (current ? 'var(--primary)' : 'var(--border)') + ';opacity:' + (disabled && !current ? '.5' : '1') + ';text-decoration:' + (conflict ? 'line-through' : 'none') + ';'
+      });
+    }
+    return rows;
+  }
+
+  __mobileUiuxBuildAssignOptions(reservation) {
+    const rows = [];
+    const pending = this.__mobileUiuxReservationSaving === true;
+    for (const resource of this.THER) {
+      if (!this.__mobileUiuxIsRecord(resource) || resource.mobileUiuxType !== 'staff' || resource.mobileUiuxActive !== true || resource.mobileUiuxBookable !== true) continue;
+      const current = resource.id === reservation.res;
+      const conflict = !current && this.__mobileUiuxResourceConflict(resource.id, reservation.start, reservation.dur, reservation.id);
+      const disabled = pending || current || conflict;
+      rows.push({
+        name: resource.name,
+        role: resource.role,
+        initial: typeof this.initial === 'function' ? this.initial(resource.name) : String(resource.name || '').charAt(0),
+        tag: current ? '現在' : conflict ? '重複' : '選択',
+        onTap: disabled ? (() => false) : this.doAssign(resource.id),
+        style: 'all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;padding:11px 14px;min-height:56px;border-radius:14px;cursor:' + (disabled ? 'default' : 'pointer') + ';background:' + (current ? 'var(--primary-soft)' : 'var(--surface-2)') + ';border:1px solid ' + (current ? 'var(--primary)' : 'var(--border)') + ';opacity:' + (conflict ? '.5' : '1') + ';',
+        tagStyle: 'margin-left:auto;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;color:' + (current ? 'var(--on-primary-soft)' : conflict ? 'var(--s-ns)' : 'var(--primary)') + ';background:' + (current ? 'transparent' : conflict ? 'var(--s-ns-bg)' : 'var(--primary-soft)') + ';'
+      });
+    }
+    return rows;
+  }
+
+  __mobileUiuxResourceConflict(resourceId, start, duration, excludedId) {
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    if (!Array.isArray(state.appts)) return false;
+    return state.appts.some((item) => this.__mobileUiuxIsRecord(item) && item.id !== excludedId && item.res === resourceId && item.status !== 'cancelled' && item.status !== 'noshow' && start < item.start + item.dur && item.start < start + duration);
+  }
+
+  openTime = () => {
+    const reservation = this.__mobileUiuxSelectedReservation();
+    if (!this.__mobileUiuxCanWriteReservations() || !reservation || !this.__mobileUiuxWorkingWindowForReservation(reservation)) return false;
+    if (typeof this.setState === 'function') this.setState({ timeSheet: true, assigneeSheet: false, moveError: '' });
+    return true;
+  };
+
+  openAssignee = () => {
+    if (!this.__mobileUiuxCanWriteReservations() || !this.__mobileUiuxSelectedReservation() || !Array.isArray(this.THER) || this.THER.length === 0) return false;
+    if (typeof this.setState === 'function') this.setState({ assigneeSheet: true, timeSheet: false, moveError: '' });
+    return true;
+  };
+
+  doMove = (start) => async () => {
+    const reservation = this.__mobileUiuxSelectedReservation();
+    if (!this.__mobileUiuxCanWriteReservations() || !reservation || typeof start !== 'number' || this.__mobileUiuxResourceConflict(reservation.res, start, reservation.dur, reservation.id)) {
+      if (typeof this.setState === 'function') this.setState({ moveError: 'その時間は他の予約と重複しています。別の時間を選んでください。' });
+      return false;
+    }
+    const identity = this.__mobileUiuxReservationIdentity(reservation);
+    const date = this.__mobileUiuxActiveHydratedDate();
+    const startTime = this.__mobileUiuxReservationJstIso(date, start);
+    const endTime = this.__mobileUiuxReservationJstIso(date, start + reservation.dur);
+    if (!identity || !startTime || !endTime) return false;
+    return this.__mobileUiuxPersistReservationChange(
+      { ...identity, startTime, endTime },
+      typeof this.fmt === 'function' ? this.fmt(start) + ' に時間を変更しました' : '時間を変更しました',
+      { timeSheet: false }
+    );
+  };
+
+  doAssign = (resourceId) => async () => {
+    const reservation = this.__mobileUiuxSelectedReservation();
+    const resource = Array.isArray(this.THER) ? this.THER.find((item) => this.__mobileUiuxIsRecord(item) && item.id === resourceId && item.mobileUiuxType === 'staff' && item.mobileUiuxActive === true && item.mobileUiuxBookable === true) : null;
+    if (!this.__mobileUiuxCanWriteReservations() || !reservation || !resource || this.__mobileUiuxResourceConflict(resourceId, reservation.start, reservation.dur, reservation.id)) {
+      if (typeof this.setState === 'function') this.setState({ moveError: 'その担当者は同時間に別の予約があります。' });
+      return false;
+    }
+    const identity = this.__mobileUiuxReservationIdentity(reservation);
+    if (!identity) return false;
+    return this.__mobileUiuxPersistReservationChange(
+      { ...identity, staffId: resourceId },
+      this.__mobileUiuxDisplayText(resource.name, '担当') + ' に担当を変更しました',
+      { assigneeSheet: false }
+    );
+  };
+
+  __mobileUiuxReservationIdentity(reservation) {
+    const clinicId = typeof reservation.mobileUiuxClinicId === 'string' && reservation.mobileUiuxClinicId.length > 0
+      ? reservation.mobileUiuxClinicId
+      : this.__mobileUiuxCurrentClinicId;
+    if (typeof clinicId !== 'string' || clinicId.length === 0 || typeof reservation.id !== 'string' || reservation.id.length === 0) return null;
+    return { clinic_id: clinicId, id: reservation.id };
+  }
+
+  __mobileUiuxReservationJstIso(dateKey, minutes) {
+    const match = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(dateKey);
+    if (!match || typeof minutes !== 'number' || !Number.isFinite(minutes) || minutes < 0 || minutes >= 1440) return '';
+    const hour = Math.floor(minutes / 60);
+    const minute = minutes % 60;
+    return match[1] + '-' + match[2] + '-' + match[3] + 'T' + String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0') + ':00+09:00';
+  }
+
+  async __mobileUiuxPersistReservationChange(payload, successMessage, successStatePatch) {
+    if (this.__mobileUiuxReservationSaving === true) return false;
+    const bridge = typeof window !== 'undefined' && window.MobileUiuxBridge ? window.MobileUiuxBridge : null;
+    if (!bridge || typeof bridge.updateReservation !== 'function') return false;
+    this.__mobileUiuxReservationSaving = true;
+    if (typeof this.setState === 'function') this.setState({ __mobileUiuxMutationPending: true, moveError: '' });
+    let ok = false;
+    try {
+      ok = await bridge.updateReservation(payload);
+    } catch {
+      ok = false;
+    }
+    this.__mobileUiuxReservationSaving = false;
+    if (ok === true) {
+      if (typeof this.setState === 'function') this.setState({ ...successStatePatch, __mobileUiuxMutationPending: false, moveError: '' });
+      this.__mobileUiuxShowReservationToast(successMessage);
+      return true;
+    }
+    if (typeof this.setState === 'function') this.setState({ __mobileUiuxMutationPending: false, moveError: '変更を保存できませんでした。内容を確認してもう一度お試しください。' });
+    return false;
+  }
+
   __mobileUiuxPrimeReservationWriteSources() {
     if (Array.isArray(this.CLINICS)) {
       this.CLINICS = [];
@@ -1621,9 +2024,11 @@ ${buildCanonicalRoleAdapterSource(RESERVATIONS_DC_ROLE_BY_CANONICAL)}
     this.historyFor = () => [];
     if (this.state && typeof this.state === 'object' && typeof this.setState === 'function') {
       this.setState({
+        appts: [],
         fMenu: '',
         fRes: '',
-        timelineRes: ''
+        timelineRes: '',
+        historySheet: false
       });
     }
   }
@@ -1702,13 +2107,17 @@ ${buildCanonicalRoleAdapterSource(RESERVATIONS_DC_ROLE_BY_CANONICAL)}
       if (!this.__mobileUiuxIsRecord(item)) continue;
       const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
       const name = this.__mobileUiuxDisplayText(item.name, '');
-      if (!id || !name || item.isActive === false || item.isBookable === false) continue;
+      if (!id || !name || item.type !== 'staff' || item.isActive !== true || item.isBookable !== true) continue;
       rows.push({
         id,
         name,
-        role: this.__mobileUiuxDisplayText(item.type, '担当'),
+        role: '担当',
         clinic: 'c1',
-        nominationFee: this.__mobileUiuxNonNegativeNumber(item.nominationFee)
+        nominationFee: this.__mobileUiuxNonNegativeNumber(item.nominationFee),
+        workingHours: this.__mobileUiuxIsRecord(item.workingHours) ? item.workingHours : null,
+        mobileUiuxType: item.type,
+        mobileUiuxActive: true,
+        mobileUiuxBookable: true
       });
     }
     return rows;
@@ -1891,6 +2300,11 @@ ${buildCanonicalRoleAdapterSource(RESERVATIONS_DC_ROLE_BY_CANONICAL)}
       return false;
     }
 
+    if (!this.__mobileUiuxCanWriteReservations()) {
+      this.__mobileUiuxShowReservationToast('予約を変更する権限がありません');
+      return false;
+    }
+
     if (this.__mobileUiuxReservationSaving === true) {
       this.__mobileUiuxShowReservationToast('予約を保存中です');
       return false;
@@ -1954,6 +2368,11 @@ ${buildCanonicalRoleAdapterSource(RESERVATIONS_DC_ROLE_BY_CANONICAL)}
   }
 
   __mobileUiuxCreateReservation = async () => {
+    if (!this.__mobileUiuxCanWriteReservations()) {
+      this.__mobileUiuxShowReservationToast('予約を登録する権限がありません');
+      return false;
+    }
+
     if (this.__mobileUiuxReservationSaving === true) {
       this.__mobileUiuxShowReservationToast('予約を保存中です');
       return false;
@@ -2174,7 +2593,11 @@ ${buildCanonicalRoleAdapterSource(RESERVATIONS_DC_ROLE_BY_CANONICAL)}
   }
 
   __mobileUiuxNormalizeStatus(value) {
-    return typeof value === 'string' ? value : '';
+    if (value === 'confirmed') return 'confirmed';
+    if (value === 'arrived' || value === 'completed') return 'arrived';
+    if (value === 'cancelled') return 'cancelled';
+    if (value === 'no_show' || value === 'noshow') return 'noshow';
+    return 'unconfirmed';
   }
 
   __mobileUiuxNonNegativeNumber(value) {

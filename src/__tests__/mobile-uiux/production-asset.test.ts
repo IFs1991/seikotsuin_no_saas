@@ -195,6 +195,67 @@ describe('mobile-uiux production assets', () => {
     expect(renderedText).not.toContain('テンプレートの作成は所有院');
   });
 
+  it('removes unsupported mock copy and actions from the home production asset', async () => {
+    const sourceHtml = await readFile(
+      getMobileUiuxSourceAssetPath('home'),
+      'utf-8'
+    );
+    const productionHtml = buildMobileUiuxProductionAsset('home', sourceHtml);
+    const renderedText = getRenderedShellText(productionHtml);
+
+    expect(productionHtml).not.toContain('BFF payload');
+    expect(productionHtml).not.toContain('予約画面へ移動します');
+    expect(productionHtml).not.toContain('AIチャットを開きます');
+    expect(renderedText).not.toContain('AIチャット');
+    expect(productionHtml).not.toContain(
+      'data-mobile-uiux-production-attention-action'
+    );
+    expect(productionHtml).toContain('data-mobile-uiux-attention-card');
+    expect(productionHtml).not.toContain('onClick="{{ a.onTap }}"');
+    expect(productionHtml).not.toContain('data-mobile-uiux-source-');
+
+    expect(() =>
+      validateMobileUiuxProductionAsset(
+        'home',
+        `${productionHtml}\nBFF payload`
+      )
+    ).toThrow('unsupported production copy was not removed: BFF payload');
+  });
+
+  it('removes unsupported history, timeline, and more-menu UI from reservations production', async () => {
+    const sourceHtml = await readFile(
+      getMobileUiuxSourceAssetPath('reservations'),
+      'utf-8'
+    );
+    const productionHtml = buildMobileUiuxProductionAsset(
+      'reservations',
+      sourceHtml
+    );
+    const renderedText = getRenderedShellText(productionHtml);
+
+    expect(renderedText).not.toContain('予約履歴を見る');
+    expect(renderedText).not.toContain('予約履歴');
+    expect(renderedText).not.toContain('タイムライン');
+    expect(productionHtml).not.toContain('aria-label="その他"');
+    expect(productionHtml).not.toContain(
+      '表示密度・並び順は準備中です'
+    );
+    expect(productionHtml).not.toContain('data-mobile-uiux-source-');
+    expect(productionHtml).toContain('<sc-if value="{{ dCanChangeTime }}"');
+    expect(productionHtml).toContain(
+      '<sc-if value="{{ dCanChangeAssignee }}"'
+    );
+
+    expect(() =>
+      validateMobileUiuxProductionAsset(
+        'reservations',
+        `${productionHtml}\n表示密度・並び順は準備中です`
+      )
+    ).toThrow(
+      'unsupported production copy was not removed: 表示密度・並び順は準備中です'
+    );
+  });
+
   it.each(MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES)(
     'reads the generated %s asset from private-assets/mobile-uiux-production',
     async resource => {

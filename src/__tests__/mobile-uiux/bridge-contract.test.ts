@@ -106,6 +106,7 @@ type BridgeWindow = {
       clinicId?: string;
     }) => Promise<boolean>;
     canNavigateToTarget: (target: string) => boolean;
+    navigateToTarget: (target: string) => boolean;
   };
   __MOBILE_UIUX_APPLY_READ_DATA__?: (
     screen: string,
@@ -510,6 +511,25 @@ describe('mobile-uiux bridge contract', () => {
     expect(window.location.assign).not.toHaveBeenCalled();
   });
 
+  it('exposes allowlisted navigation with truthful boolean results', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: false,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const { window } = buildBridgeWindow('home', []);
+
+    await runBridgeScript(script, window);
+
+    expect(
+      window.MobileUiuxBridge?.navigateToTarget('reservations')
+    ).toBe(true);
+    expect(window.location.assign).toHaveBeenCalledWith(
+      '/mobile-uiux/screens/reservations'
+    );
+    expect(window.MobileUiuxBridge?.navigateToTarget('unknown')).toBe(false);
+    expect(window.MobileUiuxBridge?.navigateToTarget('home')).toBe(false);
+  });
+
   it('ignores unknown Bottom Nav targets', async () => {
     const script = buildMobileUiuxBridgeScript({
       realDataEnabled: false,
@@ -727,6 +747,54 @@ describe('mobile-uiux bridge contract', () => {
     const applyOrder = applyReadData.mock.calls.map(([screen]) => screen);
     expect(applyOrder.indexOf('reservations')).toBeLessThan(
       applyOrder.indexOf('settings-detail')
+    );
+  });
+
+  it('keeps supplemental reads when the screen adapter registers after boot starts', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const readPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        reservations: [],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    const { window } = buildBridgeWindow('reservations', []);
+    window.__MOBILE_UIUX_CONTEXT__ = contextPayload;
+    let resolveMainRead:
+      | ((response: BridgeFetchResponse) => void)
+      | undefined;
+    window.fetch = jest.fn((url: string) => {
+      if (url.startsWith('/api/mobile-uiux/reservations')) {
+        return new Promise<BridgeFetchResponse>(resolve => {
+          resolveMainRead = resolve;
+        });
+      }
+      return Promise.resolve(buildJsonResponse(200, settingsDetailReadPayload));
+    }) as BridgeWindow['fetch'];
+
+    await runBridgeScript(script, window, { awaitReady: false });
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    window.__MOBILE_UIUX_APPLY_READ_DATA__ = applyReadData;
+    if (!resolveMainRead) {
+      throw new Error('Expected the reservations read to start');
+    }
+    resolveMainRead(buildJsonResponse(200, readPayload));
+    await window.__MOBILE_UIUX_BRIDGE_READY__;
+
+    expect(window.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/mobile-uiux/settings-detail'),
+      expect.anything()
+    );
+    expect(applyReadData).toHaveBeenCalledWith(
+      'settings-detail',
+      settingsDetailReadPayload
     );
   });
 

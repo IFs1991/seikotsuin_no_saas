@@ -706,6 +706,10 @@ export function buildMobileUiuxBridgeScript(
   }
 
   function canNavigateToTarget(target) {
+    if (!Object.prototype.hasOwnProperty.call(NAV_PATH_BY_TARGET, target)) {
+      return false;
+    }
+
     if (!REAL_DATA_ENABLED) {
       return true;
     }
@@ -717,15 +721,16 @@ export function buildMobileUiuxBridgeScript(
 
   function navigateToTarget(target) {
     if (!canNavigateToTarget(target)) {
-      return;
+      return false;
     }
 
     const nextPath = NAV_PATH_BY_TARGET[target];
     if (!nextPath || getNormalizedPathname() === nextPath) {
-      return;
+      return false;
     }
 
     location.assign(nextPath);
+    return true;
   }
 
   function bindBottomNavNavigation() {
@@ -944,6 +949,10 @@ export function buildMobileUiuxBridgeScript(
 
     if (supplementalFetches) {
       await applySupplementalReads(supplementalFetches);
+    } else if (typeof window.__MOBILE_UIUX_APPLY_READ_DATA__ === "function") {
+      // The DC adapter can mount while the main read is in flight. In that
+      // case, start the supplemental reads now instead of dropping them.
+      await hydrateSupplementalReadData(screen, contextPayload.data);
     }
   }
 
@@ -1169,6 +1178,9 @@ export function buildMobileUiuxBridgeScript(
     },
     canNavigateToTarget(target) {
       return canNavigateToTarget(target);
+    },
+    navigateToTarget(target) {
+      return navigateToTarget(target);
     }
   };
 

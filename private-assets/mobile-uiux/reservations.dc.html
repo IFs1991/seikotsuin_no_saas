@@ -85,12 +85,12 @@
             <div style="min-width: 86px; text-align: center; font-size: 13px; font-weight: 700; color: var(--fg);">{{ dateLabel }}</div>
             <button onClick="{{ nextDate }}" aria-label="次の日" style="width: 32px; height: 36px; border: none; background: transparent; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;"><span style="border-right: 2px solid var(--fg-2); border-top: 2px solid var(--fg-2); width: 8px; height: 8px; transform: rotate(45deg); margin-right: 3px;"></span></button>
           </div>
-          <button onClick="{{ moreMenu }}" aria-label="その他" style="width: 40px; height: 40px; border: 1px solid var(--border); background: var(--surface-2); border-radius: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 3px;"><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--fg-2);"></span><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--fg-2);"></span><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--fg-2);"></span></button>
+          <button data-mobile-uiux-source-control="reservation-more" onClick="{{ moreMenu }}" aria-label="その他" style="width: 40px; height: 40px; border: 1px solid var(--border); background: var(--surface-2); border-radius: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 3px;"><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--fg-2);"></span><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--fg-2);"></span><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--fg-2);"></span></button>
         </div>
 
         <!-- view segmented + self toggle -->
         <div style="display: flex; align-items: center; gap: 10px; padding: 0 16px 12px;">
-          <div style="display: flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; padding: 3px; flex: 1; max-width: 220px;">
+          <div data-mobile-uiux-source-control="reservation-view-switcher" style="display: flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; padding: 3px; flex: 1; max-width: 220px;">
             <button onClick="{{ viewAgenda }}" style="{{ agStyle }}">アジェンダ</button>
             <button onClick="{{ viewTimeline }}" style="{{ tlStyle }}">タイムライン</button>
           </div>
@@ -177,7 +177,7 @@
         </sc-if>
 
         <!-- TIMELINE -->
-        <sc-if value="{{ showTimeline }}" hint-placeholder-val="{{ false }}">
+        <sc-if data-mobile-uiux-source-section="reservation-timeline" value="{{ showTimeline }}" hint-placeholder-val="{{ false }}">
           <div style="display: flex; flex-direction: column;">
             <div class="scrl" style="display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--screen-bg); z-index: 3;">
               <sc-for list="{{ therChips }}" as="chip" hint-placeholder-count="4">
@@ -263,14 +263,14 @@
                 </sc-for>
               </div>
               <div style="display: flex; gap: 9px; margin-bottom: 10px;">
-                <button onClick="{{ openTime }}" style="flex: 1; min-height: 48px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); border-radius: 13px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">時間を変更</button>
-                <button onClick="{{ openAssignee }}" style="flex: 1; min-height: 48px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); border-radius: 13px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">担当を変更</button>
+                <button data-mobile-uiux-source-action="reservation-change-time" onClick="{{ openTime }}" style="flex: 1; min-height: 48px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); border-radius: 13px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">時間を変更</button>
+                <button data-mobile-uiux-source-action="reservation-change-assignee" onClick="{{ openAssignee }}" style="flex: 1; min-height: 48px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); border-radius: 13px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">担当を変更</button>
               </div>
               <sc-if value="{{ dShowConfirm }}" hint-placeholder-val="{{ true }}">
                 <button onClick="{{ confirmAppt }}" style="width: 100%; min-height: 50px; border: none; background: var(--primary); color: var(--primary-fg); border-radius: 13px; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; margin-bottom: 9px;">予約を確定する</button>
               </sc-if>
             </sc-if>
-            <button onClick="{{ openHistory }}" style="width: 100%; min-height: 48px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--fg); border-radius: 13px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 4px;"><span style="width: 13px; height: 13px; border: 1.5px solid var(--fg-2); border-radius: 3px; flex: none;"></span>予約履歴を見る</button>
+            <button data-mobile-uiux-source-action="reservation-history" onClick="{{ openHistory }}" style="width: 100%; min-height: 48px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--fg); border-radius: 13px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 4px;"><span style="width: 13px; height: 13px; border: 1.5px solid var(--fg-2); border-radius: 3px; flex: none;"></span>予約履歴を見る</button>
           </div>
           <div style="height: 18px; flex: none;"></div>
         </div>
@@ -354,7 +354,7 @@
       </sc-if>
 
       <!-- HISTORY -->
-      <sc-if value="{{ historyOpen }}" hint-placeholder-val="{{ false }}">
+      <sc-if data-mobile-uiux-source-sheet="reservation-history" value="{{ historyOpen }}" hint-placeholder-val="{{ false }}">
         <div onClick="{{ closeHistory }}" style="position: absolute; inset: 0; background: rgba(0,0,0,.42); z-index: 54; animation: fadeIn .25s ease;"></div>
         <div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 55; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,.22); animation: sheetUp .3s cubic-bezier(.32,.72,0,1); max-height: 86%; display: flex; flex-direction: column;">
           <div style="padding: 12px 0 4px; display: flex; justify-content: center;"><div style="width: 38px; height: 5px; border-radius: 3px; background: var(--border-strong);"></div></div>

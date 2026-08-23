@@ -18,8 +18,8 @@ Phase 0 の public 配信は、合成データ判定の確実性と未認証取�
 
 | 原本ファイル                             | 配信用ファイル                                       | public 配信 | サイズ | SHA-256                                                            | 合成データ確認                                               | 変更有無     |
 | ---------------------------------------- | ---------------------------------------------------- | ----------: | -----: | ------------------------------------------------------------------ | ------------------------------------------------------------ | ------------ |
-| `ホームダッシュボードモバイルUI.dc.html` | `private-assets/mobile-uiux/home.dc.html`            |      しない |  77183 | `EF21B4F837BE30D0FFFB2C59266CEA1DB4E79D27AF6C9B4348F438B26EFD350E` | 未認証 public 配信しないため公開リスクなし。実データ接続なし | 内容変更なし |
-| `予約モバイルUI.dc.html`                 | `private-assets/mobile-uiux/reservations.dc.html`    |      しない |  75519 | `1BA6CA03208B1EE49E5370DC20F8C09DC8AC8E0B3DBD9138F14F498EF98C76ED` | 未認証 public 配信しないため公開リスクなし。実データ接続なし | 内容変更なし |
+| `ホームダッシュボードモバイルUI.dc.html` | `private-assets/mobile-uiux/home.dc.html`            |      しない |  77616 | `8A2E885EA83343ED88125ABF055050986A9B04A6724D7104FE03032B2E8D2DF5` | 未認証 public 配信しない。production adapter が実データへ置換 | production除去マーカー追加 |
+| `予約モバイルUI.dc.html`                 | `private-assets/mobile-uiux/reservations.dc.html`    |      しない |  75908 | `F608690D595114C971133A857951A0727DF297901AE803E625B32FEFFAE9F746` | 未認証 public 配信しない。production adapter が実データへ置換 | production除去・権限マーカー追加 |
 | `患者分析モバイルUI.dc.html`             | `private-assets/mobile-uiux/patients.dc.html`        |      しない |  47617 | `01F8DFE89E2F905E3DEA2DE1FA6E28EE9D3F6A78F645F6DEC747A4748ADD5461` | 未認証 public 配信しないため公開リスクなし。実データ接続なし | 内容変更なし |
 | `日報モバイルUI.dc.html`                 | `private-assets/mobile-uiux/daily-reports.dc.html`   |      しない |  43277 | `D60CDBF0F036A45D3814D360B50784002855E94D896FF04579A9B2C4B240CF37` | 未認証 public 配信しないため公開リスクなし。実データ接続なし | 内容変更なし |
 | `設定モバイルUI.dc.html`                 | `private-assets/mobile-uiux/settings.dc.html`        |      しない |  74152 | `9F5E4EA565F8B4BB88008405DE3BF2685ED87A47F0F40C8813A2801593D324F1` | 未認証 public 配信しないため公開リスクなし。実データ接続なし | 内容変更なし |
@@ -54,8 +54,8 @@ Phase 0 の public 配信は、合成データ判定の確実性と未認証取�
 
 | resource | source asset | production asset | generated policy | hydration adapter |
 | --- | --- | --- | --- | --- |
-| `home` | `private-assets/mobile-uiux/home.dc.html` | `private-assets/mobile-uiux-production/home.dc.html` | production shell + generated adapter | あり |
-| `reservations` | `private-assets/mobile-uiux/reservations.dc.html` | `private-assets/mobile-uiux-production/reservations.dc.html` | production shell + generated adapter | あり |
+| `home` | `private-assets/mobile-uiux/home.dc.html` | `private-assets/mobile-uiux-production/home.dc.html` | production shell + real clock/reservation/detail/navigation adapter; attention actions removed | あり |
+| `reservations` | `private-assets/mobile-uiux/reservations.dc.html` | `private-assets/mobile-uiux-production/reservations.dc.html` | production shell + fail-closed PATCH adapter; unsupported history/timeline/more controls removed | あり |
 | `patients` | `private-assets/mobile-uiux/patients.dc.html` | `private-assets/mobile-uiux-production/patients.dc.html` | production shell only | なし |
 | `daily-reports` | `private-assets/mobile-uiux/daily-reports.dc.html` | `private-assets/mobile-uiux-production/daily-reports.dc.html` | production shell + generated adapter | あり |
 | `settings` | `private-assets/mobile-uiux/settings.dc.html` | `private-assets/mobile-uiux-production/settings.dc.html` | production shell + generated adapter | あり |
@@ -70,3 +70,11 @@ Route Handler policy:
 - production route は最後に `mobile-bridge.js` だけを注入する。
 - production asset が存在しない場合は original asset に production shell transform を適用する。
 - preview route は original asset をそのまま返し、raw mock / stage frame 表示を維持する。
+
+## 2026-08-23 production integrity update
+
+- `home.dc.html` production SHA-256: `F555BA326E0DB1E0A8150E583C97B24C53A24071BB4D86F12423E5D972E3F91E`（114177 bytes）
+- `reservations.dc.html` production SHA-256: `8404C74440D09D6A1670274D1A1E3EE6317C8028E2579BF038E940E691E814A4`（120187 bytes）
+- production validator は Home の擬似BFF文言・トーストだけの導線、予約の「準備中」more menu、source-only除去マーカーの残存を拒否する。
+- Home注意カードはproductionで非操作要素へ変換する。予約の時間／担当変更ボタンは、権限・write flags・実予約・勤務時間／実staff候補がそろう場合だけ表示する。
+- 生成物は `npm run mobile-uiux:generate-production-assets` で更新し、直接編集しない。

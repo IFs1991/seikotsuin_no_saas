@@ -247,6 +247,40 @@ function collectMobileUiuxProductionAssetViolations(
   if (html.includes('width: 108px; height: 30px')) {
     violations.push('dynamic island was not removed');
   }
+  if (html.includes('data-mobile-uiux-source-')) {
+    violations.push('source-only production removal marker was not removed');
+  }
+
+  const forbiddenCopy =
+    resource === 'home'
+      ? ['BFF payload', '予約画面へ移動します', 'AIチャットを開きます']
+      : resource === 'reservations'
+        ? ['表示密度・並び順は準備中です']
+        : [];
+  for (const copy of forbiddenCopy) {
+    if (html.includes(copy)) {
+      violations.push(`unsupported production copy was not removed: ${copy}`);
+    }
+  }
+
+  if (resource === 'home') {
+    if (!html.includes('data-mobile-uiux-attention-card')) {
+      violations.push('missing non-interactive home attention card marker');
+    }
+    if (html.includes('onClick="{{ a.onTap }}"')) {
+      violations.push('home attention remains interactive');
+    }
+  }
+
+  if (resource === 'reservations') {
+    for (const condition of ['dCanChangeTime', 'dCanChangeAssignee']) {
+      if (!html.includes(`<sc-if value="{{ ${condition} }}"`)) {
+        violations.push(
+          `missing fail-closed reservation action gate ${condition}`
+        );
+      }
+    }
+  }
 
   if (isMobileUiuxHydratedProductionAssetResource(resource)) {
     if (!html.includes('__mobileUiuxOriginalRenderVals')) {

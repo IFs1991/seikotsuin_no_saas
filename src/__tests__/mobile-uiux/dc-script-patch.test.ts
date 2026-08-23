@@ -25,11 +25,13 @@ type EvaluatedWindow = {
   __MOBILE_UIUX_APPLY_READ_DATA__?: ApplyReadData & {
     __mobileUiuxHydrationOwner?: unknown;
   };
+  __MOBILE_UIUX_CONTEXT__?: unknown;
   MobileUiuxBridge?: {
     createReservation?: jest.Mock<Promise<boolean>, [unknown]>;
     submitDailyReport?: jest.Mock<Promise<boolean>, [unknown]>;
     updateReservation?: jest.Mock<Promise<boolean>, [unknown]>;
     updateSettings?: jest.Mock<Promise<boolean>, [unknown]>;
+    navigateToTarget?: jest.Mock<boolean, [string]>;
     refreshReadData?: jest.Mock<
       Promise<boolean>,
       [{ date?: string; clinicId?: string }]
@@ -54,6 +56,14 @@ type EvaluatedSandbox = {
   Intl: typeof Intl;
   setTimeout: (callback: () => void, timeout: number) => number;
   clearTimeout: (timeout: number | undefined) => void;
+  setInterval: (callback: () => void, timeout: number) => number;
+  clearInterval: (timeout: number | undefined) => void;
+};
+
+type EvaluatedTimers = {
+  intervalCallback?: () => void;
+  intervalDelay?: number;
+  clearedIntervals: number[];
 };
 
 function wrapDcScript(source: string): string {
@@ -67,13 +77,23 @@ function countRenderValsMethods(source: string): number {
 function evaluatePatchedComponent(source: string): {
   component: EvaluatedComponent;
   window: EvaluatedWindow;
+  timers: EvaluatedTimers;
 } {
+  const timers: EvaluatedTimers = { clearedIntervals: [] };
   const sandbox: EvaluatedSandbox = {
     window: {},
     Date,
     Intl,
     setTimeout: () => 0,
     clearTimeout: () => undefined,
+    setInterval: (callback, timeout) => {
+      timers.intervalCallback = callback;
+      timers.intervalDelay = timeout;
+      return 1;
+    },
+    clearInterval: timeout => {
+      if (timeout !== undefined) timers.clearedIntervals.push(timeout);
+    },
   };
   vm.runInNewContext(
     `
@@ -102,6 +122,7 @@ globalThis.__Component = Component;
   return {
     component: new sandbox.__Component(),
     window: sandbox.window,
+    timers,
   };
 }
 
@@ -210,6 +231,101 @@ describe('patchMobileUiuxDcScript', () => {
 
     expect(component.calls).toEqual(['mount', 'unmount']);
     expect(window.__MOBILE_UIUX_APPLY_READ_DATA__).toBeUndefined();
+  });
+
+  it('replays inline reservation context when the hydration adapter mounts after bridge boot', () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  THER = [];
+  state = { appts: [], detailId: null };
+  renderVals() {
+    return { canWrite: false, isReadOnly: true, dReadonly: true };
+  }
+}`,
+      { screen: 'reservations' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+    window.__MOBILE_UIUX_CONTEXT__ = {
+      success: true,
+      data: {
+        role: { canonical: 'staff', label: 'スタッフ' },
+        flags: { writeEnabled: true, reservationWriteEnabled: true },
+        accessibleClinics: [],
+        defaultClinicId: null,
+      },
+    };
+
+    component.componentDidMount();
+
+    expect(component.renderVals()).toMatchObject({
+      canWrite: true,
+      isReadOnly: false,
+      dReadonly: false,
+    });
+  });
+
+  it('maps API reservation statuses into the source status domain before rendering', () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  STATUS = {
+    unconfirmed: { label: '未確認' },
+    confirmed: { label: '確定' },
+    arrived: { label: '来院済み' },
+    cancelled: { label: 'キャンセル' },
+    noshow: { label: '来院なし' }
+  };
+  THER = [];
+  state = { appts: [], detailId: null };
+  initial(name) { return name.trim().charAt(0); }
+  openDetail = () => () => {};
+  renderVals() {
+    return {
+      rows: this.state.appts.map(appt => ({
+        patient: appt.patient,
+        statusLabel: this.STATUS[appt.status].label
+      }))
+    };
+  }
+}`,
+      { screen: 'reservations' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+    component.componentDidMount();
+
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('reservations', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-08-24',
+        timezone: 'Asia/Tokyo',
+        reservations: [
+          {
+            id: '22222222-2222-4222-8222-222222222222',
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            customerName: '完了患者',
+            staffName: '担当者',
+            startTime: '2026-08-24T00:00:00.000Z',
+            endTime: '2026-08-24T00:30:00.000Z',
+            status: 'completed',
+          },
+          {
+            id: '33333333-3333-4333-8333-333333333333',
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            customerName: '不在患者',
+            staffName: '担当者',
+            startTime: '2026-08-24T01:00:00.000Z',
+            endTime: '2026-08-24T01:30:00.000Z',
+            status: 'no_show',
+          },
+        ],
+      },
+      generatedAt: '2026-08-24T00:00:00.000Z',
+    });
+
+    expect(component.renderVals().rows).toEqual([
+      expect.objectContaining({ statusLabel: '来院済み' }),
+      expect.objectContaining({ statusLabel: '来院なし' }),
+    ]);
   });
 
   it('merges reservations hydration overrides after the original renderVals result', () => {
@@ -690,6 +806,15 @@ describe('patchMobileUiuxDcScript', () => {
       const { component, window } = evaluateDateScopeComponent();
       setupBridge(window, reservationsPayload);
       component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
+        success: true,
+        data: {
+          role: { canonical: 'clinic_admin', label: '院管理者' },
+          flags: { writeEnabled: true, reservationWriteEnabled: true },
+          accessibleClinics: [],
+          defaultClinicId: null,
+        },
+      });
 
       window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
         'reservations',
@@ -1352,6 +1477,7 @@ describe('patchMobileUiuxDcScript', () => {
     const { component, window } = evaluatePatchedComponent(script);
 
     component.componentDidMount();
+    component.state.pastOpen = true;
     const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', {
       success: true,
       data: {
@@ -1360,6 +1486,8 @@ describe('patchMobileUiuxDcScript', () => {
         timezone: 'Asia/Tokyo',
         reservations: [
           {
+            id: 'reservation-home-1',
+            clinicId: '11111111-1111-4111-8111-111111111111',
             customerName: 'E2Eテスト患者',
             menuName: '産後骨盤矯正',
             staffName: 'BFF 先生',
@@ -1368,6 +1496,8 @@ describe('patchMobileUiuxDcScript', () => {
             status: 'confirmed',
           },
           {
+            id: 'reservation-home-2',
+            clinicId: '11111111-1111-4111-8111-111111111111',
             customerName: 'E2Eテスト患者2',
             menuName: '鍼灸施術',
             staffName: 'BFF 先生2',
@@ -1440,6 +1570,8 @@ describe('patchMobileUiuxDcScript', () => {
           timezone: 'Asia/Tokyo',
           reservations: [
             {
+              id: 'reservation-home-order-1',
+              clinicId: '11111111-1111-4111-8111-111111111111',
               customerName: 'E2Eテスト患者',
               menuName: '産後骨盤矯正',
               staffName: 'BFF 先生',
@@ -1452,6 +1584,7 @@ describe('patchMobileUiuxDcScript', () => {
         generatedAt: '2026-06-30T00:00:00.000Z',
       }
     );
+    component.state.pastOpen = true;
     const homeApplied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', {
       success: true,
       data: {
@@ -1478,7 +1611,126 @@ describe('patchMobileUiuxDcScript', () => {
     expect(reservationsApplied).toBe(true);
     expect(homeApplied).toBe(true);
     expect(JSON.stringify(agendaRows)).toContain('E2Eテスト患者');
-    expect(vals.agTotal).toBe(5);
+    expect(vals.agTotal).toBe(1);
+  });
+
+  it('uses the JST clock and one hydrated reservation map for home rows, counts, details, and navigation', () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-06-30T03:30:00.000Z'));
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(`class Component extends DCLogic {
+  APPTS = [{ id: 'reservation-1', patient: 'サンプル患者', menu: 'サンプル施術', res: 'sample', start: 600, dur: 30, status: 'confirmed' }];
+  STATUS = {
+    confirmed: { label: '確定', c: 'cf-c', b: 'cf-b' },
+    unconfirmed: { label: '未確認', c: 'uc-c', b: 'uc-b' },
+    cancelled: { label: 'キャンセル', c: 'cn-c', b: 'cn-b' },
+    noshow: { label: '来院なし', c: 'ns-c', b: 'ns-b' }
+  };
+  state = { detailId: null, pastOpen: false };
+  initial(name) { return (name || '？').trim().charAt(0); }
+  openDetail = (id) => () => this.setState({ detailId: id });
+  closeDetail = () => this.setState({ detailId: null });
+  renderVals() {
+    const sample = this.state.detailId ? this.APPTS.find(item => item.id === this.state.detailId) : null;
+    return {
+      nowClock: '13:20',
+      greeting: 'おはようございます、サンプルさん',
+      agendaRows: [],
+      agTotal: 0,
+      agUnc: 0,
+      agCancel: 0,
+      agPastCount: 0,
+      detailOpen: Boolean(sample),
+      dPatient: sample ? sample.patient : '',
+      goReservations: () => undefined
+    };
+  }
+}`),
+      { screen: 'home' }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window, timers } = evaluatePatchedComponent(script);
+    const navigateToTarget = jest.fn(() => true);
+    window.MobileUiuxBridge = { navigateToTarget };
+
+    component.componentDidMount();
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
+      success: true,
+      data: {
+        displayName: '実表示名',
+        role: { canonical: 'clinic_admin', label: '院管理者' },
+        flags: { writeEnabled: true, reservationWriteEnabled: true },
+        accessibleClinics: [],
+        defaultClinicId: null,
+      },
+    });
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        reservations: [
+          {
+            id: 'reservation-1',
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            customerName: '実患者A',
+            menuName: '実メニューA',
+            staffId: 'staff-1',
+            staffName: '実担当A',
+            startTime: '2026-06-30T01:00:00.000Z',
+            endTime: '2026-06-30T01:30:00.000Z',
+            status: 'confirmed',
+          },
+          {
+            id: 'reservation-2',
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            customerName: '実患者B',
+            menuName: '実メニューB',
+            staffId: 'staff-2',
+            staffName: '実担当B',
+            startTime: '2026-06-30T05:00:00.000Z',
+            endTime: '2026-06-30T05:30:00.000Z',
+            status: 'unconfirmed',
+          },
+        ],
+      },
+    });
+    component.state.pastOpen = true;
+
+    let vals = component.renderVals();
+    const rows = Array.isArray(vals.agendaRows)
+      ? vals.agendaRows.filter(row => getRecord(row).isAppt === true)
+      : [];
+    const firstRow = getRecord(rows[0]);
+    const onTap = firstRow.onTap;
+    if (typeof onTap !== 'function') throw new Error('Expected agenda row action');
+    onTap();
+    vals = component.renderVals();
+    const goReservations = vals.goReservations;
+    if (typeof goReservations !== 'function') {
+      throw new Error('Expected reservations navigation action');
+    }
+    goReservations();
+
+    expect(vals.nowClock).toBe('12:30');
+    expect(vals.greeting).toBe('こんにちは、実表示名さん');
+    expect(vals.agTotal).toBe(2);
+    expect(vals.agUnc).toBe(1);
+    expect(vals.agPastCount).toBe(1);
+    expect(vals.detailOpen).toBe(true);
+    expect(vals.dPatient).toBe('実患者A');
+    expect(JSON.stringify(vals)).not.toContain('サンプル患者');
+    expect(navigateToTarget).toHaveBeenCalledWith('reservations');
+    expect(timers.intervalDelay).toBe(60000);
+
+    jest.setSystemTime(new Date('2026-06-30T04:31:00.000Z'));
+    timers.intervalCallback?.();
+    expect(component.renderVals().nowClock).toBe('13:31');
+
+    component.componentWillUnmount();
+    expect(timers.clearedIntervals).toEqual([1]);
   });
 
   it('hydrates patients KPI, patient lists, and detail values from BFF payload', () => {
@@ -2395,6 +2647,15 @@ describe('patchMobileUiuxDcScript', () => {
     window.MobileUiuxBridge = { createReservation };
 
     component.componentDidMount();
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
+      success: true,
+      data: {
+        role: { canonical: 'clinic_admin', label: '院管理者' },
+        flags: { writeEnabled: true, reservationWriteEnabled: true },
+        accessibleClinics: [{ id: clinicId, name: 'BFF 実院' }],
+        defaultClinicId: clinicId,
+      },
+    });
     window.__MOBILE_UIUX_APPLY_READ_DATA__?.('reservations', {
       success: true,
       data: {
@@ -2535,6 +2796,15 @@ describe('patchMobileUiuxDcScript', () => {
     window.MobileUiuxBridge = { updateReservation };
 
     component.componentDidMount();
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
+      success: true,
+      data: {
+        role: { canonical: 'clinic_admin', label: '院管理者' },
+        flags: { writeEnabled: true, reservationWriteEnabled: true },
+        accessibleClinics: [],
+        defaultClinicId: null,
+      },
+    });
     window.__MOBILE_UIUX_APPLY_READ_DATA__?.('reservations', {
       success: true,
       data: {
@@ -2591,6 +2861,213 @@ describe('patchMobileUiuxDcScript', () => {
     expect(component.state.toast).toBe('予約を確定しました');
   });
 
+  it('persists reservation time and assignee changes without optimistic local updates', async () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  THER = [];
+  MENUS = [];
+  CLINICS = [];
+  state = {
+    appts: [],
+    detailId: null,
+    timeSheet: false,
+    assigneeSheet: false,
+    moveError: '',
+    toast: ''
+  };
+  fmt(minutes) {
+    return Math.floor(minutes / 60) + ':' + String(minutes % 60).padStart(2, '0');
+  }
+  initial(name) {
+    return (name || '？').trim().charAt(0);
+  }
+  tName(id) {
+    const resource = this.THER.find(item => item.id === id);
+    return resource ? resource.name : '';
+  }
+  conflict(resourceId, start, duration, excludedId) {
+    return this.state.appts.some(item => item.id !== excludedId && item.res === resourceId && item.status !== 'cancelled' && start < item.start + item.dur && item.start < start + duration);
+  }
+  openDetail = (id) => () => this.setState({ detailId: id });
+  toast(message) {
+    this.setState({ toast: message });
+  }
+  doMove = (start) => () => this.setState({ optimisticStart: start, timeSheet: false });
+  doAssign = (resourceId) => () => this.setState({ optimisticResourceId: resourceId, assigneeSheet: false });
+  renderVals() {
+    return {
+      moveSlots: [],
+      assignOpts: [],
+      arrivalOpts: [{ label: '遅刻', onTap: () => undefined }],
+      canWrite: true,
+      dCanChangeTime: true,
+      dCanChangeAssignee: true,
+      timeSheetOpen: this.state.timeSheet,
+      assigneeSheetOpen: this.state.assigneeSheet
+    };
+  }
+}`,
+      { screen: 'reservations' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+    const clinicId = '11111111-1111-4111-8111-111111111111';
+    const reservationId = '22222222-2222-4222-8222-222222222222';
+    const currentStaffId = '33333333-3333-4333-8333-333333333333';
+    const nextStaffId = '44444444-4444-4444-8444-444444444444';
+    const baseReservation = {
+      id: reservationId,
+      clinicId,
+      customerName: '実患者A',
+      menuName: '実メニューA',
+      staffId: currentStaffId,
+      staffName: '実担当A',
+      startTime: '2026-06-30T01:00:00.000Z',
+      endTime: '2026-06-30T01:30:00.000Z',
+      status: 'confirmed',
+    };
+    const updateReservation = jest.fn(async (payload: unknown) => {
+      const record = getRecord(payload);
+      if (record.staffId === nextStaffId) return false;
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('reservations', {
+        success: true,
+        data: {
+          clinicId,
+          reservation: {
+            ...baseReservation,
+            startTime: record.startTime,
+            endTime: record.endTime,
+          },
+        },
+      });
+      return true;
+    });
+    window.MobileUiuxBridge = { updateReservation };
+
+    component.componentDidMount();
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
+      success: true,
+      data: {
+        role: { canonical: 'clinic_admin', label: '院管理者' },
+        flags: { writeEnabled: true, reservationWriteEnabled: true },
+        accessibleClinics: [{ id: clinicId, name: '実院' }],
+        defaultClinicId: clinicId,
+      },
+    });
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('reservations', {
+      success: true,
+      data: {
+        clinicId,
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        reservations: [baseReservation],
+      },
+    });
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('settings-detail', {
+      success: true,
+      data: {
+        clinicId,
+        clinic: { id: clinicId, name: '実院' },
+        menus: [],
+        resources: [
+          {
+            id: currentStaffId,
+            name: '実担当A',
+            type: 'staff',
+            workingHours: {
+              tuesday: { start: '09:00', end: '18:00' },
+            },
+            isActive: true,
+            isBookable: true,
+          },
+          {
+            id: nextStaffId,
+            name: '実担当B',
+            type: 'staff',
+            workingHours: {
+              tuesday: { start: '09:00', end: '18:00' },
+            },
+            isActive: true,
+            isBookable: true,
+          },
+        ],
+      },
+    });
+    component.state.detailId = reservationId;
+    component.state.timeSheet = true;
+
+    let vals = component.renderVals();
+    const moveSlots = Array.isArray(vals.moveSlots) ? vals.moveSlots : [];
+    const moveSlot = moveSlots
+      .map(getRecord)
+      .find(slot => slot.label === '10:15');
+    if (!moveSlot || typeof moveSlot.onTap !== 'function') {
+      throw new Error('Expected 10:15 move action');
+    }
+    await moveSlot.onTap();
+
+    expect(updateReservation).toHaveBeenNthCalledWith(1, {
+      clinic_id: clinicId,
+      id: reservationId,
+      startTime: '2026-06-30T10:15:00+09:00',
+      endTime: '2026-06-30T10:45:00+09:00',
+    });
+    expect(component.state.timeSheet).toBe(false);
+    expect(component.state.optimisticStart).toBeUndefined();
+
+    component.state.assigneeSheet = true;
+    vals = component.renderVals();
+    const assignOpts = Array.isArray(vals.assignOpts) ? vals.assignOpts : [];
+    const nextAssignee = assignOpts
+      .map(getRecord)
+      .find(option => option.name === '実担当B');
+    if (!nextAssignee || typeof nextAssignee.onTap !== 'function') {
+      throw new Error('Expected assignee action');
+    }
+    await nextAssignee.onTap();
+
+    expect(updateReservation).toHaveBeenNthCalledWith(2, {
+      clinic_id: clinicId,
+      id: reservationId,
+      staffId: nextStaffId,
+    });
+    expect(component.state.assigneeSheet).toBe(true);
+    expect(component.state.optimisticResourceId).toBeUndefined();
+    expect(JSON.stringify(component.renderVals().arrivalOpts)).not.toContain(
+      '遅刻'
+    );
+  });
+
+  it('hides reservation mutation actions when write flags are disabled', () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  THER = [];
+  state = { appts: [], detailId: null };
+  renderVals() {
+    return { canWrite: true, dCanChangeTime: true, dCanChangeAssignee: true, arrivalOpts: [{ label: '遅刻' }] };
+  }
+}`,
+      { screen: 'reservations' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+
+    component.componentDidMount();
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
+      success: true,
+      data: {
+        role: { canonical: 'clinic_admin', label: '院管理者' },
+        flags: { writeEnabled: false, reservationWriteEnabled: false },
+        accessibleClinics: [],
+        defaultClinicId: null,
+      },
+    });
+    const vals = component.renderVals();
+
+    expect(vals.canWrite).toBe(false);
+    expect(vals.dCanChangeTime).toBe(false);
+    expect(vals.dCanChangeAssignee).toBe(false);
+    expect(vals.arrivalOpts).toEqual([]);
+  });
+
   it('does not call reservation PATCH for pilot-outside reservation statuses', async () => {
     const patched = patchMobileUiuxDcScriptSource(
       `class Component extends DCLogic {
@@ -2624,15 +3101,8 @@ describe('patchMobileUiuxDcScript', () => {
     if (!Array.isArray(arrivalOpts)) {
       throw new Error('Expected arrival options');
     }
-    const option = getRecord(arrivalOpts[0]);
-    const onTap = option.onTap;
-    if (typeof onTap !== 'function') {
-      throw new Error('Expected arrival option onTap');
-    }
-    await onTap();
-
+    expect(arrivalOpts).toEqual([]);
     expect(updateReservation).not.toHaveBeenCalled();
-    expect(component.state.toast).toBe('この操作はまだ保存できません');
   });
 
   it('keeps sample values when the payload is invalid', () => {
@@ -2916,7 +3386,7 @@ describe('patchMobileUiuxDcScript', () => {
       );
       expect(afterVals.dateLabel).toBe(beforeVals.dateLabel);
       expect(afterVals.kpis).toEqual(beforeVals.kpis);
-      expect(afterVals.greeting).toBe('おはようございます、BFF 表示名さん');
+      expect(afterVals.greeting).toContain('BFF 表示名さん');
       expect(afterVals.greeting).not.toContain('田中');
       expect(afterVals.greeting).not.toContain('佐藤');
       expect(afterVals.scopeName).toBe('BFF 本町院');
@@ -3004,7 +3474,9 @@ describe('patchMobileUiuxDcScript', () => {
       });
       const afterVals = component.renderVals();
 
-      expect(afterVals.greeting).toBe('おはようございます');
+      expect(['おはようございます', 'こんにちは', 'こんばんは']).toContain(
+        afterVals.greeting
+      );
       expect(afterVals.greeting).not.toContain('田中');
       expect(afterVals.greeting).not.toContain('さん');
     });
@@ -3041,7 +3513,7 @@ describe('patchMobileUiuxDcScript', () => {
       const afterVals = component.renderVals();
 
       expect(applied).toBe(true);
-      expect(afterVals.greeting).toBe('おはようございます、BFF 表示名さん');
+      expect(afterVals.greeting).toContain('BFF 表示名さん');
       expect(afterVals.scopeName).toBe('BFF 本町院');
       expect(afterVals.dateLabel).not.toBe('sample-date');
     });
@@ -3439,7 +3911,15 @@ describe('patchMobileUiuxDcScript', () => {
     describe('canonical role injection', () => {
       const roleContext = (canonical: string, label = 'ロール') => ({
         ...contextPayload,
-        data: { ...contextPayload.data, role: { canonical, label } },
+        data: {
+          ...contextPayload.data,
+          role: { canonical, label },
+          flags: {
+            ...contextPayload.data.flags,
+            writeEnabled: true,
+            reservationWriteEnabled: true,
+          },
+        },
       });
 
       function evaluateReservationsComponent() {
