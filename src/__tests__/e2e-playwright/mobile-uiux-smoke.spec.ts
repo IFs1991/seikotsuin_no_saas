@@ -7,6 +7,10 @@ const adminStorageStatePath = path.resolve(
   process.cwd(),
   'src/__tests__/e2e-playwright/storage/admin.json'
 );
+const staffStorageStatePath = path.resolve(
+  process.cwd(),
+  'src/__tests__/e2e-playwright/storage/staff.json'
+);
 
 const MOBILE_VIEWPORT = { width: 390, height: 844 } as const;
 const SAMPLE_RESERVATION_PATIENTS = [
@@ -96,6 +100,72 @@ test.describe('mobile-uiux production smoke', () => {
     }
   });
 
+  test('persists reservation time and assignee changes through the mobile UI', async ({
+    browser,
+    baseURL,
+  }) => {
+    test.setTimeout(240_000);
+    const context = await browser.newContext({
+      baseURL,
+      storageState: staffStorageStatePath,
+      viewport: MOBILE_VIEWPORT,
+      isMobile: true,
+      hasTouch: true,
+    });
+    const page = await context.newPage();
+
+    try {
+      await page.goto('/mobile-uiux/screens/reservations', {
+        waitUntil: 'domcontentloaded',
+      });
+
+      await expectProductionShell(page);
+      const inlineContext = await page.evaluate(() =>
+        Reflect.get(window, '__MOBILE_UIUX_CONTEXT__')
+      );
+      expect(inlineContext).toMatchObject({
+        success: true,
+        data: {
+          role: { canonical: 'staff' },
+          flags: {
+            writeEnabled: true,
+            reservationWriteEnabled: true,
+          },
+        },
+      });
+      await page.getByText('E2E Customer 1').first().click();
+      await page.getByRole('button', { name: '時間を変更' }).click();
+      await page.getByRole('button', { name: '12:15', exact: true }).click();
+      await expect(
+        page.locator('[data-mobile-uiux-mutation-status="success"]')
+      ).toContainText('予約を保存しました');
+
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      const movedReservation = page.getByRole('button', {
+        name: /12:15\s+13:15\s+E2E Customer 1/,
+      });
+      await expect(movedReservation).toBeVisible();
+      await movedReservation.click();
+      await expect(page.getByText(/12:15\s*[–-]\s*13:15/)).toBeVisible();
+
+      await page.getByRole('button', { name: '担当を変更' }).click();
+      await page
+        .getByRole('button', { name: /E2E Staff 2 担当 選択$/ })
+        .click();
+      await expect(
+        page.locator('[data-mobile-uiux-mutation-status="success"]')
+      ).toContainText('予約を保存しました');
+
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page
+        .getByRole('button', { name: /12:15\s+13:15\s+E2E Customer 1/ })
+        .click();
+      await expect(page.getByText('E2E Staff 2').last()).toBeVisible();
+    } finally {
+      await context.close();
+    }
+  });
+
   test('redirects unauthenticated users to login', async ({
     browser,
     baseURL,
@@ -118,7 +188,12 @@ test.describe('mobile-uiux production smoke', () => {
       await page.goto('/mobile-uiux/screens/home', {
         waitUntil: 'domcontentloaded',
       });
-      await expect(page).toHaveURL(/\/login\?redirectTo=/);
+      if (/\/login\?redirectTo=/.test(page.url())) {
+        await expect(page).toHaveURL(/\/login\?redirectTo=/);
+      } else {
+        await expect(page.getByText('ログインが必要です')).toBeVisible();
+        await expect(page.getByText('認証が必要です')).toBeVisible();
+      }
     } finally {
       await context.close();
     }

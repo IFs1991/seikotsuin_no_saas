@@ -99,10 +99,10 @@ html[data-mobile-uiux-canonical-role="staff"] [data-mobile-uiux-nav-target="home
 <div ref="{{ setRoot }}" style="min-height: 100vh; width: 100%; background: var(--stage-bg, #e9ece9); display: flex; flex-direction: column; align-items: center; padding: 28px 16px 56px; gap: 20px; box-sizing: border-box;" data-mobile-uiux-production-root><div data-screen-label="ホーム／ダッシュボード（モバイル）" style="position: relative; width: 100%; height: 100%; border-radius: 44px; overflow: hidden; background: var(--screen-bg, #f3f5f4); display: flex; flex-direction: column;">
 
       <!-- dynamic island -->
-      
+
 
       <!-- status bar -->
-      
+
 
       <!-- ░ APP HEADER ░ -->
       <div style="flex: none; background: var(--surface, #fff); border-bottom: 1px solid var(--border, #e4e8e6); z-index: 7;">
@@ -176,14 +176,14 @@ html[data-mobile-uiux-canonical-role="staff"] [data-mobile-uiux-nav-target="home
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px;">
               <sc-for list="{{ attentions }}" as="a" hint-placeholder-count="3">
-                <button onClick="{{ a.onTap }}" style="all: unset; cursor: pointer; display: flex; align-items: flex-start; gap: 11px; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid {{ a.c }}; border-radius: 13px; padding: 12px 13px; box-shadow: 0 1px 2px rgba(0,0,0,.04);">
+                <div style="all: unset; cursor: default; display: flex; align-items: flex-start; gap: 11px; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid {{ a.c }}; border-radius: 13px; padding: 12px 13px; box-shadow: 0 1px 2px rgba(0,0,0,.04);" data-mobile-uiux-attention-card>
                   <span style="width: 28px; height: 28px; border-radius: 9px; background: {{ a.b }}; color: {{ a.c }}; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none;">{{ a.icon }}</span>
                   <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
                     <span style="display: flex; align-items: center; gap: 7px;"><span style="font-size: 13.5px; font-weight: 700; color: var(--fg);">{{ a.title }}</span><span style="font-size: 9.5px; font-weight: 700; color: {{ a.c }}; background: {{ a.b }}; padding: 1px 7px; border-radius: 999px; flex: none;">{{ a.sevLabel }}</span></span>
                     <span style="font-size: 11.5px; color: var(--fg-2); line-height: 1.5;">{{ a.body }}</span>
                   </span>
-                  <span style="border-right: 2px solid var(--fg-3); border-top: 2px solid var(--fg-3); width: 7px; height: 7px; transform: rotate(45deg); margin-top: 8px; opacity: .55; flex: none;"></span>
-                </button>
+
+                </div>
               </sc-for>
             </div>
           </section>
@@ -438,14 +438,14 @@ html[data-mobile-uiux-canonical-role="staff"] [data-mobile-uiux-nav-target="home
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px;">
               <sc-for list="{{ attentions }}" as="a" hint-placeholder-count="2">
-                <button onClick="{{ a.onTap }}" style="all: unset; cursor: pointer; display: flex; align-items: flex-start; gap: 11px; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid {{ a.c }}; border-radius: 13px; padding: 12px 13px; box-shadow: 0 1px 2px rgba(0,0,0,.04);">
+                <div style="all: unset; cursor: default; display: flex; align-items: flex-start; gap: 11px; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid {{ a.c }}; border-radius: 13px; padding: 12px 13px; box-shadow: 0 1px 2px rgba(0,0,0,.04);" data-mobile-uiux-attention-card>
                   <span style="width: 28px; height: 28px; border-radius: 9px; background: {{ a.b }}; color: {{ a.c }}; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none;">{{ a.icon }}</span>
                   <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
                     <span style="display: flex; align-items: center; gap: 7px;"><span style="font-size: 13.5px; font-weight: 700; color: var(--fg);">{{ a.title }}</span><span style="font-size: 9.5px; font-weight: 700; color: {{ a.c }}; background: {{ a.b }}; padding: 1px 7px; border-radius: 999px; flex: none;">{{ a.sevLabel }}</span></span>
                     <span style="font-size: 11.5px; color: var(--fg-2); line-height: 1.5;">{{ a.body }}</span>
                   </span>
-                  <span style="border-right: 2px solid var(--fg-3); border-top: 2px solid var(--fg-3); width: 7px; height: 7px; transform: rotate(45deg); margin-top: 8px; opacity: .55; flex: none;"></span>
-                </button>
+
+                </div>
               </sc-for>
             </div>
           </section>
@@ -633,7 +633,7 @@ class Component extends DCLogic {
   closeDetail = () => this.setState({ detailId: null });
   openScope = () => this.setState({ scopeSheet: true });
   closeScope = () => this.setState({ scopeSheet: false });
-  goReservations = () => { this.setState({ detailId: null }); this.toast('予約画面へ移動します'); };
+  goReservations = () => { this.setState({ detailId: null }); this.toast(''); };
   goCompare = () => this.toast('店舗比較を開きます');
   link = (m) => () => this.toast(m);
 
@@ -755,7 +755,7 @@ class Component extends DCLogic {
     const quickActions = [
       { icon: '✎', label: '日報を入力', onTap: this.link('日報入力を開きます') },
       { icon: '＋', label: '予約を登録', onTap: this.goReservations },
-      { icon: '◎', label: 'AIチャット', onTap: this.link('AIチャットを開きます') },
+      { icon: '◎', label: 'AIチャット', onTap: this.link('') },
     ];
 
     // ── MANAGER: daily report / clinic cards / events ──
@@ -929,17 +929,20 @@ class Component extends DCLogic {
     const hydratedVals = this.__mobileUiuxHydratedVals && typeof this.__mobileUiuxHydratedVals === 'object'
       ? this.__mobileUiuxHydratedVals
       : null;
-    return hydratedVals ? { ...originalVals, ...hydratedVals } : originalVals;
+    const mergedVals = hydratedVals ? { ...originalVals, ...hydratedVals } : originalVals;
+    return { ...mergedVals, ...this.__mobileUiuxBuildHomeRuntimeOverrides() };
   }
 
   componentDidMount() {
     this.__mobileUiuxRegisterReadHydration();
+    this.__mobileUiuxStartHomeClock();
     if (typeof this.__mobileUiuxOriginalComponentDidMount === 'function') {
       return this.__mobileUiuxOriginalComponentDidMount();
     }
   }
 
   componentWillUnmount() {
+    this.__mobileUiuxStopHomeClock();
     this.__mobileUiuxUnregisterReadHydration();
     if (typeof this.__mobileUiuxOriginalComponentWillUnmount === 'function') {
       return this.__mobileUiuxOriginalComponentWillUnmount();
@@ -989,6 +992,14 @@ class Component extends DCLogic {
     };
     applyReadData.__mobileUiuxHydrationOwner = owner;
     window.__MOBILE_UIUX_APPLY_READ_DATA__ = applyReadData;
+    const inlineContext = window.__MOBILE_UIUX_CONTEXT__;
+    if (
+      component.__mobileUiuxIsRecord(inlineContext) &&
+      inlineContext.success === true &&
+      component.__mobileUiuxIsRecord(inlineContext.data)
+    ) {
+      applyReadData('context', inlineContext);
+    }
   }
 
   __mobileUiuxUnregisterReadHydration() {
@@ -1002,16 +1013,99 @@ class Component extends DCLogic {
     this.__mobileUiuxHydrationOwner = null;
   }
 
+  __mobileUiuxStartHomeClock() {
+    this.__mobileUiuxStopHomeClock();
+    if (typeof setInterval !== 'function') return;
+    this.__mobileUiuxHomeClockTimer = setInterval(() => {
+      if (typeof this.setState === 'function') {
+        this.setState({ __mobileUiuxClockTick: Date.now() });
+      } else if (typeof this.forceUpdate === 'function') {
+        this.forceUpdate();
+      }
+    }, 60000);
+  }
+
+  __mobileUiuxStopHomeClock() {
+    if (this.__mobileUiuxHomeClockTimer !== undefined && typeof clearInterval === 'function') {
+      clearInterval(this.__mobileUiuxHomeClockTimer);
+    }
+    this.__mobileUiuxHomeClockTimer = undefined;
+  }
+
+  __mobileUiuxBuildHomeClockOverrides() {
+    const now = new Date();
+    const parts = this.__mobileUiuxJstDateTimeParts(now);
+    const context = this.__mobileUiuxContext;
+    const displayName = this.__mobileUiuxIsRecord(context) && typeof context.displayName === 'string' && context.displayName.trim().length > 0
+      ? context.displayName.trim()
+      : '';
+    const prefix = parts.hour >= 5 && parts.hour < 12
+      ? 'おはようございます'
+      : parts.hour >= 12 && parts.hour < 18
+        ? 'こんにちは'
+        : 'こんばんは';
+    return {
+      nowClock: parts.hour + ':' + String(parts.minute).padStart(2, '0'),
+      greeting: displayName ? prefix + '、' + displayName + 'さん' : prefix
+    };
+  }
+
+  __mobileUiuxJstDateTimeParts(value) {
+    const shifted = new Date(value.getTime() + 9 * 60 * 60 * 1000);
+    return {
+      year: shifted.getUTCFullYear(),
+      month: shifted.getUTCMonth() + 1,
+      day: shifted.getUTCDate(),
+      hour: shifted.getUTCHours(),
+      minute: shifted.getUTCMinutes()
+    };
+  }
+
+  __mobileUiuxBuildHomeRuntimeOverrides() {
+    return {
+      ...this.__mobileUiuxBuildHomeClockOverrides(),
+      ...this.__mobileUiuxBuildHomeAgendaRuntimeOverrides(),
+      ...this.__mobileUiuxBuildHomeDetailOverrides(),
+      goReservations: this.goReservations
+    };
+  }
+
+  __mobileUiuxNavigateTo(target) {
+    return () => {
+      const bridge = typeof window !== 'undefined' && window.MobileUiuxBridge
+        ? window.MobileUiuxBridge
+        : null;
+      return !!bridge && typeof bridge.navigateToTarget === 'function' && bridge.navigateToTarget(target) === true;
+    };
+  }
+
+  goReservations = () => {
+    if (typeof this.setState === 'function') {
+      this.setState({ detailId: null });
+    }
+    return this.__mobileUiuxNavigateTo('reservations')();
+  };
+
+  openDetail = (id) => () => {
+    const reservationState = this.__mobileUiuxHomeReservationState;
+    if (!this.__mobileUiuxIsRecord(reservationState) || !(reservationState.byId instanceof Map) || !reservationState.byId.has(id)) {
+      return false;
+    }
+    if (typeof this.setState === 'function') {
+      this.setState({ detailId: id });
+    }
+    return true;
+  };
+
   __mobileUiuxBuildHomeContextOverrides() {
     const context = this.__mobileUiuxContext;
     if (!this.__mobileUiuxIsRecord(context)) return null;
     const overrides = {};
-    const displayName = typeof context.displayName === 'string' && context.displayName.trim().length > 0
-      ? context.displayName.trim()
-      : null;
-    const isAfternoon = typeof this.NOW === 'number' && this.NOW >= 720;
-    const prefix = isAfternoon ? 'こんにちは' : 'おはようございます';
-    overrides.greeting = displayName ? prefix + '、' + displayName + 'さん' : prefix;
+    Object.assign(overrides, this.__mobileUiuxBuildHomeClockOverrides());
+
+    const canonical = this.__mobileUiuxCanonicalRole();
+    overrides.scopeTag = canonical === 'admin' ? '全社' : canonical === 'manager' ? '担当エリア' : '自院';
+    overrides.scopeSheetTitle = canonical === 'admin' ? '集計範囲' : canonical === 'manager' ? 'エリアを切り替え' : '店舗を切り替え';
 
     let scopeName = '';
     if (Array.isArray(context.accessibleClinics) && typeof context.defaultClinicId === 'string') {
@@ -1147,6 +1241,10 @@ class Component extends DCLogic {
     overrides.showSignals = false;
     overrides.showPerfRows = false;
     overrides.showShortcuts = false;
+    overrides.quickActions = [
+      { icon: '予', label: '予約画面を開く', onTap: this.__mobileUiuxNavigateTo('reservations') },
+      { icon: '報', label: '日報を開く', onTap: this.__mobileUiuxNavigateTo('daily-reports') }
+    ];
 
     const clinicCardOverrides = this.__mobileUiuxBuildHomeClinicCardOverrides(data.clinicCards, role);
     Object.assign(overrides, clinicCardOverrides);
@@ -1351,7 +1449,7 @@ class Component extends DCLogic {
         { label: day + 'の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
         { label: day + 'の来院', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
         { label: '日報提出', value: reportDone + ' / ' + reportTotal, unit: '院', delta: '未提出 ' + reportMissing + '院', deltaColor: reportMissing > 0 ? down : up, deltaDot: dot(reportMissing > 0 ? down : up) },
-        { label: '要確認', value: String(attentionCount), unit: '件', delta: reportStatus ? '日報要確認 ' + reportStatus.review : 'BFF payload', deltaColor: attentionCount > 0 ? down : flat, deltaDot: dot(attentionCount > 0 ? down : flat) }
+        { label: '要確認', value: String(attentionCount), unit: '件', delta: reportStatus ? '日報要確認 ' + reportStatus.review + '件' : '比較データなし', deltaColor: attentionCount > 0 ? down : flat, deltaDot: dot(attentionCount > 0 ? down : flat) }
       ];
     }
 
@@ -1360,14 +1458,14 @@ class Component extends DCLogic {
         { label: day + 'の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
         { label: day + 'の来院', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
         { label: '日報提出', value: reportDone + ' / ' + reportTotal, unit: '院', delta: '未提出 ' + reportMissing + '院', deltaColor: reportMissing > 0 ? down : up, deltaDot: dot(reportMissing > 0 ? down : up) },
-        { label: '要注意院', value: String(attentionCount), unit: '院', delta: 'BFF payload', deltaColor: attentionCount > 0 ? down : flat, deltaDot: dot(attentionCount > 0 ? down : flat) }
+        { label: '要注意院', value: String(attentionCount), unit: '院', delta: attentionCount > 0 ? '要確認 ' + attentionCount + '件' : '確認済み', deltaColor: attentionCount > 0 ? down : flat, deltaDot: dot(attentionCount > 0 ? down : flat) }
       ];
     }
 
     return [
       { label: day + 'の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
       { label: '来院数', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
-      { label: day + 'の予約', value: String(reservationTotal), unit: '件', delta: 'BFF payload', deltaColor: flat, deltaDot: dot(flat) },
+      { label: day + 'の予約', value: String(reservationTotal), unit: '件', delta: '確定 ' + Math.max(0, reservationTotal - unconfirmed) + '件 / 未確定 ' + unconfirmed + '件', deltaColor: flat, deltaDot: dot(flat) },
       { label: '未確定予約', value: String(unconfirmed), unit: '件', delta: unconfirmed > 0 ? '要確認' : '確認済み', deltaColor: unconfirmed > 0 ? down : up, deltaDot: dot(unconfirmed > 0 ? down : up) }
     ];
   }
@@ -1380,19 +1478,8 @@ class Component extends DCLogic {
   }
 
   __mobileUiuxTodayJstDateKey() {
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Tokyo',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    }).formatToParts(new Date());
-    const values = {};
-    for (const part of parts) {
-      if (part.type !== 'literal') values[part.type] = part.value;
-    }
-    return values.year && values.month && values.day
-      ? values.year + '-' + values.month + '-' + values.day
-      : '';
+    const parts = this.__mobileUiuxJstDateTimeParts(new Date());
+    return parts.year + '-' + String(parts.month).padStart(2, '0') + '-' + String(parts.day).padStart(2, '0');
   }
 
   __mobileUiuxBuildHomeAttentions(attentionPayload, alerts) {
@@ -1430,8 +1517,7 @@ class Component extends DCLogic {
       title,
       body,
       c: meta.c,
-      b: meta.b,
-      onTap: typeof this.link === 'function' ? this.link(title) : () => {}
+      b: meta.b
     };
   }
 
@@ -1470,7 +1556,7 @@ class Component extends DCLogic {
       statusLabel: meta.label,
       c: meta.c,
       b: meta.b,
-      onTap: typeof this.link === 'function' ? this.link(name + 'の日報を開きます') : () => {}
+      onTap: this.__mobileUiuxNavigateTo('daily-reports')
     };
   }
 
@@ -1536,66 +1622,147 @@ class Component extends DCLogic {
   }
 
   __mobileUiuxBuildHomeAgendaOverridesFromReservations(data) {
-    const agendaRows = [];
-    let agTotal = 0;
-    let agUnc = 0;
-    let agCancel = 0;
     const reservations = Array.isArray(data.reservations) ? data.reservations : [];
-
+    const ordered = [];
+    const byId = new Map();
     for (const reservation of reservations) {
       if (!this.__mobileUiuxIsRecord(reservation)) continue;
-      const status = this.__mobileUiuxNormalizeHomeAgendaStatus(reservation.status);
-      if (status === 'cancelled' || status === 'noshow') {
+      const id = typeof reservation.id === 'string' && reservation.id.length > 0 ? reservation.id : '';
+      const clinicId = typeof reservation.clinicId === 'string' && reservation.clinicId.length > 0 ? reservation.clinicId : '';
+      const times = this.__mobileUiuxHomeAgendaTimes(reservation.startTime, reservation.endTime);
+      if (!id || !clinicId || !times) continue;
+      const viewModel = {
+        id,
+        clinicId,
+        customerName: this.__mobileUiuxDisplayText(reservation.customerName || reservation.patientName, '患者名未設定'),
+        menuName: this.__mobileUiuxDisplayText(reservation.menuName, 'メニュー未設定'),
+        staffId: typeof reservation.staffId === 'string' ? reservation.staffId : null,
+        staffName: this.__mobileUiuxDisplayText(reservation.staffName, '担当未設定'),
+        startTime: reservation.startTime,
+        endTime: reservation.endTime,
+        startMs: times.startMs,
+        endMs: times.endMs,
+        startLabel: times.startLabel,
+        endLabel: times.endLabel,
+        status: this.__mobileUiuxNormalizeHomeAgendaStatus(reservation.status)
+      };
+      ordered.push(viewModel);
+      byId.set(id, viewModel);
+    }
+    ordered.sort((left, right) => left.startMs - right.startMs || left.id.localeCompare(right.id));
+    this.__mobileUiuxHomeReservationState = {
+      date: typeof data.date === 'string' ? data.date : '',
+      ordered,
+      byId
+    };
+    return this.__mobileUiuxBuildHomeAgendaRuntimeOverrides();
+  }
+
+  __mobileUiuxBuildHomeAgendaRuntimeOverrides() {
+    const reservationState = this.__mobileUiuxHomeReservationState;
+    if (!this.__mobileUiuxIsRecord(reservationState) || !Array.isArray(reservationState.ordered)) {
+      return {};
+    }
+    const selectedDate = typeof reservationState.date === 'string' ? reservationState.date : '';
+    const today = this.__mobileUiuxTodayJstDateKey();
+    const nowMs = Date.now();
+    const active = [];
+    const past = [];
+    const upcoming = [];
+    let agCancel = 0;
+    let agUnc = 0;
+    for (const reservation of reservationState.ordered) {
+      if (reservation.status === 'cancelled' || reservation.status === 'noshow') {
         agCancel += 1;
         continue;
       }
-      agTotal += 1;
-      if (status === 'unconfirmed') {
-        agUnc += 1;
-      }
-
-      const row = this.__mobileUiuxBuildHomeAgendaRow(reservation, status);
-      if (row) {
-        agendaRows.push(row);
+      active.push(reservation);
+      if (reservation.status === 'unconfirmed') agUnc += 1;
+      const completed = selectedDate < today || (selectedDate === today && reservation.endMs <= nowMs);
+      if (completed) past.push(reservation);
+      else upcoming.push(reservation);
+    }
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    const agendaRows = [];
+    if (state.pastOpen === true) {
+      for (const reservation of past) {
+        agendaRows.push(this.__mobileUiuxBuildHomeAgendaRow(reservation, true, false, false));
       }
     }
-
-    return { agendaRows, agTotal, agUnc, agCancel };
+    if (selectedDate === today) {
+      agendaRows.push({ isDivider: true, isAppt: false });
+    }
+    let nextTagged = false;
+    for (const reservation of upcoming) {
+      const inProgress = selectedDate === today && reservation.startMs <= nowMs && nowMs < reservation.endMs;
+      const isNext = !inProgress && !nextTagged;
+      if (isNext) nextTagged = true;
+      agendaRows.push(this.__mobileUiuxBuildHomeAgendaRow(reservation, false, inProgress, isNext));
+    }
+    const agPastCount = past.length;
+    return {
+      agendaRows,
+      agTotal: active.length,
+      agUnc,
+      agCancel,
+      agPastCount,
+      pastLabel: state.pastOpen === true ? '完了した予約を隠す' : '完了した予約 ' + agPastCount + '件を表示'
+    };
   }
 
-  __mobileUiuxBuildHomeAgendaRow(reservation, status) {
-    const patient = this.__mobileUiuxDisplayText(reservation.customerName || reservation.patientName, '患者名未設定');
-    const menu = this.__mobileUiuxDisplayText(reservation.menuName, 'メニュー未設定');
-    const ther = this.__mobileUiuxDisplayText(reservation.staffName, '担当未設定');
-    const meta = this.__mobileUiuxHomeAgendaStatusMeta(status);
-    const times = this.__mobileUiuxHomeAgendaTimes(reservation.startTime, reservation.endTime);
-
+  __mobileUiuxBuildHomeAgendaRow(reservation, isPast, inProgress, isNext) {
+    const meta = this.__mobileUiuxHomeAgendaStatusMeta(reservation.status);
+    const flag = inProgress ? '進行中' : isNext ? '次の予約' : '';
     return {
       isAppt: true,
       isDivider: false,
-      startT: times ? times.startLabel : '',
-      endT: times ? times.endLabel : '',
-      patient,
-      menu,
-      ther,
-      initial: typeof this.initial === 'function' ? this.initial(ther) : ther.charAt(0),
+      startT: reservation.startLabel,
+      endT: reservation.endLabel,
+      patient: reservation.customerName,
+      menu: reservation.menuName,
+      ther: reservation.staffName,
+      initial: typeof this.initial === 'function' ? this.initial(reservation.staffName) : reservation.staffName.charAt(0),
       statusLabel: meta.label,
       c: meta.c,
       b: meta.b,
-      dim: '1',
-      rowBg: 'transparent',
-      flag: '',
-      flagShow: false,
-      flagC: '',
-      flagB: '',
-      onTap: typeof this.openDetail === 'function' && typeof reservation.id === 'string'
-        ? this.openDetail(reservation.id)
-        : (typeof this.link === 'function' ? this.link(patient + 'の予約詳細を開きます') : () => {})
+      dim: isPast ? '0.6' : '1',
+      rowBg: inProgress ? 'var(--primary-soft)' : 'transparent',
+      flag,
+      flagShow: flag.length > 0,
+      flagC: inProgress ? 'var(--primary-fg)' : 'var(--on-primary-soft)',
+      flagB: inProgress ? 'var(--primary)' : 'var(--primary-soft)',
+      onTap: this.openDetail(reservation.id)
+    };
+  }
+
+  __mobileUiuxBuildHomeDetailOverrides() {
+    const reservationState = this.__mobileUiuxHomeReservationState;
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    const detailId = typeof state.detailId === 'string' ? state.detailId : '';
+    const reservation = this.__mobileUiuxIsRecord(reservationState) && reservationState.byId instanceof Map
+      ? reservationState.byId.get(detailId)
+      : null;
+    if (!reservation) return { detailOpen: false };
+    const meta = this.__mobileUiuxHomeAgendaStatusMeta(reservation.status);
+    const duration = Math.max(0, Math.round((reservation.endMs - reservation.startMs) / 60000));
+    return {
+      detailOpen: true,
+      dPatient: reservation.customerName,
+      dMenu: reservation.menuName,
+      dInitial: typeof this.initial === 'function' ? this.initial(reservation.staffName) : reservation.staffName.charAt(0),
+      dTime: reservation.startLabel + ' – ' + reservation.endLabel,
+      dDur: duration + '分',
+      dTher: reservation.staffName,
+      dTherRole: '',
+      dStatusLabel: meta.label,
+      dC: meta.c,
+      dB: meta.b
     };
   }
 
   __mobileUiuxNormalizeHomeAgendaStatus(value) {
-    if (value === 'confirmed' || value === 'arrived' || value === 'unconfirmed' || value === 'cancelled' || value === 'noshow') {
+    if (value === 'confirmed' || value === 'arrived' || value === 'completed' || value === 'unconfirmed' || value === 'cancelled' || value === 'noshow' || value === 'no_show') {
+      if (value === 'no_show') return 'noshow';
       return value;
     }
     return 'unconfirmed';
@@ -1603,7 +1770,8 @@ class Component extends DCLogic {
 
   __mobileUiuxHomeAgendaStatusMeta(status) {
     if (this.STATUS && this.STATUS[status]) return this.STATUS[status];
-    if (status === 'confirmed' || status === 'arrived') return { label: '確定', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' };
+    if (status === 'confirmed') return { label: '確定', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' };
+    if (status === 'arrived' || status === 'completed') return { label: '来院済み', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' };
     if (status === 'cancelled' || status === 'noshow') return { label: 'キャンセル', c: 'var(--fg-3)', b: 'var(--s-cn-bg)' };
     return { label: '未確認', c: 'var(--s-uc)', b: 'var(--s-uc-bg)' };
   }
@@ -1613,8 +1781,11 @@ class Component extends DCLogic {
     const start = new Date(startTime);
     const end = new Date(endTime);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
-    const fmt = (date) => String(date.getUTCHours()).padStart(2, '0') + ':' + String(date.getUTCMinutes()).padStart(2, '0');
-    return { startLabel: fmt(start), endLabel: fmt(end) };
+    const fmt = (date) => {
+      const parts = this.__mobileUiuxJstDateTimeParts(date);
+      return parts.hour + ':' + String(parts.minute).padStart(2, '0');
+    };
+    return { startLabel: fmt(start), endLabel: fmt(end), startMs: start.getTime(), endMs: end.getTime() };
   }
 }
 </script>

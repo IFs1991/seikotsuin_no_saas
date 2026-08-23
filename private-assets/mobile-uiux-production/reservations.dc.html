@@ -99,10 +99,10 @@ html[data-mobile-uiux-canonical-role="staff"] [data-mobile-uiux-nav-target="home
 <div ref="{{ setRoot }}" style="min-height: 100vh; width: 100%; background: var(--stage-bg, #e9ece9); display: flex; flex-direction: column; align-items: center; padding: 28px 16px 56px; gap: 20px; box-sizing: border-box;" data-mobile-uiux-production-root><div data-screen-label="予約（モバイル）" style="position: relative; width: 100%; height: 100%; border-radius: 44px; overflow: hidden; background: var(--screen-bg, #f3f5f4); display: flex; flex-direction: column;">
 
       <!-- dynamic island -->
-      
+
 
       <!-- status bar -->
-      
+
 
       <!-- ░ APP HEADER ░ -->
       <div style="flex: none; background: var(--surface, #fff); border-bottom: 1px solid var(--border, #e4e8e6); z-index: 7;">
@@ -120,15 +120,12 @@ html[data-mobile-uiux-canonical-role="staff"] [data-mobile-uiux-nav-target="home
             <div style="min-width: 86px; text-align: center; font-size: 13px; font-weight: 700; color: var(--fg);" data-mobile-uiux-date-picker="reservations" role="button" tabindex="0" aria-label="日付を選択">{{ dateLabel }}</div>
             <button onClick="{{ nextDate }}" aria-label="次の日" style="width: 32px; height: 36px; border: none; background: transparent; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;"><span style="border-right: 2px solid var(--fg-2); border-top: 2px solid var(--fg-2); width: 8px; height: 8px; transform: rotate(45deg); margin-right: 3px;"></span></button>
           </div>
-          <button onClick="{{ moreMenu }}" aria-label="その他" style="width: 40px; height: 40px; border: 1px solid var(--border); background: var(--surface-2); border-radius: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 3px;"><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--fg-2);"></span><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--fg-2);"></span><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--fg-2);"></span></button>
+
         </div>
 
         <!-- view segmented + self toggle -->
         <div style="display: flex; align-items: center; gap: 10px; padding: 0 16px 12px;">
-          <div style="display: flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; padding: 3px; flex: 1; max-width: 220px;">
-            <button onClick="{{ viewAgenda }}" style="{{ agStyle }}">アジェンダ</button>
-            <button onClick="{{ viewTimeline }}" style="{{ tlStyle }}">タイムライン</button>
-          </div>
+
           <sc-if value="{{ showSelf }}" hint-placeholder-val="{{ true }}">
             <button onClick="{{ toggleSelf }}" style="{{ selfStyle }}">
               <span style="{{ selfDot }}"></span>自分の担当のみ
@@ -212,43 +209,7 @@ html[data-mobile-uiux-canonical-role="staff"] [data-mobile-uiux-nav-target="home
         </sc-if>
 
         <!-- TIMELINE -->
-        <sc-if value="{{ showTimeline }}" hint-placeholder-val="{{ false }}">
-          <div style="display: flex; flex-direction: column;">
-            <div class="scrl" style="display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--screen-bg); z-index: 3;">
-              <sc-for list="{{ therChips }}" as="chip" hint-placeholder-count="4">
-                <button onClick="{{ chip.onTap }}" style="{{ chip.style }}">
-                  <span style="{{ chip.dotStyle }}">{{ chip.initial }}</span>{{ chip.name }}
-                </button>
-              </sc-for>
-            </div>
-            <div style="position: relative; padding: 0 16px 110px 56px;">
-              <div style="position: relative; height: {{ tlHeight }};">
-                <sc-for list="{{ tlHours }}" as="hr" hint-placeholder-count="11">
-                  <div style="position: absolute; left: -40px; right: 0; top: {{ hr.top }}; display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 10.5px; color: var(--fg-3); width: 32px; text-align: right; flex: none;">{{ hr.label }}</span>
-                    <div style="flex: 1; height: 1px; background: var(--border);"></div>
-                  </div>
-                </sc-for>
-                <sc-for list="{{ tlFree }}" as="fs" hint-placeholder-count="6">
-                  <button onClick="{{ fs.onTap }}" aria-label="空き枠" style="position: absolute; left: 0; right: 0; top: {{ fs.top }}; height: {{ fs.height }}; border: 1.5px dashed var(--border-strong); border-radius: 9px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 11px; font-weight: 600; opacity: .85;">＋ 空き</button>
-                </sc-for>
-                <sc-for list="{{ tlBlocks }}" as="blk" hint-placeholder-count="4">
-                  <button onClick="{{ blk.onTap }}" style="all: unset; cursor: pointer; position: absolute; left: 0; right: 0; top: {{ blk.top }}; height: {{ blk.height }}; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid {{ blk.c }}; border-radius: 10px; padding: 7px 11px; box-sizing: border-box; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); opacity: {{ blk.dim }};">
-                    <div style="display: flex; align-items: center; gap: 6px;"><span style="font-size: 12.5px; font-weight: 700; color: var(--fg);">{{ blk.patient }}</span><span style="font-size: 10px; font-weight: 700; color: {{ blk.c }}; background: {{ blk.b }}; padding: 1px 7px; border-radius: 999px;">{{ blk.statusLabel }}</span></div>
-                    <div style="font-size: 11px; color: var(--fg-2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ blk.timeMenu }}</div>
-                  </button>
-                </sc-for>
-                <sc-if value="{{ tlNowShow }}" hint-placeholder-val="{{ false }}">
-                  <div style="position: absolute; left: -44px; right: 0; top: {{ tlNowTop }}; display: flex; align-items: center; z-index: 4; pointer-events: none;">
-                    <span style="font-size: 9px; font-weight: 700; color: #fff; background: var(--now); border-radius: 4px; padding: 1px 5px; flex: none;">{{ tlNowLabel }}</span>
-                    <div style="width: 9px; height: 9px; border-radius: 50%; background: var(--now); margin-left: 2px; animation: nowpulse 2s infinite ease-in-out;"></div>
-                    <div style="flex: 1; height: 1.5px; background: var(--now);"></div>
-                  </div>
-                </sc-if>
-              </div>
-            </div>
-          </div>
-        </sc-if>
+
       </div>
 
       <!-- FAB -->
@@ -298,14 +259,14 @@ html[data-mobile-uiux-canonical-role="staff"] [data-mobile-uiux-nav-target="home
                 </sc-for>
               </div>
               <div style="display: flex; gap: 9px; margin-bottom: 10px;">
-                <button onClick="{{ openTime }}" style="flex: 1; min-height: 48px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); border-radius: 13px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">時間を変更</button>
-                <button onClick="{{ openAssignee }}" style="flex: 1; min-height: 48px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); border-radius: 13px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">担当を変更</button>
+                <sc-if value="{{ dCanChangeTime }}" hint-placeholder-val="{{ false }}"><button onClick="{{ openTime }}" style="flex: 1; min-height: 48px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); border-radius: 13px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">時間を変更</button></sc-if>
+                <sc-if value="{{ dCanChangeAssignee }}" hint-placeholder-val="{{ false }}"><button onClick="{{ openAssignee }}" style="flex: 1; min-height: 48px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); border-radius: 13px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">担当を変更</button></sc-if>
               </div>
               <sc-if value="{{ dShowConfirm }}" hint-placeholder-val="{{ true }}">
                 <button onClick="{{ confirmAppt }}" style="width: 100%; min-height: 50px; border: none; background: var(--primary); color: var(--primary-fg); border-radius: 13px; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; margin-bottom: 9px;">予約を確定する</button>
               </sc-if>
             </sc-if>
-            <button onClick="{{ openHistory }}" style="width: 100%; min-height: 48px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--fg); border-radius: 13px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 4px;"><span style="width: 13px; height: 13px; border: 1.5px solid var(--fg-2); border-radius: 3px; flex: none;"></span>予約履歴を見る</button>
+
           </div>
           <div style="height: 18px; flex: none;"></div>
         </div>
@@ -389,28 +350,7 @@ html[data-mobile-uiux-canonical-role="staff"] [data-mobile-uiux-nav-target="home
       </sc-if>
 
       <!-- HISTORY -->
-      <sc-if value="{{ historyOpen }}" hint-placeholder-val="{{ false }}">
-        <div onClick="{{ closeHistory }}" style="position: absolute; inset: 0; background: rgba(0,0,0,.42); z-index: 54; animation: fadeIn .25s ease;"></div>
-        <div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 55; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,.22); animation: sheetUp .3s cubic-bezier(.32,.72,0,1); max-height: 86%; display: flex; flex-direction: column;">
-          <div style="padding: 12px 0 4px; display: flex; justify-content: center;"><div style="width: 38px; height: 5px; border-radius: 3px; background: var(--border-strong);"></div></div>
-          <div style="padding: 6px 20px 12px; display: flex; align-items: center; gap: 10px;">
-            <div style="display: flex; flex-direction: column; gap: 1px;"><div style="font-size: 16px; font-weight: 700; color: var(--fg);">予約履歴</div><div style="font-size: 11.5px; color: var(--fg-2);">{{ dPatient }} 様 ・ 来院 {{ histCount }} 回</div></div>
-            <button onClick="{{ closeHistory }}" style="margin-left: auto; width: 32px; height: 32px; border: none; background: var(--surface-2); border-radius: 50%; cursor: pointer; color: var(--fg-2); font-size: 16px;">✕</button>
-          </div>
-          <div class="scrl" style="overflow-y: auto; padding: 4px 20px 24px; display: flex; flex-direction: column; gap: 8px;">
-            <sc-for list="{{ historyItems }}" as="h" hint-placeholder-count="4">
-              <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 13px;">
-                <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1;">
-                  <div style="font-size: 12.5px; font-weight: 700; color: var(--fg);">{{ h.date }}</div>
-                  <div style="font-size: 11.5px; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ h.timeMenu }}</div>
-                  <div style="font-size: 11px; color: var(--fg-3);">担当 {{ h.ther }}</div>
-                </div>
-                <span style="font-size: 11px; font-weight: 700; color: {{ h.c }}; background: {{ h.b }}; padding: 4px 10px; border-radius: 999px; flex: none;">{{ h.statusLabel }}</span>
-              </div>
-            </sc-for>
-          </div>
-        </div>
-      </sc-if>
+
 
       <!-- CLINIC SWITCHER -->
       <sc-if value="{{ clinicSheetOpen }}" hint-placeholder-val="{{ false }}">
@@ -551,7 +491,7 @@ class Component extends DCLogic {
   viewAgenda = () => this.setState({ view: 'agenda' });
   viewTimeline = () => this.setState({ view: 'timeline' });
   toggleSelf = () => this.setState(s => ({ selfOnly: !s.selfOnly }));
-  moreMenu = () => this.toast('表示密度・並び順は準備中です');
+  moreMenu = () => this.toast('');
   changeDate = (d) => {
     const ni = Math.max(0, Math.min(2, this.state.dateIndex + d));
     if (ni === this.state.dateIndex) return;
@@ -862,7 +802,7 @@ class Component extends DCLogic {
     const mergedVals = hydratedVals
       ? { ...patchedVals, ...hydratedVals, submitForm: this.__mobileUiuxCreateReservation }
       : patchedVals;
-    return this.__mobileUiuxApplyDateScopeVals(mergedVals);
+    return this.__mobileUiuxApplyDateScopeVals(this.__mobileUiuxApplyReservationIntegrityVals(mergedVals));
   }
 
   componentDidMount() {
@@ -943,6 +883,14 @@ class Component extends DCLogic {
     };
     applyReadData.__mobileUiuxHydrationOwner = owner;
     window.__MOBILE_UIUX_APPLY_READ_DATA__ = applyReadData;
+    const inlineContext = window.__MOBILE_UIUX_CONTEXT__;
+    if (
+      component.__mobileUiuxIsRecord(inlineContext) &&
+      inlineContext.success === true &&
+      component.__mobileUiuxIsRecord(inlineContext.data)
+    ) {
+      applyReadData('context', inlineContext);
+    }
   }
 
   __mobileUiuxUnregisterReadHydration() {
@@ -1229,6 +1177,206 @@ class Component extends DCLogic {
     return year + '-' + month + '-' + day;
   }
 
+  __mobileUiuxCanWriteReservations() {
+    const context = this.__mobileUiuxContext;
+    if (!this.__mobileUiuxIsRecord(context) || !this.__mobileUiuxIsRecord(context.flags)) return false;
+    const canonical = this.__mobileUiuxCanonicalRole();
+    const roleAllowed = canonical === 'admin' || canonical === 'clinic_admin' || canonical === 'therapist' || canonical === 'staff';
+    return roleAllowed && context.flags.writeEnabled === true && context.flags.reservationWriteEnabled === true;
+  }
+
+  __mobileUiuxSelectedReservation() {
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    if (!Array.isArray(state.appts) || typeof state.detailId !== 'string') return null;
+    return state.appts.find((item) => this.__mobileUiuxIsRecord(item) && item.id === state.detailId) || null;
+  }
+
+  __mobileUiuxApplyReservationIntegrityVals(vals) {
+    if (!this.__mobileUiuxIsRecord(vals)) return vals;
+    const canWrite = this.__mobileUiuxCanWriteReservations();
+    const reservation = this.__mobileUiuxSelectedReservation();
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    const workingWindow = reservation ? this.__mobileUiuxWorkingWindowForReservation(reservation) : null;
+    const dCanChangeTime = canWrite && !!reservation && !!workingWindow;
+    const dCanChangeAssignee = canWrite && !!reservation && Array.isArray(this.THER) && this.THER.length > 0;
+    const arrivalOpts = canWrite && Array.isArray(vals.arrivalOpts)
+      ? vals.arrivalOpts.filter((option) => this.__mobileUiuxIsRecord(option) && option.label !== '遅刻')
+      : [];
+    return {
+      ...vals,
+      canWrite,
+      isReadOnly: !canWrite,
+      dReadonly: !canWrite,
+      dShowConfirm: canWrite && vals.dShowConfirm === true,
+      dShowCancel: canWrite && vals.dShowCancel === true,
+      fabShow: canWrite && vals.fabShow === true,
+      dCanChangeTime,
+      dCanChangeAssignee,
+      arrivalOpts,
+      showTimeline: false,
+      timeSheetOpen: dCanChangeTime && state.timeSheet === true,
+      assigneeSheetOpen: dCanChangeAssignee && state.assigneeSheet === true,
+      subOpen: (dCanChangeTime && state.timeSheet === true) || (dCanChangeAssignee && state.assigneeSheet === true),
+      moveSlots: dCanChangeTime && state.timeSheet === true ? this.__mobileUiuxBuildMoveSlots(reservation, workingWindow) : [],
+      assignOpts: dCanChangeAssignee && state.assigneeSheet === true ? this.__mobileUiuxBuildAssignOptions(reservation) : []
+    };
+  }
+
+  __mobileUiuxWorkingWindowForReservation(reservation) {
+    if (!this.__mobileUiuxIsRecord(reservation) || typeof reservation.res !== 'string' || !Array.isArray(this.THER)) return null;
+    const resource = this.THER.find((item) => this.__mobileUiuxIsRecord(item) && item.id === reservation.res);
+    if (!this.__mobileUiuxIsRecord(resource) || !this.__mobileUiuxIsRecord(resource.workingHours)) return null;
+    const dateKey = this.__mobileUiuxActiveHydratedDate();
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+    if (!match) return null;
+    const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    if (Number.isNaN(date.getTime())) return null;
+    const dayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const hours = resource.workingHours[dayKeys[date.getUTCDay()]];
+    if (!this.__mobileUiuxIsRecord(hours)) return null;
+    const start = this.__mobileUiuxParseClockMinutes(hours.start);
+    const end = this.__mobileUiuxParseClockMinutes(hours.end);
+    return start !== null && end !== null && end > start ? { start, end } : null;
+  }
+
+  __mobileUiuxParseClockMinutes(value) {
+    if (typeof value !== 'string') return null;
+    const match = /^(\d{2}):(\d{2})$/.exec(value);
+    if (!match) return null;
+    const hour = Number(match[1]);
+    const minute = Number(match[2]);
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+    return hour * 60 + minute;
+  }
+
+  __mobileUiuxBuildMoveSlots(reservation, workingWindow) {
+    const rows = [];
+    const pending = this.__mobileUiuxReservationSaving === true;
+    for (let start = workingWindow.start; start + reservation.dur <= workingWindow.end; start += 15) {
+      const current = start === reservation.start;
+      const conflict = this.__mobileUiuxResourceConflict(reservation.res, start, reservation.dur, reservation.id);
+      const disabled = pending || current || conflict;
+      rows.push({
+        label: typeof this.fmt === 'function' ? this.fmt(start) : Math.floor(start / 60) + ':' + String(start % 60).padStart(2, '0'),
+        onTap: disabled ? (() => false) : this.doMove(start),
+        style: 'all:unset;box-sizing:border-box;text-align:center;min-height:44px;display:flex;align-items:center;justify-content:center;border-radius:11px;font-size:13px;font-family:inherit;cursor:' + (disabled ? 'default' : 'pointer') + ';font-weight:' + (current ? '700' : '500') + ';background:' + (current ? 'var(--primary)' : conflict ? 'var(--surface-3)' : 'var(--surface-2)') + ';color:' + (current ? 'var(--primary-fg)' : conflict ? 'var(--fg-3)' : 'var(--fg)') + ';border:1px solid ' + (current ? 'var(--primary)' : 'var(--border)') + ';opacity:' + (disabled && !current ? '.5' : '1') + ';text-decoration:' + (conflict ? 'line-through' : 'none') + ';'
+      });
+    }
+    return rows;
+  }
+
+  __mobileUiuxBuildAssignOptions(reservation) {
+    const rows = [];
+    const pending = this.__mobileUiuxReservationSaving === true;
+    for (const resource of this.THER) {
+      if (!this.__mobileUiuxIsRecord(resource) || resource.mobileUiuxType !== 'staff' || resource.mobileUiuxActive !== true || resource.mobileUiuxBookable !== true) continue;
+      const current = resource.id === reservation.res;
+      const conflict = !current && this.__mobileUiuxResourceConflict(resource.id, reservation.start, reservation.dur, reservation.id);
+      const disabled = pending || current || conflict;
+      rows.push({
+        name: resource.name,
+        role: resource.role,
+        initial: typeof this.initial === 'function' ? this.initial(resource.name) : String(resource.name || '').charAt(0),
+        tag: current ? '現在' : conflict ? '重複' : '選択',
+        onTap: disabled ? (() => false) : this.doAssign(resource.id),
+        style: 'all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;padding:11px 14px;min-height:56px;border-radius:14px;cursor:' + (disabled ? 'default' : 'pointer') + ';background:' + (current ? 'var(--primary-soft)' : 'var(--surface-2)') + ';border:1px solid ' + (current ? 'var(--primary)' : 'var(--border)') + ';opacity:' + (conflict ? '.5' : '1') + ';',
+        tagStyle: 'margin-left:auto;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;color:' + (current ? 'var(--on-primary-soft)' : conflict ? 'var(--s-ns)' : 'var(--primary)') + ';background:' + (current ? 'transparent' : conflict ? 'var(--s-ns-bg)' : 'var(--primary-soft)') + ';'
+      });
+    }
+    return rows;
+  }
+
+  __mobileUiuxResourceConflict(resourceId, start, duration, excludedId) {
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    if (!Array.isArray(state.appts)) return false;
+    return state.appts.some((item) => this.__mobileUiuxIsRecord(item) && item.id !== excludedId && item.res === resourceId && item.status !== 'cancelled' && item.status !== 'noshow' && start < item.start + item.dur && item.start < start + duration);
+  }
+
+  openTime = () => {
+    const reservation = this.__mobileUiuxSelectedReservation();
+    if (!this.__mobileUiuxCanWriteReservations() || !reservation || !this.__mobileUiuxWorkingWindowForReservation(reservation)) return false;
+    if (typeof this.setState === 'function') this.setState({ timeSheet: true, assigneeSheet: false, moveError: '' });
+    return true;
+  };
+
+  openAssignee = () => {
+    if (!this.__mobileUiuxCanWriteReservations() || !this.__mobileUiuxSelectedReservation() || !Array.isArray(this.THER) || this.THER.length === 0) return false;
+    if (typeof this.setState === 'function') this.setState({ assigneeSheet: true, timeSheet: false, moveError: '' });
+    return true;
+  };
+
+  doMove = (start) => async () => {
+    const reservation = this.__mobileUiuxSelectedReservation();
+    if (!this.__mobileUiuxCanWriteReservations() || !reservation || typeof start !== 'number' || this.__mobileUiuxResourceConflict(reservation.res, start, reservation.dur, reservation.id)) {
+      if (typeof this.setState === 'function') this.setState({ moveError: 'その時間は他の予約と重複しています。別の時間を選んでください。' });
+      return false;
+    }
+    const identity = this.__mobileUiuxReservationIdentity(reservation);
+    const date = this.__mobileUiuxActiveHydratedDate();
+    const startTime = this.__mobileUiuxReservationJstIso(date, start);
+    const endTime = this.__mobileUiuxReservationJstIso(date, start + reservation.dur);
+    if (!identity || !startTime || !endTime) return false;
+    return this.__mobileUiuxPersistReservationChange(
+      { ...identity, startTime, endTime },
+      typeof this.fmt === 'function' ? this.fmt(start) + ' に時間を変更しました' : '時間を変更しました',
+      { timeSheet: false }
+    );
+  };
+
+  doAssign = (resourceId) => async () => {
+    const reservation = this.__mobileUiuxSelectedReservation();
+    const resource = Array.isArray(this.THER) ? this.THER.find((item) => this.__mobileUiuxIsRecord(item) && item.id === resourceId && item.mobileUiuxType === 'staff' && item.mobileUiuxActive === true && item.mobileUiuxBookable === true) : null;
+    if (!this.__mobileUiuxCanWriteReservations() || !reservation || !resource || this.__mobileUiuxResourceConflict(resourceId, reservation.start, reservation.dur, reservation.id)) {
+      if (typeof this.setState === 'function') this.setState({ moveError: 'その担当者は同時間に別の予約があります。' });
+      return false;
+    }
+    const identity = this.__mobileUiuxReservationIdentity(reservation);
+    if (!identity) return false;
+    return this.__mobileUiuxPersistReservationChange(
+      { ...identity, staffId: resourceId },
+      this.__mobileUiuxDisplayText(resource.name, '担当') + ' に担当を変更しました',
+      { assigneeSheet: false }
+    );
+  };
+
+  __mobileUiuxReservationIdentity(reservation) {
+    const clinicId = typeof reservation.mobileUiuxClinicId === 'string' && reservation.mobileUiuxClinicId.length > 0
+      ? reservation.mobileUiuxClinicId
+      : this.__mobileUiuxCurrentClinicId;
+    if (typeof clinicId !== 'string' || clinicId.length === 0 || typeof reservation.id !== 'string' || reservation.id.length === 0) return null;
+    return { clinic_id: clinicId, id: reservation.id };
+  }
+
+  __mobileUiuxReservationJstIso(dateKey, minutes) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+    if (!match || typeof minutes !== 'number' || !Number.isFinite(minutes) || minutes < 0 || minutes >= 1440) return '';
+    const hour = Math.floor(minutes / 60);
+    const minute = minutes % 60;
+    return match[1] + '-' + match[2] + '-' + match[3] + 'T' + String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0') + ':00+09:00';
+  }
+
+  async __mobileUiuxPersistReservationChange(payload, successMessage, successStatePatch) {
+    if (this.__mobileUiuxReservationSaving === true) return false;
+    const bridge = typeof window !== 'undefined' && window.MobileUiuxBridge ? window.MobileUiuxBridge : null;
+    if (!bridge || typeof bridge.updateReservation !== 'function') return false;
+    this.__mobileUiuxReservationSaving = true;
+    if (typeof this.setState === 'function') this.setState({ __mobileUiuxMutationPending: true, moveError: '' });
+    let ok = false;
+    try {
+      ok = await bridge.updateReservation(payload);
+    } catch {
+      ok = false;
+    }
+    this.__mobileUiuxReservationSaving = false;
+    if (ok === true) {
+      if (typeof this.setState === 'function') this.setState({ ...successStatePatch, __mobileUiuxMutationPending: false, moveError: '' });
+      this.__mobileUiuxShowReservationToast(successMessage);
+      return true;
+    }
+    if (typeof this.setState === 'function') this.setState({ __mobileUiuxMutationPending: false, moveError: '変更を保存できませんでした。内容を確認してもう一度お試しください。' });
+    return false;
+  }
+
   __mobileUiuxPrimeReservationWriteSources() {
     if (Array.isArray(this.CLINICS)) {
       this.CLINICS = [];
@@ -1244,9 +1392,11 @@ class Component extends DCLogic {
     this.historyFor = () => [];
     if (this.state && typeof this.state === 'object' && typeof this.setState === 'function') {
       this.setState({
+        appts: [],
         fMenu: '',
         fRes: '',
-        timelineRes: ''
+        timelineRes: '',
+        historySheet: false
       });
     }
   }
@@ -1325,13 +1475,17 @@ class Component extends DCLogic {
       if (!this.__mobileUiuxIsRecord(item)) continue;
       const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
       const name = this.__mobileUiuxDisplayText(item.name, '');
-      if (!id || !name || item.isActive === false || item.isBookable === false) continue;
+      if (!id || !name || item.type !== 'staff' || item.isActive !== true || item.isBookable !== true) continue;
       rows.push({
         id,
         name,
-        role: this.__mobileUiuxDisplayText(item.type, '担当'),
+        role: '担当',
         clinic: 'c1',
-        nominationFee: this.__mobileUiuxNonNegativeNumber(item.nominationFee)
+        nominationFee: this.__mobileUiuxNonNegativeNumber(item.nominationFee),
+        workingHours: this.__mobileUiuxIsRecord(item.workingHours) ? item.workingHours : null,
+        mobileUiuxType: item.type,
+        mobileUiuxActive: true,
+        mobileUiuxBookable: true
       });
     }
     return rows;
@@ -1514,6 +1668,11 @@ class Component extends DCLogic {
       return false;
     }
 
+    if (!this.__mobileUiuxCanWriteReservations()) {
+      this.__mobileUiuxShowReservationToast('予約を変更する権限がありません');
+      return false;
+    }
+
     if (this.__mobileUiuxReservationSaving === true) {
       this.__mobileUiuxShowReservationToast('予約を保存中です');
       return false;
@@ -1577,6 +1736,11 @@ class Component extends DCLogic {
   }
 
   __mobileUiuxCreateReservation = async () => {
+    if (!this.__mobileUiuxCanWriteReservations()) {
+      this.__mobileUiuxShowReservationToast('予約を登録する権限がありません');
+      return false;
+    }
+
     if (this.__mobileUiuxReservationSaving === true) {
       this.__mobileUiuxShowReservationToast('予約を保存中です');
       return false;
@@ -1797,7 +1961,11 @@ class Component extends DCLogic {
   }
 
   __mobileUiuxNormalizeStatus(value) {
-    return typeof value === 'string' ? value : '';
+    if (value === 'confirmed') return 'confirmed';
+    if (value === 'arrived' || value === 'completed') return 'arrived';
+    if (value === 'cancelled') return 'cancelled';
+    if (value === 'no_show' || value === 'noshow') return 'noshow';
+    return 'unconfirmed';
   }
 
   __mobileUiuxNonNegativeNumber(value) {

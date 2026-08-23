@@ -192,7 +192,9 @@ export function transformMobileUiuxHtml(
   body.setAttribute('data-mobile-uiux-shell', 'production');
 
   const transformedHtml = replaceDcScript(root.toString(), preservedDcScript);
-  return options.resource === 'settings-detail'
+  return options.resource === 'home' ||
+    options.resource === 'reservations' ||
+    options.resource === 'settings-detail'
     ? stripTrailingLineWhitespace(transformedHtml)
     : transformedHtml;
 }
@@ -252,11 +254,141 @@ function removeProductionOnlySampleBlocks(
   appScreen: HTMLElement,
   resource: MobileUiuxScreenResource
 ): void {
-  if (resource !== 'settings-detail') {
-    return;
+  if (resource === 'home') {
+    makeHomeAttentionsNonInteractive(appScreen);
   }
 
-  removeSettingsDetailTemplateBlock(appScreen);
+  if (resource === 'reservations') {
+    removeUnsupportedReservationUi(appScreen);
+  }
+
+  if (resource === 'settings-detail') {
+    removeSettingsDetailTemplateBlock(appScreen);
+  }
+}
+
+function makeHomeAttentionsNonInteractive(appScreen: HTMLElement): void {
+  const actions = appScreen.querySelectorAll(
+    '[data-mobile-uiux-source-action="home-attention"]'
+  );
+  for (const action of actions) {
+    makeHomeAttentionNonInteractive(action);
+  }
+}
+
+function makeHomeAttentionNonInteractive(action: HTMLElement): void {
+  action.removeAttribute('onClick');
+  action.removeAttribute('onclick');
+  action.removeAttribute('data-mobile-uiux-source-action');
+  action.setAttribute('data-mobile-uiux-attention-card', '');
+  action.setAttribute(
+    'style',
+    (action.getAttribute('style') ?? '').replace(
+      'cursor: pointer;',
+      'cursor: default;'
+    )
+  );
+
+  const children = elementChildren(action);
+  const chevron = children.at(-1);
+  if (
+    chevron &&
+    normalizeStyle(chevron.getAttribute('style')).includes(
+      'transform:rotate(45deg)'
+    )
+  ) {
+    chevron.remove();
+  }
+
+  const markup = action
+    .toString()
+    .replace(/^<button\b/i, '<div')
+    .replace(/<\/button>$/i, '</div>');
+  const replacement = parse(markup).firstChild;
+  if (!replacement) {
+    throw new Error('Failed to build non-interactive home attention card');
+  }
+  action.replaceWith(replacement);
+}
+
+function removeUnsupportedReservationUi(appScreen: HTMLElement): void {
+  removeOptionalSingleElement(
+    appScreen,
+    '[data-mobile-uiux-source-control="reservation-more"]',
+    'reservation more control'
+  );
+  removeOptionalSingleElement(
+    appScreen,
+    '[data-mobile-uiux-source-control="reservation-view-switcher"]',
+    'reservation view switcher'
+  );
+  removeOptionalSingleElement(
+    appScreen,
+    '[data-mobile-uiux-source-section="reservation-timeline"]',
+    'reservation timeline section'
+  );
+  removeOptionalSingleElement(
+    appScreen,
+    '[data-mobile-uiux-source-action="reservation-history"]',
+    'reservation history action'
+  );
+  removeOptionalSingleElement(
+    appScreen,
+    '[data-mobile-uiux-source-sheet="reservation-history"]',
+    'reservation history sheet'
+  );
+
+  wrapOptionalSingleElement(
+    appScreen,
+    '[data-mobile-uiux-source-action="reservation-change-time"]',
+    'reservation change-time action',
+    'dCanChangeTime'
+  );
+  wrapOptionalSingleElement(
+    appScreen,
+    '[data-mobile-uiux-source-action="reservation-change-assignee"]',
+    'reservation change-assignee action',
+    'dCanChangeAssignee'
+  );
+}
+
+function findOptionalSingleElement(
+  root: HTMLElement,
+  selector: string,
+  label: string
+): HTMLElement | null {
+  const elements = root.querySelectorAll(selector);
+  if (elements.length > 1) {
+    throw new Error(`Expected at most one ${label}, found ${elements.length}`);
+  }
+  return elements[0] ?? null;
+}
+
+function removeOptionalSingleElement(
+  root: HTMLElement,
+  selector: string,
+  label: string
+): void {
+  findOptionalSingleElement(root, selector, label)?.remove();
+}
+
+function wrapOptionalSingleElement(
+  root: HTMLElement,
+  selector: string,
+  label: string,
+  condition: string
+): void {
+  const element = findOptionalSingleElement(root, selector, label);
+  if (!element) return;
+
+  element.removeAttribute('data-mobile-uiux-source-action');
+  const wrapper = parse(
+    `<sc-if value="{{ ${condition} }}" hint-placeholder-val="{{ false }}">${element.toString()}</sc-if>`
+  ).firstChild;
+  if (!wrapper) {
+    throw new Error(`Failed to wrap ${label}`);
+  }
+  element.replaceWith(wrapper);
 }
 
 function removeSettingsDetailTemplateBlock(appScreen: HTMLElement): void {
