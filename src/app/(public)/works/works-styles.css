@@ -48,7 +48,11 @@
 
 .works-paper {
   background-image:
-    radial-gradient(circle at 14% 12%, rgba(200, 135, 85, 0.045), transparent 32%),
+    radial-gradient(
+      circle at 14% 12%,
+      rgba(200, 135, 85, 0.045),
+      transparent 32%
+    ),
     radial-gradient(circle at 86% 76%, rgba(38, 54, 59, 0.035), transparent 36%);
 }
 

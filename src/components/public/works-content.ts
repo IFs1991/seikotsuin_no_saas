@@ -111,8 +111,7 @@ export const problemItems: WorksCardItem[] = [
   {
     eyebrow: 'Content',
     title: 'SNS・口コミ返信が続かない',
-    description:
-      'ネタ出し、文章、確認、投稿までがオーナー一人に集中している。',
+    description: 'ネタ出し、文章、確認、投稿までがオーナー一人に集中している。',
     outcome: '後回し → 生成 + 承認',
     icon: 'sparkles',
   },
@@ -302,8 +301,7 @@ export const excludedItems = [
 export const worksPlan = {
   name: 'Tiramisu Works',
   label: '1–3 locations',
-  description:
-    '既存のLINE・予約・Google・SNSを活かすAI業務導入支援。',
+  description: '既存のLINE・予約・Google・SNSを活かすAI業務導入支援。',
   bullets: [
     '少人数オペレーション',
     '既存環境の接続',

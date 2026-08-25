@@ -63,10 +63,7 @@ export function WorksFooter() {
           <Link href='/' className='transition-colors hover:text-white'>
             Tiramisu OS
           </Link>
-          <Link
-            href='/privacy'
-            className='transition-colors hover:text-white'
-          >
+          <Link href='/privacy' className='transition-colors hover:text-white'>
             プライバシー
           </Link>
           <Link href='/terms' className='transition-colors hover:text-white'>

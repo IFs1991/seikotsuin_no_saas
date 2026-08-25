@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import { WorksBottomSections } from '@/components/public/works/works-bottom-sections';
-import { WorksFooter, WorksHeader } from '@/components/public/works/works-layout';
+import {
+  WorksFooter,
+  WorksHeader,
+} from '@/components/public/works/works-layout';
 import { WorksTopSections } from '@/components/public/works/works-top-sections';
 import './works-styles.css';
 
