@@ -1,0 +1,183 @@
+/*
+ * Tiramisu Works public LP styles.
+ * Kept under .works-root to avoid leaking into authenticated product screens.
+ */
+
+.works-root {
+  --works-ink: #26363b;
+  --works-deep: #172428;
+  --works-copper: #c88755;
+  --works-copper-light: #e3a36f;
+  --works-paper: #f6f1e9;
+  --works-line: #ddd6cb;
+  --works-serif-jp:
+    'Yu Mincho', YuMincho, 'Hiragino Mincho ProN', 'Hiragino Mincho Pro',
+    'BIZ UDPMincho', Georgia, serif;
+  --works-sans-jp:
+    'Hiragino Kaku Gothic ProN', 'Yu Gothic', YuGothic, Meiryo, system-ui,
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --works-mono:
+    ui-monospace, 'Cascadia Code', 'SFMono-Regular', Consolas,
+    'Liberation Mono', monospace;
+  color: var(--works-deep);
+  background: var(--works-paper);
+  font-family: var(--works-sans-jp);
+  font-feature-settings: 'palt' 1;
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.works-root .font-serif-jp {
+  font-family: var(--works-serif-jp);
+  font-feature-settings: 'palt' 1;
+}
+
+.works-root .font-mono {
+  font-family: var(--works-mono);
+}
+
+.works-root * {
+  box-sizing: border-box;
+}
+
+.works-root ::selection {
+  color: #ffffff;
+  background: rgba(200, 135, 85, 0.88);
+}
+
+.works-paper {
+  background-image:
+    radial-gradient(circle at 14% 12%, rgba(200, 135, 85, 0.045), transparent 32%),
+    radial-gradient(circle at 86% 76%, rgba(38, 54, 59, 0.035), transparent 36%);
+}
+
+.works-hero-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, black, transparent 86%);
+}
+
+.works-mini-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.works-copper-text {
+  background: linear-gradient(90deg, #f2b783 0%, #c88755 48%, #f0c09b 100%);
+  background-size: 180% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: worksCopperShift 5s ease-in-out infinite alternate;
+}
+
+.works-fade-up {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: worksFadeUp 0.72s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.works-fade-up-2 {
+  animation-delay: 0.18s;
+}
+
+.works-live-dot {
+  animation: worksPulse 2.2s ease-in-out infinite;
+}
+
+.works-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.works-faq summary::marker {
+  content: '';
+}
+
+.works-flow-center::before,
+.works-flow-center::after {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  width: 14px;
+  height: 1px;
+  content: '';
+  background: rgba(227, 163, 111, 0.52);
+}
+
+.works-flow-center::before {
+  left: 0;
+}
+
+.works-flow-center::after {
+  right: 0;
+}
+
+@keyframes worksFadeUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes worksPulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(63, 125, 92, 0.26);
+  }
+  50% {
+    opacity: 0.62;
+    box-shadow: 0 0 0 5px rgba(63, 125, 92, 0);
+  }
+}
+
+@keyframes worksCopperShift {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
+}
+
+@media (max-width: 639px) {
+  .works-flow-center::before,
+  .works-flow-center::after {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .works-fade-up,
+  .works-live-dot,
+  .works-copper-text {
+    animation: none;
+  }
+
+  .works-fade-up {
+    opacity: 1;
+    transform: none;
+  }
+
+  .works-copper-text {
+    background: none;
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
+    color: #e3a36f;
+  }
+
+  .works-root * {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Integration-brand assets are raster PNGs with alpha. Keep them crisp and contained. */
+.works-root img[src*='/images/works/integrations/'] {
+  image-rendering: auto;
+  filter: saturate(0.98) contrast(1.01);
+}
