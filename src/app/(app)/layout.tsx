@@ -2,8 +2,9 @@ import React from 'react';
 import { redirect } from 'next/navigation';
 import {
   createClient,
-  getCurrentUser,
-  getUserAccessContext,
+  getUserAccessContextForVerifiedSubject,
+  logVerifiedSubjectTiming,
+  resolveVerifiedSubject,
 } from '@/lib/supabase';
 import { withAuthorityUnavailableRedirect } from '@/lib/auth/authority-unavailable';
 import { AppShell } from './app-shell';
@@ -14,19 +15,25 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createClient();
-  const user = await getCurrentUser(supabase);
+  const subject = await withAuthorityUnavailableRedirect(() =>
+    resolveVerifiedSubject(supabase)
+  );
 
-  if (!user) {
+  if (!subject) {
     redirect('/login');
   }
 
-  const accessContext = await withAuthorityUnavailableRedirect(() =>
-    getUserAccessContext(user.id, supabase, { user })
-  );
+  try {
+    const accessContext = await withAuthorityUnavailableRedirect(() =>
+      getUserAccessContextForVerifiedSubject(subject, supabase)
+    );
 
-  if (!accessContext.permissions || !accessContext.isActive) {
-    redirect('/unauthorized');
+    if (!accessContext.permissions || !accessContext.isActive) {
+      redirect('/unauthorized');
+    }
+
+    return <AppShell>{children}</AppShell>;
+  } finally {
+    logVerifiedSubjectTiming(subject, 'app_layout');
   }
-
-  return <AppShell>{children}</AppShell>;
 }

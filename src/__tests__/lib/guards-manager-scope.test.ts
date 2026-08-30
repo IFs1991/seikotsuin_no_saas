@@ -2,18 +2,23 @@ import { AppError, ERROR_CODES } from '@/lib/error-handler';
 
 const createClientMock = jest.fn();
 const createAdminClientMock = jest.fn();
-const getCurrentUserMock = jest.fn();
-const getUserAccessContextMock = jest.fn();
+const resolveVerifiedSubjectMock = jest.fn();
+const getUserAccessContextForVerifiedSubjectMock = jest.fn();
 const canAccessClinicScopeMock = jest.fn();
 const logUnauthorizedAccessMock = jest.fn();
+const logVerifiedSubjectTimingMock = jest.fn();
 
 jest.mock('@/lib/supabase', () => ({
   createClient: () => createClientMock(),
   createAdminClient: () => createAdminClientMock(),
-  getCurrentUser: (...args: unknown[]) => getCurrentUserMock(...args),
-  getUserAccessContext: (...args: unknown[]) =>
-    getUserAccessContextMock(...args),
-  canAccessClinicScope: (...args: unknown[]) => canAccessClinicScopeMock(...args),
+  resolveVerifiedSubject: (...args: unknown[]) =>
+    resolveVerifiedSubjectMock(...args),
+  getUserAccessContextForVerifiedSubject: (...args: unknown[]) =>
+    getUserAccessContextForVerifiedSubjectMock(...args),
+  logVerifiedSubjectTiming: (...args: unknown[]) =>
+    logVerifiedSubjectTimingMock(...args),
+  canAccessClinicScope: (...args: unknown[]) =>
+    canAccessClinicScopeMock(...args),
 }));
 
 jest.mock('@/lib/audit-logger', () => ({
@@ -24,10 +29,9 @@ jest.mock('@/lib/audit-logger', () => ({
   getRequestInfo: () => ({ ipAddress: '127.0.0.1', userAgent: 'jest' }),
 }));
 
-const { ensureClinicAccess } =
-  jest.requireActual<typeof import('@/lib/supabase/guards')>(
-    '@/lib/supabase/guards'
-  );
+const { ensureClinicAccess } = jest.requireActual<
+  typeof import('@/lib/supabase/guards')
+>('@/lib/supabase/guards');
 
 describe('ensureClinicAccess manager assignment scope', () => {
   const request = new Request('http://localhost/api/test');
@@ -35,18 +39,18 @@ describe('ensureClinicAccess manager assignment scope', () => {
   beforeEach(() => {
     createClientMock.mockReturnValue({});
     createAdminClientMock.mockReset();
-    getCurrentUserMock.mockReset();
-    getUserAccessContextMock.mockReset();
+    resolveVerifiedSubjectMock.mockReset();
+    getUserAccessContextForVerifiedSubjectMock.mockReset();
     canAccessClinicScopeMock.mockReset();
     logUnauthorizedAccessMock.mockClear();
+    logVerifiedSubjectTimingMock.mockClear();
   });
 
   it('allows a manager only through the canonical access-context scope', async () => {
-    getCurrentUserMock.mockResolvedValue({
-      id: 'manager-1',
-      email: 'manager@example.com',
+    resolveVerifiedSubjectMock.mockResolvedValue({
+      user: { id: 'manager-1', email: 'manager@example.com' },
     });
-    getUserAccessContextMock.mockResolvedValue({
+    getUserAccessContextForVerifiedSubjectMock.mockResolvedValue({
       permissions: {
         role: 'manager',
         clinic_id: 'primary-clinic',
@@ -75,11 +79,10 @@ describe('ensureClinicAccess manager assignment scope', () => {
   });
 
   it('denies a manager whose canonical scope is explicitly empty', async () => {
-    getCurrentUserMock.mockResolvedValue({
-      id: 'manager-1',
-      email: 'manager@example.com',
+    resolveVerifiedSubjectMock.mockResolvedValue({
+      user: { id: 'manager-1', email: 'manager@example.com' },
     });
-    getUserAccessContextMock.mockResolvedValue({
+    getUserAccessContextForVerifiedSubjectMock.mockResolvedValue({
       permissions: {
         role: 'manager',
         clinic_id: 'requested-clinic',
@@ -112,11 +115,10 @@ describe('ensureClinicAccess manager assignment scope', () => {
   });
 
   it('returns 403 when manager assignment scope rejects the requested clinic', async () => {
-    getCurrentUserMock.mockResolvedValue({
-      id: 'manager-1',
-      email: 'manager@example.com',
+    resolveVerifiedSubjectMock.mockResolvedValue({
+      user: { id: 'manager-1', email: 'manager@example.com' },
     });
-    getUserAccessContextMock.mockResolvedValue({
+    getUserAccessContextForVerifiedSubjectMock.mockResolvedValue({
       permissions: {
         role: 'manager',
         clinic_id: 'primary-clinic',
@@ -149,11 +151,10 @@ describe('ensureClinicAccess manager assignment scope', () => {
   });
 
   it('keeps existing canAccessClinicScope behavior for non-manager roles', async () => {
-    getCurrentUserMock.mockResolvedValue({
-      id: 'clinic-admin-1',
-      email: 'clinic-admin@example.com',
+    resolveVerifiedSubjectMock.mockResolvedValue({
+      user: { id: 'clinic-admin-1', email: 'clinic-admin@example.com' },
     });
-    getUserAccessContextMock.mockResolvedValue({
+    getUserAccessContextForVerifiedSubjectMock.mockResolvedValue({
       permissions: {
         role: 'clinic_admin',
         clinic_id: 'primary-clinic',

@@ -5,6 +5,8 @@ import {
   createClient,
   getCurrentUser,
   getUserAccessContext,
+  getUserAccessContextForVerifiedSubject,
+  resolveVerifiedSubject,
 } from '@/lib/supabase';
 import AdminLayout from '@/app/(app)/admin/(protected)/layout';
 import AppLayout from '@/app/(app)/layout';
@@ -28,6 +30,9 @@ jest.mock('@/lib/supabase', () => ({
   createClient: jest.fn(),
   getCurrentUser: jest.fn(),
   getUserAccessContext: jest.fn(),
+  getUserAccessContextForVerifiedSubject: jest.fn(),
+  resolveVerifiedSubject: jest.fn(),
+  logVerifiedSubjectTiming: jest.fn(),
   resolveScopedClinicIds: jest.fn(
     (permissions: {
       clinic_scope_ids?: string[];
@@ -52,6 +57,12 @@ const mockGetCurrentUser = getCurrentUser as jest.MockedFunction<
 const mockGetUserAccessContext = getUserAccessContext as jest.MockedFunction<
   typeof getUserAccessContext
 >;
+const mockGetUserAccessContextForVerifiedSubject =
+  getUserAccessContextForVerifiedSubject as jest.MockedFunction<
+    typeof getUserAccessContextForVerifiedSubject
+  >;
+const mockResolveVerifiedSubject =
+  resolveVerifiedSubject as jest.MockedFunction<typeof resolveVerifiedSubject>;
 const mockHeaders = headers as jest.MockedFunction<typeof headers>;
 const mockAdminGetUser = jest.fn();
 
@@ -81,6 +92,16 @@ describe('App route guards', () => {
       data: { user },
       error: null,
     });
+    mockResolveVerifiedSubject.mockImplementation(async client => {
+      const currentUser = await mockGetCurrentUser(client);
+      return currentUser ? { user: currentUser } : null;
+    });
+    mockGetUserAccessContextForVerifiedSubject.mockImplementation(
+      async (subject, client) =>
+        await mockGetUserAccessContext(subject.user.id, client, {
+          user: subject.user,
+        })
+    );
     mockHeaders.mockResolvedValue(
       new Headers({ 'x-current-path': '/admin/users' })
     );
@@ -157,6 +178,18 @@ describe('App route guards', () => {
         AppLayout({ children: <div>protected</div> })
       ).rejects.toThrow(`NEXT_REDIRECT:${AUTHORITY_UNAVAILABLE_PATH}`);
       expect(mockRedirect).toHaveBeenCalledWith(AUTHORITY_UNAVAILABLE_PATH);
+    });
+
+    test('subject 解決中の authority failure も 503 導線へリダイレクト', async () => {
+      mockResolveVerifiedSubject.mockRejectedValueOnce(
+        createAuthorityUnavailableError()
+      );
+
+      await expect(
+        AppLayout({ children: <div>protected</div> })
+      ).rejects.toThrow(`NEXT_REDIRECT:${AUTHORITY_UNAVAILABLE_PATH}`);
+      expect(mockRedirect).toHaveBeenCalledWith(AUTHORITY_UNAVAILABLE_PATH);
+      expect(mockGetUserAccessContextForVerifiedSubject).not.toHaveBeenCalled();
     });
 
     test('authority 503 以外の例外は専用 503 導線へ変換しない', async () => {

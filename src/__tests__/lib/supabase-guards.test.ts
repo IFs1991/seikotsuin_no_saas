@@ -1,16 +1,20 @@
 import { AppError, ERROR_CODES } from '@/lib/error-handler';
 
 const createClientMock = jest.fn();
-const getCurrentUserMock = jest.fn();
-const getUserAccessContextMock = jest.fn();
+const resolveVerifiedSubjectMock = jest.fn();
+const getUserAccessContextForVerifiedSubjectMock = jest.fn();
 const canAccessClinicScopeMock = jest.fn();
 const logUnauthorizedAccessMock = jest.fn();
+const logVerifiedSubjectTimingMock = jest.fn();
 
 jest.mock('@/lib/supabase', () => ({
   createClient: () => createClientMock(),
-  getCurrentUser: (...args: unknown[]) => getCurrentUserMock(...args),
-  getUserAccessContext: (...args: unknown[]) =>
-    getUserAccessContextMock(...args),
+  resolveVerifiedSubject: (...args: unknown[]) =>
+    resolveVerifiedSubjectMock(...args),
+  getUserAccessContextForVerifiedSubject: (...args: unknown[]) =>
+    getUserAccessContextForVerifiedSubjectMock(...args),
+  logVerifiedSubjectTiming: (...args: unknown[]) =>
+    logVerifiedSubjectTimingMock(...args),
   canAccessClinicScope: (...args: unknown[]) =>
     canAccessClinicScopeMock(...args),
 }));
@@ -27,17 +31,18 @@ const { ensureClinicAccess } = jest.requireActual('@/lib/supabase/guards');
 
 beforeEach(() => {
   createClientMock.mockReturnValue({});
-  getCurrentUserMock.mockReset();
-  getUserAccessContextMock.mockReset();
+  resolveVerifiedSubjectMock.mockReset();
+  getUserAccessContextForVerifiedSubjectMock.mockReset();
   canAccessClinicScopeMock.mockReset();
   logUnauthorizedAccessMock.mockClear();
+  logVerifiedSubjectTimingMock.mockClear();
 });
 
 describe('ensureClinicAccess', () => {
   const request = new Request('http://localhost/api/test');
 
   it('throws 401 when user is not authenticated', async () => {
-    getCurrentUserMock.mockResolvedValue(null);
+    resolveVerifiedSubjectMock.mockResolvedValue(null);
 
     await expect(
       ensureClinicAccess(request, '/api/test', 'clinic-1')
@@ -57,8 +62,10 @@ describe('ensureClinicAccess', () => {
   });
 
   it('throws 403 when permissions are missing', async () => {
-    getCurrentUserMock.mockResolvedValue({ id: 'user-1', email: 'user@test' });
-    getUserAccessContextMock.mockResolvedValue({
+    resolveVerifiedSubjectMock.mockResolvedValue({
+      user: { id: 'user-1', email: 'user@test' },
+    });
+    getUserAccessContextForVerifiedSubjectMock.mockResolvedValue({
       permissions: null,
       normalizedRole: null,
       clinicId: null,
@@ -72,12 +79,11 @@ describe('ensureClinicAccess', () => {
       code: ERROR_CODES.FORBIDDEN,
       statusCode: 403,
     });
-    expect(getUserAccessContextMock).toHaveBeenCalledWith(
-      'user-1',
-      expect.any(Object),
-      {
+    expect(getUserAccessContextForVerifiedSubjectMock).toHaveBeenCalledWith(
+      expect.objectContaining({
         user: { id: 'user-1', email: 'user@test' },
-      }
+      }),
+      expect.any(Object)
     );
 
     expect(logUnauthorizedAccessMock).toHaveBeenCalledWith(
@@ -91,8 +97,10 @@ describe('ensureClinicAccess', () => {
   });
 
   it('throws ACCOUNT_INACTIVE before evaluating permissions', async () => {
-    getCurrentUserMock.mockResolvedValue({ id: 'user-1', email: 'user@test' });
-    getUserAccessContextMock.mockResolvedValue({
+    resolveVerifiedSubjectMock.mockResolvedValue({
+      user: { id: 'user-1', email: 'user@test' },
+    });
+    getUserAccessContextForVerifiedSubjectMock.mockResolvedValue({
       permissions: {
         role: 'admin',
         clinic_id: 'clinic-1',
@@ -122,8 +130,10 @@ describe('ensureClinicAccess', () => {
   });
 
   it('throws 403 when clinic does not match and role is not privileged', async () => {
-    getCurrentUserMock.mockResolvedValue({ id: 'user-1', email: 'user@test' });
-    getUserAccessContextMock.mockResolvedValue({
+    resolveVerifiedSubjectMock.mockResolvedValue({
+      user: { id: 'user-1', email: 'user@test' },
+    });
+    getUserAccessContextForVerifiedSubjectMock.mockResolvedValue({
       permissions: {
         role: 'staff',
         clinic_id: 'clinic-allow',
@@ -153,11 +163,13 @@ describe('ensureClinicAccess', () => {
   });
 
   it('allows parent-scoped access for privileged roles', async () => {
-    getCurrentUserMock.mockResolvedValue({
-      id: 'admin-1',
-      email: 'admin@test',
+    resolveVerifiedSubjectMock.mockResolvedValue({
+      user: {
+        id: 'admin-1',
+        email: 'admin@test',
+      },
     });
-    getUserAccessContextMock.mockResolvedValue({
+    getUserAccessContextForVerifiedSubjectMock.mockResolvedValue({
       permissions: {
         role: 'admin',
         clinic_id: 'clinic-a',

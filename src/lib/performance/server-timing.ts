@@ -27,3 +27,14 @@ export function logPerf(
     ...extra,
   });
 }
+
+export function logPerfMetrics(
+  label: string,
+  metrics: Readonly<Record<string, number>>
+): void {
+  if (!shouldLogPerf()) {
+    return;
+  }
+
+  console.log('[perf]', label, metrics);
+}
