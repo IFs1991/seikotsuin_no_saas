@@ -8,7 +8,9 @@ import {
   getUserAccessContextForVerifiedSubject,
   canAccessClinicScope,
   type SupabaseServerClient,
+  type UserAccessContext,
   type UserPermissions,
+  type VerifiedSubject,
 } from '@/lib/supabase';
 import {
   canAccessCrossClinicWithCompat,
@@ -34,7 +36,9 @@ export interface ClinicAccessOptions {
 
 export interface ClinicAccessContext {
   supabase: SupabaseServerClient;
+  subject: VerifiedSubject;
   user: NonNullable<Awaited<ReturnType<typeof resolveVerifiedSubject>>>['user'];
+  accessContext: UserAccessContext;
   permissions: UserPermissions;
 }
 
@@ -149,7 +153,9 @@ export async function ensureClinicAccess(
 
     return {
       supabase,
+      subject,
       user,
+      accessContext,
       permissions,
     };
   } finally {

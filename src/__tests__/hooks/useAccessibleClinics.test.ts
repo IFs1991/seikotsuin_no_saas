@@ -1,8 +1,10 @@
 /** @jest-environment jsdom */
 
+import { createElement, type ReactNode } from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useAccessibleClinics } from '@/hooks/useAccessibleClinics';
 import * as apiClient from '@/lib/api-client';
+import { SelectedClinicProvider } from '@/providers/selected-clinic-context';
 
 jest.mock('@/lib/api-client');
 
@@ -105,6 +107,29 @@ describe('useAccessibleClinics', () => {
 
     expect(result.current.loading).toBe(false);
     expect(result.current.clinics).toEqual([]);
+    expect(mockApi.api.clinics.getAccessible).not.toHaveBeenCalled();
+  });
+
+  it('TC-CH06: AppShellのSelectedClinicProvider配下では二重fetchしない', () => {
+    function Wrapper({ children }: { children: ReactNode }) {
+      return createElement(SelectedClinicProvider, {
+        initialClinicId: 'clinic-1',
+        clinics: [{ id: 'clinic-1', name: '本院' }],
+        currentClinicId: 'clinic-1',
+        children,
+      });
+    }
+
+    const { result } = renderHook(() => useAccessibleClinics(), {
+      wrapper: Wrapper,
+    });
+
+    expect(result.current).toEqual({
+      clinics: [{ id: 'clinic-1', name: '本院' }],
+      currentClinicId: 'clinic-1',
+      loading: false,
+      error: null,
+    });
     expect(mockApi.api.clinics.getAccessible).not.toHaveBeenCalled();
   });
 });

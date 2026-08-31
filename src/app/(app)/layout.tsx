@@ -5,8 +5,11 @@ import {
   getUserAccessContextForVerifiedSubject,
   logVerifiedSubjectTiming,
   resolveVerifiedSubject,
+  ScopeNotConfiguredError,
 } from '@/lib/supabase';
 import { withAuthorityUnavailableRedirect } from '@/lib/auth/authority-unavailable';
+import { buildAppBootstrap } from '@/lib/app-bootstrap/service';
+import type { AppBootstrapData } from '@/lib/app-bootstrap/types';
 import { AppShell } from './app-shell';
 
 export default async function AppLayout({
@@ -32,7 +35,24 @@ export default async function AppLayout({
       redirect('/unauthorized');
     }
 
-    return <AppShell>{children}</AppShell>;
+    let initialBootstrap: AppBootstrapData;
+    try {
+      initialBootstrap = await withAuthorityUnavailableRedirect(() =>
+        buildAppBootstrap({
+          subject,
+          accessContext,
+          supabase,
+        })
+      );
+    } catch (error) {
+      if (error instanceof ScopeNotConfiguredError) {
+        redirect('/unauthorized');
+      }
+
+      throw error;
+    }
+
+    return <AppShell initialBootstrap={initialBootstrap}>{children}</AppShell>;
   } finally {
     logVerifiedSubjectTiming(subject, 'app_layout');
   }

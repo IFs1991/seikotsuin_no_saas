@@ -7,11 +7,10 @@ import {
   isErrorResponse,
   isSuccessResponse,
 } from '@/lib/api-client';
+import type { AppBootstrapClinic } from '@/lib/app-bootstrap/types';
+import { useOptionalSelectedClinic } from '@/providers/selected-clinic-context';
 
-export interface AccessibleClinic {
-  id: string;
-  name: string;
-}
+export type AccessibleClinic = AppBootstrapClinic;
 
 export interface UseAccessibleClinicsResult {
   clinics: readonly AccessibleClinic[];
@@ -74,12 +73,16 @@ export function useAccessibleClinics(
   options: UseAccessibleClinicsOptions = {}
 ): UseAccessibleClinicsResult {
   const { enabled = true } = options;
+  const selectedClinicContext = useOptionalSelectedClinic();
+  const shouldFetch = enabled && !selectedClinicContext;
   const [state, setState] = useState<UseAccessibleClinicsResult>(
-    enabled ? INITIAL_ACCESSIBLE_CLINICS_STATE : IDLE_ACCESSIBLE_CLINICS_STATE
+    shouldFetch
+      ? INITIAL_ACCESSIBLE_CLINICS_STATE
+      : IDLE_ACCESSIBLE_CLINICS_STATE
   );
 
   useEffect(() => {
-    if (!enabled) {
+    if (!shouldFetch) {
       setState(IDLE_ACCESSIBLE_CLINICS_STATE);
       return;
     }
@@ -135,7 +138,16 @@ export function useAccessibleClinics(
     return () => {
       isMounted = false;
     };
-  }, [enabled]);
+  }, [shouldFetch]);
+
+  if (selectedClinicContext) {
+    return {
+      clinics: selectedClinicContext.clinics,
+      currentClinicId: selectedClinicContext.currentClinicId,
+      loading: selectedClinicContext.clinicsLoading,
+      error: selectedClinicContext.clinicsError,
+    };
+  }
 
   return state;
 }
