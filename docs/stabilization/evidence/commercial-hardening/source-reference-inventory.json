@@ -7,7 +7,7 @@
     "clientModule records an explicit use-client directive, not the full import graph."
   ],
   "summary": {
-    "scannedSourceFiles": 646,
+    "scannedSourceFiles": 652,
     "catalogTables": 86,
     "catalogTablesWithLiteralReferences": 68,
     "literalRpcNames": 37
@@ -55,7 +55,7 @@
         },
         {
           "path": "src/lib/audit-logger.ts",
-          "line": 45,
+          "line": 46,
           "clientModule": false
         }
       ]
@@ -617,16 +617,6 @@
           "clientModule": false
         },
         {
-          "path": "src/app/api/clinics/accessible/route.ts",
-          "line": 88,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/clinics/accessible/route.ts",
-          "line": 110,
-          "clientModule": false
-        },
-        {
           "path": "src/app/api/clinics/route.ts",
           "line": 33,
           "clientModule": false
@@ -659,6 +649,16 @@
         {
           "path": "src/app/api/system/status/route.ts",
           "line": 37,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/app-bootstrap/service.ts",
+          "line": 126,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/app-bootstrap/service.ts",
+          "line": 150,
           "clientModule": false
         },
         {
@@ -723,12 +723,12 @@
         },
         {
           "path": "src/lib/supabase/server.ts",
-          "line": 374,
+          "line": 339,
           "clientModule": false
         },
         {
           "path": "src/lib/supabase/server.ts",
-          "line": 408,
+          "line": 373,
           "clientModule": false
         }
       ]
@@ -1995,7 +1995,7 @@
         },
         {
           "path": "src/lib/supabase/auth-context.ts",
-          "line": 106,
+          "line": 153,
           "clientModule": false
         }
       ]
@@ -3475,7 +3475,7 @@
         },
         {
           "path": "src/lib/supabase/auth-context.ts",
-          "line": 81,
+          "line": 128,
           "clientModule": false
         }
       ]
