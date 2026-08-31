@@ -4,7 +4,7 @@
   "sourceRoot": "src/app/api",
   "policyStatus": "ENFORCED",
   "summary": {
-    "scannedRouteFiles": 159,
+    "scannedRouteFiles": 160,
     "mutationRouteFiles": 103,
     "mutationHandlers": 132,
     "methodCounts": {
