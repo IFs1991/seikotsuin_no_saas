@@ -5,8 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Header } from '@/components/navigation/header';
 import { Sidebar } from '@/components/navigation/sidebar';
 import { MobileBottomNav } from '@/components/navigation/mobile-bottom-nav';
-import { useUserProfile } from '@/hooks/useUserProfile';
-import { useAccessibleClinics } from '@/hooks/useAccessibleClinics';
+import { useAppBootstrap } from '@/hooks/queries/useAppBootstrap';
 import { UserProfileProvider } from '@/providers/user-profile-context';
 import { QueryProvider } from '@/providers/query-provider';
 import { SelectedClinicProvider } from '@/providers/selected-clinic-context';
@@ -18,6 +17,7 @@ import {
   isAreaManagerRole,
 } from '@/lib/constants/roles';
 import { resolveInitialSelectedClinicId } from '@/lib/clinics/selection';
+import type { AppBootstrapData } from '@/lib/app-bootstrap/types';
 
 const DARK_CLASS = 'dark';
 
@@ -35,21 +35,34 @@ function buildFallbackClinic(
   };
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+interface AppShellProps {
+  children: React.ReactNode;
+  initialBootstrap: AppBootstrapData;
+}
+
+export function AppShell(props: AppShellProps) {
+  return (
+    <QueryProvider>
+      <AppShellContent {...props} />
+    </QueryProvider>
+  );
+}
+
+function AppShellContent({ children, initialBootstrap }: AppShellProps) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isDarkMode, setIsDarkMode] = React.useState(false);
   const {
-    profile,
-    loading: profileLoading,
-    error: profileError,
-  } = useUserProfile();
-  const {
-    clinics,
-    currentClinicId,
-    loading: clinicsLoading,
-    error: clinicsError,
-  } = useAccessibleClinics();
+    data: bootstrap,
+    loading: bootstrapLoading,
+    profileError,
+    clinicsError,
+  } = useAppBootstrap(initialBootstrap);
+  const profile = bootstrap.profile;
+  const clinics = bootstrap.clinics;
+  const currentClinicId = bootstrap.currentClinicId;
+  const profileLoading = bootstrapLoading;
+  const clinicsLoading = bootstrapLoading;
 
   const profileRole = profile?.role ?? null;
   const profileClinicId = profile?.clinicId ?? null;
@@ -138,70 +151,68 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const shouldShowLegalFooter = !pathname.startsWith('/reservations');
 
   return (
-    <QueryProvider>
-      <UserProfileProvider value={userProfileContextValue}>
-        <SelectedClinicProvider
-          initialClinicId={initialClinicId}
-          clinics={clinics}
-          currentClinicId={currentClinicId}
-          clinicsLoading={clinicsLoading}
-          clinicsError={clinicsError}
-        >
-          <div className='min-h-screen bg-background'>
-            <Header
-              onToggleSidebar={toggleSidebar}
-              onToggleDarkMode={toggleDarkMode}
-              isDarkMode={isDarkMode}
-              profile={profile}
-              profileLoading={profileLoading}
-              isAdmin={canAccessAdminUI}
-              canAccessAdminNavigation={canAccessAdminNavigation}
-              clinics={clinics}
-              clinicsLoading={clinicsLoading}
-              clinicsError={clinicsError}
-              fallbackClinic={fallbackClinic}
-            />
+    <UserProfileProvider value={userProfileContextValue}>
+      <SelectedClinicProvider
+        initialClinicId={initialClinicId}
+        clinics={clinics}
+        currentClinicId={currentClinicId}
+        clinicsLoading={clinicsLoading}
+        clinicsError={clinicsError}
+      >
+        <div className='min-h-screen bg-background'>
+          <Header
+            onToggleSidebar={toggleSidebar}
+            onToggleDarkMode={toggleDarkMode}
+            isDarkMode={isDarkMode}
+            profile={profile}
+            profileLoading={profileLoading}
+            isAdmin={canAccessAdminUI}
+            canAccessAdminNavigation={canAccessAdminNavigation}
+            clinics={clinics}
+            clinicsLoading={clinicsLoading}
+            clinicsError={clinicsError}
+            fallbackClinic={fallbackClinic}
+          />
 
-            <div className='flex pt-16'>
-              {isSidebarOpen && (
-                <div
-                  className='fixed inset-0 top-16 z-30 bg-black/40 md:hidden'
-                  onClick={closeSidebar}
-                  aria-hidden='true'
-                />
-              )}
-
-              <Sidebar
-                isOpen={isSidebarOpen}
-                onClose={closeSidebar}
-                isAdmin={canAccessAdminNavigation}
-                profileLoading={profileLoading}
-                role={profileRole}
+          <div className='flex pt-16'>
+            {isSidebarOpen && (
+              <div
+                className='fixed inset-0 top-16 z-30 bg-black/40 md:hidden'
+                onClick={closeSidebar}
+                aria-hidden='true'
               />
+            )}
 
-              <main className='min-h-[calc(100vh-4rem)] min-w-0 flex-1 bg-background transition-colors duration-300'>
-                <div className='p-6 lg:p-8'>
-                  <div className='mx-auto max-w-7xl text-foreground'>
-                    {children}
-                  </div>
-                  {shouldShowLegalFooter && (
-                    <footer className='mx-auto mt-10 max-w-7xl border-t border-border pt-4 text-sm text-muted-foreground'>
-                      <LegalFooterLinks />
-                    </footer>
-                  )}
-                </div>
-              </main>
-            </div>
-
-            <MobileBottomNav
+            <Sidebar
+              isOpen={isSidebarOpen}
+              onClose={closeSidebar}
               isAdmin={canAccessAdminNavigation}
               profileLoading={profileLoading}
               role={profileRole}
             />
-            <MobileUiuxEntryPrompt role={profileRole} />
+
+            <main className='min-h-[calc(100vh-4rem)] min-w-0 flex-1 bg-background transition-colors duration-300'>
+              <div className='p-6 lg:p-8'>
+                <div className='mx-auto max-w-7xl text-foreground'>
+                  {children}
+                </div>
+                {shouldShowLegalFooter && (
+                  <footer className='mx-auto mt-10 max-w-7xl border-t border-border pt-4 text-sm text-muted-foreground'>
+                    <LegalFooterLinks />
+                  </footer>
+                )}
+              </div>
+            </main>
           </div>
-        </SelectedClinicProvider>
-      </UserProfileProvider>
-    </QueryProvider>
+
+          <MobileBottomNav
+            isAdmin={canAccessAdminNavigation}
+            profileLoading={profileLoading}
+            role={profileRole}
+          />
+          <MobileUiuxEntryPrompt role={profileRole} />
+        </div>
+      </SelectedClinicProvider>
+    </UserProfileProvider>
   );
 }

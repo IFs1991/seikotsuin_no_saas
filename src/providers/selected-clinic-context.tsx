@@ -10,7 +10,9 @@ import {
   type ReactNode,
   type SetStateAction,
 } from 'react';
-import type { AccessibleClinic } from '@/hooks/useAccessibleClinics';
+import type { AppBootstrapClinic } from '@/lib/app-bootstrap/types';
+
+type AccessibleClinic = AppBootstrapClinic;
 
 interface SelectedClinicContextValue {
   selectedClinicId: string | null;

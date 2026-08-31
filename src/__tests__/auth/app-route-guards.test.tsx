@@ -7,6 +7,7 @@ import {
   getUserAccessContext,
   getUserAccessContextForVerifiedSubject,
   resolveVerifiedSubject,
+  ScopeNotConfiguredError,
 } from '@/lib/supabase';
 import AdminLayout from '@/app/(app)/admin/(protected)/layout';
 import AppLayout from '@/app/(app)/layout';
@@ -15,6 +16,7 @@ import ReservationsLayout from '@/app/(app)/reservations/layout';
 import { GET as getAuthorityUnavailable } from '@/app/auth/authority-unavailable/route';
 import { AUTHORITY_UNAVAILABLE_PATH } from '@/lib/auth/authority-unavailable';
 import { AppError, ERROR_CODES } from '@/lib/error-handler';
+import { buildAppBootstrap } from '@/lib/app-bootstrap/service';
 
 jest.mock('next/navigation', () => ({
   redirect: jest.fn((path: string) => {
@@ -33,6 +35,9 @@ jest.mock('@/lib/supabase', () => ({
   getUserAccessContextForVerifiedSubject: jest.fn(),
   resolveVerifiedSubject: jest.fn(),
   logVerifiedSubjectTiming: jest.fn(),
+  ScopeNotConfiguredError:
+    jest.requireActual<typeof import('@/lib/supabase')>('@/lib/supabase')
+      .ScopeNotConfiguredError,
   resolveScopedClinicIds: jest.fn(
     (permissions: {
       clinic_scope_ids?: string[];
@@ -45,6 +50,10 @@ jest.mock('@/lib/supabase', () => ({
       return permissions.clinic_id ? [permissions.clinic_id] : null;
     }
   ),
+}));
+
+jest.mock('@/lib/app-bootstrap/service', () => ({
+  buildAppBootstrap: jest.fn(),
 }));
 
 const mockRedirect = redirect as jest.MockedFunction<typeof redirect>;
@@ -63,6 +72,9 @@ const mockGetUserAccessContextForVerifiedSubject =
   >;
 const mockResolveVerifiedSubject =
   resolveVerifiedSubject as jest.MockedFunction<typeof resolveVerifiedSubject>;
+const mockBuildAppBootstrap = buildAppBootstrap as jest.MockedFunction<
+  typeof buildAppBootstrap
+>;
 const mockHeaders = headers as jest.MockedFunction<typeof headers>;
 const mockAdminGetUser = jest.fn();
 
@@ -105,6 +117,21 @@ describe('App route guards', () => {
     mockHeaders.mockResolvedValue(
       new Headers({ 'x-current-path': '/admin/users' })
     );
+    mockBuildAppBootstrap.mockResolvedValue({
+      profile: {
+        id: 'user-1',
+        email: 'staff@example.com',
+        role: 'staff',
+        clinicId: 'clinic-1',
+        clinicName: '本院',
+        isActive: true,
+        isAdmin: false,
+      },
+      clinics: [{ id: 'clinic-1', name: '本院' }],
+      currentClinicId: 'clinic-1',
+      errors: { profile: null, clinics: null },
+      generatedAt: '2026-08-31T00:00:00.000Z',
+    });
   });
 
   describe('AppLayout', () => {
@@ -132,6 +159,16 @@ describe('App route guards', () => {
 
       expect(rendered).toBeDefined();
       expect(mockRedirect).not.toHaveBeenCalled();
+      expect(mockBuildAppBootstrap).toHaveBeenCalledTimes(1);
+      expect(mockBuildAppBootstrap).toHaveBeenCalledWith(
+        expect.objectContaining({
+          supabase: supabaseClient,
+          accessContext: expect.objectContaining({
+            normalizedRole: 'staff',
+            clinicId: 'clinic-1',
+          }),
+        })
+      );
     });
 
     test('inactive account は /unauthorized にリダイレクト', async () => {
@@ -201,6 +238,50 @@ describe('App route guards', () => {
         unexpectedError
       );
       expect(mockRedirect).not.toHaveBeenCalled();
+    });
+
+    test('bootstrap中のauthority failureも情報を含まない503導線へリダイレクト', async () => {
+      mockGetCurrentUser.mockResolvedValue(user);
+      mockGetUserAccessContext.mockResolvedValue({
+        permissions: {
+          role: 'manager',
+          clinic_id: 'clinic-1',
+          clinic_scope_ids: ['clinic-1'],
+        },
+        role: 'manager',
+        normalizedRole: 'manager',
+        clinicId: 'clinic-1',
+        isActive: true,
+        isAdmin: false,
+      });
+      mockBuildAppBootstrap.mockRejectedValueOnce(
+        createAuthorityUnavailableError()
+      );
+
+      await expect(
+        AppLayout({ children: <div>protected</div> })
+      ).rejects.toThrow(`NEXT_REDIRECT:${AUTHORITY_UNAVAILABLE_PATH}`);
+      expect(mockRedirect).toHaveBeenCalledWith(AUTHORITY_UNAVAILABLE_PATH);
+    });
+
+    test('bootstrap中にscopeを確定できなければfail-closedでunauthorizedへリダイレクト', async () => {
+      mockGetCurrentUser.mockResolvedValue(user);
+      mockGetUserAccessContext.mockResolvedValue({
+        permissions: { role: 'staff', clinic_id: 'clinic-1' },
+        role: 'staff',
+        normalizedRole: 'staff',
+        clinicId: 'clinic-1',
+        isActive: true,
+        isAdmin: false,
+      });
+      mockBuildAppBootstrap.mockRejectedValueOnce(
+        new ScopeNotConfiguredError()
+      );
+
+      await expect(
+        AppLayout({ children: <div>protected</div> })
+      ).rejects.toThrow('NEXT_REDIRECT:/unauthorized');
+      expect(mockRedirect).toHaveBeenCalledWith('/unauthorized');
     });
   });
 

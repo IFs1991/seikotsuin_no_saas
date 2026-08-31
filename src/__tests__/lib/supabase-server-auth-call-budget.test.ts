@@ -14,6 +14,7 @@ describe('server auth call budget', () => {
     jest.dontMock('@/lib/env');
     jest.dontMock('@/lib/audit-logger');
     jest.dontMock('@/app/(app)/app-shell');
+    jest.dontMock('@/lib/app-bootstrap/service');
   });
 
   it('App Layout and the API clinic guard each resolve the subject once', async () => {
@@ -117,6 +118,23 @@ describe('server auth call budget', () => {
     }));
     jest.doMock('@/app/(app)/app-shell', () => ({
       AppShell: ({ children }: { children: unknown }) => children,
+    }));
+    jest.doMock('@/lib/app-bootstrap/service', () => ({
+      buildAppBootstrap: jest.fn().mockResolvedValue({
+        profile: {
+          id: user.id,
+          email: user.email,
+          role: 'staff',
+          clinicId: 'clinic-1',
+          clinicName: '本院',
+          isActive: true,
+          isAdmin: false,
+        },
+        clinics: [{ id: 'clinic-1', name: '本院' }],
+        currentClinicId: 'clinic-1',
+        errors: { profile: null, clinics: null },
+        generatedAt: '2026-08-31T00:00:00.000Z',
+      }),
     }));
 
     const server = await import('@/lib/supabase/server');
