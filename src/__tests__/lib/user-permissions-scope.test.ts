@@ -118,6 +118,19 @@ function createProfileQuery(results: readonly ProfileQueryResult[]) {
   };
 }
 
+function createManagerAssignmentsQuery(clinicIds: readonly string[]) {
+  return {
+    select: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    is: jest.fn().mockResolvedValue({
+      data: clinicIds.map(clinicId => ({
+        clinic_id: testClinicId(clinicId),
+      })),
+      error: null,
+    }),
+  };
+}
+
 function createSessionClient(
   userId: string,
   clinicScopeClaim: unknown,
@@ -176,7 +189,8 @@ function createSessionClient(
 
 function createAdminClient(
   userPermissionsQuery: ReturnType<typeof createUserPermissionsQuery>,
-  clinicsQuery: ReturnType<typeof createClinicsQuery>
+  clinicsQuery: ReturnType<typeof createClinicsQuery>,
+  managerAssignmentsQuery = createManagerAssignmentsQuery([])
 ) {
   return {
     from: jest.fn((table: string) => {
@@ -186,6 +200,10 @@ function createAdminClient(
 
       if (table === 'clinics') {
         return clinicsQuery;
+      }
+
+      if (table === 'manager_clinic_assignments') {
+        return managerAssignmentsQuery;
       }
 
       throw new Error(`Unexpected table: ${table}`);
@@ -233,10 +251,15 @@ async function importServerWithClients(
   }));
 
   const server = await import('@/lib/supabase/server');
+  const requestAuthContext =
+    await import('@/lib/supabase/request-auth-context');
   server.resetSupabaseClientFactory();
   return {
     getUserPermissions: server.getUserPermissions,
     getUserAccessContext: server.getUserAccessContext,
+    getUserAccessContextForVerifiedSubject:
+      server.getUserAccessContextForVerifiedSubject,
+    resolveVerifiedSubject: requestAuthContext.resolveVerifiedSubject,
     resolveScopedClinicIds: server.resolveScopedClinicIds,
     resetSupabaseClientFactory: server.resetSupabaseClientFactory,
     createServerClientMock,
@@ -288,6 +311,301 @@ describe('getUserPermissions clinic scope expansion', () => {
     );
     resetSupabaseClientFactory();
   });
+
+  it.each(['admin', 'clinic_admin'] as const)(
+    'preserves %s DB scope intersection on the verified-subject path',
+    async role => {
+      const userPermissionsQuery = createUserPermissionsQuery({
+        role,
+        clinic_id: 'parent-1',
+      });
+      const clinicsQuery = createClinicsQuery([
+        { id: 'parent-1', parent_id: null },
+        { id: 'child-1', parent_id: 'parent-1' },
+        { id: 'child-2', parent_id: 'parent-1' },
+      ]);
+      const adminClient = createAdminClient(userPermissionsQuery, clinicsQuery);
+      const sessionClient = createSessionClient(
+        `verified-${role}`,
+        ['child-1', 'outside-db-scope'],
+        role
+      );
+      const {
+        getUserAccessContextForVerifiedSubject,
+        resolveVerifiedSubject,
+        resetSupabaseClientFactory,
+      } = await importServerWithClients(sessionClient, adminClient);
+
+      const subject = await resolveVerifiedSubject(sessionClient);
+      if (!subject) {
+        throw new Error('Expected a verified subject');
+      }
+      const context = await getUserAccessContextForVerifiedSubject(
+        subject,
+        sessionClient
+      );
+
+      expect(context.permissions?.clinic_scope_ids).toEqual([
+        testClinicId('child-1'),
+      ]);
+      expect(sessionClient.auth.getUser).toHaveBeenCalledTimes(1);
+      expect(sessionClient.auth.getSession).toHaveBeenCalledTimes(1);
+      expect(userPermissionsQuery.maybeSingle).toHaveBeenCalledTimes(1);
+      expect(clinicsQuery.maybeSingle).toHaveBeenCalledTimes(1);
+      expect(clinicsQuery.returns).toHaveBeenCalledTimes(1);
+      resetSupabaseClientFactory();
+    }
+  );
+
+  it('single-flights permissions and profile lookup on one verified subject', async () => {
+    const userPermissionsQuery = createUserPermissionsQuery({
+      role: 'staff',
+      clinic_id: 'parent-1',
+    });
+    const clinicsQuery = createClinicsQuery([]);
+    const profileQuery = createProfileQuery([
+      { data: { is_active: true }, error: null },
+    ]);
+    const adminClient = createAdminClient(userPermissionsQuery, clinicsQuery);
+    const sessionClient = createSessionClient(
+      'single-flight-staff',
+      undefined,
+      'staff',
+      profileQuery
+    );
+    const {
+      getUserAccessContextForVerifiedSubject,
+      resolveVerifiedSubject,
+      resetSupabaseClientFactory,
+    } = await importServerWithClients(sessionClient, adminClient);
+
+    const subject = await resolveVerifiedSubject(sessionClient);
+    if (!subject) {
+      throw new Error('Expected a verified subject');
+    }
+    const [first, second] = await Promise.all([
+      getUserAccessContextForVerifiedSubject(subject, sessionClient),
+      getUserAccessContextForVerifiedSubject(subject, sessionClient),
+    ]);
+
+    expect(first).toEqual(second);
+    expect(sessionClient.auth.getUser).toHaveBeenCalledTimes(1);
+    expect(sessionClient.auth.getSession).toHaveBeenCalledTimes(1);
+    expect(userPermissionsQuery.maybeSingle).toHaveBeenCalledTimes(1);
+    expect(profileQuery.maybeSingle).toHaveBeenCalledTimes(1);
+    expect(adminClient.from).toHaveBeenCalledTimes(1);
+    resetSupabaseClientFactory();
+  });
+
+  it('keeps manager DB assignments authoritative and intersects JWT scope once', async () => {
+    const userPermissionsQuery = createUserPermissionsQuery({
+      role: 'manager',
+      clinic_id: 'parent-1',
+    });
+    const clinicsQuery = createClinicsQuery([]);
+    const managerAssignmentsQuery = createManagerAssignmentsQuery([
+      'child-1',
+      'child-2',
+    ]);
+    const adminClient = createAdminClient(
+      userPermissionsQuery,
+      clinicsQuery,
+      managerAssignmentsQuery
+    );
+    const sessionClient = createSessionClient(
+      'verified-manager',
+      ['child-1', 'outside-db-scope'],
+      'manager'
+    );
+    const {
+      getUserAccessContextForVerifiedSubject,
+      resolveVerifiedSubject,
+      resetSupabaseClientFactory,
+    } = await importServerWithClients(sessionClient, adminClient);
+
+    const subject = await resolveVerifiedSubject(sessionClient);
+    if (!subject) {
+      throw new Error('Expected a verified subject');
+    }
+    const context = await getUserAccessContextForVerifiedSubject(
+      subject,
+      sessionClient
+    );
+
+    expect(context.permissions?.clinic_scope_ids).toEqual([
+      testClinicId('child-1'),
+    ]);
+    expect(managerAssignmentsQuery.is).toHaveBeenCalledTimes(1);
+    expect(sessionClient.auth.getUser).toHaveBeenCalledTimes(1);
+    expect(sessionClient.auth.getSession).toHaveBeenCalledTimes(1);
+    expect(userPermissionsQuery.maybeSingle).toHaveBeenCalledTimes(1);
+    resetSupabaseClientFactory();
+  });
+
+  it('fails closed on a malformed JWT scope through the verified-subject path', async () => {
+    const userPermissionsQuery = createUserPermissionsQuery({
+      role: 'staff',
+      clinic_id: 'parent-1',
+    });
+    const adminClient = createAdminClient(
+      userPermissionsQuery,
+      createClinicsQuery([])
+    );
+    const sessionClient = createSessionClient(
+      'verified-malformed',
+      ['parent-1', 42],
+      'staff'
+    );
+    const {
+      getUserAccessContextForVerifiedSubject,
+      resolveVerifiedSubject,
+      resetSupabaseClientFactory,
+    } = await importServerWithClients(sessionClient, adminClient);
+
+    const subject = await resolveVerifiedSubject(sessionClient);
+    if (!subject) {
+      throw new Error('Expected a verified subject');
+    }
+
+    await expect(
+      getUserAccessContextForVerifiedSubject(subject, sessionClient)
+    ).resolves.toEqual(
+      expect.objectContaining({
+        permissions: null,
+        clinicId: null,
+      })
+    );
+    resetSupabaseClientFactory();
+  });
+
+  it('preserves missing permissions and inactive profile outcomes on the verified-subject path', async () => {
+    const missingPermissionsQuery = createUserPermissionsQuery(null);
+    const missingPermissionsClient = createAdminClient(
+      missingPermissionsQuery,
+      createClinicsQuery([])
+    );
+    const activeSessionClient = createSessionClient(
+      'verified-missing-permissions',
+      undefined,
+      'staff'
+    );
+    let imported = await importServerWithClients(
+      activeSessionClient,
+      missingPermissionsClient
+    );
+    let subject = await imported.resolveVerifiedSubject(activeSessionClient);
+    if (!subject) {
+      throw new Error('Expected a verified subject');
+    }
+    await expect(
+      imported.getUserAccessContextForVerifiedSubject(
+        subject,
+        activeSessionClient
+      )
+    ).resolves.toEqual(
+      expect.objectContaining({ permissions: null, isActive: true })
+    );
+    imported.resetSupabaseClientFactory();
+
+    const inactiveProfileQuery = createProfileQuery([
+      { data: { is_active: false }, error: null },
+    ]);
+    const inactiveSessionClient = createSessionClient(
+      'verified-inactive-profile',
+      undefined,
+      'staff',
+      inactiveProfileQuery
+    );
+    const inactiveAdminClient = createAdminClient(
+      createUserPermissionsQuery({ role: 'staff', clinic_id: 'parent-1' }),
+      createClinicsQuery([])
+    );
+    imported = await importServerWithClients(
+      inactiveSessionClient,
+      inactiveAdminClient
+    );
+    subject = await imported.resolveVerifiedSubject(inactiveSessionClient);
+    if (!subject) {
+      throw new Error('Expected a verified subject');
+    }
+    await expect(
+      imported.getUserAccessContextForVerifiedSubject(
+        subject,
+        inactiveSessionClient
+      )
+    ).resolves.toEqual(
+      expect.objectContaining({
+        permissions: null,
+        isActive: false,
+      })
+    );
+    imported.resetSupabaseClientFactory();
+  });
+
+  it.each([
+    {
+      name: 'permissions',
+      permissionsError: {
+        message: 'permissions unavailable',
+        code: 'PGRST500',
+      },
+      profileError: null,
+      operation: 'fetchUserPermissionsRecord',
+    },
+    {
+      name: 'profile',
+      permissionsError: null,
+      profileError: new Error('profiles unavailable'),
+      operation: 'fetchProfileStatus',
+    },
+  ])(
+    'returns 503 for $name DB errors through the verified-subject path',
+    async ({ permissionsError, profileError, operation }) => {
+      const userPermissionsQuery = createUserPermissionsQuery(
+        { role: 'staff', clinic_id: 'parent-1' },
+        permissionsError
+      );
+      const profileQuery = createProfileQuery([
+        profileError
+          ? { data: null, error: profileError }
+          : { data: { is_active: true }, error: null },
+      ]);
+      const adminClient = createAdminClient(
+        userPermissionsQuery,
+        createClinicsQuery([])
+      );
+      const sessionClient = createSessionClient(
+        `verified-${operation}`,
+        undefined,
+        'staff',
+        profileQuery
+      );
+      const {
+        getUserAccessContextForVerifiedSubject,
+        resolveVerifiedSubject,
+        resetSupabaseClientFactory,
+        logErrorMock,
+      } = await importServerWithClients(sessionClient, adminClient);
+      const subject = await resolveVerifiedSubject(sessionClient);
+      if (!subject) {
+        throw new Error('Expected a verified subject');
+      }
+
+      await expect(
+        getUserAccessContextForVerifiedSubject(subject, sessionClient)
+      ).rejects.toEqual(
+        expect.objectContaining({
+          code: 'DATABASE_CONNECTION_ERROR',
+          statusCode: 503,
+        })
+      );
+      expect(logErrorMock).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({ operation })
+      );
+      resetSupabaseClientFactory();
+    }
+  );
 
   it('allows a valid JWT subset to narrow DB-approved hierarchy scope', async () => {
     const userPermissionsQuery = createUserPermissionsQuery({

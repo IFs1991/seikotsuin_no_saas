@@ -6,6 +6,7 @@ export {
   getCurrentUser,
   getUserPermissions,
   getUserAccessContext,
+  getUserAccessContextForVerifiedSubject,
   requireAuth,
   requireAdminAuth,
   setSupabaseClientFactory,
@@ -19,6 +20,14 @@ export type {
   UserPermissions,
   UserAccessContext,
 } from './server';
+
+export {
+  resolveVerifiedSubject,
+  logVerifiedSubjectTiming,
+  getVerifiedSubjectServerTiming,
+} from './request-auth-context';
+
+export type { VerifiedSubject } from './request-auth-context';
 
 export {
   createScopedAdminContext,
