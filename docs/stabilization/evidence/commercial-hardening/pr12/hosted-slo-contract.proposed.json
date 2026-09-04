@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "contractId": "PR12-HOSTED-SLO-PROPOSAL-001",
+  "status": "PROPOSED_OWNER_APPROVAL_REQUIRED",
+  "executionStatus": "NOT_RUN",
+  "workloadId": "PR12-HOSTED-WORKLOAD-C50-READ-MIXED-READ-001",
+  "concurrency": 50,
+  "sampleOrder": [
+    "sample_1_read_heavy_c50",
+    "sample_2_mixed_crud_c50",
+    "sample_3_read_heavy_repeat_c50"
+  ],
+  "durationSeconds": 1800,
+  "authority": {
+    "targetCommitSelector": "GIT_HEAD_AT_APPROVAL",
+    "trackedLoadAssumption": {
+      "path": "docs/repitte_requirements.md",
+      "concurrentUsers": 50,
+      "dailyReservations": 500,
+      "sourceLines": "639-642"
+    },
+    "hostedSloIsAdditiveToFrozenPr11": true,
+    "rebaselineAllowed": false
+  },
+  "target": {
+    "database": "new isolated Supabase project",
+    "region": "ap-northeast-1",
+    "compute": "large",
+    "applicationHarness": "local Node 24 server-side harness bound only to the approved hosted project",
+    "applicationUrl": "NOT_CAPTURED",
+    "productionTrafficAllowed": false
+  },
+  "warmup": {
+    "durationSeconds": 300,
+    "concurrency": 1,
+    "scored": false,
+    "resultMayReplaceScoredSample": false
+  },
+  "scoredSamples": [
+    {
+      "id": "sample_1_read_heavy_c50",
+      "order": 1,
+      "durationSeconds": 600,
+      "concurrency": 50,
+      "mixPercent": {
+        "authenticatedReads": 80,
+        "authRefreshAndAuthorityChecks": 10,
+        "expectedTenantOrAuthDenials": 10,
+        "syntheticCrud": 0
+      }
+    },
+    {
+      "id": "sample_2_mixed_crud_c50",
+      "order": 2,
+      "durationSeconds": 600,
+      "concurrency": 50,
+      "mixPercent": {
+        "authenticatedReads": 60,
+        "authRefreshAndAuthorityChecks": 10,
+        "expectedTenantOrAuthDenials": 10,
+        "syntheticCrud": 20
+      }
+    },
+    {
+      "id": "sample_3_read_heavy_repeat_c50",
+      "order": 3,
+      "durationSeconds": 600,
+      "concurrency": 50,
+      "mixPercent": {
+        "authenticatedReads": 80,
+        "authRefreshAndAuthorityChecks": 10,
+        "expectedTenantOrAuthDenials": 10,
+        "syntheticCrud": 0
+      }
+    }
+  ],
+  "requestTargets": [
+    "reservations",
+    "customers",
+    "patients",
+    "blocks",
+    "resources",
+    "menus",
+    "hosted Auth sign-in and refresh",
+    "Data API intended allow and deny paths"
+  ],
+  "measurement": {
+    "httpRequestTimeoutSeconds": 10,
+    "concurrencyModel": "closed_loop_50_virtual_users_no_artificial_think_time",
+    "ramp": "start_all_50_virtual_users_within_30_seconds_then_hold_until_sample_end",
+    "requestAllocation": "deterministic_weighted_round_robin_per_virtual_user_using_each_sample_mixPercent",
+    "expectedDenialClassification": "only a response matching the frozen case HTTP status, SQLSTATE, row count, ACL verdict, and RLS verdict is a completed expected denial; every mismatch is a failed request",
+    "percentileMethod": "nearest_rank_over_all_completed_requests_per_sample",
+    "throughputMethod": "completed_requests_divided_by_scored_sample_seconds",
+    "pooledPercentileMethod": "nearest_rank_over_all_completed_requests_from_all_three_scored_samples_without_reweighting",
+    "pooledThroughputMethod": "all_completed_requests_from_all_three_scored_samples_divided_by_1800_seconds",
+    "errorRateDenominator": "all_attempted_requests_in_the_sample_or_pooled_scored_set",
+    "eachSampleMustPass": true,
+    "pooledResultMustPass": true,
+    "discardedSamplesAllowed": false,
+    "sampleReorderingAllowed": false,
+    "thresholdChangesAfterFirstWarmupRequestAllowed": false
+  },
+  "thresholds": {
+    "p95Ms": 2000,
+    "p99Ms": 3000,
+    "minimumThroughputPerSecond": 20,
+    "maximumUnexpectedFailedRequests": 0,
+    "maximum5xxRate": 0,
+    "maximumTimeoutRate": 0,
+    "maximumCpuPercent": 75,
+    "minimumPoolHeadroomPercent": 25,
+    "maximumLockWaitMs": 1000,
+    "maximumWalBytes": 268435456,
+    "maximumMigrationDurationSeconds": 900
+  },
+  "databaseAbortThresholds": {
+    "maximumCpuPercent": 75,
+    "cpuWindowSeconds": 300,
+    "minimumPoolHeadroomPercent": 25,
+    "poolWindowSeconds": 120,
+    "maximumObservedLockWaitMilliseconds": 1000,
+    "maximumScoredWorkloadWalBytes": 268435456,
+    "walScope": "cumulative_delta_across_all_three_scored_samples",
+    "maximumFullMigrationReplaySeconds": 900
+  },
+  "monitoring": {
+    "cpuAndPoolSource": "Supabase project observability metrics exported to hash-bound evidence",
+    "cpuAndPoolSamplingSeconds": 60,
+    "lockSource": "read-only pg_stat_activity and pg_locks collector bound to the approved project",
+    "lockSamplingSeconds": 5,
+    "walSource": "pg_stat_wal wal_bytes before warmup, before and after each scored sample, and after the final sample",
+    "walSampling": "boundary_snapshots_plus_cumulative_delta",
+    "migrationDurationSource": "monotonic runner clock cross-checked with command UTC timestamps",
+    "monitoringCollector": "NOT_IMPLEMENTED"
+  },
+  "abortOn": [
+    "any scored sample SLO failure",
+    "any database abort threshold breach",
+    "cross-tenant access",
+    "unexpected authorization success or denial",
+    "service-role exposure",
+    "external real send or charge",
+    "evidence hash or privacy failure"
+  ],
+  "implementationReadiness": {
+    "hostedCollector": "NOT_IMPLEMENTED",
+    "requestPayloadContract": "NOT_CAPTURED",
+    "actorTokenAcquisitionContract": "NOT_CAPTURED",
+    "executionAuthorized": false,
+    "blocker": "A reviewed fail-closed hosted collector and exact request payload matrix must exist and be hash-pinned before approval."
+  },
+  "revalidation": [
+    "target commit change",
+    "project, region, compute, pool, or application URL change",
+    "request mix, concurrency, order, duration, or threshold change",
+    "fixture, actor, JWT acquisition, or collector change",
+    "related incident or approval expiry"
+  ]
+}

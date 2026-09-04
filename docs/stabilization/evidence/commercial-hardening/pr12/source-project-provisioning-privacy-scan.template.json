@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "scanType": "PR12_PHASE1_EVIDENCE_PRIVACY_AND_SECRET_SCAN",
+  "status": "NOT_RUN",
+  "scanner": "pr12-source-project-provisioning-contract-v1",
+  "rawProviderBodiesPersisted": false,
+  "rawHttpHeadersPersisted": false,
+  "runtimeSecretValuesComparedAgainstArtifacts": false,
+  "runtimeSecretValueCount": 0,
+  "scanMode": "NOT_RUN",
+  "scannedArtifacts": [],
+  "scannedAt": "NOT_CAPTURED"
+}

@@ -160,4 +160,25 @@ describe('commercial hardening PR-01 database contract', () => {
     );
     expect(appE2e).toContain('needs: [quality, database-contract]');
   });
+
+  it('scopes the CLI 2.109.0 Docker Hub fallback to local type generation', () => {
+    const workflow = readRepoFile('.github/workflows/ci.yml');
+    const registryBindings = workflow
+      .split(/\r?\n/)
+      .filter(line => line.includes('SUPABASE_INTERNAL_IMAGE_REGISTRY'));
+
+    expect(registryBindings).toEqual([
+      "          SUPABASE_INTERNAL_IMAGE_REGISTRY: 'docker.io'",
+    ]);
+    expect(workflow).toContain(
+      [
+        '      - name: Verify generated Supabase types are current',
+        '        env:',
+        "          SUPABASE_INTERNAL_IMAGE_REGISTRY: 'docker.io'",
+        '        run: |',
+        '          npm run supabase:types',
+        '          git diff --exit-code -- src/types/supabase.ts',
+      ].join('\n')
+    );
+  });
 });

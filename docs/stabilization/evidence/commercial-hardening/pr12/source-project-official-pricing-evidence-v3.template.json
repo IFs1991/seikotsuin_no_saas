@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 3,
+  "recordType": "PR12_SOURCE_PROJECT_OFFICIAL_PRICING_EVIDENCE",
+  "status": "NOT_CAPTURED",
+  "provider": "SUPABASE",
+  "currency": "USD",
+  "moneyScale": 10000,
+  "officialSources": [
+    {
+      "sourceId": "COMPUTE_AND_DISK",
+      "url": "https://supabase.com/docs/guides/platform/compute-and-disk",
+      "retrievedAt": "NOT_CAPTURED",
+      "artifactPath": "NOT_CAPTURED",
+      "artifactSha256": "NOT_CAPTURED"
+    },
+    {
+      "sourceId": "COMPUTE_USAGE",
+      "url": "https://supabase.com/docs/guides/platform/manage-your-usage/compute",
+      "retrievedAt": "NOT_CAPTURED",
+      "artifactPath": "NOT_CAPTURED",
+      "artifactSha256": "NOT_CAPTURED"
+    },
+    {
+      "sourceId": "PRICING",
+      "url": "https://supabase.com/pricing",
+      "retrievedAt": "NOT_CAPTURED",
+      "artifactPath": "NOT_CAPTURED",
+      "artifactSha256": "NOT_CAPTURED"
+    }
+  ],
+  "pricing": {
+    "requiredExistingOrganizationPlan": "PRO",
+    "planPurchaseOrChangeAuthorized": false,
+    "planIncrementalUsdScaled": 0,
+    "computeTier": "LARGE",
+    "desiredInstanceSize": "large",
+    "computeAddonVariant": "ci_large",
+    "billingUnit": "PROJECT_HOUR",
+    "partialHourRounding": "ROUNDED_UP_TO_FULL_HOUR",
+    "hourlyRateUsdScaled": 1517,
+    "maximumBillableHours": 72,
+    "maximumComputeUsdScaled": 109224
+  },
+  "conservativeTreatment": {
+    "creditReliance": "NONE",
+    "computeCreditAppliedUsdScaled": 0,
+    "taxAndOtherChargesQuoted": false,
+    "taxAndOtherChargesEstimateUsdScaled": null,
+    "unallocatedAuthorizationHeadroomUsdScaled": 390776
+  },
+  "authorizationBoundary": {
+    "ownerAuthorizationCeilingUsdScaled": 500000,
+    "providerSpendCapEnforced": false,
+    "knownCostOverCeilingAction": "ABORT_BEFORE_POST",
+    "ceilingMeaning": "OWNER_GOVERNANCE_AUTHORIZATION_NOT_PROVIDER_SPEND_CAP"
+  },
+  "freshness": {
+    "policy": "LOCAL_24_HOUR_REVALIDATION_NOT_PROVIDER_QUOTE_VALIDITY",
+    "maximumAgeAtApprovalSeconds": 86400,
+    "lifetimeSeconds": 86400,
+    "freshThrough": "NOT_CAPTURED"
+  },
+  "capturedBy": "UNASSIGNED",
+  "rawOfficialSourceArtifactsPersistedInRepository": false,
+  "notes": "Template only. This is public official list-price evidence, not an organization-specific Dashboard quote and not a provider-enforced spend cap. Source bytes are retained outside the repository, hash-bound, and reusable for the exact 24-hour local lifetime when unchanged."
+}

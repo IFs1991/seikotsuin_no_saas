@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "resultType": "SOURCE_PLATFORM_CONFIGURATION_RAW_EVIDENCE",
+  "status": "NOT_RUN",
+  "observationFamily": "NOT_CAPTURED",
+  "transport": "NOT_CAPTURED",
+  "commandId": "PR12-CMD-004A",
+  "projectRef": "NOT_CAPTURED",
+  "observedAt": "NOT_CAPTURED",
+  "secretValuesCaptured": false,
+  "requestOrQuery": {
+    "method": "NOT_CAPTURED",
+    "endpointOrQueryId": "NOT_CAPTURED",
+    "requestOrQuerySha256": "NOT_CAPTURED",
+    "responseStatus": "NOT_CAPTURED"
+  },
+  "providerPayload": {}
+}

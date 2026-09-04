@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "phase": "RESTORE_TARGET_VALIDATION",
+  "status": "NOT_RUN",
+  "authorization": {
+    "restoreProjectConnectionAuthorized": false,
+    "postRestoreValidationAuthorized": false,
+    "approvedQualificationMutationAuthorized": false,
+    "restoreProjectGeneralMutationAuthorized": false,
+    "sourceProjectMutationAuthorized": false,
+    "productionConnectionAuthorized": false,
+    "readyTransitionAuthorized": false,
+    "mergeAuthorized": false,
+    "commercialReleaseAuthorized": false,
+    "indexRetirementAuthorized": false
+  },
+  "sourceExecutionApproval": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "restoreCreationApproval": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED"
+  },
+  "restoreCreationOperation": {
+    "path": "NOT_CAPTURED",
+    "sha256": "NOT_CAPTURED",
+    "commandId": "PR12-ACTION-017",
+    "providerOperationIdentifierAvailability": "NOT_CAPTURED",
+    "createdProjectRef": "NOT_CAPTURED",
+    "providerCreatedAt": "NOT_CAPTURED",
+    "restoreReadyObservedAt": "NOT_CAPTURED",
+    "providerEvidence": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+  },
+  "credentialControls": {
+    "credentialContract": {
+      "path": "integration-credential-contract.proposed.json",
+      "sha256": "NOT_CAPTURED"
+    },
+    "restoreCredentialProviderConfiguration": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "parentEnvironmentPrefix": "PR12_RESTORE_",
+    "crossTargetFallbackAllowed": false,
+    "secretValuesCaptured": false
+  },
+  "selectedBackup": {
+    "sourceProjectRef": "NOT_CAPTURED",
+    "backupId": "NOT_CAPTURED",
+    "backupMetadataPath": "NOT_CAPTURED",
+    "backupMetadataSha256": "NOT_CAPTURED",
+    "backupInventoryRawPath": "NOT_CAPTURED",
+    "backupInventoryRawSha256": "NOT_CAPTURED",
+    "watermarkValue": "NOT_CAPTURED"
+  },
+  "sourceEnvironment": {
+    "organizationId": "NOT_CAPTURED",
+    "projectRef": "NOT_CAPTURED",
+    "projectName": "seikotsuin-pr12-isolated-qualification-20260719",
+    "region": "ap-northeast-1",
+    "databaseTier": "LARGE",
+    "databaseVersion": "NOT_CAPTURED",
+    "systemIdentifier": "NOT_CAPTURED",
+    "databaseHost": "NOT_CAPTURED",
+    "databaseConnectionMode": "DIRECT",
+    "databaseUser": "postgres"
+  },
+  "restoreEnvironment": {
+    "organizationId": "NOT_CAPTURED",
+    "projectRef": "NOT_CAPTURED",
+    "projectName": "seikotsuin-pr12-isolated-restore-20260719",
+    "region": "ap-northeast-1",
+    "databaseTier": "LARGE",
+    "databaseVersion": "NOT_CAPTURED",
+    "projectUrl": "NOT_CAPTURED",
+    "databaseHost": "NOT_CAPTURED",
+    "databaseConnectionMode": "DIRECT",
+    "databaseUser": "postgres"
+  },
+  "firstSupplementalIdentityAndClockCommand": {
+    "commandId": "PR12-CMD-018",
+    "resultType": "RESTORE_IDENTITY_CLOCK_OPERATION",
+    "status": "NOT_RUN",
+    "remoteContact": true,
+    "mutating": false,
+    "mutationScope": "NONE",
+    "requiredCapturedFields": [
+      "restore project ref",
+      "project URL",
+      "direct database host and user",
+      "database version",
+      "database system identifier",
+      "restore database clock_timestamp() UTC",
+      "command start/end UTC",
+      "stdout/stderr SHA-256"
+    ],
+    "mustCompleteBeforeAnyOtherRestoreCommand": true,
+    "sourceAndRestoreSystemIdentifierRelationshipMustBeObserved": true
+  },
+  "approvedQualificationMutationCommandIds": [],
+  "postRestoreContracts": {
+    "securityMatrix": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "securityTargetInventory": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "securityTargetClassification": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "dataApi": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "graphQl": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" }
+  },
+  "resultProvenance": {
+    "validationCommandIdsMustExactlyEqualApprovedLedgerPhase": "post_restore_qualification",
+    "dedicatedCommandStdoutRequiredFor": [
+      "integrity",
+      "securityMatrix",
+      "dataApi",
+      "graphQl"
+    ],
+    "finalOperationMustHashBindEveryDedicatedResult": true,
+    "freshRestoreRuntimeIdentityRequired": true,
+    "sourceEvidenceReuseAllowed": false,
+    "restoreRawEvidenceMustBeHashBoundAndCommandScoped": true,
+    "familySpecificRawObservationReconciliationRequired": true,
+    "finalizationMustBeNonMutating": true
+  },
+  "identityConstraints": {
+    "prohibitedProjectRefs": ["qnanuoqveidwvacvbhqp"],
+    "sourceAndRestoreProjectRefsMustDiffer": true,
+    "sourceAndRestoreSystemIdentifierRelationshipPolicy": "OBSERVE_SAME_OR_DIFFERENT_NO_CROSS_TARGET_VERDICT",
+    "organizationMustMatch": true,
+    "regionAndTierMustMatchApprovedDrContract": true,
+    "currentLinkMustMatchRestoreRefBeforeEveryRemoteCommand": true
+  },
+  "approval": {
+    "approvedBy": "UNASSIGNED",
+    "approvedAt": "NOT_CAPTURED",
+    "expiresAt": "NOT_CAPTURED",
+    "evidencePath": "NOT_CAPTURED",
+    "evidenceSha256": "NOT_CAPTURED"
+  },
+  "owners": {
+    "commercialReleaseOwner": "UNASSIGNED",
+    "supabasePlatformOwner": "UNASSIGNED",
+    "databaseMigrationOperator": "UNASSIGNED",
+    "disasterRecoveryOperator": "UNASSIGNED",
+    "securityTenantReviewer": "UNASSIGNED",
+    "clinicalDataPrivacyReviewer": "UNASSIGNED",
+    "billingMessagingSandboxOwner": "UNASSIGNED",
+    "siteReliabilityOwner": "UNASSIGNED",
+    "incidentCommander": "UNASSIGNED",
+    "cleanupOwner": "UNASSIGNED",
+    "evidenceCustodian": "UNASSIGNED"
+  },
+  "separationOfDuties": {
+    "approvedByMustDifferFrom": [
+      "supabasePlatformOwner",
+      "databaseMigrationOperator",
+      "disasterRecoveryOperator",
+      "securityTenantReviewer",
+      "clinicalDataPrivacyReviewer",
+      "billingMessagingSandboxOwner",
+      "siteReliabilityOwner",
+      "incidentCommander",
+      "cleanupOwner",
+      "evidenceCustodian"
+    ]
+  },
+  "notes": "Create the restore project only under the separate selected-backup creation approval, then stop. Bind the provider export, provider-created timestamp, ready observation, mirrored-state comparison, and restore-only credential configuration before connection. After this supplemental approval, PR12-CMD-018 is the first and read-only restore database command; it captures the system identifier, records whether the source/restore identifiers are SAME or DIFFERENT without treating either relationship as a cross-target verdict, and captures the restore database clock. Project ref, URL, direct host/user, and credential-target mismatch still abort before mutation. General mutation remains forbidden; only hash-pinned synthetic qualification mutation command IDs may be approved."
+}

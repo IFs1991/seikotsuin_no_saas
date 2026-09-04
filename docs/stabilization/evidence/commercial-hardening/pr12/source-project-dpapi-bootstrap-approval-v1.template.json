@@ -1,0 +1,23 @@
+{
+  "approvedAt": "NOT_CAPTURED",
+  "approvedByDisplayName": "FUTOSHI IWASAWA",
+  "approvedByPrincipalId": "NOT_CAPTURED",
+  "attestationStatus": "NOT_CAPTURED",
+  "authorizedRoles": ["DATABASE_PASSWORD"],
+  "bootstrapActionId": "PR12-CREDENTIAL-BOOTSTRAP-001",
+  "bootstrapScriptSha256": "NOT_CAPTURED",
+  "configurationId": "NOT_CAPTURED",
+  "decision": "NOT_CAPTURED",
+  "envelopeCreationAuthorized": false,
+  "expiresAt": "NOT_CAPTURED",
+  "machineNameSha256": "NOT_CAPTURED",
+  "notes": "Template only for the new DATABASE_PASSWORD envelope. The existing MANAGEMENT_ACCESS_TOKEN envelope is reused without reauthorization, read, decryption, or overwrite. Execution remains NOT_RUN and this concrete approval instance, configuration, SID/machine/root bindings, and database-password envelope remain NOT_CAPTURED. Populate and verify this record before running the bootstrap script with -Role DATABASE_PASSWORD. This template does not authorize PR12-ACTION-002, PR12-ACTION-003, project creation, production contact, or Phase 2+.",
+  "ownerSidSha256": "NOT_CAPTURED",
+  "providerRoot": "NOT_CAPTURED",
+  "providerRootPathSha256": "NOT_CAPTURED",
+  "providerRootResolvedPathSha256": "NOT_CAPTURED",
+  "realSecretInteractiveReadAuthorized": false,
+  "recordType": "PR12_WINDOWS_DPAPI_CREDENTIAL_BOOTSTRAP_APPROVAL",
+  "schemaVersion": 1,
+  "sourceProjectProvisioningAuthorized": false
+}

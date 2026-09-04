@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "inventoryId": "PR12-DATA-API-ACL-INVENTORY-PROPOSAL-001",
+  "status": "PROPOSED_OWNER_APPROVAL_REQUIRED",
+  "executionStatus": "NOT_RUN",
+  "catalogScope": {
+    "source": "POST_REPLAY_PG_CATALOG",
+    "actualExposedSchemas": "NOT_CAPTURED",
+    "schemasFromProjectSettings": true,
+    "relationRelkinds": ["r", "p", "v", "m", "f"],
+    "sequenceRelkind": "S",
+    "columnsIncluded": true,
+    "functionIdentityArgumentsIncluded": true,
+    "defaultPrivilegeOwners": ["postgres", "supabase_admin"],
+    "defaultPrivilegeObjectTypes": [
+      "TABLES",
+      "SEQUENCES",
+      "FUNCTIONS",
+      "TYPES",
+      "SCHEMAS"
+    ],
+    "roles": ["anon", "authenticated", "service_role"],
+    "objectKinds": [
+      "SCHEMA",
+      "RELATION",
+      "COLUMN",
+      "SEQUENCE",
+      "FUNCTION",
+      "DEFAULT_PRIVILEGE"
+    ]
+  },
+  "trackedInputs": {
+    "pr02RelationPrivilegeMatrix": {
+      "path": "docs/stabilization/evidence/commercial-hardening/pr02/privilege-matrix.csv",
+      "sha256": "8fbae4c8e0a829c6ccaa271ed7b43754ed9de07a8f45028c17f1d72ae6792d53",
+      "role": "tracked baseline input only; runtime exposed-schema catalog remains authoritative"
+    },
+    "pr04SecurityDefinerMatrix": {
+      "path": "docs/stabilization/evidence/commercial-hardening/pr04/security-definer-matrix.csv",
+      "sha256": "c64ae81784b18b9b81d49fe2a8b44423dbc90e91fb87e8a23dc5eeea56b16371"
+    },
+    "pr04FunctionBoundary": {
+      "path": "docs/stabilization/evidence/commercial-hardening/pr04/function-boundary-local-after.csv",
+      "sha256": "4136a55ce7f14d86f4b689dc14d9e13d5072583b8abac36c3009e2bc4d0926c3"
+    }
+  },
+  "finalExecutionContract": {
+    "sourceCatalogPath": "NOT_CAPTURED",
+    "sourceCatalogSha256": "NOT_CAPTURED",
+    "restoreCatalogPath": "NOT_CAPTURED",
+    "restoreCatalogSha256": "NOT_CAPTURED",
+    "caseFormula": "exact catalog object x applicable privilege x anon/authenticated/service_role",
+    "privilegeUniverse": {
+      "ACL_SCHEMA": ["USAGE", "CREATE"],
+      "ACL_RELATION": [
+        "SELECT",
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "TRUNCATE",
+        "REFERENCES",
+        "TRIGGER",
+        "MAINTAIN"
+      ],
+      "ACL_COLUMN": ["SELECT", "INSERT", "UPDATE", "REFERENCES"],
+      "ACL_SEQUENCE": ["SELECT", "UPDATE", "USAGE"],
+      "ACL_FUNCTION": ["EXECUTE"],
+      "ACL_DEFAULT_TABLES": [
+        "SELECT",
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "TRUNCATE",
+        "REFERENCES",
+        "TRIGGER",
+        "MAINTAIN"
+      ],
+      "ACL_DEFAULT_SEQUENCES": ["SELECT", "UPDATE", "USAGE"],
+      "ACL_DEFAULT_FUNCTIONS": ["EXECUTE"],
+      "ACL_DEFAULT_TYPES": ["USAGE"],
+      "ACL_DEFAULT_SCHEMAS": ["USAGE", "CREATE"]
+    },
+    "missingExtraOrDuplicateTupleAllowed": false,
+    "grantSources": ["DIRECT", "PUBLIC", "INHERITED"],
+    "effectiveGrantRecomputed": true,
+    "aclAndRlsEvaluatedIndependently": true,
+    "sourceAndRestoreCatalogParityRequired": true,
+    "sourceEvidenceReuseAfterRestoreAllowed": false
+  },
+  "blockingInputs": [
+    {
+      "id": "DATA_API_PROJECT_SETTINGS_NOT_CAPTURED",
+      "status": "NOT_CAPTURED",
+      "owner": "supabasePlatformOwner"
+    },
+    {
+      "id": "POST_REPLAY_ACL_OBJECT_CATALOG_NOT_CAPTURED",
+      "status": "NOT_CAPTURED",
+      "owner": "databaseMigrationOperator"
+    },
+    {
+      "id": "ACL_EXPECTED_CASES_NOT_OWNER_APPROVED",
+      "status": "UNASSIGNED",
+      "owner": "securityTenantReviewer"
+    },
+    {
+      "id": "ACL_CATALOG_AND_MATRIX_COLLECTOR_NOT_IMPLEMENTED",
+      "status": "NOT_IMPLEMENTED",
+      "owner": "databaseMigrationOperator"
+    }
+  ],
+  "ownerDecision": {
+    "owner": "UNASSIGNED",
+    "approvedAt": "NOT_CAPTURED",
+    "expiresAt": "NOT_CAPTURED",
+    "approvalEvidence": "NOT_CAPTURED"
+  },
+  "implementationReadiness": {
+    "catalogCollector": "NOT_IMPLEMENTED",
+    "matrixCollector": "NOT_IMPLEMENTED",
+    "executionAuthorized": false
+  }
+}

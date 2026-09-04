@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 4,
+  "exportType": "SUPABASE_SOURCE_PROJECT_PROVIDER_SAFE_PROJECTION",
+  "status": "NOT_RUN",
+  "actionId": "PR12-ACTION-003",
+  "request": {
+    "endpoint": "https://api.supabase.com/v1/projects",
+    "httpMethod": "POST",
+    "secretFreeProjection": {
+      "db_pass": "RUNTIME_SECRET_NOT_IN_EVIDENCE",
+      "desired_instance_size": "large",
+      "name": "seikotsuin-pr12-isolated-qualification-20260719",
+      "organization_slug": "kbnsntifrawhimhfjrug",
+      "region_selection": {
+        "code": "ap-northeast-1",
+        "type": "specific"
+      }
+    },
+    "secretFreeProjectionSha256": "NOT_CAPTURED",
+    "rawWireBodyPersisted": false,
+    "rawHttpHeadersPersisted": false
+  },
+  "organizationIdentityEvidence": {
+    "status": "PASS",
+    "actionId": "PR12-ACTION-002",
+    "terminalState": "TERMINAL_PASS",
+    "sourceGitCommit": "6edd6733756dd73e458cf705675895a5666c76e6",
+    "sourceBindingMaterialSha256": "56b07d3eb802d546df25be3b487e32b9c30f0aa7ac1f896bba483cb5e207eb3c",
+    "sourceRequestSha256": "95149b0f64407700298cbe842cbd15780300e9e357dc492f5d4d56e490490a8e",
+    "evidenceDirectoryName": "pr12-action-002-20260726T042518-786Z-95149b0f6440",
+    "manifestSha256": "66db9ed2b7fdb7573b76e79273c71d95551cdb7385e0ca8ee21724c56399f582",
+    "terminalSha256": "3fec7d3156c52e862602e9adb115e460c6959caeba38d5a1b290abe41513782e",
+    "claimSha256": "ae8dd41f4316317d5d22ecb8e1a3f3dc741f486a64b8128161329b86cc3b15ce",
+    "getIntentSha256": "045c663feea7ac2305bec6383fd4a2fe8de11e373b3f925d78154ecad1053bb7",
+    "completedAt": "2026-07-26T04:25:22.867Z",
+    "sealedAt": "2026-07-26T04:25:22.959Z",
+    "organization": {
+      "organizationId": "kbnsntifrawhimhfjrug",
+      "organizationName": "IFs1991's Org",
+      "organizationSlug": "kbnsntifrawhimhfjrug",
+      "plan": "PRO"
+    },
+    "providerResponseBodySha256": "83c6dc4b04892443255175fc7be3f82e068f17c15402433305606e5aab9e179a",
+    "providerSafeProjectionSha256": "fbda9b89c34154da871525265a9dca2261990863e91324395f7d304ce198d33e",
+    "providerObservedAt": "2026-07-26T04:25:22.867Z",
+    "evidenceDirectoryFingerprint": {
+      "pathSha256": "NOT_CAPTURED",
+      "resolvedPathSha256": "NOT_CAPTURED",
+      "device": "NOT_CAPTURED",
+      "inode": "NOT_CAPTURED",
+      "snapshotSha256": "NOT_CAPTURED"
+    },
+    "journalDirectoryFingerprint": {
+      "pathSha256": "NOT_CAPTURED",
+      "resolvedPathSha256": "NOT_CAPTURED",
+      "device": "NOT_CAPTURED",
+      "inode": "NOT_CAPTURED",
+      "snapshotSha256": "NOT_CAPTURED"
+    },
+    "remoteContactCount": 1,
+    "requestAttemptCount": 1,
+    "automaticRetryCount": 0
+  },
+  "preflight": {
+    "region": {
+      "regionCode": "ap-northeast-1",
+      "selectionType": "specific",
+      "provider": "NOT_CAPTURED",
+      "capacityStatus": "NOT_CAPTURED"
+    },
+    "regionResponseBodySha256": "NOT_CAPTURED",
+    "projectListPages": [],
+    "projectCount": "NOT_CAPTURED",
+    "duplicateMatchCount": "NOT_CAPTURED",
+    "protectedProductionProjectCount": "NOT_CAPTURED",
+    "observedAt": "NOT_CAPTURED"
+  },
+  "createResponse": {
+    "httpStatus": "NOT_CAPTURED",
+    "safeProjection": {
+      "projectRef": "NOT_CAPTURED",
+      "organizationId": "kbnsntifrawhimhfjrug",
+      "organizationSlug": "kbnsntifrawhimhfjrug",
+      "projectName": "seikotsuin-pr12-isolated-qualification-20260719",
+      "region": "ap-northeast-1",
+      "createdAt": "NOT_CAPTURED",
+      "status": "NOT_CAPTURED"
+    },
+    "responseBodySha256": "NOT_CAPTURED"
+  },
+  "readinessObservation": {
+    "project": {
+      "projectRef": "NOT_CAPTURED",
+      "projectName": "seikotsuin-pr12-isolated-qualification-20260719",
+      "region": "ap-northeast-1",
+      "isBranch": false,
+      "status": "NOT_CAPTURED",
+      "insertedAt": "NOT_CAPTURED"
+    },
+    "pollCount": 0,
+    "polls": [],
+    "finalStatus": "NOT_CAPTURED"
+  },
+  "computeObservation": {
+    "projectRef": "NOT_CAPTURED",
+    "addonType": "compute_instance",
+    "variantId": "ci_large",
+    "responseBodySha256": "NOT_CAPTURED",
+    "httpStatus": "NOT_CAPTURED",
+    "observedAt": "NOT_CAPTURED"
+  },
+  "reconciliation": null,
+  "productionBoundary": {
+    "exceptionMode": "PHASE1_SAME_ORGANIZATION_PRODUCTION_PROJECT_DENY_EXCEPTION_V1",
+    "targetOrganizationSlug": "kbnsntifrawhimhfjrug",
+    "productionProjectRef": "qnanuoqveidwvacvbhqp",
+    "organizationProjectEnumerationAllowed": true,
+    "directProductionProjectManagementApiContactCount": 0,
+    "productionProjectDataPlaneContactCount": 0,
+    "productionDatabaseContactCount": 0,
+    "productionCredentialAccessCount": 0
+  },
+  "rawProviderBodiesPersisted": false,
+  "capturedAt": "NOT_CAPTURED",
+  "capturedBy": "UNASSIGNED"
+}

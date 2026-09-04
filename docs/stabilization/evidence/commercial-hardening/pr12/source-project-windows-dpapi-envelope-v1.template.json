@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "envelopeType": "PR12_WINDOWS_DPAPI_SECRET_ENVELOPE",
+  "providerId": "WINDOWS_DPAPI_CURRENT_USER_V1",
+  "configurationId": "NOT_CAPTURED",
+  "actionId": "PR12-ACTION-003",
+  "role": "NOT_CAPTURED",
+  "opaqueHandle": "NOT_CAPTURED",
+  "opaqueHandleSha256": "NOT_CAPTURED",
+  "ownerSidSha256": "NOT_CAPTURED",
+  "machineNameSha256": "NOT_CAPTURED",
+  "protectionScope": "CURRENT_USER",
+  "encoding": "UTF8_STRICT",
+  "entropy": {
+    "derivation": "SHA256_UTF8_DOMAIN_SEPARATED_V1",
+    "contextSha256": "NOT_CAPTURED"
+  },
+  "ciphertextBase64": "NOT_CAPTURED",
+  "ciphertextSha256": "NOT_CAPTURED",
+  "bootstrapScriptSha256": "NOT_CAPTURED",
+  "createdAt": "NOT_CAPTURED",
+  "notes": "External owner-private runtime envelope template. Never commit a populated envelope."
+}

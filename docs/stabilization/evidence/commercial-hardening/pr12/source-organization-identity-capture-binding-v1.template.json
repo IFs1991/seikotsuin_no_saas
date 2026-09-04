@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "phase": "SOURCE_ORGANIZATION_IDENTITY_CAPTURE",
+  "status": "NOT_RUN",
+  "authorization": {
+    "organizationIdentityCaptureAuthorized": false,
+    "sourceProjectProvisioningAuthorized": false,
+    "sourceProjectCreationAuthorized": false,
+    "productionProjectDirectContactAuthorized": false,
+    "databaseConnectionAuthorized": false,
+    "phase2AndLaterAuthorized": false,
+    "readyTransitionAuthorized": false,
+    "mergeAuthorized": false,
+    "commercialReleaseAuthorized": false
+  },
+  "action": {
+    "actionId": "PR12-ACTION-002",
+    "endpoint": "https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug",
+    "httpMethod": "GET",
+    "maximumRemoteContactCount": 1,
+    "maximumRequestAttempts": 1,
+    "automaticRetryAllowed": false,
+    "redirectAllowed": false,
+    "requestBodyAllowed": false,
+    "requestTimeoutMilliseconds": "NOT_CAPTURED",
+    "remoteContact": true,
+    "mutating": false,
+    "mutationScope": "NONE",
+    "mandatoryStopAfterEvidenceSeal": true
+  },
+  "approvedRequest": {
+    "projection": {
+      "bodyPresent": false,
+      "method": "GET",
+      "url": "https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug"
+    },
+    "sha256": "NOT_CAPTURED"
+  },
+  "target": {
+    "gitCommit": "NOT_CAPTURED",
+    "baseCommit": "4475e1c641c2ff18f66021ee65cfecfceaa6b7ab",
+    "cleanWorktreeRequired": true
+  },
+  "governance": {
+    "path": "docs/stabilization/evidence/commercial-hardening/pr12/staging-execution-approval-packet.yaml",
+    "sha256": "NOT_CAPTURED"
+  },
+  "implementationContracts": {
+    "contractPath": "scripts/commercial-hardening/pr12-source-organization-identity-capture-contract.mjs",
+    "contractSha256": "NOT_CAPTURED",
+    "sharedProvisioningContractPath": "scripts/commercial-hardening/pr12-source-project-provisioning-contract.mjs",
+    "sharedProvisioningContractSha256": "NOT_CAPTURED",
+    "wrapperPath": "scripts/commercial-hardening/run-pr12-source-organization-identity-capture.mjs",
+    "wrapperSha256": "NOT_CAPTURED",
+    "credentialChannelPath": "scripts/commercial-hardening/pr12-windows-dpapi-credential-channel.mjs",
+    "credentialChannelSha256": "NOT_CAPTURED",
+    "credentialBrokerPath": "scripts/commercial-hardening/pr12-windows-dpapi-credential-broker.ps1",
+    "credentialBrokerSha256": "NOT_CAPTURED",
+    "evidenceVerifierPath": "scripts/commercial-hardening/verify-pr12-source-organization-identity-capture-evidence.mjs",
+    "evidenceVerifierSha256": "NOT_CAPTURED"
+  },
+  "runtimeControls": {
+    "requiredNodeMajor": 24,
+    "processExecArgvMustBeEmpty": true,
+    "runtimeRecordedInEvidence": true
+  },
+  "credentialControls": {
+    "credentialConfigurationPath": "source-project-provisioning-credential-configuration-v2.json",
+    "credentialConfigurationSha256": "NOT_CAPTURED",
+    "requiredProviderId": "WINDOWS_DPAPI_CURRENT_USER_V1",
+    "requiredRetrievalChannel": "CLAIM_BOUND_CAPTURED_STDOUT_BINARY_V1",
+    "managementAccessTokenRetrievalAllowed": true,
+    "databasePasswordRetrievalAllowed": false,
+    "credentialBootstrapCompleted": false,
+    "credentialRetrievalAfterDurableClaimOnly": true,
+    "secretValuesCaptured": false
+  },
+  "expectedOrganization": {
+    "organizationId": "DISCOVER_FROM_APPROVED_RESPONSE",
+    "organizationIdCaptureMode": "DISCOVER_ONCE_BIND_FUTURE_PR12_ACTION_003",
+    "organizationName": "IFs1991's Org",
+    "organizationSlug": "kbnsntifrawhimhfjrug",
+    "organizationPlan": "PRO"
+  },
+  "productionBoundary": {
+    "productionProjectRef": "qnanuoqveidwvacvbhqp",
+    "productionProjectOrigin": "https://qnanuoqveidwvacvbhqp.supabase.co",
+    "organizationProjectEnumerationAuthorized": false,
+    "productionProjectSpecificManagementApiContactAuthorized": false,
+    "productionProjectDataPlaneContactAuthorized": false,
+    "productionDatabaseContactAuthorized": false,
+    "productionCredentialAccessAuthorized": false
+  },
+  "ownerControl": {
+    "mode": "PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1",
+    "principalDisplayName": "FUTOSHI IWASAWA",
+    "principalId": "NOT_CAPTURED",
+    "principalIdType": "NOT_CAPTURED",
+    "operator": "UNASSIGNED",
+    "approver": "UNASSIGNED",
+    "identitySeparationAvailable": false,
+    "independentHumanReviewClaimed": false,
+    "soleOperatorSelfApprovalRiskAccepted": false,
+    "sameUserDpapiCredentialExposureRiskAccepted": false,
+    "minimumCoolingOffSeconds": 300,
+    "maximumApprovalWindowSeconds": 1800
+  },
+  "journalAndEvidence": {
+    "journalDirectoryPathSha256": "NOT_CAPTURED",
+    "journalDirectoryResolvedPathSha256": "NOT_CAPTURED",
+    "journalDirectoryDevice": "NOT_CAPTURED",
+    "journalDirectoryInode": "NOT_CAPTURED",
+    "evidenceParentDirectoryPathSha256": "NOT_CAPTURED",
+    "evidenceParentDirectoryResolvedPathSha256": "NOT_CAPTURED",
+    "evidenceParentDirectoryDevice": "NOT_CAPTURED",
+    "evidenceParentDirectoryInode": "NOT_CAPTURED",
+    "directoriesMustBeDisjoint": true,
+    "strictAclRequired": true
+  },
+  "evidenceContract": {
+    "requiredFiles": [
+      "action-events.json",
+      "organization-identity-capture-result.json",
+      "privacy-scan.json",
+      "provider-export.safe.json",
+      "manifest.json",
+      "manifest.sha256"
+    ],
+    "rawProviderBodiesPersisted": false,
+    "rawHttpHeadersPersisted": false,
+    "secretFreeProjectionOnly": true,
+    "privacyAndSecretScanRequired": true,
+    "sha256ManifestRequired": true,
+    "atomicPartialThenRenameRequired": true,
+    "automaticResealAllowed": false,
+    "remoteRecoveryAllowed": false
+  },
+  "approval": {
+    "evidencePath": "NOT_CAPTURED",
+    "evidenceSha256": "NOT_CAPTURED"
+  },
+  "notes": "Template only. The separate credential-bootstrap scope is owner-authorized but NOT_RUN; this template does not execute it or supply its concrete approval/configuration/envelopes. Owner scope authorization permits this local implementation, not the remote GET. A future populated instance must be hash-bound and reapproved after the final head exists. PR12-ACTION-003, project creation, project enumeration, production contact, database access, and Phase 2+ remain unauthorized."
+}

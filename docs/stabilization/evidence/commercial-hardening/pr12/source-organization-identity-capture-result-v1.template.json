@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "resultType": "SOURCE_ORGANIZATION_IDENTITY_CAPTURE_OPERATION",
+  "status": "NOT_RUN",
+  "outcome": "NOT_RUN",
+  "actionId": "PR12-ACTION-002",
+  "gitCommit": "NOT_CAPTURED",
+  "baseCommit": "4475e1c641c2ff18f66021ee65cfecfceaa6b7ab",
+  "bindingMaterialSha256": "NOT_CAPTURED",
+  "requestSha256": "NOT_CAPTURED",
+  "credentialConfigurationSha256": "NOT_CAPTURED",
+  "approvalEvidenceSha256": "NOT_CAPTURED",
+  "claimSha256": "NOT_CAPTURED",
+  "getIntentSha256": "NOT_CAPTURED",
+  "approvalWindow": {
+    "approvedAt": "NOT_CAPTURED",
+    "operatorReconfirmedAt": "NOT_CAPTURED",
+    "expiresAt": "NOT_CAPTURED",
+    "approvedBy": "UNASSIGNED"
+  },
+  "ownerControl": {
+    "mode": "PHASE1_SOLE_OPERATOR_SELF_APPROVAL_EXCEPTION_V1",
+    "operator": "UNASSIGNED",
+    "approver": "UNASSIGNED",
+    "identitySeparationAvailable": false,
+    "independentHumanReviewClaimed": false,
+    "soleOperatorSelfApprovalRiskAccepted": false,
+    "sameUserDpapiCredentialExposureRiskAccepted": false
+  },
+  "request": {
+    "method": "GET",
+    "endpoint": "https://api.supabase.com/v1/organizations/kbnsntifrawhimhfjrug",
+    "bodyPresent": false,
+    "redirectAllowed": false
+  },
+  "contact": {
+    "remoteContactCount": 0,
+    "requestAttemptCount": 0,
+    "automaticRetryCount": 0
+  },
+  "organization": null,
+  "providerObservation": null,
+  "productionBoundary": {
+    "organizationProjectEnumerationPerformed": false,
+    "productionProjectSpecificManagementApiContactCount": 0,
+    "productionProjectDataPlaneContactCount": 0,
+    "productionDatabaseContactCount": 0,
+    "productionCredentialAccessCount": 0
+  },
+  "credential": {
+    "brokerMode": "ORGANIZATION_IDENTITY_CAPTURE",
+    "brokerInvocationCount": 0,
+    "managementAccessTokenRetrieved": false,
+    "databasePasswordRetrieved": false,
+    "ambientCredentialFallbackUsed": false,
+    "secretPersisted": false
+  },
+  "rawProviderBodiesPersisted": false,
+  "rawHttpHeadersPersisted": false,
+  "runtime": {
+    "nodeVersion": "NOT_CAPTURED",
+    "processExecArgvCount": "NOT_CAPTURED"
+  },
+  "startedAt": "NOT_CAPTURED",
+  "completedAt": "NOT_CAPTURED",
+  "reasonCode": "NOT_CAPTURED",
+  "mandatoryStopObserved": false
+}

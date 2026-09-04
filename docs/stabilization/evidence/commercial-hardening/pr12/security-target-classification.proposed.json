@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 2,
+  "classificationId": "PR12-SECURITY-TARGET-CLASSIFICATION-PROPOSAL-002",
+  "status": "PROPOSED_OWNER_APPROVAL_REQUIRED",
+  "executionStatus": "NOT_RUN",
+  "authority": {
+    "implementationSsot": {
+      "path": "docs/stabilization/spec-commercial-hardening-migration-v1.0.md",
+      "sha256": "dbe834d03458d07babd1bbae7b7912868ae50c6ba190cc7e09819c076e62effb",
+      "sections": ["6.1", "6.2", "6.3", "6.4", "6.5"]
+    },
+    "trackedDraftBaseline": {
+      "path": "docs/stabilization/evidence/commercial-hardening/table-classification-draft.csv",
+      "sha256": "f94299a332aba9f746d87bd3f848e1467bf78faa1c7f64cee697f542867704b2",
+      "setRule": "every CSV data row exactly once, qualified as public.<table_name>",
+      "role": "complete tracked public-table proposal input only; DRAFT_SPEC_CANDIDATE and BLOCK_UNCLASSIFIED are not execution approval"
+    }
+  },
+  "taxonomy": {
+    "relationClasses": [
+      "A_TENANT_CANONICAL",
+      "B_SERVICE_ROLE_ONLY",
+      "C_SHARED_MASTER_READ_ONLY",
+      "E_LEGACY_QUARANTINE",
+      "AUTH_PLATFORM_MANAGED"
+    ],
+    "coverageFamilies": [
+      "TENANT_CRUD_MATRIX",
+      "DATA_API_ACL_SERVICE_ROLE",
+      "DATA_API_READ_ONLY",
+      "LEGACY_QUARANTINE",
+      "AUTH_JWT_MATRIX",
+      "PUBLIC_SURFACE_SPECIAL"
+    ],
+    "publicSurfaceSpecial": "orthogonal boolean axis; it adds PUBLIC_SURFACE_SPECIAL coverage and never replaces the primary class",
+    "unknownOrDraftBlocksExecution": true
+  },
+  "trackedDraftSummary": {
+    "publicRelationCount": 86,
+    "candidateClassCounts": {
+      "A_TENANT_CANONICAL": 24,
+      "B_SERVICE_ROLE_ONLY": 5,
+      "C_SHARED_MASTER_READ_ONLY": 4,
+      "E_LEGACY_QUARANTINE": 5,
+      "UNKNOWN": 48
+    },
+    "publicSurfaceSpecialCandidateCount": 4,
+    "ownerApprovedPublicRelationCount": 0,
+    "unresolvedPublicRelationCount": 86
+  },
+  "requiredAuthTargets": [
+    {
+      "relation": "auth.identities",
+      "proposedClassification": "AUTH_PLATFORM_MANAGED",
+      "reviewStatus": "UNASSIGNED",
+      "coverageFamilies": ["AUTH_JWT_MATRIX"],
+      "executionBlocker": true
+    },
+    {
+      "relation": "auth.users",
+      "proposedClassification": "AUTH_PLATFORM_MANAGED",
+      "reviewStatus": "UNASSIGNED",
+      "coverageFamilies": ["AUTH_JWT_MATRIX"],
+      "executionBlocker": true
+    }
+  ],
+  "finalExecutionContract": {
+    "motherSet": "fresh post-replay pg_catalog public relkind r/p union requiredAuthTargets",
+    "trackedDraftBaselineIsExecutionCatalog": false,
+    "representativeFixtureCreatesMotherSet": false,
+    "oneOwnerApprovedClassificationPerMotherSetRelation": true,
+    "missingExtraDuplicateOrUnknownAllowed": false,
+    "coverageTargetsDerivedAndExact": true,
+    "sourceAndRestoreCatalogParityRequired": true
+  },
+  "ownerDecision": {
+    "owner": "UNASSIGNED",
+    "approvedAt": "NOT_CAPTURED",
+    "expiresAt": "NOT_CAPTURED",
+    "approvalEvidence": "NOT_CAPTURED",
+    "requiredOutcome": "review every fresh-catalog public table and both Auth targets; resolve all 48 current UNKNOWN rows; publish one exact owner-approved classification and six-family coverage set"
+  },
+  "implementationReadiness": {
+    "postReplayCatalogCollector": "NOT_IMPLEMENTED",
+    "normalizedClassificationCollector": "NOT_IMPLEMENTED",
+    "executionAuthorized": false
+  }
+}
