@@ -2,6 +2,10 @@ import { chromium, type FullConfig } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { loginAsAdmin, loginAsStaff } from './helpers/auth';
+import {
+  assertCore100LocalEnvironment,
+  seedCore100Fixtures,
+} from './helpers/core100-seed';
 
 const adminStorageStatePath = path.resolve(
   process.cwd(),
@@ -13,6 +17,13 @@ const staffStorageStatePath = path.resolve(
 );
 
 export default async function globalSetup(config: FullConfig) {
+  const core100Enabled = process.env.CORE100_E2E_ENABLED === 'true';
+  // Check before the existing global setup performs its first seed operation.
+  if (core100Enabled) {
+    for (const project of config.projects) {
+      assertCore100LocalEnvironment(project.use.baseURL ?? '');
+    }
+  }
   const { waitForSupabaseReady, assertTablesExist, REQUIRED_TABLES } =
     await import('../../../scripts/e2e/preflight.mjs');
   const { validateE2EFixtures } =
@@ -30,6 +41,9 @@ export default async function globalSetup(config: FullConfig) {
 
   await validateE2EFixtures();
   await seedE2EData();
+  if (core100Enabled) {
+    await seedCore100Fixtures(supabase);
+  }
 
   const phase = (process.env.E2E_PHASE || 'phase1').toLowerCase();
   const shouldPrepareAdminState =
