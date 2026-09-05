@@ -20,6 +20,10 @@ const allowLists = {
   serviceRole: new Set([
     'src/lib/env.ts',
     'src/lib/auth/password-recovery-intent.ts',
+    // Server-only HMAC key derivation; no database access or client import.
+    'src/lib/auth/auth-attempt-guard.ts',
+    // Pure setting-name validation only; does not read or export secret values.
+    'src/lib/billing/configuration-policy.ts',
     'src/lib/supabase/server.ts',
     'src/api/database/supabase-client.ts',
   ]),
