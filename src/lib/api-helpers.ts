@@ -13,6 +13,7 @@ import type { SupabaseServerClient, UserPermissions } from '@/lib/supabase';
 import { ALLOWED_REDIRECT_ORIGINS } from '@/lib/constants/security';
 import { ADMIN_UI_ROLES, normalizeRole } from '@/lib/constants/roles';
 import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
+import { reportApiFailure } from '@/lib/monitoring/api-failure';
 
 // 認証・認可の結果型
 export interface AuthResult {
@@ -216,6 +217,7 @@ export function createErrorResponse(
   details?: unknown,
   code?: string
 ): NextResponse<ApiErrorResponse> {
+  reportApiFailure(status);
   const response: ApiErrorResponse = {
     success: false,
     error,

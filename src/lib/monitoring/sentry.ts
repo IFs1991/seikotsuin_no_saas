@@ -1,3 +1,5 @@
+import type { Event } from '@sentry/nextjs';
+
 type SentryInitModule = {
   init: (options: Record<string, unknown>) => void;
 };
@@ -23,8 +25,62 @@ export type OperationalErrorContext = {
   status?: number;
 };
 
-export function isSentryEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return typeof env.SENTRY_DSN === 'string' && env.SENTRY_DSN.length > 0;
+export function isSentryEnabled(
+  env: NodeJS.ProcessEnv = process.env,
+  runtime: SentryRuntime = 'server'
+): boolean {
+  const dsn =
+    runtime === 'client' ? env.NEXT_PUBLIC_SENTRY_DSN : env.SENTRY_DSN;
+  return typeof dsn === 'string' && dsn.length > 0;
+}
+
+function safeFrameFilename(filename: string | undefined): string | undefined {
+  if (!filename) return undefined;
+  const path = filename.replace(/\\/g, '/').split(/[?#]/)[0];
+  return (
+    path.match(
+      /(?:_next\/static\/|\.next\/server\/|src\/)[A-Za-z0-9_./()[\]-]+\.(?:[cm]?js|tsx?)$/
+    )?.[0] ?? '<redacted>'
+  );
+}
+
+// Automatic SDK exceptions can otherwise carry request bodies, breadcrumbs and
+// patient strings even with sendDefaultPii=false. Allow only diagnostic fields.
+export function redactSentryEvent(event: Event): Event {
+  return {
+    event_id: event.event_id,
+    timestamp: event.timestamp,
+    platform: event.platform,
+    level: event.level,
+    release: event.release,
+    environment: event.environment,
+    tags: Object.fromEntries(
+      Object.entries(event.tags ?? {}).filter(
+        ([key, value]) =>
+          ['source', 'operation', 'endpoint', 'reason', 'status'].includes(
+            key
+          ) &&
+          typeof value === 'string' &&
+          /^[A-Za-z0-9_./:-]{1,120}$/.test(value)
+      )
+    ),
+    exception: event.exception
+      ? {
+          values: event.exception.values?.map(value => ({
+            type: 'Error',
+            value: 'Operational error details redacted',
+            stacktrace: {
+              frames: value.stacktrace?.frames?.map(frame => ({
+                filename: safeFrameFilename(frame.filename),
+                lineno: frame.lineno,
+                colno: frame.colno,
+                in_app: frame.in_app,
+              })),
+            },
+          })),
+        }
+      : undefined,
+  };
 }
 
 export function resolveSentryRelease(
@@ -40,11 +96,15 @@ export function resolveSentryRelease(
 export function buildSentryInitOptions(runtime: SentryRuntime) {
   const release = resolveSentryRelease();
   const options = {
-    dsn: process.env.SENTRY_DSN,
+    dsn:
+      runtime === 'client'
+        ? process.env.NEXT_PUBLIC_SENTRY_DSN
+        : process.env.SENTRY_DSN,
     enabled: true,
     environment: process.env.NODE_ENV,
     tracesSampleRate: 0,
     sendDefaultPii: false,
+    beforeSend: redactSentryEvent,
     _runtime: runtime,
   };
 
@@ -55,11 +115,13 @@ export function initSentry(
   sentry: SentryInitModule,
   runtime: SentryRuntime
 ): boolean {
-  if (!isSentryEnabled()) {
+  // Client public env values are replaced at build time only at direct accesses.
+  const options = buildSentryInitOptions(runtime);
+  if (!options.dsn) {
     return false;
   }
 
-  sentry.init(buildSentryInitOptions(runtime));
+  sentry.init(options);
 
   return true;
 }
@@ -117,7 +179,8 @@ export function captureRedactedException(
 
 export async function captureOperationalError(
   error: unknown,
-  context: OperationalErrorContext
+  context: OperationalErrorContext,
+  options: { waitForDelivery?: boolean } = {}
 ): Promise<void> {
   if (!isSentryEnabled()) {
     return;
@@ -126,6 +189,7 @@ export async function captureOperationalError(
   try {
     const sentry = await import('@sentry/nextjs');
     captureRedactedException(sentry, error, context);
+    if (options.waitForDelivery) await sentry.flush(2000);
   } catch {
     // Monitoring must never replace the original application response.
   }
