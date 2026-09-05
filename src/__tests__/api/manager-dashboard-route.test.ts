@@ -3,6 +3,7 @@ import { processApiRequest } from '@/lib/api-helpers';
 import { resolveManagerAssignedClinicsWithinScope } from '@/lib/auth/manager-scope';
 import { getManagerDashboardDateKeys } from '@/lib/manager-dashboard';
 import { createAdminClient } from '@/lib/supabase';
+import { fetchManagerDashboardCounts } from '@/lib/manager-dashboard-counts';
 import type { ManagerDashboardResponse } from '@/types/manager-dashboard';
 
 jest.mock('@/lib/api-helpers', () => ({
@@ -20,6 +21,9 @@ jest.mock('@/lib/auth/manager-scope', () => ({
 
 jest.mock('@/lib/supabase', () => ({
   createAdminClient: jest.fn(),
+}));
+jest.mock('@/lib/manager-dashboard-counts', () => ({
+  fetchManagerDashboardCounts: jest.fn(),
 }));
 
 const processApiRequestMock = jest.mocked(processApiRequest);
@@ -131,6 +135,17 @@ describe('GET /api/manager/dashboard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockAuth();
+    jest
+      .mocked(fetchManagerDashboardCounts)
+      .mockResolvedValue([
+        {
+          clinicId: clinicA,
+          todayActive: 1,
+          todayCancelled: 2,
+          previousActive: 1,
+          reviewCount: 1200,
+        },
+      ]);
     resolveManagerAssignedClinicsMock.mockResolvedValue([
       {
         id: 'assignment-a',
@@ -271,11 +286,13 @@ describe('GET /api/manager/dashboard', () => {
       [clinicB]
     );
     expect(dailyReportsQuery.in).toHaveBeenCalledWith('clinic_id', [clinicA]);
-    expect(reviewSignalsQuery.in).toHaveBeenCalledWith('clinic_id', [clinicA]);
-    expect(reservationsQuery.in).toHaveBeenCalledWith('clinic_id', [clinicA]);
-    expect(reservationsQuery.or).toHaveBeenCalledWith(
-      expect.stringContaining('and(start_time.gte.')
+    expect(fetchManagerDashboardCounts).toHaveBeenCalledWith(
+      expect.any(Object),
+      [clinicA],
+      date
     );
+    expect(from).not.toHaveBeenCalledWith('reservation_list_view');
+    expect(from).not.toHaveBeenCalledWith('daily_report_items');
     expect(json.data.clinics).toEqual([{ id: clinicA, name: '池袋院' }]);
     expect(json.data.summary).toMatchObject({
       assignedClinicCount: 1,
