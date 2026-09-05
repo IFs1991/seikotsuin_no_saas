@@ -54,8 +54,9 @@ export async function loginThroughForm(
   }
 ) {
   await page.goto('/login');
-  await page.getByLabel('メールアドレス', { exact: true }).fill(account.email);
-  await page.getByLabel('パスワード', { exact: true }).fill(account.password);
+  // 入力欄のラベルには必須マークも含まれるため、マークの有無を許容する。
+  await page.getByLabel(/^メールアドレス\s*\*?$/).fill(account.email);
+  await page.getByLabel(/^パスワード\s*\*?$/).fill(account.password);
   await page.getByRole('button', { name: 'ログイン', exact: true }).click();
   await expect(page).toHaveURL(
     /\/(dashboard|reservations|admin|manager)(?:\/|\?|$)/
