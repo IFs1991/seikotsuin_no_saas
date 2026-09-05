@@ -352,6 +352,17 @@ jobs:
           echo "NEXT_PUBLIC_E2E=true" >> "$GITHUB_ENV"
           echo "CORE100_E2E_ENABLED=true" >> "$GITHUB_ENV"
 
+      - name: ローカルE2E用のPostgREST集計を有効化
+        # 接続先は supabase start が作る使い捨てDBに固定する。
+        # 外部環境の DB_URL や本番・Preview の設定は使用しない。
+        run: >-
+          psql "postgresql://postgres@127.0.0.1:54332/postgres"
+          --no-psqlrc --set ON_ERROR_STOP=1
+          --command "ALTER ROLE authenticator SET pgrst.db_aggregates_enabled = 'true'; NOTIFY pgrst, 'reload config';"
+        env:
+          PGPASSWORD: postgres
+          PGCONNECT_TIMEOUT: '10'
+
       - name: Validate database fixtures
         run: npm run e2e:validate-fixtures
 
