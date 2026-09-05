@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import {
   Appointment,
@@ -89,6 +89,11 @@ export const AppointmentDetail: React.FC<Props> = ({
   const [historyLoadedForCustomerId, setHistoryLoadedForCustomerId] = useState<
     string | null
   >(null);
+  const [historyNextCursor, setHistoryNextCursor] = useState<string | null>(
+    null
+  );
+  const historyRequestRef = useRef(0);
+  const historyAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     setFormData(appointment);
@@ -101,7 +106,15 @@ export const AppointmentDetail: React.FC<Props> = ({
     setHistoryItems([]);
     setHistoryError(null);
     setHistoryLoadedForCustomerId(null);
-  }, [appointment.id, appointment.customerId]);
+    setHistoryNextCursor(null);
+    setHistoryLoading(false);
+    historyRequestRef.current += 1;
+    historyAbortRef.current?.abort();
+    return () => {
+      historyRequestRef.current += 1;
+      historyAbortRef.current?.abort();
+    };
+  }, [clinicId, appointment.id, appointment.customerId]);
 
   const handleInputChange = (
     field: keyof Appointment,
@@ -251,38 +264,68 @@ export const AppointmentDetail: React.FC<Props> = ({
     }
   };
 
+  const loadHistory = async (append = false) => {
+    if (
+      !clinicId ||
+      !appointment.customerId ||
+      (append && !historyNextCursor)
+    ) {
+      setHistoryError('患者に紐づく予約履歴を取得できません。');
+      return;
+    }
+    historyAbortRef.current?.abort();
+    const controller = new AbortController();
+    historyAbortRef.current = controller;
+    const requestId = ++historyRequestRef.current;
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const page = await fetchCustomerReservations(
+        clinicId,
+        appointment.customerId,
+        {
+          signal: controller.signal,
+          cursor: append ? (historyNextCursor ?? undefined) : undefined,
+        }
+      );
+      if (controller.signal.aborted || requestId !== historyRequestRef.current)
+        return;
+      if (append && page.hasMore && page.nextCursor === historyNextCursor) {
+        throw new Error(
+          '予約履歴の取得が完了しませんでした。再試行してください'
+        );
+      }
+      setHistoryItems(previous =>
+        append
+          ? [
+              ...previous,
+              ...page.items.filter(
+                item => !previous.some(existing => existing.id === item.id)
+              ),
+            ]
+          : page.items
+      );
+      setHistoryNextCursor(page.nextCursor);
+      setHistoryLoadedForCustomerId(appointment.customerId);
+    } catch (err) {
+      if (controller.signal.aborted || requestId !== historyRequestRef.current)
+        return;
+      setHistoryError(
+        err instanceof Error ? err.message : '予約履歴の取得に失敗しました'
+      );
+    } finally {
+      if (requestId === historyRequestRef.current) setHistoryLoading(false);
+    }
+  };
+
   const handleToggleHistory = async () => {
     if (historyOpen) {
       setHistoryOpen(false);
       return;
     }
-
     setHistoryOpen(true);
-    if (!clinicId || !appointment.customerId) {
-      setHistoryError('患者に紐づく予約履歴を取得できません。');
-      return;
-    }
-
-    if (historyLoadedForCustomerId === appointment.customerId) {
-      return;
-    }
-
-    setHistoryLoading(true);
-    setHistoryError(null);
-    try {
-      const rows = await fetchCustomerReservations(
-        clinicId,
-        appointment.customerId
-      );
-      setHistoryItems(rows);
-      setHistoryLoadedForCustomerId(appointment.customerId);
-    } catch (err) {
-      setHistoryError(
-        err instanceof Error ? err.message : '予約履歴の取得に失敗しました'
-      );
-    } finally {
-      setHistoryLoading(false);
-    }
+    if (historyLoadedForCustomerId !== appointment.customerId)
+      await loadHistory();
   };
 
   return (
@@ -400,6 +443,14 @@ export const AppointmentDetail: React.FC<Props> = ({
               items={historyItems}
               loading={historyLoading}
               error={historyError}
+              hasMore={historyNextCursor !== null}
+              onLoadMore={() => void loadHistory(true)}
+              onRetry={() =>
+                void loadHistory(
+                  historyLoadedForCustomerId === appointment.customerId &&
+                    historyNextCursor !== null
+                )
+              }
               currentAppointmentId={appointment.id}
             />
           )}

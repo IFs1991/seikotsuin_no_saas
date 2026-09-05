@@ -1,4 +1,5 @@
 'use client';
+import { Button } from '@/components/ui/button';
 
 import React, {
   Suspense,
@@ -529,8 +530,14 @@ function ReservationsPageContent() {
   const content = useMemo(() => {
     if (error) {
       return (
-        <div className='flex justify-center items-center h-full text-red-500'>
-          Error: {error}
+        <div
+          className='flex flex-col gap-3 justify-center items-center h-full text-red-500'
+          role='alert'
+        >
+          予約一覧の取得が完了していません: {error}
+          <Button variant='outline' onClick={refreshAppointments}>
+            再試行
+          </Button>
         </div>
       );
     }
@@ -567,6 +574,7 @@ function ReservationsPageContent() {
     appointmentDensity,
     canWriteReservations,
     effectiveCurrentView,
+    refreshAppointments,
     error,
     handleMoveAppointment,
     handleTimeSlotClick,

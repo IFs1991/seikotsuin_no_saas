@@ -1,5 +1,12 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import type { ReservationApiPage } from '@/app/(app)/reservations/api';
 import { AppointmentDetail } from '@/app/(app)/reservations/components/AppointmentDetail';
 import type { Appointment } from '@/app/(app)/reservations/types';
 import { fetchCustomerReservations } from '@/app/(app)/reservations/api';
@@ -44,6 +51,66 @@ describe('AppointmentDetail', () => {
     jest.clearAllMocks();
   });
 
+  const historyPage = (
+    name: string,
+    nextCursor: string | null
+  ): ReservationApiPage => ({
+    items: [
+      {
+        id: name,
+        customerId: 'customer-1',
+        menuId: 'menu-1',
+        staffId: 'staff-1',
+        menuName: name,
+        startTime: '2026-09-05T00:00:00Z',
+        endTime: '2026-09-05T00:30:00Z',
+      },
+    ],
+    nextCursor,
+    hasMore: nextCursor !== null,
+  });
+
+  it('appends patient pages and retries a failed page without losing already loaded history', async () => {
+    fetchCustomerReservationsMock
+      .mockResolvedValueOnce(historyPage('first-page', 'next'))
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce(historyPage('second-page', null));
+    render(<AppointmentDetail {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: '予約履歴' }));
+    await screen.findByText('first-page');
+    expect(screen.getByText('1件取得済み')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '続きを読み込む' }));
+    await screen.findByText('offline');
+    expect(screen.getByText('first-page')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '再試行' }));
+    await screen.findByText('second-page');
+    expect(screen.getByText('first-page')).toBeInTheDocument();
+    expect(fetchCustomerReservationsMock.mock.calls[2]?.[2]).toMatchObject({
+      cursor: 'next',
+    });
+  });
+
+  it('discards history that completes after switching clinic', async () => {
+    let resolveOld: (value: ReservationApiPage) => void = () => {};
+    const pending = new Promise<ReservationApiPage>(resolve => {
+      resolveOld = resolve;
+    });
+    fetchCustomerReservationsMock
+      .mockReturnValueOnce(pending)
+      .mockResolvedValueOnce(historyPage('new-clinic', null));
+    const { rerender } = render(<AppointmentDetail {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: '予約履歴' }));
+    rerender(<AppointmentDetail {...defaultProps} clinicId='clinic-2' />);
+    fireEvent.click(screen.getByRole('button', { name: '予約履歴' }));
+    await screen.findByText('new-clinic');
+    await act(async () => {
+      resolveOld(historyPage('old-clinic', null));
+      await pending;
+    });
+    expect(screen.queryByText('old-clinic')).toBeNull();
+    expect(screen.getByText('new-clinic')).toBeInTheDocument();
+  });
+
   it('予約詳細から来院済み・来院なし・キャンセルへステータス更新できる', async () => {
     const onUpdate = jest.fn().mockResolvedValue({ ok: true });
 
@@ -83,22 +150,26 @@ describe('AppointmentDetail', () => {
   });
 
   it('予約詳細から患者の予約履歴を開ける', async () => {
-    fetchCustomerReservationsMock.mockResolvedValueOnce([
-      {
-        id: 'reservation-old',
-        customerId: 'customer-1',
-        customerName: '山田 太郎',
-        menuId: 'menu-1',
-        menuName: '整体',
-        staffId: 'staff-1',
-        staffName: '田中先生',
-        startTime: '2026-04-20T10:00:00.000Z',
-        endTime: '2026-04-20T10:30:00.000Z',
-        status: 'no_show',
-        channel: 'phone',
-        selectedOptions: [],
-      },
-    ]);
+    fetchCustomerReservationsMock.mockResolvedValueOnce({
+      items: [
+        {
+          id: 'reservation-old',
+          customerId: 'customer-1',
+          customerName: '山田 太郎',
+          menuId: 'menu-1',
+          menuName: '整体',
+          staffId: 'staff-1',
+          staffName: '田中先生',
+          startTime: '2026-04-20T10:00:00.000Z',
+          endTime: '2026-04-20T10:30:00.000Z',
+          status: 'no_show',
+          channel: 'phone',
+          selectedOptions: [],
+        },
+      ],
+      nextCursor: null,
+      hasMore: false,
+    });
 
     render(<AppointmentDetail {...defaultProps} />);
 
@@ -107,7 +178,10 @@ describe('AppointmentDetail', () => {
     await waitFor(() => {
       expect(fetchCustomerReservationsMock).toHaveBeenCalledWith(
         'clinic-1',
-        'customer-1'
+        'customer-1',
+        expect.objectContaining({
+          signal: expect.objectContaining({ aborted: false }),
+        })
       );
     });
     await waitFor(() => {

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { jstDateTimeToDate, toJSTDateString } from '@/lib/jst';
 import {
   Appointment,
   MenuItem,
@@ -156,7 +157,7 @@ export const AppointmentForm: React.FC<Props> = ({
   const [identityDialogOpen, setIdentityDialogOpen] = useState(false);
 
   // Today's date YYYY-MM-DD
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = toJSTDateString();
   const staffResources = useMemo(
     () =>
       resources.filter(
@@ -414,10 +415,14 @@ export const AppointmentForm: React.FC<Props> = ({
               );
             });
 
-      const startTime = new Date(formData.date);
-      startTime.setHours(formData.startHour, formData.startMinute, 0, 0);
-      const endTimeDate = new Date(formData.date);
-      endTimeDate.setHours(endTime.hour, endTime.minute, 0, 0);
+      const startTime = jstDateTimeToDate(
+        formData.date,
+        formData.startHour + ':' + formData.startMinute
+      );
+      const endTimeDate = jstDateTimeToDate(
+        formData.date,
+        endTime.hour + ':' + endTime.minute
+      );
 
       const reservation = await createReservation({
         clinicId,
