@@ -10,6 +10,69 @@ describe('Sentry monitoring setup', () => {
     process.env = originalEnv;
   });
 
+  it('awaits a bounded transport flush for deferred handled failures', async () => {
+    process.env.SENTRY_DSN = 'https://public@example.ingest.sentry.io/1';
+    let finishFlush: ((value: boolean) => void) | undefined;
+    const flush = jest.fn().mockReturnValue(
+      new Promise<boolean>(resolve => {
+        finishFlush = resolve;
+      })
+    );
+    const captureException = jest.fn();
+    jest.doMock('@sentry/nextjs', () => ({ captureException, flush }));
+    const { captureOperationalError } = await import('@/lib/monitoring/sentry');
+    let completed = false;
+    const pending = captureOperationalError(
+      new Error('private'),
+      { source: 'api', status: 503 },
+      { waitForDelivery: true }
+    ).then(() => {
+      completed = true;
+    });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(flush).toHaveBeenCalledWith(2000);
+    expect(completed).toBe(false);
+    if (!finishFlush) throw new Error('Flush was not started');
+    finishFlush(true);
+    await pending;
+    expect(completed).toBe(true);
+    jest.dontMock('@sentry/nextjs');
+  });
+
+  it('removes patient data, tokens and request payloads from automatic exceptions', async () => {
+    const { redactSentryEvent } = await import('@/lib/monitoring/sentry');
+    const result = redactSentryEvent({
+      event_id: 'event',
+      level: 'error',
+      message: 'patient@example.com',
+      user: { email: 'patient@example.com' },
+      request: { headers: { Cookie: 'secret' }, data: 'patient note' },
+      extra: { jwt: 'secret' },
+      breadcrumbs: [{ message: 'patient note' }],
+      exception: {
+        values: [
+          {
+            type: 'Error',
+            value: 'patient@example.com secret',
+            stacktrace: {
+              frames: [
+                {
+                  filename: '/app.js?token=secret',
+                  lineno: 4,
+                  colno: 2,
+                  vars: { email: 'patient@example.com' },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    });
+    const text = JSON.stringify(result);
+    expect(text).not.toMatch(/patient@example|secret|patient note|Cookie|jwt/);
+    expect(result.event_id).toBe('event');
+  });
+
   it('does not initialize Sentry when SENTRY_DSN is missing', async () => {
     delete process.env.SENTRY_DSN;
 

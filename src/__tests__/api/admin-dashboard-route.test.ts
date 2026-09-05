@@ -62,6 +62,50 @@ describe('GET /api/admin/dashboard', () => {
     jest.clearAllMocks();
   });
 
+  it.each(['daily_reports', 'staff_performance'])(
+    'fails closed when %s aggregation fails instead of returning capped raw data',
+    async table => {
+      const clinics = createQueryMock([
+        { id: 'child-1', name: '院', parent_id: 'root' },
+      ]);
+      const metric = createQueryMock([]);
+      metric.returns.mockImplementation(async () => ({
+        data: [],
+        error: null,
+      }));
+      const failing = {
+        select: jest.fn().mockReturnThis(),
+        in: jest.fn().mockReturnThis(),
+        returns: jest
+          .fn()
+          .mockResolvedValue({
+            data: null,
+            error: { message: 'aggregate unavailable' },
+          }),
+      };
+      processApiRequestMock.mockResolvedValue({
+        success: true,
+        auth: { id: 'user', role: 'clinic_admin' },
+        permissions: {
+          role: 'clinic_admin',
+          clinic_id: 'child-1',
+          clinic_scope_ids: ['child-1'],
+        },
+        supabase: {
+          from: jest.fn((name: string) =>
+            name === 'clinics' ? clinics : name === table ? failing : metric
+          ),
+        },
+      });
+      const { GET } = await import('@/app/api/admin/dashboard/route');
+      const response = await GET(
+        new NextRequest('http://localhost/api/admin/dashboard')
+      );
+      expect(response.status).toBe(500);
+      expect(failing.select).toHaveBeenCalledTimes(1);
+    }
+  );
+
   it('does not re-expand a canonical root-only JWT subset to child clinics', async () => {
     const clinicsQuery = createQueryMock([
       {

@@ -62,6 +62,9 @@ jobs:
       - name: Commercial boundary lint
         run: npm run lint:commercial
 
+      - name: Offline release tooling tests
+        run: npm run test:release-tooling
+
       - name: Verify mutating route policy
         run: npm run security:verify-mutating-routes
 
@@ -199,6 +202,9 @@ jobs:
 
       - name: Verify atomic staff invite concurrency
         run: npm run commercial:verify:invite:local
+
+      - name: Verify GoTrue claims and stale JWT revocation on disposable local database
+        run: npm run commercial:verify:pr09:auth:local
 
       - name: Verify generated Supabase types are current
         run: |
@@ -344,6 +350,18 @@ jobs:
           echo "NEXT_PUBLIC_APP_URL=http://127.0.0.1:3000" >> "$GITHUB_ENV"
           echo "NEXT_PUBLIC_APP_ENV=e2e" >> "$GITHUB_ENV"
           echo "NEXT_PUBLIC_E2E=true" >> "$GITHUB_ENV"
+          echo "CORE100_E2E_ENABLED=true" >> "$GITHUB_ENV"
+
+      - name: ローカルE2E用のPostgREST集計を有効化
+        # 接続先は supabase start が作る使い捨てDBに固定する。
+        # 外部環境の DB_URL や本番・Preview の設定は使用しない。
+        run: >-
+          psql "postgresql://postgres@127.0.0.1:54332/postgres"
+          --no-psqlrc --set ON_ERROR_STOP=1
+          --command "ALTER ROLE authenticator SET pgrst.db_aggregates_enabled = 'true'; NOTIFY pgrst, 'reload config';"
+        env:
+          PGPASSWORD: postgres
+          PGCONNECT_TIMEOUT: '10'
 
       - name: Validate database fixtures
         run: npm run e2e:validate-fixtures
@@ -357,6 +375,9 @@ jobs:
           src/__tests__/e2e-playwright/auth-login-flow.spec.ts
           src/__tests__/e2e-playwright/happy-path.spec.ts
           src/__tests__/e2e-playwright/public-menus-api.spec.ts
+          src/__tests__/e2e-playwright/core100-workflow.spec.ts
+          src/__tests__/e2e-playwright/core100-boundaries.spec.ts
+          src/__tests__/e2e-playwright/core100-manager-scope.spec.ts
           --project=chromium
 
       - name: Upload Playwright report

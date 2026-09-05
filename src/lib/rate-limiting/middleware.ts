@@ -157,7 +157,8 @@ export const loginRateLimit = createRateLimitMiddleware({
   type: 'login_attempts',
   keyGenerator: request => {
     const ip = getClientIP(request);
-    return `login:${ip}`;
+    // Recovery/signup traffic has a separate budget from password authentication.
+    return `auth-flow:${request.nextUrl.pathname}:${ip}`;
   },
   onLimitExceeded: (_request, result) => {
     const message =
@@ -445,8 +446,9 @@ export function getPathRateLimit(
     );
   }
 
-  // 認証フローの入口
-  if (isAuthEntryPoint(pathname)) {
+  // Actual password attempts are guarded inside their Server Actions.
+  // Keep recovery/signup limits separate and never count page views.
+  if (isMutatingApiMethod(normalizedMethod) && isAuthEntryPoint(pathname)) {
     middlewares.push(loginRateLimit);
   }
 
@@ -517,10 +519,7 @@ function isMobileUiuxWriteMethod(method: string): boolean {
 
 function isAuthEntryPoint(pathname: string): boolean {
   return (
-    pathname === '/login' ||
-    pathname === '/admin/login' ||
     pathname === '/register' ||
-    pathname === '/invite' ||
     pathname === '/forgot-password' ||
     pathname.startsWith('/reset-password')
   );

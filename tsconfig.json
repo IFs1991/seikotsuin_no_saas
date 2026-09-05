@@ -43,8 +43,11 @@
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
+    "*.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "scripts/**/*.ts",
+    "supabase/**/*.ts",
     ".next/types/**/*.ts",
     "jest.config.js"
   ],

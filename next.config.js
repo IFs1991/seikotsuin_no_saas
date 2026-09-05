@@ -81,7 +81,7 @@ async function buildHeaders() {
 }
 
 function exportNextConfig(config) {
-  if (!process.env.SENTRY_DSN) {
+  if (!process.env.SENTRY_DSN && !process.env.NEXT_PUBLIC_SENTRY_DSN) {
     return config;
   }
 

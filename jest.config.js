@@ -3,6 +3,7 @@ const nextJest = require('next/jest');
 const createJestConfig = nextJest({ dir: './' });
 
 const sharedConfig = {
+  roots: ['<rootDir>/src'],
   setupFiles: ['<rootDir>/jest.setup.messagechannel.ts'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   modulePathIgnorePatterns: [

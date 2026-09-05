@@ -24,6 +24,7 @@ import {
   getSafeAuthErrorLogData,
 } from '@/lib/auth/safe-auth-logging';
 import { clearRejectedAuthSession } from '@/lib/auth/session-cleanup';
+import { checkAuthAttempt } from '@/lib/auth/auth-attempt-guard';
 
 const INACTIVE_ACCOUNT_MESSAGE =
   'アカウントが無効化されています。管理者にお問い合わせください';
@@ -152,8 +153,8 @@ export async function login(
     const sanitizedEmail = sanitizeAuthInput(parsed.data.email).toLowerCase();
     const sanitizedPassword = sanitizeAuthInput(parsed.data.password);
 
-    // 3. レート制限チェック（基本的なブルートフォース対策）
-    // TODO: より詳細なレート制限実装
+    const attemptError = await checkAuthAttempt(sanitizedEmail, headerList);
+    if (attemptError) return attemptError;
 
     // 4. Supabase認証
     const { error, data } = await supabase.auth.signInWithPassword({

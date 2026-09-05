@@ -1,4 +1,6 @@
 import { assertEnv, env } from '@/lib/env';
+import { isEnabledFlag } from '@/lib/billing/configuration-policy';
+export { isEnabledFlag } from '@/lib/billing/configuration-policy';
 
 export const BILLING_PLAN_CODES = ['single_clinic', 'group'] as const;
 
@@ -46,10 +48,6 @@ export function isBillingPlanCode(value: string): value is BillingPlanCode {
 
 export function isBillingState(value: string): value is BillingState {
   return BILLING_STATES.some(state => state === value);
-}
-
-export function isEnabledFlag(value: string | undefined) {
-  return value?.trim().toLowerCase() === 'true';
 }
 
 export function isBillingEnabled() {

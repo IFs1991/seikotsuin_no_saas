@@ -124,6 +124,26 @@ const fillRequiredFields = (values: {
 // 推奨順: 来店日 → 開始時間 → 担当・設備 → メニュー+オプション → 電話番号 → お名前 → カスタム属性
 // ─────────────────────────────────────────────────────────────
 describe('2-2: フォームフィールド順序', () => {
+  it('creates the selected JST time without a browser-local offset on a UTC device', async () => {
+    renderForm({
+      initialData: { date: '2026-03-01', startHour: 9, startMinute: 15 },
+    });
+    fillRequiredFields({ date: '2026-03-01' });
+    const form = screen
+      .getByRole('button', { name: '登録する' })
+      .closest('form');
+    if (!form) throw new Error('form not found');
+    fireEvent.submit(form);
+    await waitFor(() => {
+      expect(createReservation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          startTime: new Date('2026-03-01T00:15:00.000Z'),
+          endTime: new Date('2026-03-01T01:15:00.000Z'),
+        })
+      );
+    });
+  });
+
   it('来店日フィールドが電話番号フィールドより前に表示される', () => {
     renderForm();
     const dateInput = document.querySelector(

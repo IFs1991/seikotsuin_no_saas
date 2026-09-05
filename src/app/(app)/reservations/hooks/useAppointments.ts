@@ -8,14 +8,16 @@ import {
 } from '../api';
 import { calculateDuration, calculateEndTime } from '../utils/time';
 import { statusToColor } from './statusToColor';
+import {
+  toJSTDateString,
+  parseJSTDateStart,
+  addJSTCalendarDays,
+  getJSTMinutesOfDay,
+  jstDateTimeToDate,
+  differenceInJSTCalendarDays,
+} from '@/lib/jst';
 
-const pad = (value: number) => String(value).padStart(2, '0');
-
-const toDateString = (date: Date) => {
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
-    date.getDate()
-  )}`;
-};
+const toDateString = toJSTDateString;
 
 const splitName = (name?: string) => {
   if (!name) return { lastName: undefined, firstName: undefined };
@@ -64,10 +66,12 @@ const mapReservationRowsToAppointments = (
       id: row.id,
       resourceId: row.staffId,
       date,
-      startHour: start.getHours(),
-      startMinute: start.getMinutes(),
-      endHour: end.getHours(),
-      endMinute: end.getMinutes(),
+      startHour: Math.floor(getJSTMinutesOfDay(start) / 60),
+      startMinute: getJSTMinutesOfDay(start) % 60,
+      endHour:
+        differenceInJSTCalendarDays(date, toDateString(end)) * 24 +
+        Math.floor(getJSTMinutesOfDay(end) / 60),
+      endMinute: getJSTMinutesOfDay(end) % 60,
       title: row.customerName ?? row.customerId,
       lastName,
       firstName,
@@ -165,10 +169,16 @@ export const useAppointments = (clinicId: string | null) => {
   const loadAbortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    loadSeqRef.current += 1;
+    loadAbortControllerRef.current?.abort();
+    setAppointments([]);
+    setError(null);
+    setLoading(false);
     return () => {
+      loadSeqRef.current += 1;
       loadAbortControllerRef.current?.abort();
     };
-  }, []);
+  }, [clinicId]);
 
   const loadAppointments = useCallback(
     async (
@@ -205,10 +215,10 @@ export const useAppointments = (clinicId: string | null) => {
       const controller = new AbortController();
       loadAbortControllerRef.current = controller;
       try {
-        const startDate = new Date(currentDate);
-        startDate.setHours(0, 0, 0, 0);
-        const endDate = new Date(currentDate);
-        endDate.setHours(23, 59, 59, 999);
+        const startDate = parseJSTDateStart(dateString);
+        const endDate = new Date(
+          parseJSTDateStart(addJSTCalendarDays(dateString, 1)).getTime() - 1
+        );
 
         const rows = await fetchReservations(
           clinicId,
@@ -231,11 +241,11 @@ export const useAppointments = (clinicId: string | null) => {
         if (isAbortError(err)) {
           return;
         }
-        if (!cached || !options.silent) {
-          setError(
-            err instanceof Error ? err.message : 'Failed to load appointments'
-          );
-        }
+        setError(
+          err instanceof Error
+            ? err.message
+            : '予約一覧の取得が完了しませんでした。再試行してください'
+        );
       } finally {
         if (loadAbortControllerRef.current === controller) {
           loadAbortControllerRef.current = null;
@@ -287,19 +297,13 @@ export const useAppointments = (clinicId: string | null) => {
       replaceCachedAppointment(clinic, updatedAppointment);
 
       try {
-        const start = new Date(updatedAppointment.date);
-        start.setHours(
-          updatedAppointment.startHour,
-          updatedAppointment.startMinute,
-          0,
-          0
+        const start = jstDateTimeToDate(
+          updatedAppointment.date,
+          updatedAppointment.startHour + ':' + updatedAppointment.startMinute
         );
-        const end = new Date(updatedAppointment.date);
-        end.setHours(
-          updatedAppointment.endHour,
-          updatedAppointment.endMinute,
-          0,
-          0
+        const end = jstDateTimeToDate(
+          updatedAppointment.date,
+          updatedAppointment.endHour + ':' + updatedAppointment.endMinute
         );
 
         await updateReservation({
@@ -360,10 +364,11 @@ export const useAppointments = (clinicId: string | null) => {
         duration
       );
 
-      const start = new Date(current.date);
-      start.setHours(newStartHour, newStartMinute, 0, 0);
-      const end = new Date(current.date);
-      end.setHours(endHour, endMinute, 0, 0);
+      const start = jstDateTimeToDate(
+        current.date,
+        newStartHour + ':' + newStartMinute
+      );
+      const end = jstDateTimeToDate(current.date, endHour + ':' + endMinute);
 
       const nextAppointment: Appointment = {
         ...current,

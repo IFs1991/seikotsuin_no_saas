@@ -1,0 +1,63 @@
+import { CLINIC_B_ID, USER_CLINIC_B_ID } from './fixtures';
+
+export const CORE100_COMPANY_ID = '10000000-0000-4000-8000-000000000010';
+export const CORE100_ASSIGNED_CLINIC_ID =
+  '10000000-0000-4000-8000-000000000011';
+export const CORE100_UNASSIGNED_CLINIC_ID =
+  '10000000-0000-4000-8000-000000000012';
+export const CORE100_MANAGER = {
+  id: '10000000-0000-4000-8000-000000000101',
+  email: 'e2e-core100-manager@clinic.local',
+  password: 'Core100Manager#12345',
+  clinicId: CORE100_ASSIGNED_CLINIC_ID,
+  role: 'manager',
+} as const;
+export const CORE100_UNASSIGNED_STAFF = {
+  id: '10000000-0000-4000-8000-000000000102',
+  email: 'e2e-core100-unassigned-staff@clinic.local',
+  password: 'Core100Staff#12345',
+  clinicId: CORE100_UNASSIGNED_CLINIC_ID,
+  role: 'staff',
+} as const;
+export const CORE100_ASSIGNMENT_ID = '10000000-0000-4000-8000-000000000110';
+
+export const CORE100_BOOKING_FIXTURES = [
+  {
+    clinicId: CORE100_ASSIGNED_CLINIC_ID,
+    userId: CORE100_MANAGER.id,
+    customerId: '10000000-0000-4000-8000-000000000201',
+    menuId: '10000000-0000-4000-8000-000000000301',
+    resourceId: '10000000-0000-4000-8000-000000000401',
+    reservationId: '10000000-0000-4000-8000-000000000501',
+    reportId: '10000000-0000-4000-8000-000000000601',
+    label: 'Core100 assigned',
+  },
+  {
+    clinicId: CORE100_UNASSIGNED_CLINIC_ID,
+    userId: CORE100_UNASSIGNED_STAFF.id,
+    customerId: '10000000-0000-4000-8000-000000000202',
+    menuId: '10000000-0000-4000-8000-000000000302',
+    resourceId: '10000000-0000-4000-8000-000000000402',
+    reservationId: '10000000-0000-4000-8000-000000000502',
+    reportId: '10000000-0000-4000-8000-000000000602',
+    label: 'Core100 unassigned',
+  },
+  {
+    clinicId: CLINIC_B_ID,
+    userId: USER_CLINIC_B_ID,
+    customerId: '10000000-0000-4000-8000-000000000203',
+    menuId: '10000000-0000-4000-8000-000000000303',
+    resourceId: '10000000-0000-4000-8000-000000000403',
+    reservationId: '10000000-0000-4000-8000-000000000503',
+    reportId: '10000000-0000-4000-8000-000000000603',
+    label: 'Core100 company B',
+  },
+] as const;
+
+export const CORE100_EXTRA_RESERVATIONS = {
+  todayCompleted: '10000000-0000-4000-8000-000000000511',
+  todayCancelled: '10000000-0000-4000-8000-000000000512',
+  previousWeekday: '10000000-0000-4000-8000-000000000513',
+} as const;
+export const CORE100_PREVIOUS_REPORT_ID =
+  '10000000-0000-4000-8000-000000000611';

@@ -1,0 +1,21 @@
+{
+  "runId": "core100-local-a-20260905",
+  "distribution": "A",
+  "asOfDate": "2026-09-05",
+  "scale": "standard",
+  "targetId": "local-dedicated",
+  "approvedTargets": [
+    {
+      "id": "local-dedicated",
+      "environment": "local",
+      "appOrigin": "http://127.0.0.1:3000",
+      "supabaseOrigin": "http://127.0.0.1:54331",
+      "projectRef": "local",
+      "dedicated": false,
+      "externalDeliveryBlocked": false
+    }
+  ],
+  "productionAppOrigins": [],
+  "productionSupabaseOrigins": [],
+  "productionProjectRefs": []
+}

@@ -5056,7 +5056,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/daily-reports/route.ts",
-        "line": 99,
+        "line": 101,
         "exportKind": "function"
       },
       "executionPath": {
@@ -5144,7 +5144,7 @@
       "method": "DELETE",
       "source": {
         "path": "src/app/api/daily-reports/route.ts",
-        "line": 166,
+        "line": 169,
         "exportKind": "function"
       },
       "executionPath": {
@@ -8346,8 +8346,7 @@
           "business write helper"
         ],
         "validation": [
-          "safeParse",
-          "validation helper"
+          "safeParse"
         ],
         "serviceRole": [
           "createAdminClient"
@@ -9374,7 +9373,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/reservations/route.ts",
-        "line": 610,
+        "line": 656,
         "exportKind": "function"
       },
       "executionPath": {
@@ -9471,7 +9470,7 @@
       "method": "PATCH",
       "source": {
         "path": "src/app/api/reservations/route.ts",
-        "line": 763,
+        "line": 809,
         "exportKind": "function"
       },
       "executionPath": {
@@ -9568,7 +9567,7 @@
       "method": "DELETE",
       "source": {
         "path": "src/app/api/reservations/route.ts",
-        "line": 971,
+        "line": 1017,
         "exportKind": "function"
       },
       "executionPath": {

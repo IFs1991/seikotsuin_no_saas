@@ -1,4 +1,12 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import {
+  buildReservationPagination,
+  decodeReservationCursor,
+  matchesReservationCursor,
+  reservationCursorFilter,
+  type ReservationCursorContext,
+  type ReservationPagination,
+} from '@/lib/reservations/pagination';
 import {
   createErrorResponse,
   createSuccessResponse,
@@ -544,6 +552,8 @@ export async function GET(request: NextRequest) {
       end_date: request.nextUrl.searchParams.get('end_date') ?? undefined,
       staff_id: request.nextUrl.searchParams.get('staff_id') ?? undefined,
       customer_id: request.nextUrl.searchParams.get('customer_id') ?? undefined,
+      limit: request.nextUrl.searchParams.get('limit') ?? undefined,
+      cursor: request.nextUrl.searchParams.get('cursor') ?? undefined,
     });
     if (!parsedQuery.success) {
       return createErrorResponse(
@@ -553,8 +563,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { clinic_id, id, start_date, end_date, staff_id, customer_id } =
-      parsedQuery.data;
+    const {
+      clinic_id,
+      id,
+      start_date,
+      end_date,
+      staff_id,
+      customer_id,
+      limit,
+      cursor,
+    } = parsedQuery.data;
 
     const auth = await processApiRequest(request, {
       clinicId: clinic_id,
@@ -566,7 +584,7 @@ export async function GET(request: NextRequest) {
 
     const query = supabase
       .from('reservation_list_view')
-      .select(RESERVATION_LIST_SELECT)
+      .select(RESERVATION_LIST_SELECT, id ? undefined : { count: 'exact' })
       .eq('clinic_id', clinic_id);
 
     if (id) {
@@ -581,14 +599,30 @@ export async function GET(request: NextRequest) {
       return createSuccessResponse(mapReservationListViewRow(data));
     }
 
+    const context: ReservationCursorContext = {
+      clinicId: clinic_id,
+      startDate: start_date ?? null,
+      endDate: end_date ?? null,
+      staffId: staff_id ?? null,
+      customerId: customer_id ?? null,
+      order: customer_id ? 'desc' : 'asc',
+    };
+    if (cursor) {
+      const position = decodeReservationCursor(cursor);
+      if (!position || !matchesReservationCursor(position, context)) {
+        return createErrorResponse('cursorと検索条件が一致しません', 400);
+      }
+      query.or(reservationCursorFilter(position));
+    }
     if (start_date) query.gte('start_time', start_date);
     if (end_date) query.lte('start_time', end_date);
     if (staff_id) query.eq('staff_id', staff_id);
     if (customer_id) query.eq('customer_id', customer_id);
 
-    const { data, error } = await query.order('start_time', {
-      ascending: !customer_id,
-    });
+    const { data, error, count } = await query
+      .order('start_time', { ascending: !customer_id })
+      .order('id', { ascending: !customer_id })
+      .limit(limit);
 
     if (error) {
       const constraintErrorMessage =
@@ -599,9 +633,21 @@ export async function GET(request: NextRequest) {
       throw normalizeSupabaseError(error, PATH);
     }
 
-    const mapped = (data ?? []).map(mapReservationListViewRow);
-
-    return createSuccessResponse(mapped);
+    const rows = data ?? [];
+    let pagination: ReservationPagination;
+    try {
+      pagination = buildReservationPagination(rows, count, context);
+    } catch {
+      return createErrorResponse(
+        '予約をすべて確認できません。時間をおいて再試行してください',
+        503
+      );
+    }
+    return NextResponse.json({
+      success: true,
+      data: rows.map(mapReservationListViewRow),
+      pagination,
+    });
   } catch (error) {
     return handleRouteError(error, PATH);
   }

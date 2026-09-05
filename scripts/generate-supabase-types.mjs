@@ -12,6 +12,7 @@ import path from 'node:path';
 import { format, resolveConfig } from 'prettier';
 
 import { preserveCommittedPostgrestVersion } from './lib/supabase-generated-types.mjs';
+import { runWithMetaImagePullRetry } from './lib/image-pull-retry.mjs';
 import {
   assertPinnedSupabaseCliVersion,
   resolveSupabaseCliInvocation,
@@ -67,18 +68,20 @@ try {
     '--schema',
     'public',
   ]);
-  const raw = execFileSync(invocation.command, invocation.args, {
-    cwd: cliCwd,
-    encoding: 'utf8',
-    env: {
-      ...process.env,
-      DO_NOT_TRACK: '1',
-      SUPABASE_TELEMETRY_DISABLED: '1',
-    },
-    maxBuffer: 64 * 1024 * 1024,
-    timeout: 300_000,
-    windowsHide: true,
-  });
+  const raw = await runWithMetaImagePullRetry(() =>
+    execFileSync(invocation.command, invocation.args, {
+      cwd: cliCwd,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        DO_NOT_TRACK: '1',
+        SUPABASE_TELEMETRY_DISABLED: '1',
+      },
+      maxBuffer: 64 * 1024 * 1024,
+      timeout: 300_000,
+      windowsHide: true,
+    })
+  );
 
   // Filter: keep only lines that are part of the TypeScript type definition
   const lines = raw.split('\n');

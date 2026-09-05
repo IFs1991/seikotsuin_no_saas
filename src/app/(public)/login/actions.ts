@@ -21,6 +21,7 @@ import {
   isTherapistRole,
 } from '@/lib/constants/roles';
 import { clearRejectedAuthSession } from '@/lib/auth/session-cleanup';
+import { checkAuthAttempt } from '@/lib/auth/auth-attempt-guard';
 
 /**
  * @file actions.ts
@@ -116,6 +117,9 @@ export async function clinicLogin(
     const sanitizedPassword = sanitizeAuthInput(parsed.data.password);
 
     // 2. Supabase認証
+    const attemptError = await checkAuthAttempt(sanitizedEmail, headerList);
+    if (attemptError) return attemptError;
+
     const { error, data } = await supabase.auth.signInWithPassword({
       email: sanitizedEmail,
       password: sanitizedPassword,

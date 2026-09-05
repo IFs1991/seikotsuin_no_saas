@@ -10,21 +10,16 @@ import { normalizeRole } from '@/lib/constants/roles';
 import { AppError, ERROR_CODES } from '@/lib/error-handler';
 import {
   buildManagerDashboardResponse,
-  getJstDateUtcRange,
   getManagerDashboardDateKeys,
-  REVIEW_SIGNAL_STATUSES,
   type ManagerDashboardDailyReportRow,
-  type ManagerDashboardReservationRow,
-  type ManagerDashboardReviewSignalRow,
 } from '@/lib/manager-dashboard';
+import { fetchManagerDashboardCounts } from '@/lib/manager-dashboard-counts';
 import { createAdminClient } from '@/lib/supabase';
 
 const PATH = '/api/manager/dashboard';
 const MANAGER_DASHBOARD_ALLOWED_ROLES = ['manager'] as const;
 const DAILY_REPORT_SELECT =
   'id, clinic_id, report_date, total_patients, total_revenue, insurance_revenue, private_revenue, updated_at';
-const DAILY_REPORT_ITEM_SELECT = 'clinic_id, report_date, estimate_status';
-const RESERVATION_SELECT = 'clinic_id, start_time, status';
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -52,52 +47,6 @@ async function fetchDailyReportsForDashboard(
     .gte('report_date', startDate)
     .lte('report_date', endDate)
     .returns<ManagerDashboardDailyReportRow[]>();
-
-  if (error) {
-    throw error;
-  }
-
-  return data ?? [];
-}
-
-async function fetchReviewSignalsForDashboard(
-  adminClient: AdminClient,
-  clinicIds: readonly string[],
-  today: string
-): Promise<ManagerDashboardReviewSignalRow[]> {
-  const { data, error } = await adminClient
-    .from('daily_report_items')
-    .select(DAILY_REPORT_ITEM_SELECT)
-    .in('clinic_id', [...clinicIds])
-    .eq('report_date', today)
-    .in('estimate_status', [...REVIEW_SIGNAL_STATUSES])
-    .returns<ManagerDashboardReviewSignalRow[]>();
-
-  if (error) {
-    throw error;
-  }
-
-  return data ?? [];
-}
-
-async function fetchReservationsForDashboard(
-  adminClient: AdminClient,
-  clinicIds: readonly string[],
-  previousWeekday: string,
-  today: string
-): Promise<ManagerDashboardReservationRow[]> {
-  const previousWeekdayRange = getJstDateUtcRange(previousWeekday);
-  const todayRange = getJstDateUtcRange(today);
-  const dateFilter = [
-    `and(start_time.gte.${previousWeekdayRange.startIso},start_time.lt.${previousWeekdayRange.endIso})`,
-    `and(start_time.gte.${todayRange.startIso},start_time.lt.${todayRange.endIso})`,
-  ].join(',');
-  const { data, error } = await adminClient
-    .from('reservation_list_view')
-    .select(RESERVATION_SELECT)
-    .in('clinic_id', [...clinicIds])
-    .or(dateFilter)
-    .returns<ManagerDashboardReservationRow[]>();
 
   if (error) {
     throw error;
@@ -146,20 +95,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [dailyReports, reviewSignals, reservations] = await Promise.all([
+    const [dailyReports, counts] = await Promise.all([
       fetchDailyReportsForDashboard(
         adminClient,
         clinicIds,
         date.previousDay,
         date.today
       ),
-      fetchReviewSignalsForDashboard(adminClient, clinicIds, date.today),
-      fetchReservationsForDashboard(
-        adminClient,
-        clinicIds,
-        date.previousWeekday,
-        date.today
-      ),
+      fetchManagerDashboardCounts(adminClient, clinicIds, date),
     ]);
 
     return createSuccessResponse(
@@ -168,8 +111,9 @@ export async function GET(request: NextRequest) {
         date,
         clinics,
         dailyReports,
-        reviewSignals,
-        reservations,
+        reviewSignals: [],
+        reservations: [],
+        counts,
       })
     );
   } catch (error) {

@@ -3,6 +3,7 @@ import { Redis } from '@upstash/redis';
 
 import { validateProductionEnvironment } from '@/lib/env';
 import { captureOperationalError } from '@/lib/monitoring/sentry';
+import { reportApiFailure } from '@/lib/monitoring/api-failure';
 import { createAdminClient } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,7 @@ function createHealthResponse(
   },
   status: number
 ) {
+  reportApiFailure(status, 'readiness');
   return NextResponse.json(
     {
       ok,

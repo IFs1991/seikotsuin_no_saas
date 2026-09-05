@@ -4,6 +4,8 @@ describe('instrumentation-client', () => {
   beforeEach(() => {
     jest.resetModules();
     process.env = { ...originalEnv };
+    delete process.env.SENTRY_DSN;
+    delete process.env.NEXT_PUBLIC_SENTRY_DSN;
   });
 
   afterAll(() => {
@@ -23,8 +25,9 @@ describe('instrumentation-client', () => {
     expect(initMock).not.toHaveBeenCalled();
   });
 
-  it('initializes Sentry for the client runtime when SENTRY_DSN is configured', async () => {
-    process.env.SENTRY_DSN = 'https://public@example.ingest.sentry.io/1';
+  it('initializes the browser with its build-time public DSN', async () => {
+    process.env.NEXT_PUBLIC_SENTRY_DSN =
+      'https://public@example.ingest.sentry.io/1';
     process.env.NODE_ENV = 'production';
 
     const initMock = jest.fn();

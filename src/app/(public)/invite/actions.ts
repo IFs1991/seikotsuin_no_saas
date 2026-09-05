@@ -13,6 +13,7 @@ import { assertEnv } from '@/lib/env';
 import { createAdminClient, getServerClient } from '@/lib/supabase';
 import { AuditLogger, getRequestInfoFromHeaders } from '@/lib/audit-logger';
 import type { Database } from '@/types/supabase';
+import { checkAuthAttempt } from '@/lib/auth/auth-attempt-guard';
 import {
   createAuthLog,
   getEmailDomainLogData,
@@ -497,6 +498,9 @@ export async function loginAndAcceptInvite(
     }
 
     // 2. ログイン
+    const attemptError = await checkAuthAttempt(sanitizedEmail, headerList);
+    if (attemptError) return attemptError;
+
     const { error: loginError } = await supabase.auth.signInWithPassword({
       email: sanitizedEmail,
       password: sanitizedPassword,

@@ -91,7 +91,9 @@ describe('GET /api/reservations', () => {
       eq: jest.fn().mockReturnThis(),
       gte: jest.fn().mockReturnThis(),
       lte: jest.fn().mockReturnThis(),
-      order: jest.fn().mockResolvedValue({
+      order: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockResolvedValue({
+        count: 1,
         data: [
           {
             id: validId,
@@ -164,7 +166,9 @@ describe('GET /api/reservations', () => {
       eq: jest.fn().mockReturnThis(),
       gte: jest.fn().mockReturnThis(),
       lte: jest.fn().mockReturnThis(),
-      order: jest.fn().mockResolvedValue({
+      order: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockResolvedValue({
+        count: 1,
         data: [
           {
             id: validId,
@@ -303,7 +307,7 @@ describe('GET /api/reservations', () => {
     const { GET } = await import('@/app/api/reservations/route');
     const request = {
       nextUrl: new URL(
-        `http://localhost/api/reservations?clinic_id=${validClinicId}`
+        `http://localhost/api/reservations?clinic_id=${validClinicId}&customer_id=${validCustomerId}`
       ),
     } as unknown as NextRequest;
 
@@ -312,6 +316,114 @@ describe('GET /api/reservations', () => {
     expect(response.status).toBe(403);
     expect(createAdminClientMock).not.toHaveBeenCalled();
     expect(createScopedAdminContextMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('reservation cursor route boundary', () => {
+  beforeEach(() => jest.clearAllMocks());
+  const setup = (count = 5) => {
+    const query = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
+      lte: jest.fn().mockReturnThis(),
+      or: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockResolvedValue({
+        data: [buildReservationListViewRow()],
+        error: null,
+        count,
+      }),
+    };
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: validClinicId,
+        clinic_scope_ids: [validClinicId],
+      },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client: { from: jest.fn().mockReturnValue(query) },
+      assertClinicInScope: jest.fn(),
+    });
+    return query;
+  };
+  it('reports another page when upstream cap is below requested limit, with clinic authorization and stable ID order', async () => {
+    const query = setup();
+    const { GET } = await import('@/app/api/reservations/route');
+    const url =
+      'http://localhost/api/reservations?clinic_id=' +
+      validClinicId +
+      '&customer_id=' +
+      validCustomerId;
+    const first = await GET(new NextRequest(url));
+    const body = await first.json();
+    expect(body.pagination.has_more).toBe(true);
+    expect(query.select).toHaveBeenCalledWith(
+      expect.stringContaining('start_time'),
+      { count: 'exact' }
+    );
+    expect(query.order).toHaveBeenCalledWith('id', { ascending: false });
+    expect(query.limit).toHaveBeenCalledWith(100);
+    const second = await GET(
+      new NextRequest(url + '&cursor=' + body.pagination.next_cursor)
+    );
+    expect(second.status).toBe(200);
+    expect(processApiRequestMock).toHaveBeenCalledTimes(2);
+    expect(query.or).toHaveBeenCalledWith(expect.stringContaining('id.lt.'));
+    const swapped = await GET(
+      new NextRequest(
+        url.replace(validClinicId, validCustomerId) +
+          '&cursor=' +
+          body.pagination.next_cursor
+      )
+    );
+    expect(swapped.status).toBe(400);
+    processApiRequestMock.mockResolvedValueOnce({
+      success: false,
+      error: Response.json(
+        { success: false, error: 'denied' },
+        { status: 403 }
+      ),
+    });
+    expect(
+      (
+        await GET(
+          new NextRequest(url + '&cursor=' + body.pagination.next_cursor)
+        )
+      ).status
+    ).toBe(403);
+  });
+  it('reports missing count as a service failure and rejects unbounded queries', async () => {
+    const query = setup();
+    query.limit.mockResolvedValueOnce({
+      data: [buildReservationListViewRow()],
+      error: null,
+      count: null,
+    });
+    const { GET } = await import('@/app/api/reservations/route');
+    expect(
+      (
+        await GET(
+          new NextRequest(
+            'http://localhost/api/reservations?clinic_id=' +
+              validClinicId +
+              '&customer_id=' +
+              validCustomerId
+          )
+        )
+      ).status
+    ).toBe(503);
+    expect(
+      (
+        await GET(
+          new NextRequest(
+            'http://localhost/api/reservations?clinic_id=' + validClinicId
+          )
+        )
+      ).status
+    ).toBe(400);
   });
 });
 
