@@ -1,0 +1,322 @@
+{
+  "release_profile": "core-100",
+  "commit": "806a5afab8e976a48cf2ecb771a1bc277bb53500",
+  "working_tree": true,
+  "environment": "Windows local; PowerShell; Node 24.19.0; npm 11.7.0",
+  "verified_at": "2026-09-05T16:11:23.5603616Z",
+  "owner": "Toshu",
+  "code_status": "IMPLEMENTED",
+  "capacity_status": "BLOCKED",
+  "operations_status": "BLOCKED",
+  "release_decision": "NO_GO",
+  "workload": {
+    "companies": 10,
+    "operational_clinics": 100,
+    "organization_roots": 10,
+    "users": 500,
+    "patients": 100000,
+    "reservations": 1500000,
+    "normal_vus": 200,
+    "burst_vus": 400
+  },
+  "checks": [
+    {
+      "id": "TASK-01",
+      "implementation_status": "IMPLEMENTED",
+      "verification_status": "PASS",
+      "scope": "Local unit/mocked Redis only",
+      "evidence": [
+        "src/__tests__/auth/auth-attempt-guard.test.ts",
+        "src/__tests__/auth/auth-attempt-entrypoints.test.ts"
+      ],
+      "blockers": [
+        "Real Redis atomic TTL/concurrency",
+        "Trusted proxy shared-IP and upstream Auth limits"
+      ]
+    },
+    {
+      "id": "TASK-02A",
+      "implementation_status": "IMPLEMENTED",
+      "verification_status": "PASS",
+      "scope": "Local mock exact count/aggregate failure tests only",
+      "evidence": [
+        "src/__tests__/lib/manager-dashboard-counts.test.ts",
+        "src/__tests__/api/admin-dashboard-route.test.ts"
+      ],
+      "blockers": [
+        "Real DB 1000+ rows and 50-clinic latency",
+        "Target PostgREST aggregates configuration"
+      ]
+    },
+    {
+      "id": "TASK-02B",
+      "implementation_status": "IMPLEMENTED",
+      "verification_status": "PASS",
+      "scope": "Local API, pagination, React tests; TZ=UTC",
+      "evidence": [
+        "src/__tests__/lib/reservation-pagination.test.ts",
+        "src/__tests__/reservations/api-pagination.test.ts",
+        "src/__tests__/hooks/useAppointments.reservations.test.tsx"
+      ],
+      "blockers": [
+        "Real RLS pagination and production row-limit verification"
+      ]
+    },
+    {
+      "id": "TASK-03",
+      "implementation_status": "IMPLEMENTED",
+      "verification_status": "PASS",
+      "scope": "Local configuration/gate/state-machine tests; offline preflight",
+      "evidence": [
+        "src/__tests__/lib/billing-production-write.test.ts",
+        "src/__tests__/lib/billing-release-configuration.test.ts",
+        "scripts/release/preflight.mjs"
+      ],
+      "blockers": [
+        "Stripe test-mode provider qualification",
+        "Deployed public flags and production configuration",
+        "Real tenant quantity concurrency"
+      ]
+    },
+    {
+      "id": "TASK-04",
+      "implementation_status": "IMPLEMENTED",
+      "verification_status": "BLOCKED",
+      "scope": "Local final focused tests and build pass; whole-suite initial failures resolved by targeted checks, no final full CI",
+      "evidence": [
+        ".github/workflows/ci.yml",
+        "src/__tests__/e2e-playwright/core100-workflow.spec.ts",
+        "src/__tests__/e2e-playwright/core100-boundaries.spec.ts",
+        "src/__tests__/e2e-playwright/core100-manager-scope.spec.ts"
+      ],
+      "blockers": [
+        "Disposable DB replay/pgTAP/type generation/invite concurrency/GoTrue revocation execution approval",
+        "Actual E2E run",
+        "CI on shipment commit",
+        "Sharp exposure/hosting qualification"
+      ]
+    },
+    {
+      "id": "TASK-05",
+      "implementation_status": "IMPLEMENTED",
+      "verification_status": "BLOCKED",
+      "scope": "27 offline capacity tooling tests pass; no seed/load performed",
+      "evidence": [
+        "scripts/release/core100.mjs",
+        "scripts/release/__tests__/core100.test.mjs"
+      ],
+      "blockers": [
+        "Approved dedicated synthetic-data target",
+        "App/DB plan, region and metrics",
+        "Shared-IP topology",
+        "Unpaid-company real session scenario"
+      ]
+    },
+    {
+      "id": "TASK-06",
+      "implementation_status": "IMPLEMENTED",
+      "verification_status": "BLOCKED",
+      "scope": "Local Sentry privacy/init/handled failure tests pass; runbook written",
+      "evidence": [
+        "src/lib/monitoring/sentry.ts",
+        "src/lib/monitoring/api-failure.ts",
+        "docs/operations/CORE100_RUNBOOK.md"
+      ],
+      "blockers": [
+        "Actual notification receipt",
+        "Isolated backup restore including Storage/keys/Auth",
+        "Approved RPO/RTO",
+        "Branch protection/required checks/deployment approval"
+      ]
+    },
+    {
+      "id": "TASK-07",
+      "implementation_status": "BLOCKED",
+      "verification_status": "BLOCKED",
+      "scope": "Existing notification paths remain active; NOT_APPLICABLE unsupported",
+      "evidence": [
+        "vercel.json",
+        "src/lib/notifications/email/processor.ts",
+        "src/lib/notifications/line-processor.ts",
+        "src/app/api/reservations/route.ts"
+      ],
+      "blockers": [
+        "Owner offering/contract decision",
+        "If included: durable enqueue, lease/recovery, unknown provider outcome and capacity qualification",
+        "If excluded: approved API/enqueue/Cron stop without deleting outbox"
+      ]
+    }
+  ],
+  "local_verification": {
+    "final_focused_jest": {
+      "status": "PASS",
+      "suites": 22,
+      "tests": 183,
+      "conditions": [
+        "Next 15.5.21",
+        "TZ=UTC",
+        "E2E_INVITE_MODE=disabled"
+      ]
+    },
+    "release_tooling": {
+      "status": "PASS",
+      "tests": 39,
+      "scope": "Offline; no real database or provider"
+    },
+    "type_check": "PASS",
+    "commercial_type_check": "PASS",
+    "commercial_lint": "PASS",
+    "lint_ci": {
+      "status": "PASS",
+      "errors": 0,
+      "warnings": 129
+    },
+    "build": {
+      "status": "PASS",
+      "next": "15.5.21",
+      "pilot_mode": false,
+      "billing_enabled": true,
+      "environment": "Loopback URLs; synthetic build keys; Sentry transport/upload disabled"
+    },
+    "initial_full_jest": {
+      "status": "FAIL",
+      "passed_suites": 410,
+      "failed_suites": 3,
+      "passed_tests": 3488,
+      "failed_tests": 4,
+      "skipped_tests": 2,
+      "notes": "Invite env contamination fixed by existing CI env; stale policy count corrected; generated manifest refreshed. Targeted reruns pass; full suite after final patch NOT_RUN."
+    },
+    "policy_jest": {
+      "status": "PASS",
+      "tests": 125
+    },
+    "inventory_jest": {
+      "status": "PASS",
+      "tests": 4
+    },
+    "mutating_route_policy": {
+      "status": "PASS",
+      "mutating_handlers": 121,
+      "side_effect_gets": 9
+    },
+    "migration_history": {
+      "status": "PASS",
+      "frozen": 50,
+      "appended": 10,
+      "applied_by_this_task": false
+    },
+    "source_inventory": "PASS",
+    "secret_scan": "PASS",
+    "mobile_assets": "PASS",
+    "static_fixtures": {
+      "status": "PASS",
+      "database_check": "BLOCKED"
+    },
+    "seed_dry_run": "PASS",
+    "load_plan_offline": "PASS",
+    "preflight_empty_environment": {
+      "status": "BLOCKED",
+      "reason": "Missing process environment; no .env auto-loading"
+    }
+  },
+  "independent_audits": [
+    {
+      "reviewer": "task01_auth",
+      "scope": "Manager counts and reservation/billing downstream independent review",
+      "status": "PASS",
+      "mode": "read-only"
+    },
+    {
+      "reviewer": "audit_downstream",
+      "scope": "Auth, billing/preflight, monitoring and capacity independent review",
+      "status": "PASS",
+      "mode": "read-only"
+    },
+    {
+      "reviewer": "audit_release",
+      "scope": "Core E2E, effective URL safety and final dependency diff",
+      "status": "PASS",
+      "mode": "read-only"
+    }
+  ],
+  "dependencies": {
+    "audit_before": {
+      "status": "FAIL",
+      "high": 8,
+      "moderate": 1,
+      "total_packages": 9
+    },
+    "next_update": {
+      "from": "15.5.19",
+      "to": "15.5.21",
+      "direct_advisories_after": [],
+      "added_package_paths": 0,
+      "removed_package_paths": 0,
+      "source": "https://github.com/vercel/next.js/security/advisories/GHSA-m99w-x7hq-7vfj"
+    },
+    "audit_after": {
+      "status": "FAIL",
+      "high": 8,
+      "moderate": 1,
+      "total_packages": 9,
+      "next_via": [
+        "postcss",
+        "sharp"
+      ]
+    },
+    "remaining_blocker": "sharp 0.34.5 conditional image optimizer exposure; hosting qualification and targeted compatible remediation required",
+    "audit_authorization": "Initial auto-review rejected registry dependency-metadata egress; user explicitly approved; authorized retry completed. No unresolved rejection."
+  },
+  "configuration": {
+    "app_plan": "NOT_VERIFIED",
+    "db_plan": "NOT_VERIFIED",
+    "region": "NOT_VERIFIED",
+    "data_api_row_limit": "NOT_VERIFIED",
+    "local_data_api_row_limit": 1000,
+    "local_auth_sign_in_sign_ups": 30,
+    "local_auth_token_refresh": 150,
+    "pilot_mode": "NOT_VERIFIED",
+    "billing_mode": "NOT_VERIFIED",
+    "notifications_in_scope": null,
+    "approved_rpo_minutes": null,
+    "approved_rto_minutes": null,
+    "proposed_rpo_minutes": 60,
+    "proposed_rto_minutes": 240,
+    "main_branch_protection": "BLOCKED: read-only GitHub API returned 404 Branch not protected",
+    "last_observed_ci": {
+      "run_id": "33370878657",
+      "status": "FAIL",
+      "commit_prefix": "beb0978",
+      "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/33370878657"
+    }
+  },
+  "changes": {
+    "migrations_added": 0,
+    "production_operations": false,
+    "paid_configuration_changes": false,
+    "external_notifications_sent": false,
+    "db_reset_or_migration_apply": false,
+    "real_seed_or_load": false,
+    "new_direct_dependencies": 0,
+    "added_app_env": [
+      "NEXT_PUBLIC_SENTRY_DSN"
+    ],
+    "documents": [
+      "docs/stabilization/core100-release-changes.md",
+      "docs/operations/CORE100_RUNBOOK.md",
+      "docs/stabilization/core100-release-result.md"
+    ]
+  },
+  "remaining_gate_differences": "Owner approval required; historical PR-11 FAIL and commercial security/tenant/billing/restore gates unchanged.",
+  "file_snapshot": "files.json",
+  "local_logs_directory": "C:/Users/seekf/.codex/visualizations/2026/09/05/01a071e9-fddf-7f61-9403-26c39fae5a78/core100-local-logs",
+  "publication": {
+    "implementation_commit": "7dca4a530a0308f5b5baf55caac579c9b140a794",
+    "branch": "codex/line-crm-data-foundation",
+    "remote": "origin",
+    "target": "https://github.com/IFs1991/seikotsuin_no_saas",
+    "prepared_at": "2026-09-05T16:29:53.0850552Z",
+    "verification_note": "All 85 file hashes matched the verified working tree before commits. Only commit metadata in documentation changed afterwards. Tests were not rerun on the new commit; CI and real-environment qualification remain unverified."
+  }
+}

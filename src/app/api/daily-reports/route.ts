@@ -17,6 +17,7 @@ import {
 import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 import { createAuthorityUnavailableResponse } from '@/lib/api-helpers';
 import { resolveScopedClinicIds } from '@/lib/supabase';
+import { reportApiFailure } from '@/lib/monitoring/api-failure';
 
 const PATH = '/api/daily-reports';
 const DAILY_REPORT_DELETE_ROLES = ['admin', 'clinic_admin'] as const;
@@ -80,6 +81,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
+    reportApiFailure(error instanceof AppError ? error.statusCode : 500);
     const authorityUnavailable = createAuthorityUnavailableResponse(error);
     if (authorityUnavailable) return authorityUnavailable;
 
@@ -147,6 +149,7 @@ export async function POST(request: NextRequest) {
       data,
     });
   } catch (error) {
+    reportApiFailure(error instanceof AppError ? error.statusCode : 500);
     const authorityUnavailable = createAuthorityUnavailableResponse(error);
     if (authorityUnavailable) return authorityUnavailable;
 
@@ -233,6 +236,7 @@ export async function DELETE(request: NextRequest) {
       message: 'Report deleted successfully',
     });
   } catch (error) {
+    reportApiFailure(error instanceof AppError ? error.statusCode : 500);
     const authorityUnavailable = createAuthorityUnavailableResponse(error);
     if (authorityUnavailable) return authorityUnavailable;
 

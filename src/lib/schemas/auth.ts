@@ -156,6 +156,8 @@ export const passwordChangeSchema = z
  */
 export type AuthErrorResponse = {
   success: false;
+  code?: 'AUTH_RATE_LIMITED' | 'AUTH_UNAVAILABLE';
+  retryAfterSeconds?: number;
   errors: {
     email?: string[];
     password?: string[];

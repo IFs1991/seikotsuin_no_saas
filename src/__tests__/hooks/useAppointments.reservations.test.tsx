@@ -41,6 +41,91 @@ describe('useAppointments reservation behavior', () => {
     jest.clearAllMocks();
   });
 
+  it('preserves JST reservation instants when loading then saving only a memo on a UTC device', async () => {
+    const { result } = renderHook(() => useAppointments('clinic-1'));
+    mockApi.fetchReservations.mockResolvedValueOnce([
+      {
+        id: 'month-boundary',
+        customerId: 'customer-1',
+        menuId: 'menu-1',
+        staffId: 'staff-1',
+        startTime: '2026-02-28T15:15:00.000Z',
+        endTime: '2026-02-28T16:15:00.000Z',
+        status: 'confirmed',
+      },
+    ]);
+    await act(async () => {
+      await result.current.loadAppointments(new Date('2026-02-28T15:15:00Z'));
+    });
+    const loaded = result.current.appointments[0];
+    if (!loaded) throw new Error('Reservation was not loaded');
+    expect(loaded).toMatchObject({
+      date: '2026-03-01',
+      startHour: 0,
+      startMinute: 15,
+      endHour: 1,
+      endMinute: 15,
+    });
+    await act(async () => {
+      await result.current.updateAppointment({
+        ...loaded,
+        memo: 'changed memo',
+      });
+    });
+    expect(mockApi.updateReservation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startTime: new Date('2026-02-28T15:15:00.000Z'),
+        endTime: new Date('2026-02-28T16:15:00.000Z'),
+        notes: 'changed memo',
+      })
+    );
+  });
+
+  it('moves reservations in JST and keeps next-day duration on a UTC device', async () => {
+    const { result } = renderHook(() => useAppointments('clinic-1'));
+    act(() => {
+      result.current.addAppointment({ ...baseAppointment, date: '2026-02-28' });
+    });
+    await act(async () => {
+      await result.current.moveAppointment('appt-1', 'staff-2', 23, 30);
+    });
+    expect(mockApi.updateReservation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startTime: new Date('2026-02-28T14:30:00.000Z'),
+        endTime: new Date('2026-02-28T15:30:00.000Z'),
+      })
+    );
+  });
+
+  it('preserves a loaded reservation ending after JST midnight when saving a memo', async () => {
+    const { result } = renderHook(() => useAppointments('clinic-1'));
+    mockApi.fetchReservations.mockResolvedValueOnce([
+      {
+        id: 'overnight',
+        customerId: 'customer-1',
+        menuId: 'menu-1',
+        staffId: 'staff-1',
+        startTime: '2026-02-28T14:30:00.000Z',
+        endTime: '2026-02-28T15:30:00.000Z',
+      },
+    ]);
+    await act(async () => {
+      await result.current.loadAppointments(new Date('2026-02-28T14:30:00Z'));
+    });
+    const loaded = result.current.appointments[0];
+    if (!loaded) throw new Error('Reservation was not loaded');
+    expect(loaded.endHour).toBe(24);
+    await act(async () => {
+      await result.current.updateAppointment({ ...loaded, memo: 'changed' });
+    });
+    expect(mockApi.updateReservation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startTime: new Date('2026-02-28T14:30:00.000Z'),
+        endTime: new Date('2026-02-28T15:30:00.000Z'),
+      })
+    );
+  });
+
   it('keeps notes in PATCH payload when moving appointment', async () => {
     const { result } = renderHook(() => useAppointments('clinic-1'));
 

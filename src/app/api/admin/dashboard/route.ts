@@ -36,9 +36,6 @@ const ADMIN_DASHBOARD_API_ROLES = [
 
 const STAFF_PERFORMANCE_SELECTORS = [
   'clinic_id, performance_score:satisfaction_score.avg()',
-  'clinic_id, performance_score:performance_score.avg()',
-  'clinic_id, performance_score:satisfaction_score',
-  'clinic_id, performance_score:performance_score',
 ] as const;
 
 async function fetchStaffPerformanceRows(
@@ -68,11 +65,11 @@ async function fetchStaffPerformanceRows(
     userId,
     params: {
       metric: 'staff_performance',
-      fallback: 'empty_staff_performance_rows',
+      reason: 'aggregate_unavailable',
     },
   });
 
-  return [];
+  throw new Error('Staff performance aggregate unavailable');
 }
 
 async function fetchScopedChildClinicRows(
@@ -204,18 +201,7 @@ export async function GET(request: NextRequest) {
       fetchStaffPerformanceRows(analyticsClient, clinicIds, auth.id),
     ]);
 
-    let dailyReports = reportsResult.data;
-    let reportsError = reportsResult.error;
-    if (reportsError) {
-      const rawReportsResult = await analyticsClient
-        .from('daily_reports')
-        .select('clinic_id, total_patients, total_revenue')
-        .in('clinic_id', clinicIds)
-        .returns<DailyReportAggregateRow[]>();
-
-      dailyReports = rawReportsResult.data;
-      reportsError = rawReportsResult.error;
-    }
+    const { data: dailyReports, error: reportsError } = reportsResult;
 
     if (reportsError) {
       logError(reportsError, {

@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { ReservationOptionSelection } from '@/types/reservation';
 import type { IntakeResponseSnapshot } from '@/lib/booking-form/settings';
 
@@ -83,6 +84,123 @@ interface ApiEnvelope {
 interface FetchReservationsOptions {
   signal?: AbortSignal;
 }
+export interface ReservationApiPage {
+  items: ReservationApiItem[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+const reservationPageSchema = z.object({
+  success: z.literal(true),
+  data: z.array(
+    z.object({
+      id: z.string(),
+      customerId: z.string(),
+      menuId: z.string(),
+      staffId: z.string(),
+      customerName: z
+        .string()
+        .nullish()
+        .transform(value => value ?? undefined),
+      menuName: z
+        .string()
+        .nullish()
+        .transform(value => value ?? undefined),
+      staffName: z
+        .string()
+        .nullish()
+        .transform(value => value ?? undefined),
+      startTime: z.string().datetime({ offset: true }),
+      endTime: z.string().datetime({ offset: true }),
+      status: z
+        .enum([
+          'tentative',
+          'confirmed',
+          'arrived',
+          'completed',
+          'cancelled',
+          'no_show',
+          'unconfirmed',
+          'trial',
+        ])
+        .optional(),
+      channel: z.enum(['line', 'web', 'phone', 'walk_in']).optional(),
+      notes: z.string().optional(),
+      selectedOptions: z
+        .array(
+          z.object({
+            optionId: z.string(),
+            name: z.string(),
+            priceDelta: z.number(),
+            durationDeltaMinutes: z.number(),
+          })
+        )
+        .optional(),
+      intakeResponses: z
+        .array(
+          z.object({
+            id: z.string(),
+            label: z.string(),
+            value: z.union([z.string(), z.boolean(), z.array(z.string())]),
+          })
+        )
+        .optional(),
+      isStaffRequested: z.boolean().optional(),
+      staffNominationFee: z.number().optional(),
+    })
+  ),
+  pagination: z
+    .object({
+      has_more: z.boolean(),
+      next_cursor: z.string().min(1).max(2048).nullable(),
+    })
+    .refine(value => value.has_more === (value.next_cursor !== null)),
+});
+
+async function fetchReservationPage(
+  params: URLSearchParams,
+  options: FetchReservationsOptions
+): Promise<ReservationApiPage> {
+  const response = await fetch('/api/reservations?' + params.toString(), {
+    signal: options.signal,
+  });
+  const json: unknown = await response.json();
+  if (!response.ok)
+    throw new ApiError(getApiEnvelopeError(json), response.status);
+  const parsed = reservationPageSchema.safeParse(json);
+  if (
+    !parsed.success ||
+    (parsed.data.pagination.has_more && parsed.data.data.length === 0)
+  ) {
+    throw new ApiError(
+      '予約一覧の取得が完了しませんでした。再試行してください',
+      502
+    );
+  }
+  return {
+    items: parsed.data.data.map(item => ({
+      ...item,
+      id: item.id,
+      customerId: item.customerId,
+      menuId: item.menuId,
+      staffId: item.staffId,
+      startTime: item.startTime,
+      endTime: item.endTime,
+      selectedOptions: item.selectedOptions?.map(option => ({
+        optionId: option.optionId,
+        name: option.name,
+        priceDelta: option.priceDelta,
+        durationDeltaMinutes: option.durationDeltaMinutes,
+      })),
+      intakeResponses: item.intakeResponses?.map(response => ({
+        id: response.id,
+        label: response.label,
+        value: response.value,
+      })),
+    })),
+    hasMore: parsed.data.pagination.has_more,
+    nextCursor: parsed.data.pagination.next_cursor,
+  };
+}
 
 const isApiEnvelope = (value: unknown): value is ApiEnvelope =>
   typeof value === 'object' && value !== null;
@@ -115,23 +233,42 @@ export const fetchReservations = async (
   });
   if (staffId) params.set('staff_id', staffId);
 
-  const res = await fetch(`/api/reservations?${params.toString()}`, {
-    signal: options.signal,
-  });
-  return handleJson<ReservationApiItem[]>(res);
+  const rows: ReservationApiItem[] = [];
+  const seenCursors = new Set<string>();
+  const seenIds = new Set<string>();
+  while (true) {
+    if (options.signal?.aborted)
+      throw new DOMException('Aborted', 'AbortError');
+    const page = await fetchReservationPage(params, options);
+    for (const row of page.items) {
+      if (seenIds.has(row.id))
+        throw new ApiError('予約が更新されました。再取得してください', 409);
+      seenIds.add(row.id);
+      rows.push(row);
+    }
+    if (!page.hasMore) return rows;
+    if (!page.nextCursor || seenCursors.has(page.nextCursor))
+      throw new ApiError(
+        '予約一覧の取得が完了しませんでした。再試行してください',
+        502
+      );
+    seenCursors.add(page.nextCursor);
+    params.set('cursor', page.nextCursor);
+  }
 };
 
 export const fetchCustomerReservations = async (
   clinicId: string,
-  customerId: string
-): Promise<ReservationApiItem[]> => {
+  customerId: string,
+  options: FetchReservationsOptions & { cursor?: string } = {}
+): Promise<ReservationApiPage> => {
   const params = new URLSearchParams({
     clinic_id: clinicId,
     customer_id: customerId,
   });
 
-  const res = await fetch(`/api/reservations?${params.toString()}`);
-  return handleJson<ReservationApiItem[]>(res);
+  if (options.cursor) params.set('cursor', options.cursor);
+  return fetchReservationPage(params, options);
 };
 
 export const fetchCustomers = async (

@@ -1,5 +1,6 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo } from 'react';
 import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { ReservationApiItem } from '../api';
 import {
   getAppointmentStatusLabel,
@@ -31,6 +32,9 @@ interface AppointmentHistoryPanelProps {
   loading: boolean;
   error: string | null;
   currentAppointmentId: string;
+  hasMore: boolean;
+  onLoadMore: () => void;
+  onRetry: () => void;
 }
 
 export const AppointmentHistoryPanel = memo(function AppointmentHistoryPanel({
@@ -38,16 +42,12 @@ export const AppointmentHistoryPanel = memo(function AppointmentHistoryPanel({
   loading,
   error,
   currentAppointmentId,
+  hasMore,
+  onLoadMore,
+  onRetry,
 }: AppointmentHistoryPanelProps) {
-  const sortedItems = useMemo(
-    () =>
-      [...items].sort(
-        (a, b) =>
-          new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
-      ),
-    [items]
-  );
-
+  // API pages already use precise PostgreSQL (start_time DESC, id DESC) order.
+  // Browser Date would collapse microseconds and reorder otherwise distinct times.
   return (
     <div className='mt-5 border-t border-gray-100 pt-4'>
       <div className='mb-3 flex items-center justify-between gap-3'>
@@ -57,7 +57,7 @@ export const AppointmentHistoryPanel = memo(function AppointmentHistoryPanel({
         </div>
         {!loading && !error && (
           <span className='text-xs font-bold text-gray-500'>
-            {sortedItems.length}件
+            {items.length}件{hasMore ? '取得済み' : ''}
           </span>
         )}
       </div>
@@ -72,18 +72,27 @@ export const AppointmentHistoryPanel = memo(function AppointmentHistoryPanel({
       {error && (
         <div className='rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700'>
           {error}
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            onClick={onRetry}
+            disabled={loading}
+          >
+            再試行
+          </Button>
         </div>
       )}
 
-      {!loading && !error && sortedItems.length === 0 && (
+      {!loading && !error && items.length === 0 && (
         <div className='rounded-md border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-500'>
           予約履歴はまだありません。
         </div>
       )}
 
-      {!loading && !error && sortedItems.length > 0 && (
+      {items.length > 0 && (
         <div className='space-y-2'>
-          {sortedItems.map(item => {
+          {items.map(item => {
             const status = item.status ?? 'unconfirmed';
             const isCurrent = item.id === currentAppointmentId;
             return (
@@ -128,6 +137,18 @@ export const AppointmentHistoryPanel = memo(function AppointmentHistoryPanel({
             );
           })}
         </div>
+      )}
+      {hasMore && !error && (
+        <Button
+          type='button'
+          variant='outline'
+          size='sm'
+          onClick={onLoadMore}
+          disabled={loading}
+          className='mt-3'
+        >
+          続きを読み込む
+        </Button>
       )}
     </div>
   );

@@ -45,6 +45,15 @@ export type BuildManagerDashboardInput = {
   dailyReports: readonly ManagerDashboardDailyReportRow[];
   reviewSignals: readonly ManagerDashboardReviewSignalRow[];
   reservations: readonly ManagerDashboardReservationRow[];
+  counts?: readonly ManagerDashboardCounts[];
+};
+
+export type ManagerDashboardCounts = {
+  clinicId: string;
+  todayActive: number;
+  todayCancelled: number;
+  previousActive: number;
+  reviewCount: number;
 };
 
 export type GenerateAttentionInput = {
@@ -255,6 +264,7 @@ function buildClinicCards(params: {
   dailyReports: readonly ManagerDashboardDailyReportRow[];
   reviewSignals: readonly ManagerDashboardReviewSignalRow[];
   reservations: readonly ManagerDashboardReservationRow[];
+  counts?: readonly ManagerDashboardCounts[];
 }): ManagerDashboardClinicCard[] {
   const reportsByClinicAndDate = new Map<
     string,
@@ -269,6 +279,9 @@ function buildClinicCards(params: {
 
   const reservationCounts = bucketReservationCounts(params.reservations);
   const reviewSignalKeys = buildReviewSignalKeySet(params.reviewSignals);
+  const countsByClinic = new Map(
+    params.counts?.map(row => [row.clinicId, row])
+  );
 
   return params.clinics.map(clinic => {
     const todayReport =
@@ -279,15 +292,18 @@ function buildClinicCards(params: {
     const todayRevenue = getReportRevenue(todayReport);
     const previousDayRevenue = getReportRevenue(previousDayReport);
     const todayVisitCount = toNumber(todayReport?.total_patients);
-    const todayCounts =
-      reservationCounts.get(`${clinic.id}:${params.date.today}`) ??
-      EMPTY_RESERVATION_COUNTS;
-    const previousWeekdayCounts =
-      reservationCounts.get(`${clinic.id}:${params.date.previousWeekday}`) ??
-      EMPTY_RESERVATION_COUNTS;
-    const reviewNeeded = reviewSignalKeys.has(
-      `${clinic.id}:${params.date.today}`
-    );
+    const aggregate = countsByClinic.get(clinic.id);
+    const todayCounts = aggregate
+      ? { active: aggregate.todayActive, cancelled: aggregate.todayCancelled }
+      : (reservationCounts.get(`${clinic.id}:${params.date.today}`) ??
+        EMPTY_RESERVATION_COUNTS);
+    const previousWeekdayCounts = aggregate
+      ? { active: aggregate.previousActive, cancelled: 0 }
+      : (reservationCounts.get(`${clinic.id}:${params.date.previousWeekday}`) ??
+        EMPTY_RESERVATION_COUNTS);
+    const reviewNeeded = aggregate
+      ? aggregate.reviewCount > 0
+      : reviewSignalKeys.has(`${clinic.id}:${params.date.today}`);
 
     return {
       clinicId: clinic.id,
@@ -584,6 +600,7 @@ export function buildManagerDashboardResponse(
     dailyReports: input.dailyReports,
     reviewSignals: input.reviewSignals,
     reservations: input.reservations,
+    counts: input.counts,
   });
   const attentionItems = generateAttentionItems({ clinicCards });
   const todaySubmittedReports = input.dailyReports.filter(
