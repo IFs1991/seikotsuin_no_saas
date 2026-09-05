@@ -1,0 +1,349 @@
+{
+  "base_commit": "806a5afab8e976a48cf2ecb771a1bc277bb53500",
+  "snapshot_kind": "pre-push file snapshot; code matches the verified working tree; documentation updated with commit metadata",
+  "captured_at": "2026-09-05T16:29:53.0850552Z",
+  "file_count": 85,
+  "files": [
+    {
+      "path": ".env.production.example",
+      "sha256": "7bfc710e36e5142fc5a34bf4c9a8a679acddaa5eb7b66496c882cb0d6153aafb"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "27226eaab3c236966fabfa814a99587d8e6e3d74d7ac3059eeb3917f66cb3bdf"
+    },
+    {
+      "path": "docs/operations/CORE100_RUNBOOK.md",
+      "sha256": "594c48dfe09a1ad8b3b88ed85660fb6e9679c09f8dfe4397222c467247ad5827"
+    },
+    {
+      "path": "docs/stabilization/core100-release-changes.md",
+      "sha256": "b522076c0b3b0fb39b5aaaac06931c90db7b188566605642d590c3b967fbf63d"
+    },
+    {
+      "path": "docs/stabilization/core100-release-result.md",
+      "sha256": "fb62dff8ca87c2ddcbb06d71fef2af06c0371ebe1b0121c0e21be964b4f232a2"
+    },
+    {
+      "path": "docs/stabilization/evidence/commercial-hardening/route-manifest.json",
+      "sha256": "d519af7dfa2fc866a061e80ccd4a94dab357bc98dfd56a70e1ea7d30b53b4b9c"
+    },
+    {
+      "path": "docs/stabilization/evidence/commercial-hardening/source-reference-inventory.json",
+      "sha256": "2686861d8c6e3e0f38d5604ca3eb93f2bc8044fea19ca403e2e5188c43e6419a"
+    },
+    {
+      "path": "jest.config.js",
+      "sha256": "26b62ad429aef6fd5967152a97672a07ecb241cd5ba80c41f107b8dec128669d"
+    },
+    {
+      "path": "next.config.js",
+      "sha256": "cdc42d2b58769ddd12bee63a142b188ef0c4962a2e7702321262d71222f111a2"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "9b25b9e8563c512de3a5ecce98a2c8e7467f9bfd4a8e3ecda089b01cb2250674"
+    },
+    {
+      "path": "package.json",
+      "sha256": "3c0f4007ac853ffa97603e14df752481f63e9ab2b18caf362cd72798945dde18"
+    },
+    {
+      "path": "scripts/generate-supabase-types.mjs",
+      "sha256": "772cdbfed4d2131ed4e78b2852599fc63bcfaf1b3bcbc882426bbe8122225ae3"
+    },
+    {
+      "path": "scripts/lib/image-pull-retry.mjs",
+      "sha256": "9cc2f4f1b621039a1380cfe0791077733a284697f45d08b19026478d07b54998"
+    },
+    {
+      "path": "scripts/lib/image-pull-retry.test.mjs",
+      "sha256": "7a4b0226325eb938b685170c7de1ac17b3c6049994e27fa58c057c412703e303"
+    },
+    {
+      "path": "scripts/release/__tests__/core100.test.mjs",
+      "sha256": "a1bcac9f4c0469f12689f01d5c2ced62b23b2919d04ed23976e3017128d5933b"
+    },
+    {
+      "path": "scripts/release/core100-load.mjs",
+      "sha256": "616ac73db50171bda407a499d56a7b8241b6b8582cd42d9212b737a61ed03f82"
+    },
+    {
+      "path": "scripts/release/core100-profile.mjs",
+      "sha256": "eee090b9e92e1816af3a41c662079d448326a29a9a4eb0baa052bc64519bdbcd"
+    },
+    {
+      "path": "scripts/release/core100-safety.mjs",
+      "sha256": "8104d3b7583a2ae5ec0b62c3a01c3aae7b10f9ffc95dc6de22978d3699f0b4a3"
+    },
+    {
+      "path": "scripts/release/core100-seed.mjs",
+      "sha256": "b00d4193d3b8a2ee535f55aec386a028a99686917fd4f6867e12c9169d602d81"
+    },
+    {
+      "path": "scripts/release/core100-verify.mjs",
+      "sha256": "dfa8868ed5653684f6d9e0d7446c33ecf28d041f1350cf2c8c58e862bd74a125"
+    },
+    {
+      "path": "scripts/release/core100.example.json",
+      "sha256": "93dbb5195b33ddea0333f7a01e899689197edc7400262bc77293e5ad580304ef"
+    },
+    {
+      "path": "scripts/release/core100.mjs",
+      "sha256": "3e46fd4b0a9d11ab435b24825ff4a44762f6fc2e4ee63cf682748e248db2f4f4"
+    },
+    {
+      "path": "scripts/release/preflight.mjs",
+      "sha256": "a94a411fd6cc19d6b2f2e00cc4179b1c462c6d26ef74ada63032b6d59753a6fd"
+    },
+    {
+      "path": "scripts/release/preflight.test.mjs",
+      "sha256": "1c0a6b917af7053685d0b7d2955857e628749f5495bfd775b0815b0c6173caf0"
+    },
+    {
+      "path": "scripts/release/sentry-browser.test.mjs",
+      "sha256": "7f27ebfe09b5401744ccb1caa733ab9bf205cbeebe0f492df77171187004a200"
+    },
+    {
+      "path": "scripts/scan-secrets.mjs",
+      "sha256": "ed57c765fa481a5631ecf00af5e056738a57a97fd2c4d5b9011783c264f82c03"
+    },
+    {
+      "path": "src/__tests__/api/admin-dashboard-route.test.ts",
+      "sha256": "fb593fb3f800c32b22a0d1155b9f600a97277f8fd2f69e289599eca459cf7ffd"
+    },
+    {
+      "path": "src/__tests__/api/manager-dashboard-route.test.ts",
+      "sha256": "1ad5c011be217e92f71f92b0a61a4eb4255d984a075eab456e2625605d5f2109"
+    },
+    {
+      "path": "src/__tests__/api/reservations-route.test.ts",
+      "sha256": "a27e06039c336be4ed79d0b92c7fb7db6ca5949d5d0def7ff6ecf329b2e724e0"
+    },
+    {
+      "path": "src/__tests__/auth/auth-attempt-entrypoints.test.ts",
+      "sha256": "c7e3a3095cddc76cd736945c0758c718750efc8ae2b8f5504e3fa6e78ecde137"
+    },
+    {
+      "path": "src/__tests__/auth/auth-attempt-guard.test.ts",
+      "sha256": "abfad66850b474f85f35b6897ed8129c4dadd61e97c66d70c4215bade7bdea11"
+    },
+    {
+      "path": "src/__tests__/components/reservations/AppointmentForm.test.tsx",
+      "sha256": "a810d5020a98dc537eddb3939cf6599e1b5e06c5150bb6f7ab8401d5d87464fe"
+    },
+    {
+      "path": "src/__tests__/config/next-sentry-config.test.ts",
+      "sha256": "dde705bf28ba9f152601c26978450e25156732011ae69eb4101b6499c22235dc"
+    },
+    {
+      "path": "src/__tests__/e2e-playwright/core100-boundaries.spec.ts",
+      "sha256": "ed723a3a5be3225dafdc6d38ad5732c9daa95b021c45a80e100a76559d8e8513"
+    },
+    {
+      "path": "src/__tests__/e2e-playwright/core100-fixtures.ts",
+      "sha256": "0915c25ff2db10002618c1e1d2235b4d99103a076f68ac9006ef0f7463b21cc9"
+    },
+    {
+      "path": "src/__tests__/e2e-playwright/core100-helpers.ts",
+      "sha256": "d832d6ec86e7fa5ebbf0a6997f42fb128dd8a522d4dd84d3021c8c80839ac861"
+    },
+    {
+      "path": "src/__tests__/e2e-playwright/core100-manager-scope.spec.ts",
+      "sha256": "b93c932dd6ad5a39db379f7a7f9ad4c777a1d3f4dfb6fd00366c8d8e0283338a"
+    },
+    {
+      "path": "src/__tests__/e2e-playwright/core100-workflow.spec.ts",
+      "sha256": "6d8aa71ebf6d085401ffd3ce0308cb6e1375b446fe5d5c3d5c16b99eb9b59022"
+    },
+    {
+      "path": "src/__tests__/e2e-playwright/global-setup.ts",
+      "sha256": "9d21a01970414d1d00caade1b1b7c10cd2643633d7200864edb64bce568b7b5d"
+    },
+    {
+      "path": "src/__tests__/e2e-playwright/helpers/core100-seed.ts",
+      "sha256": "d39ae5c85af056c2f102ddec455d13ad72f263aef946972b2085b78531387a71"
+    },
+    {
+      "path": "src/__tests__/hooks/useAppointments.reservations.test.tsx",
+      "sha256": "0091b11773deccc70b18cd5791b0c293f23d8645a8db6da422323402eaccc7f8"
+    },
+    {
+      "path": "src/__tests__/lib/billing-production-write.test.ts",
+      "sha256": "289203e759757859000d0c41dcffc34e79b1b34c95175d614c4adfe3177ec3c4"
+    },
+    {
+      "path": "src/__tests__/lib/billing-release-configuration.test.ts",
+      "sha256": "53dbdc36fa3a944e6c995ba473ee0fa8d50f380bb1a9e1e190021fff05a390de"
+    },
+    {
+      "path": "src/__tests__/lib/manager-dashboard-counts.test.ts",
+      "sha256": "3e7b63a28b65bb2d351d6c6994e75356307d708423b366e13f7b83160e9e7758"
+    },
+    {
+      "path": "src/__tests__/lib/rate-limiting/middleware.test.ts",
+      "sha256": "60b1ef749be9a4c8737dc4d7dd8a162873a252628dd08a3a61b51f83b74b5a96"
+    },
+    {
+      "path": "src/__tests__/lib/reservation-pagination.test.ts",
+      "sha256": "da6abea3b2704cdc2c61c53479f52e939010d1b19181ce71b9245c8ce9b708d5"
+    },
+    {
+      "path": "src/__tests__/monitoring/api-failure.test.ts",
+      "sha256": "5f6d842ac0d2e5760ba06741ee1dc59f4e2645b1928c1a072fde30e89bb0d9b6"
+    },
+    {
+      "path": "src/__tests__/monitoring/daily-report-failure.test.ts",
+      "sha256": "bcac4694e11ec77250f1001c3d0fd230b39bd4f184be6fda831a3cdddb7b67e7"
+    },
+    {
+      "path": "src/__tests__/monitoring/instrumentation-client.test.ts",
+      "sha256": "9f08a4f836025cb38c9a3641c8614408e9287c3973eaa88b449a8be4c3b36362"
+    },
+    {
+      "path": "src/__tests__/monitoring/sentry-setup.test.ts",
+      "sha256": "765a655aa797a0217b71b1843e9b7185399981dff2f0715f57f9892627f9a086"
+    },
+    {
+      "path": "src/__tests__/reservations/api-pagination.test.ts",
+      "sha256": "1303c852925c487be0777ef864baa0c93fdef75f059260ba948400f18d5a91a2"
+    },
+    {
+      "path": "src/__tests__/reservations/appointment-detail.test.tsx",
+      "sha256": "b72995cd481218a2bad53e2f88de6e1bd42f634ec73d25c22fa1a7fe643af6b8"
+    },
+    {
+      "path": "src/__tests__/reservations/history-order.test.tsx",
+      "sha256": "0df3d16051c202f9ce6290d7842dc083a3467689b0d42e98976e277e458ddb71"
+    },
+    {
+      "path": "src/__tests__/security/commercial-pr10-mutating-route-policy.test.ts",
+      "sha256": "24b92521023aa946693c1ba0418ea068149878d7fc1e7ad6d9d12dcf6ef23ed6"
+    },
+    {
+      "path": "src/__tests__/security/core100-fixture-safety.test.ts",
+      "sha256": "3e5284a8d7d30d5d78308c156c71ab27b148933e726f36706949009c467490a0"
+    },
+    {
+      "path": "src/app/(app)/reservations/api.ts",
+      "sha256": "292b10308df11810d3729bfacd3cf2ff9f868de34fc6e5ab5382c042cb111fb9"
+    },
+    {
+      "path": "src/app/(app)/reservations/components/AppointmentDetail.tsx",
+      "sha256": "7c318c219aa00add73f231e05acbcce14ac980417fc596236b047b113f249661"
+    },
+    {
+      "path": "src/app/(app)/reservations/components/AppointmentForm.tsx",
+      "sha256": "caa1ae365fc89ffe8bed61e1ee8c8258614d1df91341e3f3e6b627411f213efd"
+    },
+    {
+      "path": "src/app/(app)/reservations/components/AppointmentHistoryPanel.tsx",
+      "sha256": "990b3efbe38ffd9b7ff46126e674ed6936131ced6c5237db741c17f55ccc3b7a"
+    },
+    {
+      "path": "src/app/(app)/reservations/hooks/useAppointments.ts",
+      "sha256": "71d4dc87282456a2ffa723157cb9097e4900d882096531aafebb611841c2a28a"
+    },
+    {
+      "path": "src/app/(app)/reservations/page.tsx",
+      "sha256": "a05ff5135708408f374bbd110bfb4d87cc7ec5b677444ba1f6a6036d0ad264b7"
+    },
+    {
+      "path": "src/app/(public)/admin/actions.ts",
+      "sha256": "77204fa1073cb2d1c6182cb0fe553e20ae05a733c575bde2967326e5ad5dfbb0"
+    },
+    {
+      "path": "src/app/(public)/invite/actions.ts",
+      "sha256": "df1c06e3b6bbdab9c77b0912b3de885b287c781aa258c82a6f7f770d538e49da"
+    },
+    {
+      "path": "src/app/(public)/login/actions.ts",
+      "sha256": "18c1b002ec16b7d2f6c24ad97141ab0312742b79da30196aacd286125ae1d4e8"
+    },
+    {
+      "path": "src/app/api/admin/dashboard/route.ts",
+      "sha256": "cba44f20bd645401df4e349199e2196c144299d6ea4350e3eb4e0ac5a7273201"
+    },
+    {
+      "path": "src/app/api/daily-reports/route.ts",
+      "sha256": "7b2013522b711d53a546ad8a3eb1a7a1a386e2e76dba12ff8757496925a09de1"
+    },
+    {
+      "path": "src/app/api/health/route.ts",
+      "sha256": "f82a9c748d270e4a4b47da982ed51f63887904221219227955c06d36c026cbe0"
+    },
+    {
+      "path": "src/app/api/manager/dashboard/route.ts",
+      "sha256": "ed64825350e088e68ecf47a31f48e2b4f1081e3b2d2f9b7282c39fd8773c05bf"
+    },
+    {
+      "path": "src/app/api/reservations/route.ts",
+      "sha256": "ef08cbd6d4b70b2c958a298d0c61af3644f8c5609b077d2ae1213accc764bd4e"
+    },
+    {
+      "path": "src/app/api/reservations/schema.ts",
+      "sha256": "c622420ef8a5c7e7005da59c9905306e67ce3b85cfa02846eb2991fa171b6817"
+    },
+    {
+      "path": "src/hooks/useReservations.ts",
+      "sha256": "74f8687208052244f13445e3e51888c329773566891bcd859f14cc83306352c7"
+    },
+    {
+      "path": "src/lib/api-helpers.ts",
+      "sha256": "72ddbbf1275a5d48bf98a46b59ec5227427c69f10f696a6e2ee7ee6c4f89f646"
+    },
+    {
+      "path": "src/lib/auth/auth-attempt-guard.ts",
+      "sha256": "ce6b40c1c429d2d8a077db0b4316bc8c1e8197c7cfbc293a65f5f9feac87515e"
+    },
+    {
+      "path": "src/lib/billing/business-write.ts",
+      "sha256": "604fdebbf11bf7308c2433e120410976faf263008be7154d5d4ec85aac47d4a6"
+    },
+    {
+      "path": "src/lib/billing/config.ts",
+      "sha256": "0db6f3e920d9ed05f4025e80074481f48a5e88a7bde5cc2302cfa2a2d542318f"
+    },
+    {
+      "path": "src/lib/billing/configuration-policy.ts",
+      "sha256": "f92d06942c01590da9da899d325c4e6df3f53efb6c6e4d33b541d451e7689445"
+    },
+    {
+      "path": "src/lib/env.ts",
+      "sha256": "8e386bf48455a3144aa52a99b18657f59b9ffd31f4aa1cabb371f3206e5cf4e1"
+    },
+    {
+      "path": "src/lib/manager-dashboard-counts.ts",
+      "sha256": "68db2925c3bc71a2ab4abe87c8da78195a645f5556c14d17e93bb3bb001c9315"
+    },
+    {
+      "path": "src/lib/manager-dashboard.ts",
+      "sha256": "5fdc7543da20dc3f92f3b543043eb674eea099fc0275a55e740b9a3dae56fdca"
+    },
+    {
+      "path": "src/lib/monitoring/api-failure.ts",
+      "sha256": "85becd0dee034c73417092567ac25dec583a1267b63fcaa90c5eb609ed96495b"
+    },
+    {
+      "path": "src/lib/monitoring/sentry.ts",
+      "sha256": "89e8be80ecd1c8fd6b5f18a25378bf1b7f33bae53570d0d918490dd58eeb46f9"
+    },
+    {
+      "path": "src/lib/rate-limiting/middleware.ts",
+      "sha256": "fd7d81a9a8b83097d2f4d27d43123628c5713b644faf5710a54702912ecb7d93"
+    },
+    {
+      "path": "src/lib/reservations/pagination.ts",
+      "sha256": "56c8553ebb15863931a0c5ddd0fd884673d336847fdd12c616df8f846fc9acc9"
+    },
+    {
+      "path": "src/lib/schemas/auth.ts",
+      "sha256": "cd3e4b6b59a25152ac91749676687898440826acf7e4a1a163c0d83ee5b996cb"
+    },
+    {
+      "path": "tsconfig.json",
+      "sha256": "812dcd3ccb73d1a6c1f00b9029a4a354c523b2af14f11f81cfc1b56e4d7cb75b"
+    }
+  ],
+  "implementation_commit": "7dca4a530a0308f5b5baf55caac579c9b140a794"
+}
