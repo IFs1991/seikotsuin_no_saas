@@ -195,6 +195,11 @@ jobs:
       - name: Run database contract tests
         run: supabase test db --local
 
+      - name: Verify deferred PR-11 production migration path
+        run: npm run commercial:verify:pr11:deferred:local
+        env:
+          PR11_DEFERRED_LOCAL_RESET_APPROVED: '1'
+
       - name: Verify atomic staff invite concurrency
         run: npm run commercial:verify:invite:local
 

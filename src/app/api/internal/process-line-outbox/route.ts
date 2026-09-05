@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processLineOutbox } from '@/lib/notifications/line-processor';
 import { captureOperationalError } from '@/lib/monitoring/sentry';
-import { createAdminClient } from '@/lib/supabase';
+import { createLineIntegrationAdminClient } from '@/lib/line/integration-db';
+import { processLineChatOutbox } from '@/lib/line/chat-outbox-processor';
+import { cleanupLineChatData } from '@/lib/line/chat-cleanup-service';
 
 /**
  * GET /api/internal/process-line-outbox
@@ -17,10 +19,23 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await processLineOutbox(createAdminClient());
+    const client = createLineIntegrationAdminClient();
+    const { data: expiredSetupSessions, error: expiryError } = await client.rpc(
+      'expire_line_setup_sessions',
+      {}
+    );
+    if (expiryError) throw expiryError;
+    const [result, chatResult] = await Promise.all([
+      processLineOutbox(client),
+      processLineChatOutbox(client),
+    ]);
+    const cleanupResult = await cleanupLineChatData(client);
     return NextResponse.json({
       success: true,
-      ...result,
+      expiredSetupSessions: expiredSetupSessions ?? 0,
+      notifications: result,
+      chat: chatResult,
+      cleanup: cleanupResult,
     });
   } catch (error) {
     await captureOperationalError(error, {

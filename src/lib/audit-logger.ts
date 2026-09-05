@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase';
 import { createLogger, type Logger } from '@/lib/logger';
+import { measureCurrentRequestTiming } from '@/lib/performance/request-timing';
 import type { Database, Json } from '@/types/supabase';
 
 // 監査ログの種類
@@ -199,28 +200,32 @@ export class AuditLogger {
       created_at: new Date().toISOString(),
     };
 
-    try {
-      await auditLoggerDependencies.persistAuditLog(logData);
-    } catch (error) {
-      // DB障害時のフォールバック: 構造化ログとして出力
-      getAuditLogger().error('監査ログDB書き込み失敗 - フォールバック出力', {
-        error: getSafeAuditErrorLogData(error),
-        logData: {
-          ...logData,
-          user_id: logData.user_id ? REDACTED_LOG_VALUE : undefined,
-          user_email: logData.user_email ? REDACTED_LOG_VALUE : undefined,
-          target_id: logData.target_id ? REDACTED_LOG_VALUE : undefined,
-          clinic_id: logData.clinic_id ? REDACTED_LOG_VALUE : undefined,
-          ip_address: logData.ip_address ? REDACTED_LOG_VALUE : undefined,
-          user_agent: logData.user_agent ? REDACTED_LOG_VALUE : undefined,
-          error_message: logData.error_message ? REDACTED_LOG_VALUE : undefined,
-          details: redactLogDetails(entry.details),
-        },
-      });
+    await measureCurrentRequestTiming('audit', async () => {
+      try {
+        await auditLoggerDependencies.persistAuditLog(logData);
+      } catch (error) {
+        // DB障害時のフォールバック: 構造化ログとして出力
+        getAuditLogger().error('監査ログDB書き込み失敗 - フォールバック出力', {
+          error: getSafeAuditErrorLogData(error),
+          logData: {
+            ...logData,
+            user_id: logData.user_id ? REDACTED_LOG_VALUE : undefined,
+            user_email: logData.user_email ? REDACTED_LOG_VALUE : undefined,
+            target_id: logData.target_id ? REDACTED_LOG_VALUE : undefined,
+            clinic_id: logData.clinic_id ? REDACTED_LOG_VALUE : undefined,
+            ip_address: logData.ip_address ? REDACTED_LOG_VALUE : undefined,
+            user_agent: logData.user_agent ? REDACTED_LOG_VALUE : undefined,
+            error_message: logData.error_message
+              ? REDACTED_LOG_VALUE
+              : undefined,
+            details: redactLogDetails(entry.details),
+          },
+        });
 
-      // 本番環境では外部ログサービスへ転送可能（TODO: 将来実装）
-      // この段階でログは統一ロガーにより JSON 形式で出力される
-    }
+        // 本番環境では外部ログサービスへ転送可能（TODO: 将来実装）
+        // この段階でログは統一ロガーにより JSON 形式で出力される
+      }
+    });
   }
 
   // ログイン成功

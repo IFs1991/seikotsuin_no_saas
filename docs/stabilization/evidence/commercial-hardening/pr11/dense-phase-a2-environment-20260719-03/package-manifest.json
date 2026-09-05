@@ -1,0 +1,192 @@
+{
+  "kind": "pr11_phase_a2_self_contained_input_package",
+  "phaseAInputCount": 24,
+  "phaseAInputBundleSha256": "be8b451ab71c29573e21a3e4d4736943d419a607f25d93331226c0ceb3336a68",
+  "files": [
+    {
+      "path": "phase-a-evidence/contract-transition-addendum.json",
+      "bytes": 1742,
+      "sha256": "0e103b053e6b18fb32f2b4d9d387e398f67abb05ea6c834d280733e33a8ecb4e"
+    },
+    {
+      "path": "phase-a-evidence/experiment-summary.json",
+      "bytes": 18407,
+      "sha256": "eadd6f29d0e0829915cd8523e8cd9a2a2216996be65727b819b52fedfaa60e71"
+    },
+    {
+      "path": "phase-a-evidence/frozen-gates.json",
+      "bytes": 6090,
+      "sha256": "66786c903598622aa9435865eaabe4913902f2d125960d0c1c6ed13b48077357"
+    },
+    {
+      "path": "phase-a-evidence/manifest.json",
+      "bytes": 119840,
+      "sha256": "5b3eb821a96bbb0ba1b69f6360b396ec591ab41cdd90361c9399ecd1d293a806"
+    },
+    {
+      "path": "phase-a-evidence/performance-evidence-audit-addendum.json",
+      "bytes": 2045,
+      "sha256": "4a97e42871680d7820e21643bd688d8d511af467fe4a52c9dfbf1554c1e8f332"
+    },
+    {
+      "path": "phase-a-evidence/resource-index-drop-rollback-phase-a-20260719-03.zip",
+      "bytes": 911939,
+      "sha256": "f5cb5f34a56643eadad37393d88949d6330707105817da8aa0b98060947fb4ac"
+    },
+    {
+      "path": "phase-a-source/docs/stabilization/spec-commercial-performance-safe-indexes-rls-plan-v1.0.md",
+      "bytes": 23267,
+      "sha256": "89e552094e16fd750410d81d42d81bb0efd26703bc8b49af3a42ea7a09cc7ac5"
+    },
+    {
+      "path": "phase-a-source/docs/stabilization/spec-commercial-pr11-blocks-resource-index-retirement-v1.0.md",
+      "bytes": 12308,
+      "sha256": "17b08bf6b3857233c4dc0d5c8e2b6abd906f0044eb9a190bd39ba684ed5afb9f"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/red-contracts/14_pr11_blocks_resource_index_retirement.sql",
+      "bytes": 19814,
+      "sha256": "851b0418faa443421d5bbaf05481fc55cf06e2133aa4db3b753b1a91f270457b"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/run-pr11-blocks-resource-index-drop-rollback.mjs",
+      "bytes": 46417,
+      "sha256": "61d87d2074859b88a2a09b29415328abc9b4289f6a5a18d5b069ee9c2b275d42"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/run-red-contracts.mjs",
+      "bytes": 5339,
+      "sha256": "fa683f9d804f47dcd3a43c55ea8853a7a2bfae80af58caa35d5f958da7c1acba"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-candidate.sql",
+      "bytes": 779,
+      "sha256": "382a7bce379d52de479ed2dade3ef4f4d686daaf4d48bfe58f649c456678f4e1"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-cascade-candidate.sql",
+      "bytes": 589,
+      "sha256": "b1f5a67dd27000c0c76d06ad0066f8390817b7ffdbeca8ba6047927dd985592a"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-cascade-current.sql",
+      "bytes": 543,
+      "sha256": "1ad5a7b6626b10ee2d1569ea8ee8195075171ecc66484d80181762ee9d78b874"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-cascade-probe.sql",
+      "bytes": 5969,
+      "sha256": "4ba913dace7fa68e498d4a80bf225411470c36f09d46b08c702e85a52c31c94d"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-current.sql",
+      "bytes": 406,
+      "sha256": "440a3ad80631f7ba11de7994cae3fd2975242e7acac7925fbfe52cc1f0285515"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-ddl.sql",
+      "bytes": 3656,
+      "sha256": "09e829bbe82009ea24bdbf324e69ea5c8cacd5519f382aa226bb365eec209605"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-integrity.sql",
+      "bytes": 17937,
+      "sha256": "78baa00b2cae3e071c6f411822466244e92ca8bfbfb287c1ffac94facaf288a8"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-plan-candidate.sql",
+      "bytes": 586,
+      "sha256": "2c10f63e4254d9ddf15fb8c79fd3fc16d357ed78cd656d5379bcaa845ee477fb"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-plan-current.sql",
+      "bytes": 540,
+      "sha256": "f22def2de9e5834afa99be4d65ce11d4af7c4050df5e84b5fe78baa8e02ec892"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-plan-probe.sql",
+      "bytes": 8017,
+      "sha256": "78b6de825284022cb55714993085dba20a5754e825a45a6c267964f576886b59"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-preflight.sql",
+      "bytes": 9115,
+      "sha256": "093efbe2114c96b15ccbdd0c7237357ba28e90331672e2d115bf6b2d24b84fd1"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/sql/pr11-paired-physical-snapshot.sql",
+      "bytes": 4183,
+      "sha256": "9b46b66f3d56bed947458a253b7f61028773bc4350bbeb2b6e495dea7b4ff5fd"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/sql/pr11-performance-probe.sql",
+      "bytes": 10955,
+      "sha256": "5e6ae3af19f428d63b8eaa8a56d7b659d4841fe693071e7ca11449c756c3cb65"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/sql/pr11-postapply-logical-snapshot.sql",
+      "bytes": 10280,
+      "sha256": "bfe069c2a86b023f157ec4963b40acb74756436ef6b3c33e7ef2a3c930920434"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/sql/pr11-postapply-normalize.sql",
+      "bytes": 5205,
+      "sha256": "1a799f75695f14608b2e9d9efb9c0fcc72272be7808f633f3d9bc86ccc5dffca"
+    },
+    {
+      "path": "phase-a-source/scripts/commercial-hardening/sql/pr11-postapply-permanent-state.sql",
+      "bytes": 681,
+      "sha256": "65cf341e6f21100dd7da1ce36bcf8ef42ccb46b3cdfc05d2da9126027189caed"
+    },
+    {
+      "path": "phase-a-source/src/__tests__/security/commercial-pr11-blocks-resource-index-retirement-contract.test.ts",
+      "bytes": 21116,
+      "sha256": "968348b5e10a5859fc3fa560b60f1a81dfbf278189bf38c0910180ee01d054e0"
+    },
+    {
+      "path": "phase-a-source/supabase/migrations/20260718011731_commercial_pr11_fixed_performance_forward_fix.sql",
+      "bytes": 32105,
+      "sha256": "15fde71cfdba9d335239ed77a11f12216b9754fc0f75f2a8fcb992005159660b"
+    },
+    {
+      "path": "phase-a-source/supabase/rollbacks/20260718011731_commercial_pr11_fixed_performance_forward_fix_rollback.sql",
+      "bytes": 14066,
+      "sha256": "c994a796c49bb4a4f1ac840bd98e28f8a9b69eea17d56f53327e53a9746f6263"
+    },
+    {
+      "path": "phase-a2-source/docs/stabilization/spec-commercial-pr11-dense-phase-a2-attribution-v1.0.md",
+      "bytes": 12856,
+      "sha256": "ede00bb70cec99e6f9f44c6bea49c7f8298c4c0a32abc80b3e34f18f52e7a87a"
+    },
+    {
+      "path": "phase-a2-source/scripts/commercial-hardening/collect-pr11-phase-a2-host-telemetry.ps1",
+      "bytes": 5118,
+      "sha256": "730310ba95ffdd997ca723395d56e20345807e5a6147564610cb41cf25b17eb3"
+    },
+    {
+      "path": "phase-a2-source/scripts/commercial-hardening/run-pr11-dense-phase-a2-environment.mjs",
+      "bytes": 32317,
+      "sha256": "40149ee63bff590f73fa867408ae2bbaa40a508bc9510d3e1edbf16d5e2b5c27"
+    },
+    {
+      "path": "phase-a2-source/scripts/commercial-hardening/sql/pr11-phase-a2-environment-preflight.sql",
+      "bytes": 3490,
+      "sha256": "bb9959c54664eedff7876a2f5b4d659ebe4e41382c1d672d427caaf11925fa30"
+    },
+    {
+      "path": "phase-a2-source/src/__tests__/security/commercial-pr11-dense-phase-a2-environment-contract.test.ts",
+      "bytes": 6958,
+      "sha256": "f62b5365a55bf4a248f3516a1f54fddcd04644d9a539303bbb06ab5e27727964"
+    },
+    {
+      "path": "reports/pr11_phase_a_investigation_team_handoff.md",
+      "bytes": 13134,
+      "sha256": "acd92ac3b7401a8204099eb1660f06ac658a99b9714cc25d30f32e1395693e93"
+    },
+    {
+      "path": "reports/report-pr11-dense-insert-gate-fail-root-cause-v0.1-20260718.md",
+      "bytes": 17748,
+      "sha256": "4a77fd8c0e224e22dd3583a6a0dca26561840a39a55e1b09cf1f2887f9740570"
+    }
+  ]
+}

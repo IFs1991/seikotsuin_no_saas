@@ -5,8 +5,8 @@ import {
   encryptLineCredential,
   getLineCredentialsEncryptionStatus,
 } from '@/lib/line/crypto';
+import type { LineIntegrationClient } from '@/lib/line/integration-db';
 import { createLogger } from '@/lib/logger';
-import type { SupabaseServerClient } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 
 const LINE_TOKEN_ENDPOINT = 'https://api.line.me/oauth2/v2.1/token';
@@ -26,13 +26,14 @@ type LineTokenCredentialRow = Pick<
   | 'assertion_kid'
   | 'access_token_encrypted'
   | 'token_expires_at'
->;
+> & { credential_generation_id: string };
 
 type LineTokenFetch = (input: string, init: RequestInit) => Promise<Response>;
 
 type LineTokenEndpointResponse = {
   access_token: string;
   expires_in: number;
+  key_id?: string;
   token_type?: string;
 };
 
@@ -73,8 +74,9 @@ export function shouldRefreshLineAccessToken(
 }
 
 export async function getLineChannelAccessToken(params: {
-  supabase: Pick<SupabaseServerClient, 'from'>;
+  supabase: Pick<LineIntegrationClient, 'from'>;
   clinicId: string;
+  credentialGenerationId?: string;
   now?: Date;
   fetcher?: LineTokenFetch;
 }): Promise<LineChannelAccessTokenResult> {
@@ -88,7 +90,8 @@ export async function getLineChannelAccessToken(params: {
   try {
     const row = await fetchLineTokenCredentialRow(
       params.supabase,
-      params.clinicId
+      params.clinicId,
+      params.credentialGenerationId
     );
     if (!row) {
       return { ok: false, reason: 'not_configured' };
@@ -138,18 +141,21 @@ export async function getLineChannelAccessToken(params: {
     ).toISOString();
     const encryptedAccessToken = encryptLineCredential(token.access_token);
 
-    const { error } = await params.supabase
+    const { data: cachedRow, error } = await params.supabase
       .from('clinic_line_credentials')
       .update({
         access_token_encrypted: encryptedAccessToken,
         token_expires_at: expiresAt,
       })
-      .eq('clinic_id', row.clinic_id);
+      .eq('clinic_id', row.clinic_id)
+      .eq('credential_generation_id', row.credential_generation_id)
+      .select('credential_generation_id')
+      .maybeSingle();
 
-    if (error) {
+    if (error || !cachedRow) {
       log.warn('Failed to cache LINE access token', {
         clinicId: row.clinic_id,
-        errorCode: error.code,
+        errorCode: error?.code,
       });
       return { ok: false, reason: 'token_cache_update_failed' };
     }
@@ -170,14 +176,16 @@ export async function getLineChannelAccessToken(params: {
 }
 
 async function fetchLineTokenCredentialRow(
-  supabase: Pick<SupabaseServerClient, 'from'>,
-  clinicId: string
+  supabase: Pick<LineIntegrationClient, 'from'>,
+  clinicId: string,
+  credentialGenerationId?: string
 ): Promise<LineTokenCredentialRow | null> {
-  const { data, error } = await supabase
+  const query = supabase
     .from('clinic_line_credentials')
     .select(
       [
         'clinic_id',
+        'credential_generation_id',
         'is_active',
         'messaging_channel_id',
         'assertion_private_key_encrypted',
@@ -186,7 +194,13 @@ async function fetchLineTokenCredentialRow(
         'token_expires_at',
       ].join(', ')
     )
-    .eq('clinic_id', clinicId)
+    .eq('clinic_id', clinicId);
+
+  if (credentialGenerationId) {
+    query.eq('credential_generation_id', credentialGenerationId);
+  }
+
+  const { data, error } = await query
     .returns<LineTokenCredentialRow>()
     .maybeSingle();
 
@@ -254,6 +268,22 @@ async function issueLineChannelAccessToken(params: {
   return isLineTokenEndpointResponse(payload) ? payload : null;
 }
 
+export async function issueLineChannelAccessTokenForSetup(params: {
+  assertionKid: string;
+  assertionPrivateJwk: JsonWebKey;
+  fetcher?: LineTokenFetch;
+  messagingChannelId: string;
+  now?: Date;
+}): Promise<LineTokenEndpointResponse | null> {
+  return issueLineChannelAccessToken({
+    assertionKid: params.assertionKid,
+    assertionPrivateJwk: params.assertionPrivateJwk,
+    fetcher: params.fetcher ?? fetch,
+    messagingChannelId: params.messagingChannelId,
+    now: params.now ?? new Date(),
+  });
+}
+
 function createLineChannelAccessTokenAssertion(params: {
   messagingChannelId: string;
   assertionKid: string;
@@ -309,12 +339,14 @@ function isLineTokenEndpointResponse(
   const candidate = value as {
     access_token?: unknown;
     expires_in?: unknown;
+    key_id?: unknown;
     token_type?: unknown;
   };
   return (
     typeof candidate.access_token === 'string' &&
     typeof candidate.expires_in === 'number' &&
     candidate.expires_in > 0 &&
+    (candidate.key_id === undefined || typeof candidate.key_id === 'string') &&
     (candidate.token_type === undefined ||
       typeof candidate.token_type === 'string')
   );

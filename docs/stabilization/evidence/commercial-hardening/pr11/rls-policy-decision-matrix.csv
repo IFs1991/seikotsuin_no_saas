@@ -1,0 +1,19 @@
+table_name,action,classification,pr11_decision,owner,review_gate,reason
+beta_feedback,SELECT,UNKNOWN_BLOCK_UNCLASSIFIED,RETAIN_EXCEPTION,classification_owner,Before PR12 hosted apply,Admin policy is a strict subset but table classification and PR09 contract need dedicated TDD
+beta_usage_metrics,SELECT,UNKNOWN_BLOCK_UNCLASSIFIED,RETAIN_EXCEPTION,classification_owner,Before PR12 hosted apply,Admin policy is a strict subset but table classification and PR09 contract need dedicated TDD
+calendar_feed_tokens,SELECT,A_TENANT_CANONICAL,RETAIN_EXCEPTION,product_security_owner,Global-admin clinic-reach sign-off,ALL split would preserve current behavior but current global-admin write reach is an unresolved owner decision
+critical_incidents,SELECT,UNKNOWN_BLOCK_UNCLASSIFIED,RETAIN_EXCEPTION,security_owner,Dedicated array/NULL tenant TDD,ALL write is narrower than SELECT and affected_clinics array semantics are high risk
+customer_insurance_coverages,SELECT,A_TENANT_CANONICAL,SPLIT_ALL_TO_COMMANDS,commercial_hardening_owner,PR11,Existing SELECT strictly contains write actors; exact predicate components are preserved
+menu_billing_profiles,SELECT,A_TENANT_CANONICAL,SPLIT_ALL_TO_COMMANDS,commercial_hardening_owner,PR11,Existing SELECT strictly contains write actors; exact predicate components are preserved
+menu_template_billing_profiles,SELECT,UNKNOWN_BLOCK_UNCLASSIFIED,RETAIN_EXCEPTION,classification_owner,Before any DDL,Logical split is possible but DDL is prohibited while unclassified
+menus,SELECT,A_TENANT_CANONICAL,RETAIN_EXCEPTION,product_owner,Role visibility contract review,Manager and staff policies intentionally differ on active/deleted visibility
+profiles,SELECT,UNKNOWN_BLOCK_UNCLASSIFIED,RETAIN_EXCEPTION,auth_security_owner,Dedicated self/admin tenant TDD,Self and scoped admin predicates do not contain each other and include NULL clinic behavior
+registered_devices,SELECT,UNKNOWN_BLOCK_UNCLASSIFIED,RETAIN_EXCEPTION,auth_security_owner,Dedicated device ownership TDD,Merging admin SELECT with self ALL could grant admin or self unintended writes
+revenue_estimates,SELECT,UNKNOWN_BLOCK_UNCLASSIFIED,RETAIN_EXCEPTION,classification_owner,Before any DDL,SELECT is redundant with ALL but table classification blocks DDL
+revenue_estimate_lines,SELECT,UNKNOWN_BLOCK_UNCLASSIFIED,RETAIN_EXCEPTION,classification_owner,Before any DDL,SELECT is redundant with ALL but table classification blocks DDL
+revenue_estimate_warnings,SELECT,UNKNOWN_BLOCK_UNCLASSIFIED,RETAIN_EXCEPTION,classification_owner,Before any DDL,SELECT is redundant with ALL but table classification blocks DDL
+security_events,SELECT,UNKNOWN_BLOCK_UNCLASSIFIED,RETAIN_EXCEPTION,auth_security_owner,Dedicated NULL-clinic and JWT-admin TDD,Self and admin predicates have distinct NULL clinic semantics
+session_policies,SELECT,UNKNOWN_BLOCK_UNCLASSIFIED,RETAIN_EXCEPTION,auth_security_owner,Dedicated session policy TDD,OR-merging SELECT into ALL would grant staff writes
+staff_invites,SELECT,UNKNOWN_BLOCK_UNCLASSIFIED,RETAIN_EXCEPTION,invite_security_owner,Dedicated token-sensitive tenant TDD,Scoped admin and creator predicates do not contain each other
+user_permissions,SELECT,UNKNOWN_BLOCK_UNCLASSIFIED,RETAIN_EXCEPTION,auth_security_owner,Dedicated self/admin TDD,OR-merging self SELECT into admin ALL could enable self DELETE
+user_sessions,SELECT,UNKNOWN_BLOCK_UNCLASSIFIED,RETAIN_EXCEPTION,auth_security_owner,Dedicated session tenant TDD,Self and admin scoped reads require independent behavior proof

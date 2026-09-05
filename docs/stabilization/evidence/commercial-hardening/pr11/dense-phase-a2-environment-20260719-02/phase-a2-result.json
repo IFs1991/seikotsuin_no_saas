@@ -1,0 +1,1469 @@
+{
+  "protocol": "pr11-dense-phase-a2-environment-validity-v1",
+  "releaseDecision": "FAIL_STOP",
+  "environmentValidity": "ENVIRONMENT_INVALID",
+  "phaseAOriginalResult": "FAIL",
+  "phaseAWallClockValidity": "INCONCLUSIVE",
+  "candidateUnderPhaseAProtocol": "REJECTED",
+  "steadyStateIndexEffect": "NOT_PROVEN",
+  "rollbackOnlyAttribution": "NOT_RUN",
+  "cascadeWal": "NOT_PROVEN",
+  "d1CurrentAA": "NOT_RUN",
+  "d2FourArm": "NOT_RUN",
+  "d3CommittedAB": "NOT_AUTHORIZED",
+  "candidateSqlExecutionCount": 0,
+  "permanentDdlApplied": false,
+  "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+  "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86",
+  "environmentObservations": {
+    "dockerInfo": {
+      "NCPU": 4,
+      "MemTotal": 8328974336,
+      "OperatingSystem": "Docker Desktop",
+      "OSType": "linux",
+      "Architecture": "x86_64",
+      "ServerVersion": "29.6.1"
+    },
+    "runningContainersOutsideTarget": [
+      {
+        "name": "supabase_db_hookops",
+        "image": "public.ecr.aws/supabase/postgres:17.6.1.059",
+        "state": "running",
+        "status": "Up 23 hours (healthy)"
+      },
+      {
+        "name": "supabase_studio_hookops",
+        "image": "public.ecr.aws/supabase/studio:2025.10.20-sha-5005fc6",
+        "state": "running",
+        "status": "Up 23 hours (healthy)"
+      },
+      {
+        "name": "supabase_pg_meta_hookops",
+        "image": "public.ecr.aws/supabase/postgres-meta:v0.93.0",
+        "state": "running",
+        "status": "Up 23 hours (healthy)"
+      },
+      {
+        "name": "supabase_storage_hookops",
+        "image": "public.ecr.aws/supabase/storage-api:v1.28.1",
+        "state": "running",
+        "status": "Up 23 hours (healthy)"
+      },
+      {
+        "name": "supabase_rest_hookops",
+        "image": "public.ecr.aws/supabase/postgrest:v13.0.7",
+        "state": "running",
+        "status": "Up 23 hours"
+      },
+      {
+        "name": "supabase_realtime_hookops",
+        "image": "public.ecr.aws/supabase/realtime:v2.56.0",
+        "state": "running",
+        "status": "Up 23 hours (healthy)"
+      },
+      {
+        "name": "supabase_inbucket_hookops",
+        "image": "public.ecr.aws/supabase/mailpit:v1.22.3",
+        "state": "running",
+        "status": "Up 23 hours (healthy)"
+      },
+      {
+        "name": "supabase_auth_hookops",
+        "image": "public.ecr.aws/supabase/gotrue:v2.180.0",
+        "state": "running",
+        "status": "Up 23 hours (healthy)"
+      },
+      {
+        "name": "supabase_kong_hookops",
+        "image": "public.ecr.aws/supabase/kong:2.8.1",
+        "state": "running",
+        "status": "Up 23 hours (healthy)"
+      },
+      {
+        "name": "supabase_vector_hookops",
+        "image": "public.ecr.aws/supabase/vector:0.28.1-alpine",
+        "state": "restarting",
+        "status": "Restarting (0) 25 seconds ago"
+      },
+      {
+        "name": "supabase_analytics_hookops",
+        "image": "public.ecr.aws/supabase/logflare:1.22.6",
+        "state": "running",
+        "status": "Up 23 hours (healthy)"
+      }
+    ],
+    "dockerInspections": [
+      {
+        "name": "supabase_db_seikotsuin_management_saas",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:46.358429268Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "supabase_studio_seikotsuin_management_saas",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:46.59175222Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "supabase_pg_meta_seikotsuin_management_saas",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:46.656573514Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "supabase_edge_runtime_seikotsuin_management_saas",
+        "inventoryState": "exited",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "exited",
+          "Running": false,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 255,
+          "StartedAt": "2026-07-15T10:58:38.53255155Z",
+          "Health": null
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "supabase_storage_seikotsuin_management_saas",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:46.552219129Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "supabase_rest_seikotsuin_management_saas",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:46.287366536Z",
+          "Health": null
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "supabase_realtime_seikotsuin_management_saas",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:46.250222214Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "supabase_inbucket_seikotsuin_management_saas",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:46.561003667Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "supabase_auth_seikotsuin_management_saas",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:50.295695578Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 2
+      },
+      {
+        "name": "supabase_kong_seikotsuin_management_saas",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:46.432859983Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "pulse_migration_test",
+        "inventoryState": "exited",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "exited",
+          "Running": false,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-13T14:19:39.817419285Z",
+          "Health": {
+            "Status": "unhealthy"
+          }
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "jpyc_oss-postgres-1",
+        "inventoryState": "exited",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "exited",
+          "Running": false,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 255,
+          "StartedAt": "2026-05-07T11:44:31.395869333Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "jpyc_oss-redis-1",
+        "inventoryState": "exited",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "exited",
+          "Running": false,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 255,
+          "StartedAt": "2026-05-07T11:44:31.393013933Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "supabase_db_hookops",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:46.553578661Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "supabase_studio_hookops",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:46.505806886Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "supabase_pg_meta_hookops",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:46.53358034Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "supabase_edge_runtime_hookops",
+        "inventoryState": "exited",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "exited",
+          "Running": false,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 255,
+          "StartedAt": "2025-12-16T06:42:12.757894367Z",
+          "Health": null
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "supabase_storage_hookops",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:46.576100589Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "supabase_rest_hookops",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:46.141894759Z",
+          "Health": null
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "supabase_realtime_hookops",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:46.656478934Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "supabase_inbucket_hookops",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:46.475944502Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "supabase_auth_hookops",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:52.581054481Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 1
+      },
+      {
+        "name": "supabase_kong_hookops",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:46.57503581Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "supabase_vector_hookops",
+        "inventoryState": "restarting",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "restarting",
+          "Running": true,
+          "Restarting": true,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-19T00:22:30.853928615Z",
+          "Health": {
+            "Status": "unhealthy"
+          }
+        },
+        "restartCount": 1083
+      },
+      {
+        "name": "supabase_analytics_hookops",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:46.581138356Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 0
+      },
+      {
+        "name": "elastic_ride",
+        "inventoryState": "exited",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "exited",
+          "Running": false,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 1,
+          "StartedAt": "2025-10-25T08:38:34.680808722Z",
+          "Health": {
+            "Status": "unhealthy"
+          }
+        },
+        "restartCount": 0
+      }
+    ],
+    "hostSamples": [
+      {
+        "sample": 1,
+        "capturedAtUtc": "2026-07-19T00:22:45.1819069Z",
+        "powerLineStatus": "Online",
+        "powerOnline": true,
+        "discharging": false,
+        "batteryChargeStatus": "High",
+        "batteryLifePercent": 100,
+        "wmiBattery": [
+          {
+            "powerOnline": true,
+            "discharging": false,
+            "charging": false
+          }
+        ],
+        "cpuLoadPercent": 76,
+        "cpuCurrentClockMhz": 1700,
+        "cpuMaxClockMhz": 1700,
+        "processorUtilityPercent": 49,
+        "processorPerformancePercent": 124,
+        "processorFrequencyMhz": 1366,
+        "processorPercentOfMaximumFrequency": 80,
+        "processorPrivilegedUtilityPercent": 26,
+        "processorDpcTimePercent": 1,
+        "processorInterruptTimePercent": 0,
+        "totalMemoryBytes": 16858472448,
+        "availableMemoryBytes": 2037948416,
+        "availableMemoryFraction": 0.120886,
+        "committedBytesInUsePercent": 86,
+        "pageFaultsPerSecond": 138613,
+        "pageReadsPerSecond": 19,
+        "pagesInputPerSecond": 263,
+        "pagesPerSecond": 263
+      },
+      {
+        "sample": 2,
+        "capturedAtUtc": "2026-07-19T00:22:48.2365830Z",
+        "powerLineStatus": "Online",
+        "powerOnline": true,
+        "discharging": false,
+        "batteryChargeStatus": "High",
+        "batteryLifePercent": 100,
+        "wmiBattery": [
+          {
+            "powerOnline": true,
+            "discharging": false,
+            "charging": false
+          }
+        ],
+        "cpuLoadPercent": 73,
+        "cpuCurrentClockMhz": 1700,
+        "cpuMaxClockMhz": 1700,
+        "processorUtilityPercent": 44,
+        "processorPerformancePercent": 138,
+        "processorFrequencyMhz": 1366,
+        "processorPercentOfMaximumFrequency": 76,
+        "processorPrivilegedUtilityPercent": 19,
+        "processorDpcTimePercent": 1,
+        "processorInterruptTimePercent": 0,
+        "totalMemoryBytes": 16858472448,
+        "availableMemoryBytes": 2020794368,
+        "availableMemoryFraction": 0.119868,
+        "committedBytesInUsePercent": 86,
+        "pageFaultsPerSecond": 40232,
+        "pageReadsPerSecond": 15,
+        "pagesInputPerSecond": 83,
+        "pagesPerSecond": 83
+      },
+      {
+        "sample": 3,
+        "capturedAtUtc": "2026-07-19T00:22:51.1797317Z",
+        "powerLineStatus": "Online",
+        "powerOnline": true,
+        "discharging": false,
+        "batteryChargeStatus": "High",
+        "batteryLifePercent": 100,
+        "wmiBattery": [
+          {
+            "powerOnline": true,
+            "discharging": false,
+            "charging": false
+          }
+        ],
+        "cpuLoadPercent": 71,
+        "cpuCurrentClockMhz": 1700,
+        "cpuMaxClockMhz": 1700,
+        "processorUtilityPercent": 38,
+        "processorPerformancePercent": 153,
+        "processorFrequencyMhz": 1366,
+        "processorPercentOfMaximumFrequency": 77,
+        "processorPrivilegedUtilityPercent": 16,
+        "processorDpcTimePercent": 0,
+        "processorInterruptTimePercent": 0,
+        "totalMemoryBytes": 16858472448,
+        "availableMemoryBytes": 2020372480,
+        "availableMemoryFraction": 0.119843,
+        "committedBytesInUsePercent": 86,
+        "pageFaultsPerSecond": 87393,
+        "pageReadsPerSecond": 0,
+        "pagesInputPerSecond": 0,
+        "pagesPerSecond": 0
+      },
+      {
+        "sample": 4,
+        "capturedAtUtc": "2026-07-19T00:22:54.1882370Z",
+        "powerLineStatus": "Online",
+        "powerOnline": true,
+        "discharging": false,
+        "batteryChargeStatus": "High",
+        "batteryLifePercent": 100,
+        "wmiBattery": [
+          {
+            "powerOnline": true,
+            "discharging": false,
+            "charging": false
+          }
+        ],
+        "cpuLoadPercent": 74,
+        "cpuCurrentClockMhz": 1700,
+        "cpuMaxClockMhz": 1700,
+        "processorUtilityPercent": 128,
+        "processorPerformancePercent": 137,
+        "processorFrequencyMhz": 1346,
+        "processorPercentOfMaximumFrequency": 80,
+        "processorPrivilegedUtilityPercent": 55,
+        "processorDpcTimePercent": 0,
+        "processorInterruptTimePercent": 0,
+        "totalMemoryBytes": 16858472448,
+        "availableMemoryBytes": 2006827008,
+        "availableMemoryFraction": 0.11904,
+        "committedBytesInUsePercent": 86,
+        "pageFaultsPerSecond": 33893,
+        "pageReadsPerSecond": 11,
+        "pagesInputPerSecond": 183,
+        "pagesPerSecond": 183
+      },
+      {
+        "sample": 5,
+        "capturedAtUtc": "2026-07-19T00:22:57.1691209Z",
+        "powerLineStatus": "Online",
+        "powerOnline": true,
+        "discharging": false,
+        "batteryChargeStatus": "High",
+        "batteryLifePercent": 100,
+        "wmiBattery": [
+          {
+            "powerOnline": true,
+            "discharging": false,
+            "charging": false
+          }
+        ],
+        "cpuLoadPercent": 70,
+        "cpuCurrentClockMhz": 1700,
+        "cpuMaxClockMhz": 1700,
+        "processorUtilityPercent": 33,
+        "processorPerformancePercent": 116,
+        "processorFrequencyMhz": 1366,
+        "processorPercentOfMaximumFrequency": 75,
+        "processorPrivilegedUtilityPercent": 16,
+        "processorDpcTimePercent": 0,
+        "processorInterruptTimePercent": 0,
+        "totalMemoryBytes": 16858472448,
+        "availableMemoryBytes": 1912655872,
+        "availableMemoryFraction": 0.113454,
+        "committedBytesInUsePercent": 86,
+        "pageFaultsPerSecond": 60177,
+        "pageReadsPerSecond": 0,
+        "pagesInputPerSecond": 0,
+        "pagesPerSecond": 0
+      }
+    ],
+    "databaseInitial": {
+      "guc": {
+        "jit": "on",
+        "work_mem": "4MB",
+        "wal_buffers": "4MB",
+        "max_wal_size": "1GB",
+        "shared_buffers": "128MB",
+        "track_io_timing": "off",
+        "synchronous_commit": "on",
+        "effective_cache_size": "128MB",
+        "maintenance_work_mem": "64MB",
+        "shared_preload_libraries": "pg_stat_statements, pgaudit, plpgsql, plpgsql_check, pg_cron, pg_net, pgsodium, auto_explain, pg_tle, plan_filter, supabase_vault"
+      },
+      "wal": {
+        "wal_fpi": 21600,
+        "wal_sync": 19421,
+        "wal_bytes": 946180507,
+        "wal_write": 38463,
+        "stats_reset": "2026-07-18T01:10:50.475564+00:00",
+        "wal_records": 9446263,
+        "wal_sync_time": 0,
+        "wal_write_time": 0,
+        "wal_buffers_full": 19029
+      },
+      "kind": "pr11_phase_a2_database_preflight",
+      "database": "postgres",
+      "checkpointer": {
+        "num_timed": 216,
+        "sync_time": 7740,
+        "write_time": 626694,
+        "stats_reset": "2026-07-18T01:10:50.475564+00:00",
+        "num_requested": 1,
+        "buffers_written": 6208,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "singleton_oid": "18714",
+      "migration_head": "20260718011731",
+      "captured_at_utc": "2026-07-19T00:22:42.291166",
+      "singleton_present": true,
+      "system_identifier": "7662783869098430503",
+      "server_version_num": "170006",
+      "active_other_clients": 0,
+      "blocked_other_clients": 0,
+      "vacuum_progress_count": 0,
+      "singleton_definition_md5": "7a4092df4bfffa0e82d7936ba6384362",
+      "create_index_progress_count": 0,
+      "idle_in_transaction_other_clients": 0
+    },
+    "databaseFinal": {
+      "guc": {
+        "jit": "on",
+        "work_mem": "4MB",
+        "wal_buffers": "4MB",
+        "max_wal_size": "1GB",
+        "shared_buffers": "128MB",
+        "track_io_timing": "off",
+        "synchronous_commit": "on",
+        "effective_cache_size": "128MB",
+        "maintenance_work_mem": "64MB",
+        "shared_preload_libraries": "pg_stat_statements, pgaudit, plpgsql, plpgsql_check, pg_cron, pg_net, pgsodium, auto_explain, pg_tle, plan_filter, supabase_vault"
+      },
+      "wal": {
+        "wal_fpi": 21600,
+        "wal_sync": 19429,
+        "wal_bytes": 946180929,
+        "wal_write": 38471,
+        "stats_reset": "2026-07-18T01:10:50.475564+00:00",
+        "wal_records": 9446272,
+        "wal_sync_time": 0,
+        "wal_write_time": 0,
+        "wal_buffers_full": 19029
+      },
+      "kind": "pr11_phase_a2_database_preflight",
+      "database": "postgres",
+      "checkpointer": {
+        "num_timed": 216,
+        "sync_time": 7740,
+        "write_time": 626694,
+        "stats_reset": "2026-07-18T01:10:50.475564+00:00",
+        "num_requested": 1,
+        "buffers_written": 6208,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "singleton_oid": "18714",
+      "migration_head": "20260718011731",
+      "captured_at_utc": "2026-07-19T00:23:18.146123",
+      "singleton_present": true,
+      "system_identifier": "7662783869098430503",
+      "server_version_num": "170006",
+      "active_other_clients": 0,
+      "blocked_other_clients": 0,
+      "vacuum_progress_count": 0,
+      "singleton_definition_md5": "7a4092df4bfffa0e82d7936ba6384362",
+      "create_index_progress_count": 0,
+      "idle_in_transaction_other_clients": 0
+    }
+  },
+  "gates": [
+    {
+      "name": "power_online",
+      "pass": true,
+      "observed": [
+        "Online",
+        "Online",
+        "Online",
+        "Online",
+        "Online"
+      ]
+    },
+    {
+      "name": "not_discharging",
+      "pass": true,
+      "observed": [
+        {
+          "powerLineStatus": "Online",
+          "wmiBattery": [
+            {
+              "powerOnline": true,
+              "discharging": false,
+              "charging": false
+            }
+          ]
+        },
+        {
+          "powerLineStatus": "Online",
+          "wmiBattery": [
+            {
+              "powerOnline": true,
+              "discharging": false,
+              "charging": false
+            }
+          ]
+        },
+        {
+          "powerLineStatus": "Online",
+          "wmiBattery": [
+            {
+              "powerOnline": true,
+              "discharging": false,
+              "charging": false
+            }
+          ]
+        },
+        {
+          "powerLineStatus": "Online",
+          "wmiBattery": [
+            {
+              "powerOnline": true,
+              "discharging": false,
+              "charging": false
+            }
+          ]
+        },
+        {
+          "powerLineStatus": "Online",
+          "wmiBattery": [
+            {
+              "powerOnline": true,
+              "discharging": false,
+              "charging": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "power_plan",
+      "pass": true,
+      "observed": "381b4222-f694-41f0-9685-ff5bb260df2e"
+    },
+    {
+      "name": "available_memory",
+      "pass": false,
+      "observed": [
+        {
+          "bytes": 2037948416,
+          "fraction": 0.120886
+        },
+        {
+          "bytes": 2020794368,
+          "fraction": 0.119868
+        },
+        {
+          "bytes": 2020372480,
+          "fraction": 0.119843
+        },
+        {
+          "bytes": 2006827008,
+          "fraction": 0.11904
+        },
+        {
+          "bytes": 1912655872,
+          "fraction": 0.113454
+        }
+      ]
+    },
+    {
+      "name": "committed_memory",
+      "pass": false,
+      "observed": [
+        86,
+        86,
+        86,
+        86,
+        86
+      ]
+    },
+    {
+      "name": "processor_utility",
+      "pass": false,
+      "observed": [
+        49,
+        44,
+        38,
+        128,
+        33
+      ]
+    },
+    {
+      "name": "processor_performance",
+      "pass": true,
+      "observed": [
+        124,
+        138,
+        153,
+        137,
+        116
+      ]
+    },
+    {
+      "name": "processor_frequency_stability",
+      "pass": true,
+      "observed": {
+        "values": [
+          1366,
+          1366,
+          1366,
+          1346,
+          1366
+        ],
+        "coefficientOfVariation": 0.005873715124816446
+      }
+    },
+    {
+      "name": "hard_paging",
+      "pass": false,
+      "observed": [
+        {
+          "pagesInputPerSecond": 263,
+          "pageReadsPerSecond": 19
+        },
+        {
+          "pagesInputPerSecond": 83,
+          "pageReadsPerSecond": 15
+        },
+        {
+          "pagesInputPerSecond": 0,
+          "pageReadsPerSecond": 0
+        },
+        {
+          "pagesInputPerSecond": 183,
+          "pageReadsPerSecond": 11
+        },
+        {
+          "pagesInputPerSecond": 0,
+          "pageReadsPerSecond": 0
+        }
+      ]
+    },
+    {
+      "name": "dpc_interrupt",
+      "pass": true,
+      "observed": [
+        {
+          "dpc": 1,
+          "interrupt": 0
+        },
+        {
+          "dpc": 1,
+          "interrupt": 0
+        },
+        {
+          "dpc": 0,
+          "interrupt": 0
+        },
+        {
+          "dpc": 0,
+          "interrupt": 0
+        },
+        {
+          "dpc": 0,
+          "interrupt": 0
+        }
+      ]
+    },
+    {
+      "name": "no_running_containers_outside_target",
+      "pass": false,
+      "observed": [
+        {
+          "name": "supabase_db_hookops",
+          "state": "running"
+        },
+        {
+          "name": "supabase_studio_hookops",
+          "state": "running"
+        },
+        {
+          "name": "supabase_pg_meta_hookops",
+          "state": "running"
+        },
+        {
+          "name": "supabase_storage_hookops",
+          "state": "running"
+        },
+        {
+          "name": "supabase_rest_hookops",
+          "state": "running"
+        },
+        {
+          "name": "supabase_realtime_hookops",
+          "state": "running"
+        },
+        {
+          "name": "supabase_inbucket_hookops",
+          "state": "running"
+        },
+        {
+          "name": "supabase_auth_hookops",
+          "state": "running"
+        },
+        {
+          "name": "supabase_kong_hookops",
+          "state": "running"
+        },
+        {
+          "name": "supabase_vector_hookops",
+          "state": "restarting"
+        },
+        {
+          "name": "supabase_analytics_hookops",
+          "state": "running"
+        }
+      ]
+    },
+    {
+      "name": "no_restarting_containers",
+      "pass": false,
+      "observed": [
+        {
+          "name": "supabase_vector_hookops",
+          "status": "Restarting (0) 25 seconds ago"
+        }
+      ]
+    },
+    {
+      "name": "target_database_container_healthy",
+      "pass": true,
+      "observed": {
+        "name": "supabase_db_seikotsuin_management_saas",
+        "inventoryState": "running",
+        "inspectAvailable": true,
+        "state": {
+          "Status": "running",
+          "Running": true,
+          "Restarting": false,
+          "OOMKilled": false,
+          "Dead": false,
+          "ExitCode": 0,
+          "StartedAt": "2026-07-18T01:10:46.358429268Z",
+          "Health": {
+            "Status": "healthy"
+          }
+        },
+        "restartCount": 0
+      }
+    },
+    {
+      "name": "target_database_cpu",
+      "pass": false,
+      "observed": [
+        "0.07%",
+        "3.91%",
+        "0.07%",
+        "0.08%",
+        "0.08%"
+      ]
+    },
+    {
+      "name": "target_database_block_io_stable",
+      "pass": true,
+      "observed": {
+        "first": {
+          "readBytes": 9250000,
+          "writeBytes": 4740000000
+        },
+        "last": {
+          "readBytes": 9250000,
+          "writeBytes": 4740000000
+        }
+      }
+    },
+    {
+      "name": "database_identity",
+      "pass": true,
+      "observed": {
+        "initial": {
+          "guc": {
+            "jit": "on",
+            "work_mem": "4MB",
+            "wal_buffers": "4MB",
+            "max_wal_size": "1GB",
+            "shared_buffers": "128MB",
+            "track_io_timing": "off",
+            "synchronous_commit": "on",
+            "effective_cache_size": "128MB",
+            "maintenance_work_mem": "64MB",
+            "shared_preload_libraries": "pg_stat_statements, pgaudit, plpgsql, plpgsql_check, pg_cron, pg_net, pgsodium, auto_explain, pg_tle, plan_filter, supabase_vault"
+          },
+          "wal": {
+            "wal_fpi": 21600,
+            "wal_sync": 19421,
+            "wal_bytes": 946180507,
+            "wal_write": 38463,
+            "stats_reset": "2026-07-18T01:10:50.475564+00:00",
+            "wal_records": 9446263,
+            "wal_sync_time": 0,
+            "wal_write_time": 0,
+            "wal_buffers_full": 19029
+          },
+          "kind": "pr11_phase_a2_database_preflight",
+          "database": "postgres",
+          "checkpointer": {
+            "num_timed": 216,
+            "sync_time": 7740,
+            "write_time": 626694,
+            "stats_reset": "2026-07-18T01:10:50.475564+00:00",
+            "num_requested": 1,
+            "buffers_written": 6208,
+            "restartpoints_req": 0,
+            "restartpoints_done": 0,
+            "restartpoints_timed": 0
+          },
+          "singleton_oid": "18714",
+          "migration_head": "20260718011731",
+          "captured_at_utc": "2026-07-19T00:22:42.291166",
+          "singleton_present": true,
+          "system_identifier": "7662783869098430503",
+          "server_version_num": "170006",
+          "active_other_clients": 0,
+          "blocked_other_clients": 0,
+          "vacuum_progress_count": 0,
+          "singleton_definition_md5": "7a4092df4bfffa0e82d7936ba6384362",
+          "create_index_progress_count": 0,
+          "idle_in_transaction_other_clients": 0
+        },
+        "final": {
+          "guc": {
+            "jit": "on",
+            "work_mem": "4MB",
+            "wal_buffers": "4MB",
+            "max_wal_size": "1GB",
+            "shared_buffers": "128MB",
+            "track_io_timing": "off",
+            "synchronous_commit": "on",
+            "effective_cache_size": "128MB",
+            "maintenance_work_mem": "64MB",
+            "shared_preload_libraries": "pg_stat_statements, pgaudit, plpgsql, plpgsql_check, pg_cron, pg_net, pgsodium, auto_explain, pg_tle, plan_filter, supabase_vault"
+          },
+          "wal": {
+            "wal_fpi": 21600,
+            "wal_sync": 19429,
+            "wal_bytes": 946180929,
+            "wal_write": 38471,
+            "stats_reset": "2026-07-18T01:10:50.475564+00:00",
+            "wal_records": 9446272,
+            "wal_sync_time": 0,
+            "wal_write_time": 0,
+            "wal_buffers_full": 19029
+          },
+          "kind": "pr11_phase_a2_database_preflight",
+          "database": "postgres",
+          "checkpointer": {
+            "num_timed": 216,
+            "sync_time": 7740,
+            "write_time": 626694,
+            "stats_reset": "2026-07-18T01:10:50.475564+00:00",
+            "num_requested": 1,
+            "buffers_written": 6208,
+            "restartpoints_req": 0,
+            "restartpoints_done": 0,
+            "restartpoints_timed": 0
+          },
+          "singleton_oid": "18714",
+          "migration_head": "20260718011731",
+          "captured_at_utc": "2026-07-19T00:23:18.146123",
+          "singleton_present": true,
+          "system_identifier": "7662783869098430503",
+          "server_version_num": "170006",
+          "active_other_clients": 0,
+          "blocked_other_clients": 0,
+          "vacuum_progress_count": 0,
+          "singleton_definition_md5": "7a4092df4bfffa0e82d7936ba6384362",
+          "create_index_progress_count": 0,
+          "idle_in_transaction_other_clients": 0
+        }
+      }
+    },
+    {
+      "name": "database_quiescence",
+      "pass": true,
+      "observed": {
+        "initial": {
+          "guc": {
+            "jit": "on",
+            "work_mem": "4MB",
+            "wal_buffers": "4MB",
+            "max_wal_size": "1GB",
+            "shared_buffers": "128MB",
+            "track_io_timing": "off",
+            "synchronous_commit": "on",
+            "effective_cache_size": "128MB",
+            "maintenance_work_mem": "64MB",
+            "shared_preload_libraries": "pg_stat_statements, pgaudit, plpgsql, plpgsql_check, pg_cron, pg_net, pgsodium, auto_explain, pg_tle, plan_filter, supabase_vault"
+          },
+          "wal": {
+            "wal_fpi": 21600,
+            "wal_sync": 19421,
+            "wal_bytes": 946180507,
+            "wal_write": 38463,
+            "stats_reset": "2026-07-18T01:10:50.475564+00:00",
+            "wal_records": 9446263,
+            "wal_sync_time": 0,
+            "wal_write_time": 0,
+            "wal_buffers_full": 19029
+          },
+          "kind": "pr11_phase_a2_database_preflight",
+          "database": "postgres",
+          "checkpointer": {
+            "num_timed": 216,
+            "sync_time": 7740,
+            "write_time": 626694,
+            "stats_reset": "2026-07-18T01:10:50.475564+00:00",
+            "num_requested": 1,
+            "buffers_written": 6208,
+            "restartpoints_req": 0,
+            "restartpoints_done": 0,
+            "restartpoints_timed": 0
+          },
+          "singleton_oid": "18714",
+          "migration_head": "20260718011731",
+          "captured_at_utc": "2026-07-19T00:22:42.291166",
+          "singleton_present": true,
+          "system_identifier": "7662783869098430503",
+          "server_version_num": "170006",
+          "active_other_clients": 0,
+          "blocked_other_clients": 0,
+          "vacuum_progress_count": 0,
+          "singleton_definition_md5": "7a4092df4bfffa0e82d7936ba6384362",
+          "create_index_progress_count": 0,
+          "idle_in_transaction_other_clients": 0
+        },
+        "final": {
+          "guc": {
+            "jit": "on",
+            "work_mem": "4MB",
+            "wal_buffers": "4MB",
+            "max_wal_size": "1GB",
+            "shared_buffers": "128MB",
+            "track_io_timing": "off",
+            "synchronous_commit": "on",
+            "effective_cache_size": "128MB",
+            "maintenance_work_mem": "64MB",
+            "shared_preload_libraries": "pg_stat_statements, pgaudit, plpgsql, plpgsql_check, pg_cron, pg_net, pgsodium, auto_explain, pg_tle, plan_filter, supabase_vault"
+          },
+          "wal": {
+            "wal_fpi": 21600,
+            "wal_sync": 19429,
+            "wal_bytes": 946180929,
+            "wal_write": 38471,
+            "stats_reset": "2026-07-18T01:10:50.475564+00:00",
+            "wal_records": 9446272,
+            "wal_sync_time": 0,
+            "wal_write_time": 0,
+            "wal_buffers_full": 19029
+          },
+          "kind": "pr11_phase_a2_database_preflight",
+          "database": "postgres",
+          "checkpointer": {
+            "num_timed": 216,
+            "sync_time": 7740,
+            "write_time": 626694,
+            "stats_reset": "2026-07-18T01:10:50.475564+00:00",
+            "num_requested": 1,
+            "buffers_written": 6208,
+            "restartpoints_req": 0,
+            "restartpoints_done": 0,
+            "restartpoints_timed": 0
+          },
+          "singleton_oid": "18714",
+          "migration_head": "20260718011731",
+          "captured_at_utc": "2026-07-19T00:23:18.146123",
+          "singleton_present": true,
+          "system_identifier": "7662783869098430503",
+          "server_version_num": "170006",
+          "active_other_clients": 0,
+          "blocked_other_clients": 0,
+          "vacuum_progress_count": 0,
+          "singleton_definition_md5": "7a4092df4bfffa0e82d7936ba6384362",
+          "create_index_progress_count": 0,
+          "idle_in_transaction_other_clients": 0
+        },
+        "physicalRuntime": {
+          "guc": {
+            "jit": "on",
+            "work_mem": "4MB",
+            "shared_buffers": "128MB",
+            "track_io_timing": "off",
+            "synchronous_commit": "on",
+            "effective_cache_size": "128MB",
+            "maintenance_work_mem": "64MB",
+            "max_parallel_workers_per_gather": "2"
+          },
+          "kind": "runtime",
+          "checkpointer": {
+            "num_timed": 216,
+            "sync_time": 7740,
+            "write_time": 626694,
+            "stats_reset": "2026-07-18T01:10:50.475564+00:00",
+            "num_requested": 1,
+            "buffers_written": 6208,
+            "restartpoints_req": 0,
+            "restartpoints_done": 0,
+            "restartpoints_timed": 0
+          },
+          "captured_at_utc": "2026-07-19T00:23:18.448477",
+          "active_other_clients": 0,
+          "blocked_other_clients": 0,
+          "other_client_activity": [],
+          "postmaster_started_at": "2026-07-18T01:10:48.138449+00:00",
+          "vacuum_progress_count": 0,
+          "create_index_progress_count": 0
+        }
+      }
+    },
+    {
+      "name": "database_checkpointer_stable",
+      "pass": true,
+      "observed": {
+        "counters": [
+          "num_timed",
+          "num_requested",
+          "restartpoints_timed",
+          "restartpoints_req",
+          "restartpoints_done",
+          "buffers_written"
+        ],
+        "initial": {
+          "num_timed": 216,
+          "sync_time": 7740,
+          "write_time": 626694,
+          "stats_reset": "2026-07-18T01:10:50.475564+00:00",
+          "num_requested": 1,
+          "buffers_written": 6208,
+          "restartpoints_req": 0,
+          "restartpoints_done": 0,
+          "restartpoints_timed": 0
+        },
+        "final": {
+          "num_timed": 216,
+          "sync_time": 7740,
+          "write_time": 626694,
+          "stats_reset": "2026-07-18T01:10:50.475564+00:00",
+          "num_requested": 1,
+          "buffers_written": 6208,
+          "restartpoints_req": 0,
+          "restartpoints_done": 0,
+          "restartpoints_timed": 0
+        }
+      }
+    },
+    {
+      "name": "database_wal_stable",
+      "pass": false,
+      "observed": {
+        "counters": [
+          "wal_records",
+          "wal_fpi",
+          "wal_bytes"
+        ],
+        "initial": {
+          "wal_fpi": 21600,
+          "wal_sync": 19421,
+          "wal_bytes": 946180507,
+          "wal_write": 38463,
+          "stats_reset": "2026-07-18T01:10:50.475564+00:00",
+          "wal_records": 9446263,
+          "wal_sync_time": 0,
+          "wal_write_time": 0,
+          "wal_buffers_full": 19029
+        },
+        "final": {
+          "wal_fpi": 21600,
+          "wal_sync": 19429,
+          "wal_bytes": 946180929,
+          "wal_write": 38471,
+          "stats_reset": "2026-07-18T01:10:50.475564+00:00",
+          "wal_records": 9446272,
+          "wal_sync_time": 0,
+          "wal_write_time": 0,
+          "wal_buffers_full": 19029
+        }
+      }
+    },
+    {
+      "name": "logical_baseline",
+      "pass": true,
+      "observed": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78"
+    },
+    {
+      "name": "physical_baseline",
+      "pass": true,
+      "observed": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+    }
+  ],
+  "failedGateNames": [
+    "available_memory",
+    "committed_memory",
+    "processor_utility",
+    "hard_paging",
+    "no_running_containers_outside_target",
+    "no_restarting_containers",
+    "target_database_cpu",
+    "database_wal_stable"
+  ],
+  "nextAction": "STABILIZE_HOST_THEN_RERUN_D1"
+}

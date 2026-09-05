@@ -147,12 +147,23 @@ describe('reservation email enqueue helpers', () => {
       const outboxInsert = createInsertMock();
       const lineInsert = createInsertMock({ id: 'line-outbox-1' });
       const notification = createNotificationMock();
-      const customerSelect = createSelectMock({
-        id: 'cust-005',
-        email: null,
-        line_user_id: 'U1234567890',
-        name: '佐藤一郎',
-      });
+      const customerQuery = {
+        eq: jest.fn(() => customerQuery),
+        maybeSingle: jest.fn().mockResolvedValue({
+          data: {
+            id: 'cust-005',
+            email: null,
+            line_user_id: 'U1234567890',
+            line_credential_generation_id:
+              '11111111-1111-4111-8111-111111111111',
+            name: '佐藤一郎',
+          },
+          error: null,
+        }),
+      };
+      const customerSelect = {
+        select: jest.fn(() => customerQuery),
+      };
       const clinicSelect = createSelectMock({ name: 'テスト整骨院' });
       const staffSelect = createSelectMock({ name: '山田先生' });
       const communicationSelect = createSelectMock({
@@ -161,26 +172,27 @@ describe('reservation email enqueue helpers', () => {
       const featureFlagSelect = {
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
-            returns: jest.fn().mockReturnValue({
-              maybeSingle: jest.fn().mockResolvedValue({
-                data: { line_booking_enabled: true },
-                error: null,
-              }),
+            maybeSingle: jest.fn().mockResolvedValue({
+              data: { line_notification_enabled: true },
+              error: null,
             }),
           }),
         }),
       };
-      const credentialSelect = {
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            returns: jest.fn().mockReturnValue({
-              maybeSingle: jest.fn().mockResolvedValue({
-                data: { is_active: true },
-                error: null,
-              }),
-            }),
-          }),
+      const credentialQuery = {
+        eq: jest.fn(() => credentialQuery),
+        maybeSingle: jest.fn().mockResolvedValue({
+          data: {
+            is_active: true,
+            credential_generation_id:
+              '11111111-1111-4111-8111-111111111111',
+            provider_identity_verified_at: '2026-08-14T00:00:00.000Z',
+          },
+          error: null,
         }),
+      };
+      const credentialSelect = {
+        select: jest.fn(() => credentialQuery),
       };
       const originalKillSwitch = process.env.NEXT_PUBLIC_ENABLE_LIFF_BOOKING;
       const originalLineKey = process.env.LINE_CREDENTIALS_ENCRYPTION_KEY;

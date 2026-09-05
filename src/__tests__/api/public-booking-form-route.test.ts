@@ -44,10 +44,12 @@ type PublicBookingFormClientOptions = {
   settingsError?: { message: string } | null;
   lineBookingEnabled?: boolean;
   lineCredentials?: {
+    credential_generation_id: string;
     is_active: boolean;
     liff_id: string | null;
     login_channel_id: string | null;
     oa_basic_id: string | null;
+    provider_identity_verified_at: string | null;
   } | null;
 };
 
@@ -68,8 +70,8 @@ const buildQuery = (
 const buildSettingsClient = (
   settings: unknown,
   options: PublicBookingFormClientOptions = {}
-) => ({
-  from: jest.fn((table: string) => {
+) => {
+  const from = jest.fn((table: string) => {
     if (table === 'clinic_settings') {
       return {
         select: jest
@@ -82,25 +84,23 @@ const buildSettingsClient = (
           ),
       };
     }
-    if (table === 'clinic_feature_flags') {
-      return {
-        select: jest.fn().mockReturnValue(
-          buildQuery({
-            line_booking_enabled: options.lineBookingEnabled === true,
-          })
-        ),
-      };
-    }
-    if (table === 'clinic_line_credentials') {
-      return {
-        select: jest
-          .fn()
-          .mockReturnValue(buildQuery(options.lineCredentials ?? null)),
-      };
-    }
     throw new Error(`Unexpected table: ${table}`);
-  }),
-});
+  });
+  const rpc = jest.fn(() =>
+    buildQuery({
+      credential_generation_id:
+        options.lineCredentials?.credential_generation_id ?? null,
+      is_active: options.lineCredentials?.is_active ?? false,
+      liff_id: options.lineCredentials?.liff_id ?? null,
+      line_booking_enabled: options.lineBookingEnabled === true,
+      login_channel_id: options.lineCredentials?.login_channel_id ?? null,
+      oa_basic_id: options.lineCredentials?.oa_basic_id ?? null,
+      provider_identity_verified_at:
+        options.lineCredentials?.provider_identity_verified_at ?? null,
+    })
+  );
+  return { from, rpc };
+};
 
 describe('GET /api/public/booking-form', () => {
   let GET: (
@@ -238,10 +238,12 @@ describe('GET /api/public/booking-form', () => {
       client: buildSettingsClient(null, {
         lineBookingEnabled: true,
         lineCredentials: {
+          credential_generation_id: '22222222-2222-4222-8222-222222222222',
           is_active: true,
           liff_id: '2000000000-AbCdEfGh',
           login_channel_id: '2000000001',
           oa_basic_id: '@testclinic',
+          provider_identity_verified_at: '2026-08-14T00:00:00.000Z',
         },
       }),
       clinic: { id: CLINIC_ID, name: 'テスト整骨院' },
@@ -259,6 +261,33 @@ describe('GET /api/public/booking-form', () => {
       },
     });
     expect(JSON.stringify(data)).not.toContain('2000000001');
+  });
+
+  it('Provider同一性未確認の資格情報ではLINE予約メタデータを公開しない', async () => {
+    process.env.LINE_CREDENTIALS_ENCRYPTION_KEY = TEST_ENCRYPTION_KEY;
+    process.env.NEXT_PUBLIC_ENABLE_LIFF_BOOKING = 'true';
+    mockCreatePublicClinicContext.mockResolvedValue({
+      client: buildSettingsClient(null, {
+        lineBookingEnabled: true,
+        lineCredentials: {
+          credential_generation_id: '22222222-2222-4222-8222-222222222222',
+          is_active: true,
+          liff_id: '2000000000-AbCdEfGh',
+          login_channel_id: '2000000001',
+          oa_basic_id: '@testclinic',
+          provider_identity_verified_at: null,
+        },
+      }),
+      clinic: { id: CLINIC_ID, name: 'テスト整骨院' },
+    });
+
+    const response = await GET(buildRequest());
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data).toMatchObject({ success: true });
+    expect(data).toHaveProperty('data.liff_id', undefined);
+    expect(data).toHaveProperty('data.oa_basic_id', undefined);
   });
 
   it('Turnstile site keyはsecretとsite keyの両方がある場合だけ返す', async () => {

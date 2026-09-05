@@ -3,7 +3,10 @@
 import { memo } from 'react';
 import { AdminStatusBadge } from '@/components/admin/admin-status-badge';
 import { Switch } from '@/components/ui/switch';
-import { formatClinicOperationStatus } from '@/lib/admin/tenants';
+import {
+  formatClinicOperationStatus,
+  type ClinicSummary,
+} from '@/lib/admin/tenants';
 
 interface TenantOperationStatusControlProps {
   id: string;
@@ -67,9 +70,28 @@ function TenantOperationStatusBadgeComponent({
   );
 }
 
+function TenantLifecycleStatusBadgeComponent({
+  clinic,
+}: {
+  clinic: Pick<ClinicSummary, 'is_active' | 'billing_activation_status'>;
+}) {
+  if (clinic.billing_activation_status === 'pending_billing') {
+    return <AdminStatusBadge label='契約反映待ち' tone='pending' />;
+  }
+
+  if (clinic.billing_activation_status === 'billing_failed') {
+    return <AdminStatusBadge label='有効化に失敗' tone='error' />;
+  }
+
+  return <TenantOperationStatusBadge isActive={clinic.is_active} />;
+}
+
 export const TenantOperationStatusControl = memo(
   TenantOperationStatusControlComponent
 );
 export const TenantOperationStatusBadge = memo(
   TenantOperationStatusBadgeComponent
+);
+export const TenantLifecycleStatusBadge = memo(
+  TenantLifecycleStatusBadgeComponent
 );

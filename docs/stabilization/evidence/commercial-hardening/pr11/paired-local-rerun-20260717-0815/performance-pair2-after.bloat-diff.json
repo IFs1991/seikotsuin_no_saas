@@ -1,0 +1,2984 @@
+[
+  {
+    "key": "index:public.blocks.blocks_created_by_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 90112,
+    "deltaBytes": 81920,
+    "changedFields": [
+      "bytes",
+      "relpages",
+      "reltuples"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "5f624c3641d5a072b4ba31b8f55d7b66"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 90112,
+      "relpages": 11,
+      "reltuples": 10000,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "5f624c3641d5a072b4ba31b8f55d7b66"
+    }
+  },
+  {
+    "key": "index:public.blocks.blocks_deleted_by_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 8192,
+    "deltaBytes": 0,
+    "changedFields": [
+      "relpages",
+      "reltuples"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "ea5d67f947607c944013ee74bbfc3e89"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 1,
+      "reltuples": 0,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "ea5d67f947607c944013ee74bbfc3e89"
+    }
+  },
+  {
+    "key": "index:public.blocks.blocks_pkey",
+    "beforeBytes": 8192,
+    "afterBytes": 819200,
+    "deltaBytes": 811008,
+    "changedFields": [
+      "bytes",
+      "relpages",
+      "reltuples"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "6402aea3cabc01c46abe24ca5c0c7e37"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 819200,
+      "relpages": 100,
+      "reltuples": 20000,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "6402aea3cabc01c46abe24ca5c0c7e37"
+    }
+  },
+  {
+    "key": "index:public.blocks.blocks_resource_clinic_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 147456,
+    "deltaBytes": 139264,
+    "changedFields": [
+      "bytes",
+      "relpages",
+      "reltuples"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "9901fe5e728a0fe29c3ca32c6759b736"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 147456,
+      "relpages": 18,
+      "reltuples": 20000,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "9901fe5e728a0fe29c3ca32c6759b736"
+    }
+  },
+  {
+    "key": "index:public.blocks.idx_blocks_clinic_id",
+    "beforeBytes": 8192,
+    "afterBytes": 147456,
+    "deltaBytes": 139264,
+    "changedFields": [
+      "bytes",
+      "relpages",
+      "reltuples"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "4580a4a6e6c32a839fed49967e419de0"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 147456,
+      "relpages": 18,
+      "reltuples": 20000,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "4580a4a6e6c32a839fed49967e419de0"
+    }
+  },
+  {
+    "key": "index:public.blocks.idx_blocks_clinic_time",
+    "beforeBytes": 8192,
+    "afterBytes": 1007616,
+    "deltaBytes": 999424,
+    "changedFields": [
+      "bytes",
+      "relpages",
+      "reltuples"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "0a58b803eedf010dacb7150def44cf82"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 1007616,
+      "relpages": 123,
+      "reltuples": 20000,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "0a58b803eedf010dacb7150def44cf82"
+    }
+  },
+  {
+    "key": "index:public.blocks.idx_blocks_end_time",
+    "beforeBytes": 8192,
+    "afterBytes": 466944,
+    "deltaBytes": 458752,
+    "changedFields": [
+      "bytes",
+      "relpages",
+      "reltuples"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "9a9e11de00f110134b3308be3b82d829"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 466944,
+      "relpages": 57,
+      "reltuples": 20000,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "9a9e11de00f110134b3308be3b82d829"
+    }
+  },
+  {
+    "key": "index:public.blocks.idx_blocks_is_active",
+    "beforeBytes": 8192,
+    "afterBytes": 147456,
+    "deltaBytes": 139264,
+    "changedFields": [
+      "bytes",
+      "relpages",
+      "reltuples"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "14d85b4af0f28f37f02740078496e4f6"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 147456,
+      "relpages": 18,
+      "reltuples": 20000,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "14d85b4af0f28f37f02740078496e4f6"
+    }
+  },
+  {
+    "key": "index:public.blocks.idx_blocks_resource_id",
+    "beforeBytes": 8192,
+    "afterBytes": 147456,
+    "deltaBytes": 139264,
+    "changedFields": [
+      "bytes",
+      "relpages",
+      "reltuples"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "7a4092df4bfffa0e82d7936ba6384362"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 147456,
+      "relpages": 18,
+      "reltuples": 20000,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "7a4092df4bfffa0e82d7936ba6384362"
+    }
+  },
+  {
+    "key": "index:public.blocks.idx_blocks_resource_time",
+    "beforeBytes": 8192,
+    "afterBytes": 1007616,
+    "deltaBytes": 999424,
+    "changedFields": [
+      "bytes",
+      "relpages",
+      "reltuples"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "1a97e824b3a7803be36164abb577192b"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 1007616,
+      "relpages": 123,
+      "reltuples": 20000,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "1a97e824b3a7803be36164abb577192b"
+    }
+  },
+  {
+    "key": "index:public.blocks.idx_blocks_start_time",
+    "beforeBytes": 8192,
+    "afterBytes": 466944,
+    "deltaBytes": 458752,
+    "changedFields": [
+      "bytes",
+      "relpages",
+      "reltuples"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "6ce577adfe6bfcf4041badfdf38a848f"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 466944,
+      "relpages": 57,
+      "reltuples": 20000,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "6ce577adfe6bfcf4041badfdf38a848f"
+    }
+  },
+  {
+    "key": "index:public.customers.customers_clinic_normalized_phone_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 114688,
+    "deltaBytes": 106496,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "817aa093e9b1b9b3af527e1f3a3bb0dc"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 114688,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "817aa093e9b1b9b3af527e1f3a3bb0dc"
+    }
+  },
+  {
+    "key": "index:public.customers.customers_id_clinic_unique",
+    "beforeBytes": 8192,
+    "afterBytes": 172032,
+    "deltaBytes": 163840,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "38a47ef5cdf4ac54ca40ebc827d591f6"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 172032,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "38a47ef5cdf4ac54ca40ebc827d591f6"
+    }
+  },
+  {
+    "key": "index:public.customers.customers_line_user_id_key",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "afd9f5184615c4c15677d2db7059b9cf"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "afd9f5184615c4c15677d2db7059b9cf"
+    }
+  },
+  {
+    "key": "index:public.customers.customers_pkey",
+    "beforeBytes": 8192,
+    "afterBytes": 90112,
+    "deltaBytes": 81920,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "b2df34d35701c38489542666b6769f13"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 90112,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "b2df34d35701c38489542666b6769f13"
+    }
+  },
+  {
+    "key": "index:public.customers.idx_customers_clinic_active",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "4cc0786d38eb89c6a0c5a18539ad48d8"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "4cc0786d38eb89c6a0c5a18539ad48d8"
+    }
+  },
+  {
+    "key": "index:public.customers.idx_customers_clinic_id",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "3287e5ff8d7f1f7cb6df09dca6de551f"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "3287e5ff8d7f1f7cb6df09dca6de551f"
+    }
+  },
+  {
+    "key": "index:public.customers.idx_customers_created_at",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "04ac2b8bf104c7d489595cd112675af0"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "04ac2b8bf104c7d489595cd112675af0"
+    }
+  },
+  {
+    "key": "index:public.customers.idx_customers_email",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "89f93a312a4670753fc4e5881d17b9e3"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "89f93a312a4670753fc4e5881d17b9e3"
+    }
+  },
+  {
+    "key": "index:public.customers.idx_customers_is_deleted",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "17c4b9c59f321160e64a1b12a0d6a859"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "17c4b9c59f321160e64a1b12a0d6a859"
+    }
+  },
+  {
+    "key": "index:public.customers.idx_customers_last_visit",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "68cbc8258a4d7651fccf1c42a165b9a4"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "68cbc8258a4d7651fccf1c42a165b9a4"
+    }
+  },
+  {
+    "key": "index:public.customers.idx_customers_line_user_id",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "20e0712caa9a106766f5e4d70f6e7263"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "20e0712caa9a106766f5e4d70f6e7263"
+    }
+  },
+  {
+    "key": "index:public.customers.idx_customers_name_trgm",
+    "beforeBytes": 16384,
+    "afterBytes": 1335296,
+    "deltaBytes": 1318912,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "b80f72c40dbc7fd882f799fa92a579c1"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 1335296,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "b80f72c40dbc7fd882f799fa92a579c1"
+    }
+  },
+  {
+    "key": "index:public.customers.idx_customers_phone",
+    "beforeBytes": 8192,
+    "afterBytes": 81920,
+    "deltaBytes": 73728,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "f9f55f77f4e8c5abfa4818d9afa60ae7"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 81920,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "f9f55f77f4e8c5abfa4818d9afa60ae7"
+    }
+  },
+  {
+    "key": "index:public.menus.idx_menus_category",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "e2bd93d458137f0394e596f3961ff463"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "e2bd93d458137f0394e596f3961ff463"
+    }
+  },
+  {
+    "key": "index:public.menus.idx_menus_category_id",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "50495822659ff03a390d92ccb95780c3"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "50495822659ff03a390d92ccb95780c3"
+    }
+  },
+  {
+    "key": "index:public.menus.idx_menus_clinic_active",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "f08a6fbf88e3432d469f9f3985737721"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "f08a6fbf88e3432d469f9f3985737721"
+    }
+  },
+  {
+    "key": "index:public.menus.idx_menus_clinic_id",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "88161cae6d21ec5030d5779fa28115ba"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "88161cae6d21ec5030d5779fa28115ba"
+    }
+  },
+  {
+    "key": "index:public.menus.idx_menus_code",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "2b31ce9ec2d374f0ced99abdd90e91c3"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "2b31ce9ec2d374f0ced99abdd90e91c3"
+    }
+  },
+  {
+    "key": "index:public.menus.idx_menus_display_order",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "d3d73416619c76f41d8258404662512b"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "d3d73416619c76f41d8258404662512b"
+    }
+  },
+  {
+    "key": "index:public.menus.idx_menus_is_active",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "4a43243aed487b8385c43a85245996e5"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "4a43243aed487b8385c43a85245996e5"
+    }
+  },
+  {
+    "key": "index:public.menus.idx_menus_is_public",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "c9722b22bac6b16c6bdf29453d0ea057"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "c9722b22bac6b16c6bdf29453d0ea057"
+    }
+  },
+  {
+    "key": "index:public.menus.idx_menus_treatment_type",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "8cab9b7771142f8fe5f9ec7ed2dfef9d"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "8cab9b7771142f8fe5f9ec7ed2dfef9d"
+    }
+  },
+  {
+    "key": "index:public.menus.menus_id_clinic_unique",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "2ed89ed0377c6a36c29316a08e6b0e6d"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "2ed89ed0377c6a36c29316a08e6b0e6d"
+    }
+  },
+  {
+    "key": "index:public.menus.menus_pkey",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "3831f6f81be3f62ca060affcc8485cae"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "3831f6f81be3f62ca060affcc8485cae"
+    }
+  },
+  {
+    "key": "index:public.patient_outreach_campaigns.patient_outreach_campaigns_clinic_created_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "60692f2a3c7e6f698b508df4825042be"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "60692f2a3c7e6f698b508df4825042be"
+    }
+  },
+  {
+    "key": "index:public.patient_outreach_campaigns.patient_outreach_campaigns_created_by_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "98294f5fca1b0e8cacc5497b7ee69a1f"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "98294f5fca1b0e8cacc5497b7ee69a1f"
+    }
+  },
+  {
+    "key": "index:public.patient_outreach_campaigns.patient_outreach_campaigns_id_clinic_unique",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "7de4835d38f6fbea5946e461ecfb0fc1"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "7de4835d38f6fbea5946e461ecfb0fc1"
+    }
+  },
+  {
+    "key": "index:public.patient_outreach_campaigns.patient_outreach_campaigns_pkey",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "846ec3095e30fe918e6dbc5addd7ba09"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "846ec3095e30fe918e6dbc5addd7ba09"
+    }
+  },
+  {
+    "key": "index:public.patient_outreach_campaigns.patient_outreach_campaigns_status_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "0b12a985f2d68cfc8e2879cf62333a8b"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "0b12a985f2d68cfc8e2879cf62333a8b"
+    }
+  },
+  {
+    "key": "index:public.patient_outreach_recipients.patient_outreach_recipients_booked_reservation_clinic_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 90112,
+    "deltaBytes": 81920,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "440a2b476b1cdbdf7cd2943095e0b0a1"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 90112,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "440a2b476b1cdbdf7cd2943095e0b0a1"
+    }
+  },
+  {
+    "key": "index:public.patient_outreach_recipients.patient_outreach_recipients_campaign_customer_unique",
+    "beforeBytes": 8192,
+    "afterBytes": 172032,
+    "deltaBytes": 163840,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "75e56bf59a475d398248435b5abdc2c2"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 172032,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "75e56bf59a475d398248435b5abdc2c2"
+    }
+  },
+  {
+    "key": "index:public.patient_outreach_recipients.patient_outreach_recipients_campaign_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "5281dcddfcf3cbfe7d45cf0e91982498"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "5281dcddfcf3cbfe7d45cf0e91982498"
+    }
+  },
+  {
+    "key": "index:public.patient_outreach_recipients.patient_outreach_recipients_customer_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 172032,
+    "deltaBytes": 163840,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "31ea322a5b2bf94383c1e76a83ad412b"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 172032,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "31ea322a5b2bf94383c1e76a83ad412b"
+    }
+  },
+  {
+    "key": "index:public.patient_outreach_recipients.patient_outreach_recipients_pkey",
+    "beforeBytes": 8192,
+    "afterBytes": 90112,
+    "deltaBytes": 81920,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "df63a2b0449934cef030d91512e73deb"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 90112,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "df63a2b0449934cef030d91512e73deb"
+    }
+  },
+  {
+    "key": "index:public.reservation_history.idx_reservation_history_action",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "4c47b10b93461972d2a3793f4ab64923"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "4c47b10b93461972d2a3793f4ab64923"
+    }
+  },
+  {
+    "key": "index:public.reservation_history.idx_reservation_history_clinic_created",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "4f742b2959341cf5bbefcf0890c027d5"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "4f742b2959341cf5bbefcf0890c027d5"
+    }
+  },
+  {
+    "key": "index:public.reservation_history.idx_reservation_history_clinic_id",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "f0ba1a9a865f3e2e228434179829e286"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "f0ba1a9a865f3e2e228434179829e286"
+    }
+  },
+  {
+    "key": "index:public.reservation_history.idx_reservation_history_created_at",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "703cad893422b06147f1276205f1e692"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "703cad893422b06147f1276205f1e692"
+    }
+  },
+  {
+    "key": "index:public.reservation_history.idx_reservation_history_reservation_id",
+    "beforeBytes": 8192,
+    "afterBytes": 90112,
+    "deltaBytes": 81920,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "97a70cd4e20cb85f69f6a7e4405cf982"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 90112,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "97a70cd4e20cb85f69f6a7e4405cf982"
+    }
+  },
+  {
+    "key": "index:public.reservation_history.reservation_history_pkey",
+    "beforeBytes": 8192,
+    "afterBytes": 90112,
+    "deltaBytes": 81920,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "e48bc191222304dabfe70443e97be422"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 90112,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "e48bc191222304dabfe70443e97be422"
+    }
+  },
+  {
+    "key": "index:public.reservation_history.reservation_history_reservation_clinic_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 163840,
+    "deltaBytes": 155648,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "6d5c7579ecde42943c4b633a4dc96f69"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 163840,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "6d5c7579ecde42943c4b633a4dc96f69"
+    }
+  },
+  {
+    "key": "index:public.reservations.idx_reservations_channel",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "d305cc4e5ed44118a3f8317e9619fea1"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "d305cc4e5ed44118a3f8317e9619fea1"
+    }
+  },
+  {
+    "key": "index:public.reservations.idx_reservations_clinic_id",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "323765366aafb2e9bcded2c10f739775"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "323765366aafb2e9bcded2c10f739775"
+    }
+  },
+  {
+    "key": "index:public.reservations.idx_reservations_clinic_status",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "e1383ee11b322a8a1889d1259f2e7510"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "e1383ee11b322a8a1889d1259f2e7510"
+    }
+  },
+  {
+    "key": "index:public.reservations.idx_reservations_customer_id",
+    "beforeBytes": 8192,
+    "afterBytes": 90112,
+    "deltaBytes": 81920,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "244a54be90334c4bbbc63b9d01f43292"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 90112,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "244a54be90334c4bbbc63b9d01f43292"
+    }
+  },
+  {
+    "key": "index:public.reservations.idx_reservations_date_range",
+    "beforeBytes": 8192,
+    "afterBytes": 81920,
+    "deltaBytes": 73728,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "cc32b51d0fce5ea4818e7bc383619eef"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 81920,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "cc32b51d0fce5ea4818e7bc383619eef"
+    }
+  },
+  {
+    "key": "index:public.reservations.idx_reservations_end_time",
+    "beforeBytes": 8192,
+    "afterBytes": 65536,
+    "deltaBytes": 57344,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "9bc4ec946700034ae689d1dd2554c3c0"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 65536,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "9bc4ec946700034ae689d1dd2554c3c0"
+    }
+  },
+  {
+    "key": "index:public.reservations.idx_reservations_menu_id",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "10f07166c153785096b843fb615305af"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "10f07166c153785096b843fb615305af"
+    }
+  },
+  {
+    "key": "index:public.reservations.idx_reservations_payment_status",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "249f7af399f3fc6ecf1837a182219c07"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "249f7af399f3fc6ecf1837a182219c07"
+    }
+  },
+  {
+    "key": "index:public.reservations.idx_reservations_reservation_group_id",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "6b2bdaed025ebb6844ca2a7538404c4c"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "6b2bdaed025ebb6844ca2a7538404c4c"
+    }
+  },
+  {
+    "key": "index:public.reservations.idx_reservations_staff_id",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "7940bbd8d3d56428e09a0b859dcd770e"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "7940bbd8d3d56428e09a0b859dcd770e"
+    }
+  },
+  {
+    "key": "index:public.reservations.idx_reservations_start_time",
+    "beforeBytes": 8192,
+    "afterBytes": 98304,
+    "deltaBytes": 90112,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "1ad49a95a7672d4bb9c6cf633a5f03f9"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 98304,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "1ad49a95a7672d4bb9c6cf633a5f03f9"
+    }
+  },
+  {
+    "key": "index:public.reservations.idx_reservations_status",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "aba24c1de09b6b2abe6832e773e71eb6"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "aba24c1de09b6b2abe6832e773e71eb6"
+    }
+  },
+  {
+    "key": "index:public.reservations.reservations_customer_clinic_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 172032,
+    "deltaBytes": 163840,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "327c0ef3fcbe1e585989c71d074db0f0"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 172032,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "327c0ef3fcbe1e585989c71d074db0f0"
+    }
+  },
+  {
+    "key": "index:public.reservations.reservations_id_clinic_unique",
+    "beforeBytes": 8192,
+    "afterBytes": 163840,
+    "deltaBytes": 155648,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "1b4591099052643ac9d9350b06f6d9c8"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 163840,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "1b4591099052643ac9d9350b06f6d9c8"
+    }
+  },
+  {
+    "key": "index:public.reservations.reservations_menu_clinic_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "85b1621ffa8fa7b11f91d1b228b2ce80"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "85b1621ffa8fa7b11f91d1b228b2ce80"
+    }
+  },
+  {
+    "key": "index:public.reservations.reservations_pkey",
+    "beforeBytes": 8192,
+    "afterBytes": 90112,
+    "deltaBytes": 81920,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "b19aad356cc5e322046e01efc07ee6d3"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 90112,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "b19aad356cc5e322046e01efc07ee6d3"
+    }
+  },
+  {
+    "key": "index:public.reservations.reservations_staff_clinic_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "678910620449caa754e83b1ddf1df36f"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "678910620449caa754e83b1ddf1df36f"
+    }
+  },
+  {
+    "key": "index:public.resources.idx_resources_clinic_id",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "c62230e1b67d52eadac641dd30855a61"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "c62230e1b67d52eadac641dd30855a61"
+    }
+  },
+  {
+    "key": "index:public.resources.idx_resources_display_order",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "ac18bfb853209c0b2fc13a91591eef55"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "ac18bfb853209c0b2fc13a91591eef55"
+    }
+  },
+  {
+    "key": "index:public.resources.idx_resources_is_active",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "dbda255292295c50d639a279293733cb"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "dbda255292295c50d639a279293733cb"
+    }
+  },
+  {
+    "key": "index:public.resources.idx_resources_is_bookable",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "df5f9abb3e852755a0e39270174fefc9"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "df5f9abb3e852755a0e39270174fefc9"
+    }
+  },
+  {
+    "key": "index:public.resources.idx_resources_staff_code",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "0991e8be834792cd802cbee8cb66cbcc"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "0991e8be834792cd802cbee8cb66cbcc"
+    }
+  },
+  {
+    "key": "index:public.resources.idx_resources_type",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "69c969fb0078f92ae21f5bab558028c6"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "69c969fb0078f92ae21f5bab558028c6"
+    }
+  },
+  {
+    "key": "index:public.resources.resources_id_clinic_unique",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "b853e670f5898e46933fffe6de897b0e"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "b853e670f5898e46933fffe6de897b0e"
+    }
+  },
+  {
+    "key": "index:public.resources.resources_pkey",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "ee88f3a3e081a89e0fcd03649dae0383"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "ee88f3a3e081a89e0fcd03649dae0383"
+    }
+  },
+  {
+    "key": "index:public.resources.resources_staff_code_key",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "5c1e671ed0b465a931f2503dad1961e6"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "5c1e671ed0b465a931f2503dad1961e6"
+    }
+  },
+  {
+    "key": "index:public.shift_request_periods.shift_request_periods_clinic_range_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "c7e63920fba5e48df9198da31a1782e5"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "c7e63920fba5e48df9198da31a1782e5"
+    }
+  },
+  {
+    "key": "index:public.shift_request_periods.shift_request_periods_clinic_status_deadline_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "73e7d254b4466df0b57ddf5a2b052239"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "73e7d254b4466df0b57ddf5a2b052239"
+    }
+  },
+  {
+    "key": "index:public.shift_request_periods.shift_request_periods_pkey",
+    "beforeBytes": 8192,
+    "afterBytes": 16384,
+    "deltaBytes": 8192,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "d160797f318734e00f6dd4c17e968d27"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 16384,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "d160797f318734e00f6dd4c17e968d27"
+    }
+  },
+  {
+    "key": "index:public.shift_requests.shift_requests_clinic_period_status_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 49152,
+    "deltaBytes": 40960,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "a6f9f92e3a8c388b8d3c851e6e294a4e"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 49152,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "a6f9f92e3a8c388b8d3c851e6e294a4e"
+    }
+  },
+  {
+    "key": "index:public.shift_requests.shift_requests_clinic_staff_time_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 286720,
+    "deltaBytes": 278528,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "0b438c5b75bcb0c7cfe732a4742f3be1"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 286720,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "0b438c5b75bcb0c7cfe732a4742f3be1"
+    }
+  },
+  {
+    "key": "index:public.shift_requests.shift_requests_clinic_type_status_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 49152,
+    "deltaBytes": 40960,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "52054dd06a5a374731f1c020784f95ff"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 49152,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "52054dd06a5a374731f1c020784f95ff"
+    }
+  },
+  {
+    "key": "index:public.shift_requests.shift_requests_period_staff_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 49152,
+    "deltaBytes": 40960,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "03f4a95af717f0c2ef307a8fc86b02b4"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 49152,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "03f4a95af717f0c2ef307a8fc86b02b4"
+    }
+  },
+  {
+    "key": "index:public.shift_requests.shift_requests_pkey",
+    "beforeBytes": 8192,
+    "afterBytes": 180224,
+    "deltaBytes": 172032,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "d5f90b9b6a8d6b982620bfb27d8a4a31"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 180224,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "d5f90b9b6a8d6b982620bfb27d8a4a31"
+    }
+  },
+  {
+    "key": "index:public.shift_requests.shift_requests_reviewed_by_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 32768,
+    "deltaBytes": 24576,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "99bac691c322e68c76eefcf48bec51b9"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 32768,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "99bac691c322e68c76eefcf48bec51b9"
+    }
+  },
+  {
+    "key": "index:public.shift_requests.shift_requests_staff_id_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 49152,
+    "deltaBytes": 40960,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "9214455cc7e5f735da4cf6ec8d9cd67c"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 49152,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "9214455cc7e5f735da4cf6ec8d9cd67c"
+    }
+  },
+  {
+    "key": "index:public.shift_requests.shift_requests_submitted_by_idx",
+    "beforeBytes": 8192,
+    "afterBytes": 49152,
+    "deltaBytes": 40960,
+    "changedFields": [
+      "bytes"
+    ],
+    "beforeState": {
+      "kind": "index",
+      "bytes": 8192,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "c6fb06529bfa6fb93d7bf2a677467ea3"
+    },
+    "afterState": {
+      "kind": "index",
+      "bytes": 49152,
+      "relpages": 0,
+      "reltuples": -1,
+      "valid": true,
+      "ready": true,
+      "live": true,
+      "definitionMd5": "c6fb06529bfa6fb93d7bf2a677467ea3"
+    }
+  },
+  {
+    "key": "table:auth.users",
+    "beforeBytes": 188416,
+    "afterBytes": 188416,
+    "deltaBytes": 0,
+    "changedFields": [
+      "deadTuples"
+    ],
+    "beforeState": {
+      "kind": "table",
+      "totalBytes": 188416,
+      "heapBytes": 8192,
+      "indexBytes": 139264,
+      "relpages": 1,
+      "reltuples": 1,
+      "liveTuples": 1,
+      "deadTuples": 0
+    },
+    "afterState": {
+      "kind": "table",
+      "totalBytes": 188416,
+      "heapBytes": 8192,
+      "indexBytes": 139264,
+      "relpages": 1,
+      "reltuples": 1,
+      "liveTuples": 1,
+      "deadTuples": 2
+    }
+  },
+  {
+    "key": "table:public.blocks",
+    "beforeBytes": 114688,
+    "afterBytes": 7323648,
+    "deltaBytes": 7208960,
+    "changedFields": [
+      "totalBytes",
+      "heapBytes",
+      "indexBytes",
+      "relpages",
+      "reltuples",
+      "deadTuples"
+    ],
+    "beforeState": {
+      "kind": "table",
+      "totalBytes": 114688,
+      "heapBytes": 0,
+      "indexBytes": 90112,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 0
+    },
+    "afterState": {
+      "kind": "table",
+      "totalBytes": 7323648,
+      "heapBytes": 2834432,
+      "indexBytes": 4456448,
+      "relpages": 346,
+      "reltuples": 20000,
+      "liveTuples": 0,
+      "deadTuples": 20000
+    }
+  },
+  {
+    "key": "table:public.clinics",
+    "beforeBytes": 98304,
+    "afterBytes": 98304,
+    "deltaBytes": 0,
+    "changedFields": [
+      "deadTuples"
+    ],
+    "beforeState": {
+      "kind": "table",
+      "totalBytes": 98304,
+      "heapBytes": 8192,
+      "indexBytes": 49152,
+      "relpages": 1,
+      "reltuples": 1,
+      "liveTuples": 1,
+      "deadTuples": 0
+    },
+    "afterState": {
+      "kind": "table",
+      "totalBytes": 98304,
+      "heapBytes": 8192,
+      "indexBytes": 49152,
+      "relpages": 1,
+      "reltuples": 1,
+      "liveTuples": 1,
+      "deadTuples": 1
+    }
+  },
+  {
+    "key": "table:public.customers",
+    "beforeBytes": 155648,
+    "afterBytes": 2457600,
+    "deltaBytes": 2301952,
+    "changedFields": [
+      "totalBytes",
+      "heapBytes",
+      "indexBytes",
+      "deadTuples"
+    ],
+    "beforeState": {
+      "kind": "table",
+      "totalBytes": 155648,
+      "heapBytes": 0,
+      "indexBytes": 131072,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 0
+    },
+    "afterState": {
+      "kind": "table",
+      "totalBytes": 2457600,
+      "heapBytes": 352256,
+      "indexBytes": 2072576,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 2000
+    }
+  },
+  {
+    "key": "table:public.menus",
+    "beforeBytes": 139264,
+    "afterBytes": 237568,
+    "deltaBytes": 98304,
+    "changedFields": [
+      "totalBytes",
+      "heapBytes",
+      "indexBytes",
+      "deadTuples"
+    ],
+    "beforeState": {
+      "kind": "table",
+      "totalBytes": 139264,
+      "heapBytes": 0,
+      "indexBytes": 114688,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 0
+    },
+    "afterState": {
+      "kind": "table",
+      "totalBytes": 237568,
+      "heapBytes": 8192,
+      "indexBytes": 204800,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 1
+    }
+  },
+  {
+    "key": "table:public.patient_outreach_campaigns",
+    "beforeBytes": 65536,
+    "afterBytes": 114688,
+    "deltaBytes": 49152,
+    "changedFields": [
+      "totalBytes",
+      "heapBytes",
+      "indexBytes",
+      "deadTuples"
+    ],
+    "beforeState": {
+      "kind": "table",
+      "totalBytes": 65536,
+      "heapBytes": 0,
+      "indexBytes": 40960,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 0
+    },
+    "afterState": {
+      "kind": "table",
+      "totalBytes": 114688,
+      "heapBytes": 8192,
+      "indexBytes": 81920,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 1
+    }
+  },
+  {
+    "key": "table:public.patient_outreach_recipients",
+    "beforeBytes": 65536,
+    "afterBytes": 892928,
+    "deltaBytes": 827392,
+    "changedFields": [
+      "totalBytes",
+      "heapBytes",
+      "indexBytes",
+      "deadTuples"
+    ],
+    "beforeState": {
+      "kind": "table",
+      "totalBytes": 65536,
+      "heapBytes": 0,
+      "indexBytes": 40960,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 0
+    },
+    "afterState": {
+      "kind": "table",
+      "totalBytes": 892928,
+      "heapBytes": 303104,
+      "indexBytes": 557056,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 2000
+    }
+  },
+  {
+    "key": "table:public.reservation_history",
+    "beforeBytes": 90112,
+    "afterBytes": 2859008,
+    "deltaBytes": 2768896,
+    "changedFields": [
+      "totalBytes",
+      "heapBytes",
+      "indexBytes",
+      "deadTuples"
+    ],
+    "beforeState": {
+      "kind": "table",
+      "totalBytes": 90112,
+      "heapBytes": 0,
+      "indexBytes": 65536,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 0
+    },
+    "afterState": {
+      "kind": "table",
+      "totalBytes": 2859008,
+      "heapBytes": 2342912,
+      "indexBytes": 483328,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 2000
+    }
+  },
+  {
+    "key": "table:public.reservations",
+    "beforeBytes": 212992,
+    "afterBytes": 1556480,
+    "deltaBytes": 1343488,
+    "changedFields": [
+      "totalBytes",
+      "heapBytes",
+      "indexBytes",
+      "deadTuples"
+    ],
+    "beforeState": {
+      "kind": "table",
+      "totalBytes": 212992,
+      "heapBytes": 0,
+      "indexBytes": 188416,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 0
+    },
+    "afterState": {
+      "kind": "table",
+      "totalBytes": 1556480,
+      "heapBytes": 385024,
+      "indexBytes": 1138688,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 2000
+    }
+  },
+  {
+    "key": "table:public.resources",
+    "beforeBytes": 114688,
+    "afterBytes": 196608,
+    "deltaBytes": 81920,
+    "changedFields": [
+      "totalBytes",
+      "heapBytes",
+      "indexBytes",
+      "deadTuples"
+    ],
+    "beforeState": {
+      "kind": "table",
+      "totalBytes": 114688,
+      "heapBytes": 0,
+      "indexBytes": 90112,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 0
+    },
+    "afterState": {
+      "kind": "table",
+      "totalBytes": 196608,
+      "heapBytes": 8192,
+      "indexBytes": 163840,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 2
+    }
+  },
+  {
+    "key": "table:public.shift_request_periods",
+    "beforeBytes": 49152,
+    "afterBytes": 81920,
+    "deltaBytes": 32768,
+    "changedFields": [
+      "totalBytes",
+      "heapBytes",
+      "indexBytes",
+      "deadTuples"
+    ],
+    "beforeState": {
+      "kind": "table",
+      "totalBytes": 49152,
+      "heapBytes": 0,
+      "indexBytes": 24576,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 0
+    },
+    "afterState": {
+      "kind": "table",
+      "totalBytes": 81920,
+      "heapBytes": 8192,
+      "indexBytes": 49152,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 1
+    }
+  },
+  {
+    "key": "table:public.shift_requests",
+    "beforeBytes": 114688,
+    "afterBytes": 1597440,
+    "deltaBytes": 1482752,
+    "changedFields": [
+      "totalBytes",
+      "heapBytes",
+      "indexBytes",
+      "deadTuples"
+    ],
+    "beforeState": {
+      "kind": "table",
+      "totalBytes": 114688,
+      "heapBytes": 0,
+      "indexBytes": 90112,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 0
+    },
+    "afterState": {
+      "kind": "table",
+      "totalBytes": 1597440,
+      "heapBytes": 794624,
+      "indexBytes": 770048,
+      "relpages": 0,
+      "reltuples": 0,
+      "liveTuples": 0,
+      "deadTuples": 4000
+    }
+  }
+]

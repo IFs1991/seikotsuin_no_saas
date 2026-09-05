@@ -10,8 +10,12 @@
  * @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md - Customer Access Model
  */
 
-import type { SupabaseServerClient } from '@/lib/supabase';
 import type { Database, Json } from '@/types/supabase';
+import type {
+  LineCustomerInsert,
+  LineCustomerUpdate,
+  LineIntegrationClient,
+} from '@/lib/line/integration-db';
 import {
   hasReservationConflict,
   isReservationNoOverlapError,
@@ -33,8 +37,8 @@ import {
 } from '@/lib/booking-form/settings';
 
 type ReservationInsert = Database['public']['Tables']['reservations']['Insert'];
-type CustomerInsert = Database['public']['Tables']['customers']['Insert'];
-type CustomerUpdate = Database['public']['Tables']['customers']['Update'];
+type CustomerInsert = LineCustomerInsert;
+type CustomerUpdate = LineCustomerUpdate;
 
 // ──────────────────────────────────────────────
 // Error types
@@ -113,6 +117,7 @@ export interface CustomerResult {
 }
 
 export interface VerifiedLineCustomerProfile {
+  credentialGenerationId: string;
   lineUserId: string;
   displayName: string | null;
 }
@@ -215,7 +220,7 @@ export function normalizeCustomerPhoneForMatch(
 
 export class PublicReservationService {
   constructor(
-    private readonly client: SupabaseServerClient,
+    private readonly client: LineIntegrationClient,
     private readonly clinicId: string
   ) {}
 
@@ -485,7 +490,8 @@ export class PublicReservationService {
     const existingCustomerId = lineProfile
       ? await this.findCustomerIdByColumn(
           'line_user_id',
-          lineProfile.lineUserId
+          lineProfile.lineUserId,
+          lineProfile.credentialGenerationId
         )
       : ((normalizedPhone
           ? await this.findCustomerIdByColumn(
@@ -510,6 +516,7 @@ export class PublicReservationService {
       ...(lineProfile
         ? {
             line_user_id: lineProfile.lineUserId,
+            line_credential_generation_id: lineProfile.credentialGenerationId,
             line_display_name: lineProfile.displayName,
           }
         : {}),
@@ -530,16 +537,24 @@ export class PublicReservationService {
 
   private async findCustomerIdByColumn(
     column: 'line_user_id' | 'normalized_phone' | 'email',
-    value: string
+    value: string,
+    credentialGenerationId?: string
   ): Promise<string | null> {
-    const { data: existing, error } = await this.client
+    let query = this.client
       .from('customers')
       .select('id')
       .eq('clinic_id', this.clinicId)
       .eq(column, value)
-      .eq('is_deleted', false)
-      .limit(1)
-      .maybeSingle();
+      .eq('is_deleted', false);
+
+    if (column === 'line_user_id') {
+      if (!credentialGenerationId) {
+        throw new CustomerLookupError();
+      }
+      query = query.eq('line_credential_generation_id', credentialGenerationId);
+    }
+
+    const { data: existing, error } = await query.limit(1).maybeSingle();
 
     if (error && !isNoRowsError(error)) {
       throw new CustomerLookupError();
@@ -558,6 +573,7 @@ export class PublicReservationService {
 
     const updateData: CustomerUpdate = {
       line_user_id: lineProfile.lineUserId,
+      line_credential_generation_id: lineProfile.credentialGenerationId,
       line_display_name: lineProfile.displayName,
     };
 
@@ -567,6 +583,7 @@ export class PublicReservationService {
       .eq('id', customerId)
       .eq('clinic_id', this.clinicId)
       .eq('line_user_id', lineProfile.lineUserId)
+      .eq('line_credential_generation_id', lineProfile.credentialGenerationId)
       .eq('is_deleted', false);
 
     if (error) {

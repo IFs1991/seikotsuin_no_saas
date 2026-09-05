@@ -9,7 +9,12 @@ import {
   ensureClinicAccess,
   type ClinicAccessOptions,
 } from '@/lib/supabase/guards';
-import type { SupabaseServerClient, UserPermissions } from '@/lib/supabase';
+import type {
+  SupabaseServerClient,
+  UserAccessContext,
+  UserPermissions,
+  VerifiedSubject,
+} from '@/lib/supabase';
 import { ALLOWED_REDIRECT_ORIGINS } from '@/lib/constants/security';
 import { ADMIN_UI_ROLES, normalizeRole } from '@/lib/constants/roles';
 import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
@@ -294,6 +299,8 @@ export interface ProcessApiOptions {
 export interface ProcessApiSuccess {
   success: true;
   auth: NonNullable<AuthResult['user']>;
+  subject: VerifiedSubject;
+  accessContext: UserAccessContext;
   permissions: UserPermissions;
   supabase: SupabaseServerClient;
   body?: unknown;
@@ -362,12 +369,13 @@ export async function processApiRequest(
       guardOptions.requireClinicMatch = options.requireClinicMatch;
     }
 
-    const { supabase, user, permissions } = await ensureClinicAccess(
-      request,
-      path,
-      options.clinicId ?? null,
-      guardOptions
-    );
+    const { supabase, subject, user, accessContext, permissions } =
+      await ensureClinicAccess(
+        request,
+        path,
+        options.clinicId ?? null,
+        guardOptions
+      );
 
     if (options.requireBusinessWriteAccess) {
       const targetClinicId = options.clinicId;
@@ -421,6 +429,8 @@ export async function processApiRequest(
 
     return {
       success: true,
+      subject,
+      accessContext,
       auth: {
         id: user.id,
         email: user.email || '',

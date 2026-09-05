@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 
+import { reservationUpdateSchema } from '@/app/api/reservations/schema';
 import { processApiRequest } from '@/lib/api-helpers';
 import { processClinicScopedBody } from '@/lib/route-helpers';
 import { createAdminClient, createScopedAdminContext } from '@/lib/supabase';
@@ -585,6 +586,17 @@ describe('GET /api/mobile-uiux/reservations', () => {
 });
 
 describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
+  it('accepts JST-offset timestamps for reservation time updates', () => {
+    const parsed = reservationUpdateSchema.safeParse({
+      clinic_id: clinicId,
+      id: reservationId,
+      startTime: '2026-08-24T12:15:00+09:00',
+      endTime: '2026-08-24T13:15:00+09:00',
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
   const originalEnv = process.env;
   let warnSpy: jest.SpyInstance;
 

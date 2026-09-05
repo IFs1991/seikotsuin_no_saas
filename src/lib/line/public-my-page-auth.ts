@@ -1,11 +1,12 @@
 import { verifyLineIdTokenForClinic } from '@/lib/line/id-token';
-import type { SupabaseServerClient } from '@/lib/supabase';
+import type { LineIntegrationClient } from '@/lib/line/integration-db';
 
 export type PublicLineMyPageAuthResult =
   | {
       ok: true;
       lineUserId: string;
       displayName: string | null;
+      credentialGenerationId: string;
     }
   | {
       ok: false;
@@ -28,7 +29,7 @@ export function readBearerToken(headers: Headers): string | null {
 
 export async function verifyPublicLineMyPageAuth(params: {
   headers: Headers;
-  supabase: Pick<SupabaseServerClient, 'from'>;
+  supabase: Pick<LineIntegrationClient, 'rpc'>;
   clinicId: string;
 }): Promise<PublicLineMyPageAuthResult> {
   const idToken = readBearerToken(params.headers);
@@ -50,5 +51,6 @@ export async function verifyPublicLineMyPageAuth(params: {
     ok: true,
     lineUserId: verification.lineUserId,
     displayName: verification.displayName,
+    credentialGenerationId: verification.credentialGenerationId,
   };
 }

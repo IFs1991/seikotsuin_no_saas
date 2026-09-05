@@ -66,6 +66,22 @@ const EXPECTED_CONTRACTS = new Map([
     '09_rls_policy_normalization.sql',
     { marker: 'RED COMM-RLS-003', outcome: 'green' },
   ],
+  [
+    '10_performance_fk_indexes.sql',
+    { marker: 'RED COMM-PERF-001', outcome: 'green' },
+  ],
+  [
+    '11_performance_rls_plan.sql',
+    { marker: 'RED COMM-PERF-002', outcome: 'green' },
+  ],
+  [
+    '12_pr11_blocks_trigger_fast_path.sql',
+    { marker: 'RED COMM-PERF-003', outcome: 'green' },
+  ],
+  [
+    '13_pr11_rls_statement_scope.sql',
+    { marker: 'RED COMM-PERF-004', outcome: 'green' },
+  ],
 ]);
 
 if (

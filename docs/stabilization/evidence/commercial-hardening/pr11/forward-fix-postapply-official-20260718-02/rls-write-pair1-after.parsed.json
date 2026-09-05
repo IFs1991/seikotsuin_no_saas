@@ -1,0 +1,253 @@
+[
+  {
+    "probe": "coverage_insert_2000",
+    "executionMs": 111.586,
+    "walRecords": 10062,
+    "walBytes": 1205616,
+    "sharedDirtiedBlocks": 106,
+    "rootNode": "ModifyTable",
+    "rawPlanMd5": "b9975bf332c7dcd24defa50e88eb87d7",
+    "rawPlan": [
+      {
+        "Plan": {
+          "Alias": "customer_insurance_coverages",
+          "Plans": [
+            {
+              "Alias": "fixture",
+              "WAL FPI": 0,
+              "Node Type": "Function Scan",
+              "Plan Rows": 2000,
+              "WAL Bytes": 0,
+              "Plan Width": 228,
+              "Total Cost": 100,
+              "Actual Rows": 2000,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Async Capable": false,
+              "Function Name": "generate_series",
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 0,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "Outer",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            }
+          ],
+          "WAL FPI": 0,
+          "Node Type": "ModifyTable",
+          "Operation": "Insert",
+          "Plan Rows": 0,
+          "WAL Bytes": 1205616,
+          "Plan Width": 0,
+          "Total Cost": 100,
+          "Actual Rows": 0,
+          "WAL Records": 10062,
+          "Actual Loops": 1,
+          "Startup Cost": 0,
+          "Async Capable": false,
+          "Relation Name": "customer_insurance_coverages",
+          "Parallel Aware": false,
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 23431,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 106,
+          "Shared Written Blocks": 102
+        },
+        "Planning": {
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0
+        },
+        "Triggers": [
+          {
+            "Calls": 2000,
+            "Relation": "customer_insurance_coverages",
+            "Trigger Name": "RI_ConstraintTrigger_c_20401",
+            "Constraint Name": "customer_insurance_coverages_clinic_id_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "customer_insurance_coverages",
+            "Trigger Name": "RI_ConstraintTrigger_c_20411",
+            "Constraint Name": "customer_insurance_coverages_verified_by_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "customer_insurance_coverages",
+            "Trigger Name": "RI_ConstraintTrigger_c_20416",
+            "Constraint Name": "customer_insurance_coverages_created_by_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "customer_insurance_coverages",
+            "Trigger Name": "RI_ConstraintTrigger_c_20421",
+            "Constraint Name": "customer_insurance_coverages_updated_by_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "customer_insurance_coverages",
+            "Trigger Name": "RI_ConstraintTrigger_c_21923",
+            "Constraint Name": "customer_insurance_coverages_customer_id_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "customer_insurance_coverages",
+            "Trigger Name": "customer_insurance_coverages_overlap_guard"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "customer_insurance_coverages",
+            "Trigger Name": "customer_insurance_coverages_ref_check"
+          }
+        ],
+        "Planning Time": 0.033,
+        "Execution Time": 111.586
+      }
+    ]
+  },
+  {
+    "probe": "menu_profile_insert_2000",
+    "executionMs": 92.011,
+    "walRecords": 14094,
+    "walBytes": 1608444,
+    "sharedDirtiedBlocks": 131,
+    "rootNode": "ModifyTable",
+    "rawPlanMd5": "1bb43ac20c04f2c2ba2c461c47026623",
+    "rawPlan": [
+      {
+        "Plan": {
+          "Alias": "menu_billing_profiles",
+          "Plans": [
+            {
+              "Alias": "fixture",
+              "WAL FPI": 0,
+              "Node Type": "Function Scan",
+              "Plan Rows": 2000,
+              "WAL Bytes": 0,
+              "Plan Width": 239,
+              "Total Cost": 100,
+              "Actual Rows": 2000,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Async Capable": false,
+              "Function Name": "generate_series",
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 0,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "Outer",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            }
+          ],
+          "WAL FPI": 0,
+          "Node Type": "ModifyTable",
+          "Operation": "Insert",
+          "Plan Rows": 0,
+          "WAL Bytes": 1608444,
+          "Plan Width": 0,
+          "Total Cost": 100,
+          "Actual Rows": 0,
+          "WAL Records": 14094,
+          "Actual Loops": 1,
+          "Startup Cost": 0,
+          "Async Capable": false,
+          "Relation Name": "menu_billing_profiles",
+          "Parallel Aware": false,
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 30048,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 131,
+          "Shared Written Blocks": 125
+        },
+        "Planning": {
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0
+        },
+        "Triggers": [
+          {
+            "Calls": 2000,
+            "Relation": "menu_billing_profiles",
+            "Trigger Name": "RI_ConstraintTrigger_c_20354",
+            "Constraint Name": "menu_billing_profiles_clinic_id_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "menu_billing_profiles",
+            "Trigger Name": "RI_ConstraintTrigger_c_20364",
+            "Constraint Name": "menu_billing_profiles_source_template_profile_id_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "menu_billing_profiles",
+            "Trigger Name": "RI_ConstraintTrigger_c_20369",
+            "Constraint Name": "menu_billing_profiles_revenue_context_code_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "menu_billing_profiles",
+            "Trigger Name": "RI_ConstraintTrigger_c_20374",
+            "Constraint Name": "menu_billing_profiles_created_by_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "menu_billing_profiles",
+            "Trigger Name": "RI_ConstraintTrigger_c_20379",
+            "Constraint Name": "menu_billing_profiles_updated_by_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "menu_billing_profiles",
+            "Trigger Name": "RI_ConstraintTrigger_c_21928",
+            "Constraint Name": "menu_billing_profiles_menu_id_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "menu_billing_profiles",
+            "Trigger Name": "menu_billing_profiles_ref_check"
+          }
+        ],
+        "Planning Time": 0.034,
+        "Execution Time": 92.011
+      }
+    ]
+  }
+]

@@ -30,8 +30,8 @@ select is(
     from pg_policies
     where schemaname = 'public'
   ),
-  179::bigint,
-  'public policy count matches the reviewed PR-07 catalog after PR-09 retires three global admin policies'
+  183::bigint,
+  'public policy count matches the reviewed PR-11 catalog after two ALL policies split into command policies'
 );
 
 select is(
@@ -72,10 +72,10 @@ select is(
       and coalesce(
         obj_description(policy_catalog.oid, 'pg_policy'),
         ''
-      ) not like 'PR-03:%'
+      ) !~ '^PR-(03|11):'
   ),
   0::bigint,
-  'every retained policy has an actor and intent comment'
+  'every retained policy has a reviewed PR-03 or PR-11 actor and intent comment'
 );
 
 select is(

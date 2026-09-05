@@ -1,0 +1,2897 @@
+{
+  "protocol": "pr11-forward-fix-postapply-paired-v1",
+  "status": "pass-with-risk",
+  "startedAt": "2026-07-18T02:57:42.427Z",
+  "endedAt": "2026-07-18T02:58:39.291Z",
+  "localOnly": true,
+  "productionTouched": false,
+  "resetUsed": false,
+  "volumeDeletionUsed": false,
+  "candidateSqlExecutionCount": 8,
+  "blocksCandidateSqlExecutionCount": 3,
+  "blocksCandidateKind": "permanently-applied-exact-compatible-fast-path-v1",
+  "rlsCandidateKind": "permanently-applied-statement-scope-helper-index-v1",
+  "permanentMigrationHead": "20260718011731",
+  "pairedBeforeIsTransactionOnly": true,
+  "pairedAfterIsPermanentState": true,
+  "gatesFrozenBeforeCandidate": true,
+  "fixedLimits": {
+    "performance": {
+      "created_by_read_100_of_20000": {
+        "executionMs": 2.851
+      },
+      "sparse_insert_10000": {
+        "executionMs": 435.7373,
+        "walBytes": 9292168.2
+      },
+      "dense_insert_10000": {
+        "executionMs": 521.55125,
+        "walBytes": 11133665
+      },
+      "shift_full_only_insert_2000": {
+        "executionMs": 198.387,
+        "walBytes": 1868505.6
+      },
+      "shift_full_plus_partial_insert_2000": {
+        "executionMs": 219.224,
+        "walBytes": 2028773.6
+      },
+      "recipient_sparse_composite_insert_1000": {
+        "executionMs": 46.665,
+        "walBytes": 600946.5
+      },
+      "recipient_dense_composite_insert_1000": {
+        "executionMs": 81.761,
+        "walBytes": 755065
+      }
+    },
+    "blocks": {
+      "sparse_insert_10000": {
+        "executionMs": 435.7373,
+        "walBytes": 9292168.2
+      },
+      "dense_insert_10000": {
+        "executionMs": 521.55125,
+        "walBytes": 11133665
+      }
+    },
+    "rlsRead": {
+      "customer_insurance_coverages": {
+        "executionMs": 66.757
+      },
+      "menu_billing_profiles": {
+        "executionMs": 63.3855
+      }
+    },
+    "rlsWrite": {
+      "coverage_insert_2000": {
+        "executionMs": 124.709,
+        "walBytes": 1220025
+      },
+      "menu_profile_insert_2000": {
+        "executionMs": 135.944,
+        "walBytes": 1718510
+      }
+    }
+  },
+  "environment": {
+    "nodeVersion": "v24.18.0",
+    "platform": "win32",
+    "cpu": "12th Gen Intel(R) Core(TM) i7-1255U",
+    "cores": 12,
+    "memoryBytes": 16858472448,
+    "freeMemoryBytesAtStart": 4483600384,
+    "powerPlan": {
+      "command": [
+        "powercfg.exe",
+        "/getactivescheme"
+      ],
+      "exitCode": 0,
+      "stdout": "�d���ݒ�� GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (�o�����X)",
+      "stderr": "",
+      "error": null
+    },
+    "gitHead": {
+      "command": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exitCode": 0,
+      "stdout": "3306945839842337117851120b0ba7dd9973a20f\n",
+      "stderr": "",
+      "error": null
+    },
+    "gitStatus": {
+      "command": [
+        "git",
+        "status",
+        "--short"
+      ],
+      "exitCode": 0,
+      "stdout": " M docs/stabilization/spec-commercial-hardening-migration-v1.0.md\n M scripts/commercial-hardening/run-red-contracts.mjs\n M supabase/tests/commercial_function_execution_test.sql\n M supabase/tests/commercial_rls_tenant_isolation_test.sql\n?? docs/stabilization/evidence/commercial-hardening/pr11/\n?? docs/stabilization/spec-commercial-performance-safe-indexes-rls-plan-v1.0.md\n?? scripts/commercial-hardening/red-contracts/10_performance_fk_indexes.sql\n?? scripts/commercial-hardening/red-contracts/11_performance_rls_plan.sql\n?? scripts/commercial-hardening/red-contracts/12_pr11_blocks_trigger_fast_path.sql\n?? scripts/commercial-hardening/red-contracts/13_pr11_rls_statement_scope.sql\n?? scripts/commercial-hardening/run-pr11-forward-fix-experiment.mjs\n?? scripts/commercial-hardening/run-pr11-forward-fix-postapply-paired.mjs\n?? scripts/commercial-hardening/run-pr11-paired-benchmark.mjs\n?? scripts/commercial-hardening/sql/pr11-forward-blocks-trigger-current.sql\n?? scripts/commercial-hardening/sql/pr11-forward-blocks-trigger-disabled.sql\n?? scripts/commercial-hardening/sql/pr11-forward-blocks-trigger-fast-path-ddl.sql\n?? scripts/commercial-hardening/sql/pr11-forward-blocks-trigger-fast-path-integrity.sql\n?? scripts/commercial-hardening/sql/pr11-forward-blocks-trigger-fast-path.sql\n?? scripts/commercial-hardening/sql/pr11-forward-blocks-trigger-integrity.sql\n?? scripts/commercial-hardening/sql/pr11-forward-experiment-logical-snapshot.sql\n?? scripts/commercial-hardening/sql/pr11-forward-experiment-postflight.sql\n?? scripts/commercial-hardening/sql/pr11-forward-experiment-preflight.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-index-candidate-pgtap.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-read-current.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-read-index-candidate.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-scope-semantic-probe.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-semantic-current.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-semantic-index-candidate.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-statement-scope-candidate.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-write-current.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-write-index-candidate.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-write-probe.sql\n?? scripts/commercial-hardening/sql/pr11-paired-normalize.sql\n?? scripts/commercial-hardening/sql/pr11-paired-performance-before.sql\n?? scripts/commercial-hardening/sql/pr11-paired-physical-snapshot.sql\n?? scripts/commercial-hardening/sql/pr11-paired-postflight.sql\n?? scripts/commercial-hardening/sql/pr11-paired-rls-before.sql\n?? scripts/commercial-hardening/sql/pr11-performance-probe.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-blocks-after.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-blocks-before-ddl.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-blocks-before.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-blocks-integrity.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-logical-snapshot.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-normalize.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-permanent-state.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-pgtap.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-rls-before-ddl.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-rls-read-after.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-rls-read-before.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-rls-semantic-after.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-rls-semantic-before.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-rls-write-after.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-rls-write-before.sql\n?? scripts/commercial-hardening/sql/pr11-rls-plan-probe.sql\n?? src/__tests__/security/commercial-pr11-performance-contract.test.ts\n?? supabase/migrations/20260716160342_commercial_performance_safe_fk_indexes.sql\n?? supabase/migrations/20260716160402_commercial_rls_plan_cleanup.sql\n?? supabase/migrations/20260718011731_commercial_pr11_fixed_performance_forward_fix.sql\n?? supabase/rollbacks/20260716160342_commercial_performance_safe_fk_indexes_rollback.sql\n?? supabase/rollbacks/20260716160402_commercial_rls_plan_cleanup_rollback.sql\n?? supabase/rollbacks/20260718011731_commercial_pr11_fixed_performance_forward_fix_rollback.sql\n?? supabase/tests/commercial_pr11_performance_rls_test.sql\n",
+      "stderr": "",
+      "error": null
+    },
+    "psqlVersion": {
+      "command": [
+        "C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe",
+        "--version"
+      ],
+      "exitCode": 0,
+      "stdout": "psql (PostgreSQL) 17.9\r\n",
+      "stderr": "",
+      "error": null
+    },
+    "supabaseVersion": {
+      "command": [
+        "C:\\tmp\\supabase-cli-2.109.0\\supabase.exe",
+        "--version"
+      ],
+      "exitCode": 0,
+      "stdout": "2.109.0\n",
+      "stderr": "",
+      "error": null
+    },
+    "dockerDatabase": {
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{json .Config.Image}}|{{json .State.StartedAt}}",
+        "supabase_db_seikotsuin_management_saas"
+      ],
+      "exitCode": 0,
+      "stdout": "\"public.ecr.aws/supabase/postgres:17.6.1.104\"|\"2026-07-18T01:10:46.358429268Z\"\n",
+      "stderr": "",
+      "error": null
+    },
+    "dockerStats": {
+      "command": [
+        "docker.exe",
+        "stats",
+        "--no-stream",
+        "--format",
+        "{{json .}}",
+        "supabase_db_seikotsuin_management_saas"
+      ],
+      "exitCode": 0,
+      "stdout": "{\"BlockIO\":\"7.57MB / 3.57GB\",\"CPUPerc\":\"0.04%\",\"Container\":\"supabase_db_seikotsuin_management_saas\",\"ID\":\"08d271d7f033\",\"MemPerc\":\"1.98%\",\"MemUsage\":\"157.6MiB / 7.757GiB\",\"Name\":\"supabase_db_seikotsuin_management_saas\",\"NetIO\":\"5.84MB / 6.9MB\",\"PIDs\":\"18\"}\n",
+      "stderr": "",
+      "error": null
+    },
+    "toolHashes": {
+      "supabaseCliSha256": "903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118",
+      "supabaseArchiveSha256": "4ea5b92ae679323cde0e69ca92b801c3fc705c8351bdff50cb3b8eff6926f5c7"
+    }
+  },
+  "inputHashes": {
+    "scripts/commercial-hardening/run-pr11-forward-fix-postapply-paired.mjs": "b1befb0f7d80967b0ebf101162a376a986b7d9484e73e96ef1097ed0e61955c3",
+    "scripts/commercial-hardening/sql/pr11-performance-probe.sql": "5e6ae3af19f428d63b8eaa8a56d7b659d4841fe693071e7ca11449c756c3cb65",
+    "scripts/commercial-hardening/sql/pr11-rls-plan-probe.sql": "b8377b491379afd9fbb09c156e29d8b4b12fb85c93e588ca8b1c3c47ca544279",
+    "scripts/commercial-hardening/sql/pr11-forward-rls-write-probe.sql": "09767c89cfcf03fae91d60069d1b40f0f8e806a97b7987617d12b74574efb0ac",
+    "scripts/commercial-hardening/sql/pr11-forward-rls-scope-semantic-probe.sql": "d1b5b1c9373e36a9cf31fecbc9bdc0a1cbde6d8abfcc14eba09d4a80f4349aae",
+    "supabase/tests/commercial_pr11_performance_rls_test.sql": "88063a85fc14c69fb582a723dcd11f06a5fe784b320cc696c8b396079bea91f1",
+    "supabase/migrations/20260718011731_commercial_pr11_fixed_performance_forward_fix.sql": "15fde71cfdba9d335239ed77a11f12216b9754fc0f75f2a8fcb992005159660b",
+    "supabase/rollbacks/20260718011731_commercial_pr11_fixed_performance_forward_fix_rollback.sql": "c994a796c49bb4a4f1ac840bd98e28f8a9b69eea17d56f53327e53a9746f6263",
+    "scripts/commercial-hardening/red-contracts/12_pr11_blocks_trigger_fast_path.sql": "1122fd975ffd31aa8f75ecf05c504b64b43442974e3b92de8368daa99e67d760",
+    "scripts/commercial-hardening/red-contracts/13_pr11_rls_statement_scope.sql": "c6f0388fa46246972a4698cde4955e61bae961c3db404d95fe7754cf9de5aa4b",
+    "docs/stabilization/spec-commercial-performance-safe-indexes-rls-plan-v1.0.md": "e53d42317d7d4bf9e63ad7d95274520caf56e6f50fd6d285f5983fad3784346d",
+    "docs/stabilization/evidence/commercial-hardening/pr11/pilot-performance-waiver.yaml": "85d3da719047b6af80b77026c7ca6d7172319f140aad6099331d86a38698f622",
+    "scripts/commercial-hardening/sql/pr11-postapply-permanent-state.sql": "65cf341e6f21100dd7da1ce36bcf8ef42ccb46b3cdfc05d2da9126027189caed",
+    "scripts/commercial-hardening/sql/pr11-postapply-logical-snapshot.sql": "bfe069c2a86b023f157ec4963b40acb74756436ef6b3c33e7ef2a3c930920434",
+    "scripts/commercial-hardening/sql/pr11-paired-physical-snapshot.sql": "9b46b66f3d56bed947458a253b7f61028773bc4350bbeb2b6e495dea7b4ff5fd",
+    "scripts/commercial-hardening/sql/pr11-postapply-normalize.sql": "1a799f75695f14608b2e9d9efb9c0fcc72272be7808f633f3d9bc86ccc5dffca",
+    "scripts/commercial-hardening/sql/pr11-postapply-blocks-before.sql": "03db1c3f2568919aaca8834c9c1bff61b0a44ca95209822e854c1ea031a6c212",
+    "scripts/commercial-hardening/sql/pr11-postapply-blocks-after.sql": "3bf17d1829f5c34cd0bf2c6f5c6b1e34f30ed251da3c0e964be4dd76164e3bb7",
+    "scripts/commercial-hardening/sql/pr11-postapply-blocks-before-ddl.sql": "ff7e1214ff1bb03b4cf3961b2823dc63615a93614a2f1d52145ec54bbc94461f",
+    "scripts/commercial-hardening/sql/pr11-postapply-blocks-integrity.sql": "5bbd35238e4845abd2e8cb13da8465ae922c493897f1c679d5f128f91fe3f2a9",
+    "scripts/commercial-hardening/sql/pr11-postapply-rls-write-before.sql": "c4451bd58d42f8d05d6b058cd514ea892a6b76d0ab8764ae3ec3c996b2a20077",
+    "scripts/commercial-hardening/sql/pr11-postapply-rls-write-after.sql": "e8b33bff457d5b1ba80a9f9862e47b5954a4dd432f139ac62d04f6c3067555d6",
+    "scripts/commercial-hardening/sql/pr11-postapply-rls-read-before.sql": "838a63dd248ee89e9bbdc855bc7623b16b821535847d3435d40a19846c25e3db",
+    "scripts/commercial-hardening/sql/pr11-postapply-rls-read-after.sql": "16d5e4b27204c35646c6a240adeb7998f5b17996d5df8a53d48458a8954ce0b7",
+    "scripts/commercial-hardening/sql/pr11-postapply-rls-semantic-before.sql": "ae941a5eb676b4699118b29522f17aed8e1cc5b648be4e36686ff4345c1ea0ef",
+    "scripts/commercial-hardening/sql/pr11-postapply-rls-semantic-after.sql": "9e0b9005254bb3fc8cc485efe93135d5b309ee671edcfd8b1387e1e8ff1b32e8",
+    "scripts/commercial-hardening/sql/pr11-postapply-pgtap.sql": "dbc02dac9e2434df0c952b6342ff4d8a1f48dea3826b1d00c040625961abf127",
+    "scripts/commercial-hardening/sql/pr11-postapply-rls-before-ddl.sql": "5cd60f5a7214a6975fa209cbe2bdf1590c56ae3dd0504a6b627d1334a481985b",
+    "scripts/commercial-hardening/sql/pr11-paired-postflight.sql": "a8f7b02b8ba0f55aa19b709dca744b061048b3e2f6bc8aef9174612fc0f92c1e"
+  },
+  "steps": [
+    {
+      "label": "initial-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "initial-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "initial-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "initial-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "initial-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "initial-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "initial-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "initial-normalize.stdout.raw",
+      "stdoutSha256": "5b8b33d528ee5b23fff3a9da0134e354c3ba711d8d5a6ef4181b841a203bc2c2",
+      "stderrFile": "initial-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "initial-clean-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "initial-clean-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "initial-clean-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "initial-clean-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "initial-clean-physical.stdout.raw",
+      "stdoutSha256": "bd26580bfe81d63c05fc3ce97575335dd9bb46d03ebe28333e9dc64eeec8fac0",
+      "stderrFile": "initial-clean-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair1-before-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair1-before-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-pair1-before-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-pair1-before-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair1-before-normalize.stdout.raw",
+      "stdoutSha256": "2ac6e661b7fa29d481075e2a8ae889b2bc602db85316bd9b721320a8f6ff784c",
+      "stderrFile": "blocks-pair1-before-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair1-before-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair1-before-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-pair1-before-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-pair1-before-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair1-before-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "blocks-pair1-before-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair1-before-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair1-before-before-physical.stdout.raw",
+      "stdoutSha256": "29db1732688f7ad7a76e8ce143fd4d3c97d9100cb3be0324fb4bbb64d473697f",
+      "stderrFile": "blocks-pair1-before-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair1-before",
+      "sqlFile": "pr11-postapply-blocks-before.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair1-before.stdout.raw",
+      "stdoutSha256": "707f7bc836ff17afd977dc358b8ce8ef9bde9fa278cdf511564caac4cfd5ba65",
+      "stderrFile": "blocks-pair1-before.stderr.raw",
+      "stderrSha256": "770664f34da37cf3f8375ca63e5bd28a59a75a3f11ea157b075588fc1cc4bd33"
+    },
+    {
+      "label": "blocks-pair1-before-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair1-before-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-pair1-before-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-pair1-before-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair1-before-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "blocks-pair1-before-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair1-after-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair1-after-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-pair1-after-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-pair1-after-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair1-after-normalize.stdout.raw",
+      "stdoutSha256": "6dd0a0ccd967453d44e9f576c0a50ab5358f8881a7e48e5e2c46113f2a4586e7",
+      "stderrFile": "blocks-pair1-after-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair1-after-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair1-after-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-pair1-after-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-pair1-after-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair1-after-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "blocks-pair1-after-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair1-after-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair1-after-before-physical.stdout.raw",
+      "stdoutSha256": "de2cf866a25dfca3f46a9e64944fa81b9e7fed707ea87dd6dd0dd6e3f5073cc6",
+      "stderrFile": "blocks-pair1-after-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair1-after",
+      "sqlFile": "pr11-postapply-blocks-after.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair1-after.stdout.raw",
+      "stdoutSha256": "d6913952e5a143d2ffbafe93301dcb6ce85d2e0ba7e0a58ddbc8b4d3cb592612",
+      "stderrFile": "blocks-pair1-after.stderr.raw",
+      "stderrSha256": "0288eac4b831334c121490c46b4623bde25e9fe4ff5e79bc63f494bc02713877"
+    },
+    {
+      "label": "blocks-pair1-after-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair1-after-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-pair1-after-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-pair1-after-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair1-after-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "blocks-pair1-after-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair2-after-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair2-after-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-pair2-after-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-pair2-after-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair2-after-normalize.stdout.raw",
+      "stdoutSha256": "dc9b33d5635a361f45affe980c67469777d47f20265d2130ed155c0f9e0677eb",
+      "stderrFile": "blocks-pair2-after-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair2-after-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair2-after-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-pair2-after-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-pair2-after-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair2-after-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "blocks-pair2-after-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair2-after-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair2-after-before-physical.stdout.raw",
+      "stdoutSha256": "a9dda076f0cad38273b82daff7604beb3a16fc2b8967fecb9c180a9e72a093e7",
+      "stderrFile": "blocks-pair2-after-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair2-after",
+      "sqlFile": "pr11-postapply-blocks-after.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair2-after.stdout.raw",
+      "stdoutSha256": "fbdea026da34148eed31b09927da4d355f1899d7455fe42a431bf81a6ffd1d82",
+      "stderrFile": "blocks-pair2-after.stderr.raw",
+      "stderrSha256": "0288eac4b831334c121490c46b4623bde25e9fe4ff5e79bc63f494bc02713877"
+    },
+    {
+      "label": "blocks-pair2-after-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair2-after-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-pair2-after-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-pair2-after-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair2-after-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "blocks-pair2-after-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair2-before-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair2-before-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-pair2-before-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-pair2-before-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair2-before-normalize.stdout.raw",
+      "stdoutSha256": "5fb9ec815ae16d35edc3571038463b890dd888d90d139ab5bcc7abd80601394a",
+      "stderrFile": "blocks-pair2-before-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair2-before-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair2-before-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-pair2-before-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-pair2-before-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair2-before-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "blocks-pair2-before-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair2-before-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair2-before-before-physical.stdout.raw",
+      "stdoutSha256": "2228e88f9c9efd6c91cd9d583b3e45a1cfd8ab68d51c5cb274d3de42cc14a82e",
+      "stderrFile": "blocks-pair2-before-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair2-before",
+      "sqlFile": "pr11-postapply-blocks-before.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair2-before.stdout.raw",
+      "stdoutSha256": "61894dfa41a088756fa874c0d8d256965a21550e36fcbd063df639c8d9ab5aa2",
+      "stderrFile": "blocks-pair2-before.stderr.raw",
+      "stderrSha256": "770664f34da37cf3f8375ca63e5bd28a59a75a3f11ea157b075588fc1cc4bd33"
+    },
+    {
+      "label": "blocks-pair2-before-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair2-before-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-pair2-before-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-pair2-before-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair2-before-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "blocks-pair2-before-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair3-before-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair3-before-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-pair3-before-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-pair3-before-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair3-before-normalize.stdout.raw",
+      "stdoutSha256": "ee2592c8dfea7d87fbbb29806f1b3889d1fab2d4fa131083b3e1ab10d197e4a8",
+      "stderrFile": "blocks-pair3-before-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair3-before-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair3-before-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-pair3-before-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-pair3-before-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair3-before-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "blocks-pair3-before-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair3-before-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair3-before-before-physical.stdout.raw",
+      "stdoutSha256": "58d6d60bd6d6951add588d8917f93f2cabf5b03a89f92fac6ed1a60e368f2ed5",
+      "stderrFile": "blocks-pair3-before-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair3-before",
+      "sqlFile": "pr11-postapply-blocks-before.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair3-before.stdout.raw",
+      "stdoutSha256": "a1c67c348ed85adafec2235375ef8eea65a3d6ec9839d5f62ac45130cb12453b",
+      "stderrFile": "blocks-pair3-before.stderr.raw",
+      "stderrSha256": "770664f34da37cf3f8375ca63e5bd28a59a75a3f11ea157b075588fc1cc4bd33"
+    },
+    {
+      "label": "blocks-pair3-before-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair3-before-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-pair3-before-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-pair3-before-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair3-before-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "blocks-pair3-before-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair3-after-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair3-after-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-pair3-after-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-pair3-after-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair3-after-normalize.stdout.raw",
+      "stdoutSha256": "c0507e681150ebf33845a01e4b05dae89f8fd960c59d1b2def0d0f0b1d51c63b",
+      "stderrFile": "blocks-pair3-after-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair3-after-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair3-after-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-pair3-after-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-pair3-after-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair3-after-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "blocks-pair3-after-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair3-after-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair3-after-before-physical.stdout.raw",
+      "stdoutSha256": "a498999b9b0122e29b0470780c813928f433397f74277db226955694aeef57a3",
+      "stderrFile": "blocks-pair3-after-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-pair3-after",
+      "sqlFile": "pr11-postapply-blocks-after.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair3-after.stdout.raw",
+      "stdoutSha256": "8a14ee44feea545c0115b32b7d96d0947534f17969eca08658e49cfdf80ae928",
+      "stderrFile": "blocks-pair3-after.stderr.raw",
+      "stderrSha256": "0288eac4b831334c121490c46b4623bde25e9fe4ff5e79bc63f494bc02713877"
+    },
+    {
+      "label": "blocks-pair3-after-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair3-after-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-pair3-after-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-pair3-after-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-pair3-after-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "blocks-pair3-after-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-integrity-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-integrity-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-integrity-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-integrity-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-integrity-normalize.stdout.raw",
+      "stdoutSha256": "b547728e013c2569c68c19984d53c9b375295df48dbd65d5d90ebbfac23f1107",
+      "stderrFile": "blocks-integrity-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-integrity-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-integrity-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-integrity-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-integrity-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-integrity-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "blocks-integrity-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-integrity-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-integrity-before-physical.stdout.raw",
+      "stdoutSha256": "85b21e16e160802b05ab41f8d30fb47791b1ed1df73dbcfc9a09576e049a44cb",
+      "stderrFile": "blocks-integrity-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "blocks-integrity",
+      "sqlFile": "pr11-postapply-blocks-integrity.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-integrity.stdout.raw",
+      "stdoutSha256": "666833f7e2a644ab6738fbacc2d80884e04362b346be2d568dbe1640aa5f64c5",
+      "stderrFile": "blocks-integrity.stderr.raw",
+      "stderrSha256": "0288eac4b831334c121490c46b4623bde25e9fe4ff5e79bc63f494bc02713877"
+    },
+    {
+      "label": "blocks-integrity-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-integrity-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "blocks-integrity-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "blocks-integrity-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "blocks-integrity-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "blocks-integrity-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-calibration-1-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-1-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-calibration-1-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-calibration-1-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-1-normalize.stdout.raw",
+      "stdoutSha256": "b142ef6b91881b94a8f8a480be7674c1929c061ea6b747ea122816913085b003",
+      "stderrFile": "rls-write-calibration-1-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-calibration-1-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-1-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-calibration-1-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-calibration-1-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-1-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-write-calibration-1-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-calibration-1-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-1-before-physical.stdout.raw",
+      "stdoutSha256": "0fbba7c2cbda6671352f30bf64c189d03ab774b7263dfafc47c0db9d332a274a",
+      "stderrFile": "rls-write-calibration-1-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-calibration-1",
+      "sqlFile": "pr11-postapply-rls-write-before.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-1.stdout.raw",
+      "stdoutSha256": "8c5928fc81eb9db14ffb2a4d4bed3d427ee9c387af930bd7cb9f8afac0573d83",
+      "stderrFile": "rls-write-calibration-1.stderr.raw",
+      "stderrSha256": "842587e1c613db177ae4ce242297954fffb1fa4475f3d3a8f2a3d276a3803903"
+    },
+    {
+      "label": "rls-write-calibration-1-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-1-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-calibration-1-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-calibration-1-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-1-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-write-calibration-1-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-calibration-2-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-2-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-calibration-2-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-calibration-2-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-2-normalize.stdout.raw",
+      "stdoutSha256": "31d34b7539e0efdaebbe30fdfd79aacd79e2e88d9f9574eec109f19ad0d6b2d6",
+      "stderrFile": "rls-write-calibration-2-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-calibration-2-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-2-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-calibration-2-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-calibration-2-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-2-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-write-calibration-2-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-calibration-2-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-2-before-physical.stdout.raw",
+      "stdoutSha256": "cb94718fbc9159565db9c5ff6dffd3a55b9e4fc9b49ce222f4ab0b0f6528f83a",
+      "stderrFile": "rls-write-calibration-2-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-calibration-2",
+      "sqlFile": "pr11-postapply-rls-write-before.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-2.stdout.raw",
+      "stdoutSha256": "89b2a7e6f302f83e748ebc203331c1f0bc2e9fa00dc2f0c38045b67523faa1e5",
+      "stderrFile": "rls-write-calibration-2.stderr.raw",
+      "stderrSha256": "842587e1c613db177ae4ce242297954fffb1fa4475f3d3a8f2a3d276a3803903"
+    },
+    {
+      "label": "rls-write-calibration-2-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-2-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-calibration-2-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-calibration-2-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-2-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-write-calibration-2-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-calibration-3-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-3-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-calibration-3-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-calibration-3-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-3-normalize.stdout.raw",
+      "stdoutSha256": "3c08169ff53059019b5e706766b0e4aa333efc5bb5ee230ed671f569b07d270a",
+      "stderrFile": "rls-write-calibration-3-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-calibration-3-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-3-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-calibration-3-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-calibration-3-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-3-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-write-calibration-3-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-calibration-3-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-3-before-physical.stdout.raw",
+      "stdoutSha256": "de6fd82595cf71456134c313f95c10249cabec9ad3e3a4dc28942fb07ae3c391",
+      "stderrFile": "rls-write-calibration-3-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-calibration-3",
+      "sqlFile": "pr11-postapply-rls-write-before.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-3.stdout.raw",
+      "stdoutSha256": "0d62dec6b8e019f258815dd62a8c6e3bb78e74a9b601892ef73c3100dce07169",
+      "stderrFile": "rls-write-calibration-3.stderr.raw",
+      "stderrSha256": "842587e1c613db177ae4ce242297954fffb1fa4475f3d3a8f2a3d276a3803903"
+    },
+    {
+      "label": "rls-write-calibration-3-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-3-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-calibration-3-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-calibration-3-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-calibration-3-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-write-calibration-3-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair1-before-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair1-before-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-read-pair1-before-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-read-pair1-before-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair1-before-normalize.stdout.raw",
+      "stdoutSha256": "c252a1c128e7bfeec8ea4dca49243e0c5c90853d74f286ee611d7d37d52665ff",
+      "stderrFile": "rls-read-pair1-before-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair1-before-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair1-before-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-read-pair1-before-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-read-pair1-before-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair1-before-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-read-pair1-before-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair1-before-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair1-before-before-physical.stdout.raw",
+      "stdoutSha256": "7e1492c0fa2abe5a6c0faf6e719648bd255c49375a1cfe0344323ab050ec22a5",
+      "stderrFile": "rls-read-pair1-before-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair1-before",
+      "sqlFile": "pr11-postapply-rls-read-before.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair1-before.stdout.raw",
+      "stdoutSha256": "aa53eb1271b346b94a0f303b73c06f720a843faecb9bcc332f0b02b0a23d03a0",
+      "stderrFile": "rls-read-pair1-before.stderr.raw",
+      "stderrSha256": "e52a9575169cb1c9602009de8c9c24cfe78f68f925dcb08e868136fe84ee2443"
+    },
+    {
+      "label": "rls-read-pair1-before-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair1-before-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-read-pair1-before-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-read-pair1-before-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair1-before-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-read-pair1-before-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair1-after-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair1-after-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-read-pair1-after-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-read-pair1-after-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair1-after-normalize.stdout.raw",
+      "stdoutSha256": "6698525e9fb0b96bd41918b9584617c432b4f410bc1e2b4f4a61039cf7748ef4",
+      "stderrFile": "rls-read-pair1-after-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair1-after-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair1-after-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-read-pair1-after-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-read-pair1-after-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair1-after-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-read-pair1-after-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair1-after-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair1-after-before-physical.stdout.raw",
+      "stdoutSha256": "1db57f4fc8caf2cf7be87667f4bbf7e6a8d8cea50153ece31e8703c7827887c1",
+      "stderrFile": "rls-read-pair1-after-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair1-after",
+      "sqlFile": "pr11-postapply-rls-read-after.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair1-after.stdout.raw",
+      "stdoutSha256": "4fa69f8fbb43e6945e0c6eb350f979edf3a649ae03f4d6d6d7deab7fe1f6c811",
+      "stderrFile": "rls-read-pair1-after.stderr.raw",
+      "stderrSha256": "0288eac4b831334c121490c46b4623bde25e9fe4ff5e79bc63f494bc02713877"
+    },
+    {
+      "label": "rls-read-pair1-after-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair1-after-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-read-pair1-after-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-read-pair1-after-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair1-after-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-read-pair1-after-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair2-after-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair2-after-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-read-pair2-after-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-read-pair2-after-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair2-after-normalize.stdout.raw",
+      "stdoutSha256": "de88d8c291e3acad4ac3be046203d4ede60928fc93d4b7993fe250b2dad099f2",
+      "stderrFile": "rls-read-pair2-after-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair2-after-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair2-after-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-read-pair2-after-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-read-pair2-after-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair2-after-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-read-pair2-after-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair2-after-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair2-after-before-physical.stdout.raw",
+      "stdoutSha256": "d46e97d58ab1627badf5c08995f8a8a96790ba367a26519a09969ba79050a671",
+      "stderrFile": "rls-read-pair2-after-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair2-after",
+      "sqlFile": "pr11-postapply-rls-read-after.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair2-after.stdout.raw",
+      "stdoutSha256": "cb0f7933118ee96cf6dd9f473fd18e2ef41550bc90cd1badc6a5f682748c1e36",
+      "stderrFile": "rls-read-pair2-after.stderr.raw",
+      "stderrSha256": "0288eac4b831334c121490c46b4623bde25e9fe4ff5e79bc63f494bc02713877"
+    },
+    {
+      "label": "rls-read-pair2-after-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair2-after-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-read-pair2-after-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-read-pair2-after-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair2-after-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-read-pair2-after-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair2-before-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair2-before-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-read-pair2-before-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-read-pair2-before-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair2-before-normalize.stdout.raw",
+      "stdoutSha256": "4d58f55559afbb6e95e435d3248841beabbe5cf15666c347f2be7505daa217a5",
+      "stderrFile": "rls-read-pair2-before-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair2-before-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair2-before-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-read-pair2-before-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-read-pair2-before-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair2-before-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-read-pair2-before-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair2-before-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair2-before-before-physical.stdout.raw",
+      "stdoutSha256": "92fe66c2241b2ea1c94c12635e73b357b4a6c14db96c3a494e02d1b5d0e1453e",
+      "stderrFile": "rls-read-pair2-before-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair2-before",
+      "sqlFile": "pr11-postapply-rls-read-before.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair2-before.stdout.raw",
+      "stdoutSha256": "558015b34fc76368d3db3d95fb9a85da42bba104810afca16c0cedb3edce432a",
+      "stderrFile": "rls-read-pair2-before.stderr.raw",
+      "stderrSha256": "e52a9575169cb1c9602009de8c9c24cfe78f68f925dcb08e868136fe84ee2443"
+    },
+    {
+      "label": "rls-read-pair2-before-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair2-before-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-read-pair2-before-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-read-pair2-before-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair2-before-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-read-pair2-before-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair3-before-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair3-before-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-read-pair3-before-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-read-pair3-before-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair3-before-normalize.stdout.raw",
+      "stdoutSha256": "3ae5584d5d74e92458c35eeb168a631e1f43be0256e13459fecc0546666288e1",
+      "stderrFile": "rls-read-pair3-before-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair3-before-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair3-before-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-read-pair3-before-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-read-pair3-before-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair3-before-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-read-pair3-before-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair3-before-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair3-before-before-physical.stdout.raw",
+      "stdoutSha256": "3663315e0cd1b169ccbef7ad354e1b304c638312f8d04222d99195aefe963de6",
+      "stderrFile": "rls-read-pair3-before-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair3-before",
+      "sqlFile": "pr11-postapply-rls-read-before.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair3-before.stdout.raw",
+      "stdoutSha256": "4a511712b167b1898dbe7c16335a3df659524be50d4dc51932aa4b771af37fe9",
+      "stderrFile": "rls-read-pair3-before.stderr.raw",
+      "stderrSha256": "e52a9575169cb1c9602009de8c9c24cfe78f68f925dcb08e868136fe84ee2443"
+    },
+    {
+      "label": "rls-read-pair3-before-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair3-before-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-read-pair3-before-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-read-pair3-before-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair3-before-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-read-pair3-before-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair3-after-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair3-after-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-read-pair3-after-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-read-pair3-after-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair3-after-normalize.stdout.raw",
+      "stdoutSha256": "777ac055c04345fa779fce97423586ad9646771ccff124d2b267d2af0d3a27c6",
+      "stderrFile": "rls-read-pair3-after-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair3-after-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair3-after-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-read-pair3-after-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-read-pair3-after-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair3-after-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-read-pair3-after-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair3-after-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair3-after-before-physical.stdout.raw",
+      "stdoutSha256": "f8a224ab3a7cd18c12415e8071f23c9f426a69d734960ce9102f1745e8fb8d5b",
+      "stderrFile": "rls-read-pair3-after-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-read-pair3-after",
+      "sqlFile": "pr11-postapply-rls-read-after.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair3-after.stdout.raw",
+      "stdoutSha256": "125b51e6122e030a1083e299f4c28430878923bd24fb2b29458493b5486ab107",
+      "stderrFile": "rls-read-pair3-after.stderr.raw",
+      "stderrSha256": "0288eac4b831334c121490c46b4623bde25e9fe4ff5e79bc63f494bc02713877"
+    },
+    {
+      "label": "rls-read-pair3-after-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair3-after-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-read-pair3-after-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-read-pair3-after-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-read-pair3-after-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-read-pair3-after-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair1-before-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair1-before-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-pair1-before-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-pair1-before-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair1-before-normalize.stdout.raw",
+      "stdoutSha256": "4eb09a2156a41cc00528091d823812968a5ee16f74fbab6d5e7542cdb98cd446",
+      "stderrFile": "rls-write-pair1-before-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair1-before-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair1-before-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-pair1-before-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-pair1-before-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair1-before-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-write-pair1-before-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair1-before-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair1-before-before-physical.stdout.raw",
+      "stdoutSha256": "355020e2bc10c55b956687a39230b147bc9028c0afa7bf5bb2102c901e3d9eca",
+      "stderrFile": "rls-write-pair1-before-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair1-before",
+      "sqlFile": "pr11-postapply-rls-write-before.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair1-before.stdout.raw",
+      "stdoutSha256": "a6adddc20c27b10fc8df8b23831561d118641b363a79c8b8cfdc74410e6c2024",
+      "stderrFile": "rls-write-pair1-before.stderr.raw",
+      "stderrSha256": "842587e1c613db177ae4ce242297954fffb1fa4475f3d3a8f2a3d276a3803903"
+    },
+    {
+      "label": "rls-write-pair1-before-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair1-before-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-pair1-before-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-pair1-before-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair1-before-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-write-pair1-before-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair1-after-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair1-after-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-pair1-after-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-pair1-after-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair1-after-normalize.stdout.raw",
+      "stdoutSha256": "996e6e0c0eb5ca43ef946eac08718c73aedf66621808687cf206e60916c9d1fe",
+      "stderrFile": "rls-write-pair1-after-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair1-after-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair1-after-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-pair1-after-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-pair1-after-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair1-after-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-write-pair1-after-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair1-after-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair1-after-before-physical.stdout.raw",
+      "stdoutSha256": "4a9aed44684d184411c8756d7b989a623d434e06f79b30e8fd3c8adfa7cb5d46",
+      "stderrFile": "rls-write-pair1-after-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair1-after",
+      "sqlFile": "pr11-postapply-rls-write-after.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair1-after.stdout.raw",
+      "stdoutSha256": "f08f34f47a42732e410300d1cf6db697247660774b7a5e1494709156627dd91b",
+      "stderrFile": "rls-write-pair1-after.stderr.raw",
+      "stderrSha256": "0288eac4b831334c121490c46b4623bde25e9fe4ff5e79bc63f494bc02713877"
+    },
+    {
+      "label": "rls-write-pair1-after-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair1-after-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-pair1-after-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-pair1-after-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair1-after-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-write-pair1-after-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair2-after-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair2-after-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-pair2-after-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-pair2-after-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair2-after-normalize.stdout.raw",
+      "stdoutSha256": "1f20bd07cf7c13d1c84a7b4182a87b426997d993129fba20dcc5cd39d9f67fee",
+      "stderrFile": "rls-write-pair2-after-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair2-after-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair2-after-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-pair2-after-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-pair2-after-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair2-after-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-write-pair2-after-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair2-after-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair2-after-before-physical.stdout.raw",
+      "stdoutSha256": "6385e8b02c22da3d60972fa2bb6b31cf9e34cac4cff2e17aae293a72e693a398",
+      "stderrFile": "rls-write-pair2-after-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair2-after",
+      "sqlFile": "pr11-postapply-rls-write-after.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair2-after.stdout.raw",
+      "stdoutSha256": "f00e438214e5497a2e59bce41d4595d51833f261634e0644f7104e4b4a11247c",
+      "stderrFile": "rls-write-pair2-after.stderr.raw",
+      "stderrSha256": "0288eac4b831334c121490c46b4623bde25e9fe4ff5e79bc63f494bc02713877"
+    },
+    {
+      "label": "rls-write-pair2-after-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair2-after-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-pair2-after-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-pair2-after-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair2-after-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-write-pair2-after-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair2-before-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair2-before-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-pair2-before-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-pair2-before-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair2-before-normalize.stdout.raw",
+      "stdoutSha256": "5faf61a0b79bbb02070cad84fa4bbb218b9bee5305a88e2263058387dbcb86f6",
+      "stderrFile": "rls-write-pair2-before-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair2-before-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair2-before-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-pair2-before-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-pair2-before-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair2-before-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-write-pair2-before-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair2-before-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair2-before-before-physical.stdout.raw",
+      "stdoutSha256": "a826b00fc2a3a0115d6832ad523fab62590436612330dae6de7197b9cdb9605b",
+      "stderrFile": "rls-write-pair2-before-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair2-before",
+      "sqlFile": "pr11-postapply-rls-write-before.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair2-before.stdout.raw",
+      "stdoutSha256": "3e536081c74a43ffde29d9982d7216fb830fc62162e04cc5f7049b999248f533",
+      "stderrFile": "rls-write-pair2-before.stderr.raw",
+      "stderrSha256": "842587e1c613db177ae4ce242297954fffb1fa4475f3d3a8f2a3d276a3803903"
+    },
+    {
+      "label": "rls-write-pair2-before-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair2-before-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-pair2-before-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-pair2-before-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair2-before-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-write-pair2-before-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair3-before-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair3-before-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-pair3-before-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-pair3-before-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair3-before-normalize.stdout.raw",
+      "stdoutSha256": "b18c4bb20057d44b35d763b3093e25ae75545bd510392688979ba6ecf74e0fd2",
+      "stderrFile": "rls-write-pair3-before-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair3-before-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair3-before-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-pair3-before-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-pair3-before-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair3-before-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-write-pair3-before-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair3-before-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair3-before-before-physical.stdout.raw",
+      "stdoutSha256": "6871530f74f6c547dcc30d2c5d93fcb87b51470291f3fca584b9841a531813e6",
+      "stderrFile": "rls-write-pair3-before-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair3-before",
+      "sqlFile": "pr11-postapply-rls-write-before.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair3-before.stdout.raw",
+      "stdoutSha256": "0a219afb01d5c565f8d1a57995a455d12094154a3ef5676cdfb8b39d933763c5",
+      "stderrFile": "rls-write-pair3-before.stderr.raw",
+      "stderrSha256": "842587e1c613db177ae4ce242297954fffb1fa4475f3d3a8f2a3d276a3803903"
+    },
+    {
+      "label": "rls-write-pair3-before-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair3-before-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-pair3-before-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-pair3-before-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair3-before-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-write-pair3-before-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair3-after-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair3-after-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-pair3-after-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-pair3-after-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair3-after-normalize.stdout.raw",
+      "stdoutSha256": "0715e4e187070687ca637cb277c5ab78d149fba8bec2bb1af8b9689322d37661",
+      "stderrFile": "rls-write-pair3-after-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair3-after-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair3-after-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-pair3-after-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-pair3-after-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair3-after-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-write-pair3-after-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair3-after-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair3-after-before-physical.stdout.raw",
+      "stdoutSha256": "bc4bbe9173667c6f5058538531e1f9e0bc0aae6add3e3731b31ba489d78eb4e8",
+      "stderrFile": "rls-write-pair3-after-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-write-pair3-after",
+      "sqlFile": "pr11-postapply-rls-write-after.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair3-after.stdout.raw",
+      "stdoutSha256": "6f08f232abfadc54e532c1a206f98bab0d7bd717f8d8cb05da9e0f4c47597c85",
+      "stderrFile": "rls-write-pair3-after.stderr.raw",
+      "stderrSha256": "0288eac4b831334c121490c46b4623bde25e9fe4ff5e79bc63f494bc02713877"
+    },
+    {
+      "label": "rls-write-pair3-after-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair3-after-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-write-pair3-after-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-write-pair3-after-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-write-pair3-after-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-write-pair3-after-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-semantic-before-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-semantic-before-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-semantic-before-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-semantic-before-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-semantic-before-normalize.stdout.raw",
+      "stdoutSha256": "3a272647f7d2a1679834c06216bdb21e9cb4a6bc926bcf40781e4c71d4650f60",
+      "stderrFile": "rls-semantic-before-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-semantic-before-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-semantic-before-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-semantic-before-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-semantic-before-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-semantic-before-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-semantic-before-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-semantic-before-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-semantic-before-before-physical.stdout.raw",
+      "stdoutSha256": "eb253ba5046de869e9672b1efd1ab7c978b16ed8757b597f185100e5a718c3e2",
+      "stderrFile": "rls-semantic-before-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-semantic-before",
+      "sqlFile": "pr11-postapply-rls-semantic-before.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-semantic-before.stdout.raw",
+      "stdoutSha256": "a75a39903f64992ca295b5333d2251bd9d4fd6e61810db436e1209038afe9961",
+      "stderrFile": "rls-semantic-before.stderr.raw",
+      "stderrSha256": "121e598f1636af1bbeed8d2128035c3df35e28bef59d7ebfa25b755fd86e8e3d"
+    },
+    {
+      "label": "rls-semantic-before-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-semantic-before-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-semantic-before-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-semantic-before-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-semantic-before-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-semantic-before-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-semantic-after-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-semantic-after-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-semantic-after-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-semantic-after-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-semantic-after-normalize.stdout.raw",
+      "stdoutSha256": "c374f0531e7ed1e8f21cf904983f00bb04f2a36e3a78cd9c39aa24a004f48108",
+      "stderrFile": "rls-semantic-after-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-semantic-after-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-semantic-after-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-semantic-after-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-semantic-after-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-semantic-after-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-semantic-after-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-semantic-after-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-semantic-after-before-physical.stdout.raw",
+      "stdoutSha256": "f64431b7539fb6bd17909a2238af3d7a3192ee87ace4472548cb3b95dabf8fc0",
+      "stderrFile": "rls-semantic-after-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-semantic-after",
+      "sqlFile": "pr11-postapply-rls-semantic-after.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-semantic-after.stdout.raw",
+      "stdoutSha256": "56e507aaad3ed6fd3655465cfca8d3a06ca80548d962a9beb69101ccc8205f77",
+      "stderrFile": "rls-semantic-after.stderr.raw",
+      "stderrSha256": "0288eac4b831334c121490c46b4623bde25e9fe4ff5e79bc63f494bc02713877"
+    },
+    {
+      "label": "rls-semantic-after-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-semantic-after-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-semantic-after-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-semantic-after-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-semantic-after-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-semantic-after-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-postapply-pgtap-preflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-postapply-pgtap-preflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-postapply-pgtap-preflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-postapply-pgtap-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-postapply-pgtap-normalize.stdout.raw",
+      "stdoutSha256": "797a556971dc031956823a8435e2719f82a64f87a300bdcb9f257fb1ef593a8b",
+      "stderrFile": "rls-postapply-pgtap-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-postapply-pgtap-normalized-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-postapply-pgtap-normalized-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-postapply-pgtap-normalized-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-postapply-pgtap-before-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-postapply-pgtap-before-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-postapply-pgtap-before-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-postapply-pgtap-before-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-postapply-pgtap-before-physical.stdout.raw",
+      "stdoutSha256": "6d9cc7b00d1c9e89ed412b3675de95d059f7ffac739a67036ec6a6d37daf5c11",
+      "stderrFile": "rls-postapply-pgtap-before-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-postapply-pgtap",
+      "sqlFile": "pr11-postapply-pgtap.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-postapply-pgtap.stdout.raw",
+      "stdoutSha256": "abd5b0667f2a5c9056713feb48c2ce5ecefcb5de37c00a14ac7aeb7ab6f14200",
+      "stderrFile": "rls-postapply-pgtap.stderr.raw",
+      "stderrSha256": "5e7b65c928dd0a8477dacd05149761bafba7baaf266868830b631f9788c37998"
+    },
+    {
+      "label": "rls-postapply-pgtap-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-postapply-pgtap-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "rls-postapply-pgtap-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "rls-postapply-pgtap-after-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-postapply-pgtap-after-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "rls-postapply-pgtap-after-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "final-normalize",
+      "sqlFile": "pr11-postapply-normalize.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "final-normalize.stdout.raw",
+      "stdoutSha256": "83ee3fb2c97ecef53b360ae04e1752f07eae94ee7c358e53553e24b4a2912757",
+      "stderrFile": "final-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "final-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "final-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "final-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "final-clean-logical",
+      "sqlFile": "pr11-postapply-logical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "final-clean-logical.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "final-clean-logical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "final-clean-physical",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "final-clean-physical.stdout.raw",
+      "stdoutSha256": "1ec9e3b2c8e5b61e2b17e8fd01adfb28a19426b5a84995791951d7007b5a23a0",
+      "stderrFile": "final-clean-physical.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "samples": [
+    {
+      "id": "blocks-pair1-before",
+      "family": "blocks",
+      "state": "before",
+      "candidate": false,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "blocks-pair1-before.parsed.json",
+      "parsedSha256": "7237e7b4ba72cae484f65b483d7ff2491659ce24009a2857358b9784c7a86b60",
+      "writeRowCounts": [],
+      "candidateCatalog": []
+    },
+    {
+      "id": "blocks-pair1-after",
+      "family": "blocks",
+      "state": "after",
+      "candidate": true,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "blocks-pair1-after.parsed.json",
+      "parsedSha256": "85db345efcc716b6c70e57b1adca5e431e7f6c9fb0f33d96dcb628bca4d5ec23",
+      "writeRowCounts": [],
+      "candidateCatalog": [
+        {
+          "kind": "blocks_fast_path_candidate_catalog",
+          "function": "public.validate_blocks_clinic_refs()",
+          "contract_pass": true,
+          "trigger_enabled": true,
+          "composite_fk_preserved": true
+        }
+      ]
+    },
+    {
+      "id": "blocks-pair2-after",
+      "family": "blocks",
+      "state": "after",
+      "candidate": true,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "blocks-pair2-after.parsed.json",
+      "parsedSha256": "77c433074a0e67392b13160a0eea636e0373f3a2b4b7954c8a0348dbee6bd199",
+      "writeRowCounts": [],
+      "candidateCatalog": [
+        {
+          "kind": "blocks_fast_path_candidate_catalog",
+          "function": "public.validate_blocks_clinic_refs()",
+          "contract_pass": true,
+          "trigger_enabled": true,
+          "composite_fk_preserved": true
+        }
+      ]
+    },
+    {
+      "id": "blocks-pair2-before",
+      "family": "blocks",
+      "state": "before",
+      "candidate": false,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "blocks-pair2-before.parsed.json",
+      "parsedSha256": "697f3bff23dfce31edbdcdc294f367b576f30e2606bb8984a14cd34ac939bc46",
+      "writeRowCounts": [],
+      "candidateCatalog": []
+    },
+    {
+      "id": "blocks-pair3-before",
+      "family": "blocks",
+      "state": "before",
+      "candidate": false,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "blocks-pair3-before.parsed.json",
+      "parsedSha256": "8ae232afc6c4c9e314d27d6cce93f02a751625ab2fb49cff7cfdaa33844b60a9",
+      "writeRowCounts": [],
+      "candidateCatalog": []
+    },
+    {
+      "id": "blocks-pair3-after",
+      "family": "blocks",
+      "state": "after",
+      "candidate": true,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "blocks-pair3-after.parsed.json",
+      "parsedSha256": "aeb1fbe557147aeb31b83631166ad0dacb7b2160bc6274023b3f835e22c2c4cc",
+      "writeRowCounts": [],
+      "candidateCatalog": [
+        {
+          "kind": "blocks_fast_path_candidate_catalog",
+          "function": "public.validate_blocks_clinic_refs()",
+          "contract_pass": true,
+          "trigger_enabled": true,
+          "composite_fk_preserved": true
+        }
+      ]
+    },
+    {
+      "id": "blocks-integrity",
+      "family": "integrity",
+      "state": "both",
+      "candidate": false,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "blocks-integrity.parsed.json",
+      "parsedSha256": "edb49c0682a80f3d3fa00a71cf7d43e77a4cd5c155a0430952a37cc54251678b",
+      "writeRowCounts": [],
+      "candidateCatalog": [
+        {
+          "kind": "blocks_fast_path_candidate_catalog",
+          "function": "public.validate_blocks_clinic_refs()",
+          "contract_pass": true,
+          "trigger_enabled": true,
+          "composite_fk_preserved": true
+        }
+      ]
+    },
+    {
+      "id": "rls-write-calibration-1",
+      "family": "write-calibration",
+      "state": "before",
+      "candidate": false,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "rls-write-calibration-1.parsed.json",
+      "parsedSha256": "84ad9d80247af9e2aa3e756a8ff2a96871c6bbf4375de5b9b8ad24f820cda5b0",
+      "writeRowCounts": [
+        {
+          "kind": "write_row_count",
+          "probe": "coverage_insert_2000",
+          "inserted_rows": 2000
+        },
+        {
+          "kind": "write_row_count",
+          "probe": "menu_profile_insert_2000",
+          "inserted_rows": 2000
+        }
+      ],
+      "candidateCatalog": []
+    },
+    {
+      "id": "rls-write-calibration-2",
+      "family": "write-calibration",
+      "state": "before",
+      "candidate": false,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "rls-write-calibration-2.parsed.json",
+      "parsedSha256": "d3f3f094024be2c3b00f1d8dd5397a52c7e855f208399a830de73bd09ea2ea67",
+      "writeRowCounts": [
+        {
+          "kind": "write_row_count",
+          "probe": "coverage_insert_2000",
+          "inserted_rows": 2000
+        },
+        {
+          "kind": "write_row_count",
+          "probe": "menu_profile_insert_2000",
+          "inserted_rows": 2000
+        }
+      ],
+      "candidateCatalog": []
+    },
+    {
+      "id": "rls-write-calibration-3",
+      "family": "write-calibration",
+      "state": "before",
+      "candidate": false,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "rls-write-calibration-3.parsed.json",
+      "parsedSha256": "26a15387d9806b1fe90a8cdb106740f382b92b3faa2b45f7f754b40718f5bd5a",
+      "writeRowCounts": [
+        {
+          "kind": "write_row_count",
+          "probe": "coverage_insert_2000",
+          "inserted_rows": 2000
+        },
+        {
+          "kind": "write_row_count",
+          "probe": "menu_profile_insert_2000",
+          "inserted_rows": 2000
+        }
+      ],
+      "candidateCatalog": []
+    },
+    {
+      "id": "rls-read-pair1-before",
+      "family": "rls-read",
+      "state": "before",
+      "candidate": false,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "rls-read-pair1-before.parsed.json",
+      "parsedSha256": "b7f9f1d0af82f3075aae04ef4d4c31a872d4da0df04fc0d000a13385ce21f839",
+      "writeRowCounts": [],
+      "candidateCatalog": []
+    },
+    {
+      "id": "rls-read-pair1-after",
+      "family": "rls-read",
+      "state": "after",
+      "candidate": true,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "rls-read-pair1-after.parsed.json",
+      "parsedSha256": "e67284fce918faac10bbb228c09039bab5420a08d11c05b27e0fd70c71e520d0",
+      "writeRowCounts": [],
+      "candidateCatalog": [
+        {
+          "kind": "rls_scope_candidate_catalog",
+          "contract_pass": true,
+          "candidate_indexes_present": 2,
+          "statement_scope_helper_present": true
+        }
+      ]
+    },
+    {
+      "id": "rls-read-pair2-after",
+      "family": "rls-read",
+      "state": "after",
+      "candidate": true,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "rls-read-pair2-after.parsed.json",
+      "parsedSha256": "a1b06262135e16a4f1a3ce2c4558226722f251af2c6ef62a627ae67d3973c0df",
+      "writeRowCounts": [],
+      "candidateCatalog": [
+        {
+          "kind": "rls_scope_candidate_catalog",
+          "contract_pass": true,
+          "candidate_indexes_present": 2,
+          "statement_scope_helper_present": true
+        }
+      ]
+    },
+    {
+      "id": "rls-read-pair2-before",
+      "family": "rls-read",
+      "state": "before",
+      "candidate": false,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "rls-read-pair2-before.parsed.json",
+      "parsedSha256": "b077cda977e73fa5e354a1dc7c3cb1df0068ce6cf8599a99d1a99e47fb957593",
+      "writeRowCounts": [],
+      "candidateCatalog": []
+    },
+    {
+      "id": "rls-read-pair3-before",
+      "family": "rls-read",
+      "state": "before",
+      "candidate": false,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "rls-read-pair3-before.parsed.json",
+      "parsedSha256": "a4ec4707d4ccec6c6d9c39c41579708f45146688338ebefcb4e112502f32df0a",
+      "writeRowCounts": [],
+      "candidateCatalog": []
+    },
+    {
+      "id": "rls-read-pair3-after",
+      "family": "rls-read",
+      "state": "after",
+      "candidate": true,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "rls-read-pair3-after.parsed.json",
+      "parsedSha256": "8f9c5775235e2fd038c38ed6bff97b9c0dc696b0666ed7f874438606b2bb785e",
+      "writeRowCounts": [],
+      "candidateCatalog": [
+        {
+          "kind": "rls_scope_candidate_catalog",
+          "contract_pass": true,
+          "candidate_indexes_present": 2,
+          "statement_scope_helper_present": true
+        }
+      ]
+    },
+    {
+      "id": "rls-write-pair1-before",
+      "family": "rls-write",
+      "state": "before",
+      "candidate": false,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "rls-write-pair1-before.parsed.json",
+      "parsedSha256": "073971ee6b5efe0199b5e3569f8aca7a78222871f7d8047aae567fae7d29dc4f",
+      "writeRowCounts": [
+        {
+          "kind": "write_row_count",
+          "probe": "coverage_insert_2000",
+          "inserted_rows": 2000
+        },
+        {
+          "kind": "write_row_count",
+          "probe": "menu_profile_insert_2000",
+          "inserted_rows": 2000
+        }
+      ],
+      "candidateCatalog": []
+    },
+    {
+      "id": "rls-write-pair1-after",
+      "family": "rls-write",
+      "state": "after",
+      "candidate": true,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "rls-write-pair1-after.parsed.json",
+      "parsedSha256": "665564cf6d52075d36c124442c00bbce816e4439e7dde406f75a25f91f12c588",
+      "writeRowCounts": [
+        {
+          "kind": "write_row_count",
+          "probe": "coverage_insert_2000",
+          "inserted_rows": 2000
+        },
+        {
+          "kind": "write_row_count",
+          "probe": "menu_profile_insert_2000",
+          "inserted_rows": 2000
+        }
+      ],
+      "candidateCatalog": []
+    },
+    {
+      "id": "rls-write-pair2-after",
+      "family": "rls-write",
+      "state": "after",
+      "candidate": true,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "rls-write-pair2-after.parsed.json",
+      "parsedSha256": "f335d5ce6d2b9e758d5911b8eb6a3a5b139d61c08a0570c911318519a927767c",
+      "writeRowCounts": [
+        {
+          "kind": "write_row_count",
+          "probe": "coverage_insert_2000",
+          "inserted_rows": 2000
+        },
+        {
+          "kind": "write_row_count",
+          "probe": "menu_profile_insert_2000",
+          "inserted_rows": 2000
+        }
+      ],
+      "candidateCatalog": []
+    },
+    {
+      "id": "rls-write-pair2-before",
+      "family": "rls-write",
+      "state": "before",
+      "candidate": false,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "rls-write-pair2-before.parsed.json",
+      "parsedSha256": "ad54ab1b82b13a27625fca670b887a653eca432c2eed1400f4130bcf3e26a2f7",
+      "writeRowCounts": [
+        {
+          "kind": "write_row_count",
+          "probe": "coverage_insert_2000",
+          "inserted_rows": 2000
+        },
+        {
+          "kind": "write_row_count",
+          "probe": "menu_profile_insert_2000",
+          "inserted_rows": 2000
+        }
+      ],
+      "candidateCatalog": []
+    },
+    {
+      "id": "rls-write-pair3-before",
+      "family": "rls-write",
+      "state": "before",
+      "candidate": false,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "rls-write-pair3-before.parsed.json",
+      "parsedSha256": "e86513c07eb29a27701060da1baf9fb2d099f55e972e72a0f9472bdd31783654",
+      "writeRowCounts": [
+        {
+          "kind": "write_row_count",
+          "probe": "coverage_insert_2000",
+          "inserted_rows": 2000
+        },
+        {
+          "kind": "write_row_count",
+          "probe": "menu_profile_insert_2000",
+          "inserted_rows": 2000
+        }
+      ],
+      "candidateCatalog": []
+    },
+    {
+      "id": "rls-write-pair3-after",
+      "family": "rls-write",
+      "state": "after",
+      "candidate": true,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "rls-write-pair3-after.parsed.json",
+      "parsedSha256": "42f853805d1eee88a687a4781122792ceafaa5ab4fe6c6ef3918af125eb7e18b",
+      "writeRowCounts": [
+        {
+          "kind": "write_row_count",
+          "probe": "coverage_insert_2000",
+          "inserted_rows": 2000
+        },
+        {
+          "kind": "write_row_count",
+          "probe": "menu_profile_insert_2000",
+          "inserted_rows": 2000
+        }
+      ],
+      "candidateCatalog": []
+    },
+    {
+      "id": "rls-semantic-before",
+      "family": "semantic",
+      "state": "before",
+      "candidate": false,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "rls-semantic-before.parsed.json",
+      "parsedSha256": "3135ed85f0612204484f4921bd5894dcaa755ad66a58f63ac8c562ed830b4af4",
+      "writeRowCounts": [],
+      "candidateCatalog": []
+    },
+    {
+      "id": "rls-semantic-after",
+      "family": "semantic",
+      "state": "after",
+      "candidate": true,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "rls-semantic-after.parsed.json",
+      "parsedSha256": "a6b871093a91a7bf65ec4d2ff23e5860e37411deb3b8fb0318f693e5a1a699d1",
+      "writeRowCounts": [],
+      "candidateCatalog": []
+    },
+    {
+      "id": "rls-postapply-pgtap",
+      "family": "pgtap",
+      "state": "after",
+      "candidate": true,
+      "before": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86"
+      },
+      "after": {
+        "logicalHash": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+        "physicalHash": null
+      },
+      "parsedFile": "rls-postapply-pgtap.parsed.json",
+      "parsedSha256": "26cd9f0b1fe642064fa81a9f8e9afe89641f332b20a6ac20e9f932dfc61fff92",
+      "writeRowCounts": [],
+      "candidateCatalog": []
+    }
+  ],
+  "frozenWriteGatesSha256": "d2dffc9a7285eeff429af7ac671fc55176428e0755aa5c2e7169fe47678cbd8e",
+  "summarySha256": "c9eec6ef5acbecac591206fc9536e85a6ce900214d26e404b64d654680379f41"
+}

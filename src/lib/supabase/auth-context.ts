@@ -4,7 +4,7 @@ import {
   canManageClinicSettingsWithCompat,
   normalizeRole,
 } from '@/lib/constants/roles';
-import { AppError, ERROR_CODES } from '@/lib/error-handler';
+import { AppError, ERROR_CODES, logError } from '@/lib/error-handler';
 import type { Database } from '@/types/supabase';
 
 type SupabaseQueryClient = Pick<SupabaseClient<Database>, 'from'>;
@@ -47,6 +47,53 @@ export interface UserAuthAccessContext<
   clinicId: string | null;
   isActive: boolean;
   isAdmin: boolean;
+}
+
+function isErrorRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function normalizeAuthorityError(error: unknown): {
+  error: Error;
+  metadata: Record<string, unknown>;
+} {
+  if (error instanceof Error) {
+    return { error, metadata: {} };
+  }
+
+  if (isErrorRecord(error)) {
+    const message =
+      typeof error.message === 'string' && error.message.trim().length > 0
+        ? error.message
+        : 'Authority lookup failed';
+    const metadata: Record<string, unknown> = {};
+
+    if (typeof error.code === 'string') {
+      metadata.authorityErrorCode = error.code;
+    }
+    if (typeof error.details === 'string') {
+      metadata.authorityErrorDetails = error.details;
+    }
+    if (typeof error.hint === 'string') {
+      metadata.authorityErrorHint = error.hint;
+    }
+
+    return { error: new Error(message), metadata };
+  }
+
+  return { error: new Error(String(error)), metadata: {} };
+}
+
+export function throwAuthorityUnavailable(
+  error: unknown,
+  context: Record<string, unknown>
+): never {
+  const normalizedError = normalizeAuthorityError(error);
+  logError(normalizedError.error, {
+    ...context,
+    ...normalizedError.metadata,
+  });
+  throw new AppError(ERROR_CODES.DATABASE_CONNECTION_ERROR, undefined, 503);
 }
 
 export function assertActiveAccount(

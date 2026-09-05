@@ -34,7 +34,7 @@ export const TENANT_INITIAL_ACCESS_OPTIONS = [
   },
 ] as const;
 export const CLINIC_LIST_SELECT =
-  'id, name, address, phone_number, is_active, created_at, parent_id, billing_activation_status, billing_activation_requested_at, billing_activated_at, billing_activation_failed_at, billing_activation_error';
+  'id, name, address, phone_number, is_active, created_at, parent_id, billing_activation_status, billing_activation_requested_at, billing_activated_at, billing_activation_failed_at';
 export const CLINIC_HIERARCHY_SELECT = 'id, name, parent_id';
 
 export type ClinicHierarchyType =
@@ -69,7 +69,6 @@ export type ClinicListRow = {
   billing_activation_requested_at?: string | null;
   billing_activated_at?: string | null;
   billing_activation_failed_at?: string | null;
-  billing_activation_error?: string | null;
 };
 
 export interface ClinicSummary {
@@ -84,11 +83,21 @@ export interface ClinicSummary {
   billing_activation_requested_at?: string | null;
   billing_activated_at?: string | null;
   billing_activation_failed_at?: string | null;
-  billing_activation_error?: string | null;
   parent_name?: string | null;
   clinic_type?: ClinicHierarchyType;
   child_count?: number;
   admin_account?: ClinicAdminAccount | null;
+}
+
+export type BillingActivationResult =
+  | { status: 'not_required' }
+  | { status: 'activated' }
+  | { status: 'pending_webhook' }
+  | { status: 'pending_capacity'; error_code?: string | null }
+  | { status: 'billing_failed'; error_code?: string | null };
+
+export interface CreateClinicResult extends ClinicSummary {
+  billing_activation_result: BillingActivationResult | null;
 }
 
 export interface ClinicFilters {
@@ -105,6 +114,14 @@ export interface CreateClinicPayload {
   login_full_name?: string;
   login_email?: string;
   login_password?: string;
+  billing_confirmation?: {
+    acknowledged_paid_increase: true;
+    active_store_count: number;
+    target_paid_extra_store_quantity: number;
+    store_addon_unit_amount: number;
+    monthly_increase: number;
+    standard_monthly_total: number;
+  };
 }
 
 export interface UpdateClinicPayload {

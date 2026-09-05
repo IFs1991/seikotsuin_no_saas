@@ -1,0 +1,802 @@
+{
+  "protocol": "pr11-dense-phase-a2-environment-validity-v1",
+  "status": "environment-invalid",
+  "startedAt": "2026-07-19T00:52:58.645Z",
+  "endedAt": "2026-07-19T00:53:47.141Z",
+  "expected": {
+    "gitHead": "aaf3837f6f8053b0379a2d4caea65880952ce027",
+    "database": "postgres",
+    "serverVersion": "170006",
+    "systemIdentifier": "7662783869098430503",
+    "migrationHead": "20260718011731",
+    "nodeMajor": "v24.",
+    "supabaseVersion": "2.109.0",
+    "supabaseCliSha256": "903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118",
+    "supabaseArchiveSha256": "4ea5b92ae679323cde0e69ca92b801c3fc705c8351bdff50cb3b8eff6926f5c7",
+    "canonicalProbeSha256": "5e6ae3af19f428d63b8eaa8a56d7b659d4841fe693071e7ca11449c756c3cb65",
+    "logicalBaselineSha256": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+    "physicalBaselineSha256": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86",
+    "balancedPowerPlan": "381b4222-f694-41f0-9685-ff5bb260df2e"
+  },
+  "validityDefinition": {
+    "hostSampleCount": 5,
+    "hostSampleIntervalMilliseconds": 1000,
+    "powerOnlineEverySample": true,
+    "dischargingSamplesAllowed": 0,
+    "requiredPowerPlanGuid": "381b4222-f694-41f0-9685-ff5bb260df2e",
+    "minimumAvailableMemoryBytes": 4294967296,
+    "minimumAvailableMemoryFraction": 0.25,
+    "maximumCommittedBytesInUsePercent": 80,
+    "maximumProcessorUtilityPercent": 10,
+    "minimumProcessorPerformancePercent": 90,
+    "maximumProcessorFrequencyCoefficientOfVariation": 0.1,
+    "maximumPagesInputPerSecond": 0,
+    "maximumPageReadsPerSecond": 0,
+    "maximumDpcTimePercent": 5,
+    "maximumInterruptTimePercent": 5,
+    "runningContainersOutsideTargetProjectAllowed": 0,
+    "restartingContainersAllowed": 0,
+    "maximumTargetDatabaseCpuPercent": 2,
+    "targetDatabaseBlockIoIncreaseAllowed": false,
+    "targetDatabaseHealthyRequired": true,
+    "checkpointerCounterIncreaseAllowed": false,
+    "walCounterIncreaseAllowed": false,
+    "activeOtherDatabaseClientsAllowed": 0,
+    "blockedOtherDatabaseClientsAllowed": 0,
+    "idleInTransactionOtherDatabaseClientsAllowed": 0,
+    "vacuumProgressAllowed": 0,
+    "createIndexProgressAllowed": 0
+  },
+  "localOnly": true,
+  "readOnlyDatabaseChecks": true,
+  "resetUsed": false,
+  "volumeDeletionUsed": false,
+  "stagingTouched": false,
+  "productionTouched": false,
+  "permanentDdlApplied": false,
+  "candidateSqlExecutionCount": 0,
+  "d1CurrentAA": "NOT_RUN",
+  "d2FourArm": "NOT_RUN",
+  "d3CommittedAB": "NOT_AUTHORIZED",
+  "steps": [
+    {
+      "label": "git-head",
+      "command": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "git-head.stdout.raw",
+      "stdoutSha256": "050c1da8539f4d6ea77a3d017986e472f05398cb537ecbdbfb53de6cf8b4c95c",
+      "stderrFile": "git-head.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "git-status",
+      "command": [
+        "git",
+        "status",
+        "--short",
+        "--branch"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "git-status.stdout.raw",
+      "stdoutSha256": "799777340a487f74fd270baefb4f5deddcffd66f33a86baf98adab674d84ca68",
+      "stderrFile": "git-status.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "supabase-version",
+      "command": [
+        "C:\\tmp\\supabase-cli-2.109.0\\supabase.exe",
+        "--version"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "supabase-version.stdout.raw",
+      "stdoutSha256": "c84a29ed303c437cdf00af319b36c5f3cf84a97332b842842c66d8842b2127a0",
+      "stderrFile": "supabase-version.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "database-preflight-initial",
+      "command": [
+        "C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe",
+        "-X",
+        "-w",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "54332",
+        "-U",
+        "postgres",
+        "-d",
+        "postgres",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-q",
+        "-A",
+        "-t",
+        "-f",
+        "C:\\tmp\\pr11-phase-a2\\scripts\\commercial-hardening\\sql\\pr11-phase-a2-environment-preflight.sql"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "database-preflight-initial.stdout.raw",
+      "stdoutSha256": "66a9104e1acf19089cd00381d9f8c48d6ffd05e15c22260e5a15965aa4671428",
+      "stderrFile": "database-preflight-initial.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "host-telemetry",
+      "command": [
+        "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+        "-NoProfile",
+        "-NonInteractive",
+        "-File",
+        "C:\\tmp\\pr11-phase-a2\\scripts\\commercial-hardening\\collect-pr11-phase-a2-host-telemetry.ps1",
+        "-SampleCount",
+        "5",
+        "-IntervalMilliseconds",
+        "1000"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "host-telemetry.stdout.raw",
+      "stdoutSha256": "e5dfe3f70a71918bd92246df31d2ee118a457ba4e4288ecc8daeaab6ea24a30f",
+      "stderrFile": "host-telemetry.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inventory",
+      "command": [
+        "docker.exe",
+        "ps",
+        "-a",
+        "--format",
+        "{{.Names}}\t{{.Image}}\t{{.State}}\t{{.Status}}\t{{.Label \"com.supabase.cli.project\"}}"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inventory.stdout.raw",
+      "stdoutSha256": "24cf499e03d3c8bc46fff670acc2f37373833b33dde536e23e1e4645b8ba54bc",
+      "stderrFile": "docker-inventory.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-info",
+      "command": [
+        "docker.exe",
+        "info",
+        "--format",
+        "{{.NCPU}}\t{{.MemTotal}}\t{{.OperatingSystem}}\t{{.OSType}}\t{{.Architecture}}\t{{.ServerVersion}}"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-info.stdout.raw",
+      "stdoutSha256": "6734f3ac5ba7f8808a2dcfd2300634cd37f976821456196892e34bbe820f2ec6",
+      "stderrFile": "docker-info.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-1-supabase_db_seikotsuin_management_saas",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_db_seikotsuin_management_saas"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-1-supabase-db-seikotsuin-management-saas.stdout.raw",
+      "stdoutSha256": "406c48d09a542ae7133f5b2b8eedff5fb25c6a819e11767deef7c00a69f8f52d",
+      "stderrFile": "docker-inspect-state-1-supabase-db-seikotsuin-management-saas.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-2-supabase_studio_seikotsuin_management_saas",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_studio_seikotsuin_management_saas"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-2-supabase-studio-seikotsuin-management-saas.stdout.raw",
+      "stdoutSha256": "8b141f2cf33cfb375967a58ece84de73f8ee1c36a17a4926c22cecae8cbb8295",
+      "stderrFile": "docker-inspect-state-2-supabase-studio-seikotsuin-management-saas.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-3-supabase_pg_meta_seikotsuin_management_saas",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_pg_meta_seikotsuin_management_saas"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-3-supabase-pg-meta-seikotsuin-management-saas.stdout.raw",
+      "stdoutSha256": "43e43103239978926604e68c0406ab7fe8fd58104373d1a670550a069113aa4c",
+      "stderrFile": "docker-inspect-state-3-supabase-pg-meta-seikotsuin-management-saas.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-4-supabase_edge_runtime_seikotsuin_management_saas",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_edge_runtime_seikotsuin_management_saas"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-4-supabase-edge-runtime-seikotsuin-management-saas.stdout.raw",
+      "stdoutSha256": "ac1021ae1009e690e3c4476bdff7f196c19e0d0b125d6cf1dc6fac6eca069fc4",
+      "stderrFile": "docker-inspect-state-4-supabase-edge-runtime-seikotsuin-management-saas.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-5-supabase_storage_seikotsuin_management_saas",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_storage_seikotsuin_management_saas"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-5-supabase-storage-seikotsuin-management-saas.stdout.raw",
+      "stdoutSha256": "75f0ad35af611d65b6811df47661a5926d92afc7128940aadd5829ae373e18da",
+      "stderrFile": "docker-inspect-state-5-supabase-storage-seikotsuin-management-saas.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-6-supabase_rest_seikotsuin_management_saas",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_rest_seikotsuin_management_saas"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-6-supabase-rest-seikotsuin-management-saas.stdout.raw",
+      "stdoutSha256": "acdbc75fc9a5e78650583fc8778489840f4bf5f079ba2954fbed7334d321ae49",
+      "stderrFile": "docker-inspect-state-6-supabase-rest-seikotsuin-management-saas.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-7-supabase_realtime_seikotsuin_management_saas",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_realtime_seikotsuin_management_saas"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-7-supabase-realtime-seikotsuin-management-saas.stdout.raw",
+      "stdoutSha256": "956832d8a726926d35e501a4d86f31773baf5404d542c1826a93e7c66b0ec322",
+      "stderrFile": "docker-inspect-state-7-supabase-realtime-seikotsuin-management-saas.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-8-supabase_inbucket_seikotsuin_management_saas",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_inbucket_seikotsuin_management_saas"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-8-supabase-inbucket-seikotsuin-management-saas.stdout.raw",
+      "stdoutSha256": "c2d07f6deda7491eb607a0c42ac48fa35f5461a6bff2d034226e21da45bbbbf9",
+      "stderrFile": "docker-inspect-state-8-supabase-inbucket-seikotsuin-management-saas.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-9-supabase_auth_seikotsuin_management_saas",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_auth_seikotsuin_management_saas"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-9-supabase-auth-seikotsuin-management-saas.stdout.raw",
+      "stdoutSha256": "43bf91e20c7dc654383e9e36728d8c76f751ff6da856d2476fc9a456d3ed2977",
+      "stderrFile": "docker-inspect-state-9-supabase-auth-seikotsuin-management-saas.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-10-supabase_kong_seikotsuin_management_saas",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_kong_seikotsuin_management_saas"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-10-supabase-kong-seikotsuin-management-saas.stdout.raw",
+      "stdoutSha256": "86ac98a984bdbba0d67f1127f6d40f6811c5b4894cc91811f8c6c9f077fa09e7",
+      "stderrFile": "docker-inspect-state-10-supabase-kong-seikotsuin-management-saas.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-11-pulse_migration_test",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "pulse_migration_test"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-11-pulse-migration-test.stdout.raw",
+      "stdoutSha256": "2b3f750cca1213428afe4d4c98ac8f935ab23cc7a1eaa985e2fe0f7887068d84",
+      "stderrFile": "docker-inspect-state-11-pulse-migration-test.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-12-jpyc_oss-postgres-1",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "jpyc_oss-postgres-1"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-12-jpyc-oss-postgres-1.stdout.raw",
+      "stdoutSha256": "a2c91c34cf18aa2dcf3bf43e2940cf1ee28b5d7f3de6c213749c61dfc7006182",
+      "stderrFile": "docker-inspect-state-12-jpyc-oss-postgres-1.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-13-jpyc_oss-redis-1",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "jpyc_oss-redis-1"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-13-jpyc-oss-redis-1.stdout.raw",
+      "stdoutSha256": "a9ea89cd3f2e65ef070d6beee582cefd9f54027da6e6c8de6a8605f7f92ba99f",
+      "stderrFile": "docker-inspect-state-13-jpyc-oss-redis-1.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-14-supabase_db_hookops",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_db_hookops"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-14-supabase-db-hookops.stdout.raw",
+      "stdoutSha256": "6c7b83095c0a050c2313d4a125a9bbbf1dc4668433fc5ffc4b42188004704bd0",
+      "stderrFile": "docker-inspect-state-14-supabase-db-hookops.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-15-supabase_studio_hookops",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_studio_hookops"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-15-supabase-studio-hookops.stdout.raw",
+      "stdoutSha256": "13dd08b8a10e55f41110523f4d83b49466fd754619605a14f59c6eed06fbf327",
+      "stderrFile": "docker-inspect-state-15-supabase-studio-hookops.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-16-supabase_pg_meta_hookops",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_pg_meta_hookops"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-16-supabase-pg-meta-hookops.stdout.raw",
+      "stdoutSha256": "a21d257781617cdf897444f75f934c9c836c6d5010fe8b97acf5e44771408bec",
+      "stderrFile": "docker-inspect-state-16-supabase-pg-meta-hookops.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-17-supabase_edge_runtime_hookops",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_edge_runtime_hookops"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-17-supabase-edge-runtime-hookops.stdout.raw",
+      "stdoutSha256": "daa8d194a934183f3dac95e1746e1d130a6534c9fef4bd7594927a3dc2ab2eb8",
+      "stderrFile": "docker-inspect-state-17-supabase-edge-runtime-hookops.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-18-supabase_storage_hookops",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_storage_hookops"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-18-supabase-storage-hookops.stdout.raw",
+      "stdoutSha256": "10632607aa9cb21ef5b137b239fa5f9ec1d442fb5a7359d7ca3b9e84e3523d03",
+      "stderrFile": "docker-inspect-state-18-supabase-storage-hookops.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-19-supabase_rest_hookops",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_rest_hookops"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-19-supabase-rest-hookops.stdout.raw",
+      "stdoutSha256": "0aeff0db257c0972f4b7edd1e809d0d378ed1da703b1958cc2ef2af5f3c1ad4b",
+      "stderrFile": "docker-inspect-state-19-supabase-rest-hookops.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-20-supabase_realtime_hookops",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_realtime_hookops"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-20-supabase-realtime-hookops.stdout.raw",
+      "stdoutSha256": "925b228fb8d9ba6fe937739adfcf383dcdb4eb0c2a4052d88fb8e66b4f301117",
+      "stderrFile": "docker-inspect-state-20-supabase-realtime-hookops.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-21-supabase_inbucket_hookops",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_inbucket_hookops"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-21-supabase-inbucket-hookops.stdout.raw",
+      "stdoutSha256": "fa0cb13d93231c777aca19703e7c3fcaade6b37aed4fecd28c53b8b8db6a7d3c",
+      "stderrFile": "docker-inspect-state-21-supabase-inbucket-hookops.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-22-supabase_auth_hookops",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_auth_hookops"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-22-supabase-auth-hookops.stdout.raw",
+      "stdoutSha256": "03636bfadd09a3b854be5e04996495179fba6a162b82c4e3b3349d619a3c4382",
+      "stderrFile": "docker-inspect-state-22-supabase-auth-hookops.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-23-supabase_kong_hookops",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_kong_hookops"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-23-supabase-kong-hookops.stdout.raw",
+      "stdoutSha256": "5c3f8e8503304d90bdc7e73c3616c60f8737cae36fb4f0e55ff8ccd5c2121980",
+      "stderrFile": "docker-inspect-state-23-supabase-kong-hookops.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-24-supabase_vector_hookops",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_vector_hookops"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-24-supabase-vector-hookops.stdout.raw",
+      "stdoutSha256": "4a7517f63c56573a102b181e9a0e2db218bc8f3fc078bea81461edbe1f89e3e5",
+      "stderrFile": "docker-inspect-state-24-supabase-vector-hookops.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-25-supabase_analytics_hookops",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "supabase_analytics_hookops"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-25-supabase-analytics-hookops.stdout.raw",
+      "stdoutSha256": "e639e2722626c3eb1629acac099847d98b6f9f1d79f76217ef4e3488ed2a4331",
+      "stderrFile": "docker-inspect-state-25-supabase-analytics-hookops.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-inspect-state-26-elastic_ride",
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{.State.Status}}\t{{.State.Running}}\t{{.State.Restarting}}\t{{.State.OOMKilled}}\t{{.State.Dead}}\t{{.State.ExitCode}}\t{{.State.StartedAt}}\t{{.RestartCount}}\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+        "elastic_ride"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-inspect-state-26-elastic-ride.stdout.raw",
+      "stdoutSha256": "84c25085b71907547afc42b333ec7b5eaf2298a10e5af7f198711c0695b4b4be",
+      "stderrFile": "docker-inspect-state-26-elastic-ride.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-stats-1",
+      "command": [
+        "docker.exe",
+        "stats",
+        "--no-stream",
+        "--format",
+        "{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.BlockIO}}\t{{.PIDs}}"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-stats-1.stdout.raw",
+      "stdoutSha256": "fc790baec6947d8319eb22de7477776c16a5e236932b3499015f2fa40731a056",
+      "stderrFile": "docker-stats-1.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-stats-2",
+      "command": [
+        "docker.exe",
+        "stats",
+        "--no-stream",
+        "--format",
+        "{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.BlockIO}}\t{{.PIDs}}"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-stats-2.stdout.raw",
+      "stdoutSha256": "437b70917f77055b749d097db941a336ae83d01dbe5c9fda827ddf0ef94d0abf",
+      "stderrFile": "docker-stats-2.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-stats-3",
+      "command": [
+        "docker.exe",
+        "stats",
+        "--no-stream",
+        "--format",
+        "{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.BlockIO}}\t{{.PIDs}}"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-stats-3.stdout.raw",
+      "stdoutSha256": "17f0095af5fff0e29322bb8954de9b803d4abe9254f0426d2a8de72771537d34",
+      "stderrFile": "docker-stats-3.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-stats-4",
+      "command": [
+        "docker.exe",
+        "stats",
+        "--no-stream",
+        "--format",
+        "{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.BlockIO}}\t{{.PIDs}}"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-stats-4.stdout.raw",
+      "stdoutSha256": "d6f385031edab049b9bdb85b56702407dc7749872966f1f3b88e859ef77a09aa",
+      "stderrFile": "docker-stats-4.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-stats-5",
+      "command": [
+        "docker.exe",
+        "stats",
+        "--no-stream",
+        "--format",
+        "{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.BlockIO}}\t{{.PIDs}}"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-stats-5.stdout.raw",
+      "stdoutSha256": "b4b9a48e73b2a22aa2dde082a7dc14b8ae3382150c2bcccb30f7324d9bf93042",
+      "stderrFile": "docker-stats-5.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "docker-cgroup-final",
+      "command": [
+        "docker.exe",
+        "exec",
+        "supabase_db_seikotsuin_management_saas",
+        "sh",
+        "-c",
+        "for f in /sys/fs/cgroup/cpu.stat /sys/fs/cgroup/memory.current /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory.events /sys/fs/cgroup/memory.stat /sys/fs/cgroup/io.stat; do echo FILE:$f; test -r $f && cat $f; done"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "docker-cgroup-final.stdout.raw",
+      "stdoutSha256": "83098251e9d15b8255c3be559b14ea214accf21787f9de9a402f221b38fc0142",
+      "stderrFile": "docker-cgroup-final.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "database-preflight-final",
+      "command": [
+        "C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe",
+        "-X",
+        "-w",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "54332",
+        "-U",
+        "postgres",
+        "-d",
+        "postgres",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-q",
+        "-A",
+        "-t",
+        "-f",
+        "C:\\tmp\\pr11-phase-a2\\scripts\\commercial-hardening\\sql\\pr11-phase-a2-environment-preflight.sql"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "database-preflight-final.stdout.raw",
+      "stdoutSha256": "ca47bd979d9d9d8999cf085aac3cc68c1216e983a057db3e5aed750db16786eb",
+      "stderrFile": "database-preflight-final.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "logical-snapshot",
+      "command": [
+        "C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe",
+        "-X",
+        "-w",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "54332",
+        "-U",
+        "postgres",
+        "-d",
+        "postgres",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-q",
+        "-A",
+        "-t",
+        "-f",
+        "C:\\tmp\\pr11-phase-a2\\scripts\\commercial-hardening\\sql\\pr11-postapply-logical-snapshot.sql"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "logical-snapshot.stdout.raw",
+      "stdoutSha256": "e2aa22c813af4742802ca4ba800ed66f81f402feb8eab74ac454839644cda687",
+      "stderrFile": "logical-snapshot.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "physical-snapshot",
+      "command": [
+        "C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe",
+        "-X",
+        "-w",
+        "-h",
+        "127.0.0.1",
+        "-p",
+        "54332",
+        "-U",
+        "postgres",
+        "-d",
+        "postgres",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-q",
+        "-A",
+        "-t",
+        "-f",
+        "C:\\tmp\\pr11-phase-a2\\scripts\\commercial-hardening\\sql\\pr11-paired-physical-snapshot.sql"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "physical-snapshot.stdout.raw",
+      "stdoutSha256": "675af31f2514c6728497577e7c69c17995e54f671325ae48809def2529cf6259",
+      "stderrFile": "physical-snapshot.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "frozenGatesSha256": "15b997f726d06260d58a2219a39f369dcb505d0507524cac0db73b86acfc8cf7",
+  "package": {
+    "packageManifestFile": "package-manifest.json",
+    "packageManifestSha256": "dc8016c11de7fcb8b94dd5dc933cdd87ffd9ec25cc82a05e13298d8d8fa1a2c8",
+    "packagedFileCount": 37,
+    "phaseAInputCount": 24
+  },
+  "resultSha256": "bf080640ae06ae30e2cd851ee47f57e343eafcd80ccdf7d0b880b1a0e373a721",
+  "resultYamlSha256": "e22fe7a41237cf3ce58f13498c6282ef9ec622be4e9ce5dcbda9388863dc7716",
+  "environmentValidity": "ENVIRONMENT_INVALID",
+  "failedGateNames": [
+    "available_memory",
+    "committed_memory",
+    "processor_utility",
+    "hard_paging",
+    "database_wal_stable"
+  ]
+}

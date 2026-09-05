@@ -57,6 +57,7 @@
     "scan:secrets": "node scripts/scan-secrets.mjs",
     "verify:supabase": "node scripts/verify-supabase-connection.mjs",
     "verify:crm-line-growth:concurrency": "node scripts/verify-crm-line-growth-concurrency.mjs",
+    "verify:line-setup:concurrency": "node scripts/verify-line-setup-concurrency.mjs",
     "commercial:inventory:routes": "node scripts/commercial-hardening/generate-mutating-route-inventory.mjs --write",
     "commercial:inventory:routes:check": "node scripts/commercial-hardening/generate-mutating-route-inventory.mjs --check",
     "security:verify-mutating-routes": "node scripts/commercial-hardening/verify-mutating-routes.mjs",
@@ -81,7 +82,8 @@
     "commercial:red:invite": "node scripts/commercial-hardening/run-red-invite-contract.mjs",
     "commercial:verify:invite:local": "node scripts/commercial-hardening/verify-atomic-staff-invite.mjs --local",
     "commercial:verify:pr09:auth:local": "node scripts/commercial-hardening/verify-pr09-auth-integration.mjs --local",
-    "commercial:verify:pr09:rollback-guard:local": "node scripts/commercial-hardening/verify-pr09-rollback-guard-negative.mjs --local"
+    "commercial:verify:pr09:rollback-guard:local": "node scripts/commercial-hardening/verify-pr09-rollback-guard-negative.mjs --local",
+    "commercial:verify:pr11:deferred:local": "node scripts/commercial-hardening/verify-pr11-deferred-production-path.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

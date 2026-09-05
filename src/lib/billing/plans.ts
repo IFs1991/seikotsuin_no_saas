@@ -1,6 +1,7 @@
 import type { BillingPlanCode, BillingServerEnv } from '@/lib/billing/config';
 
 export const INCLUDED_GROUP_STORE_QUANTITY = 5;
+export const BILLING_TRIAL_PERIOD_DAYS = 30;
 
 export type BillingLineItem = {
   price: string;

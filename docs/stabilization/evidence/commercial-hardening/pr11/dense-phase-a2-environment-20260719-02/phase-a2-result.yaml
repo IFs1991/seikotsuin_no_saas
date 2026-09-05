@@ -1,0 +1,14 @@
+release_decision: FAIL_STOP
+phase_a_original_result: FAIL
+phase_a_wall_clock_validity: INCONCLUSIVE
+environment_validity: ENVIRONMENT_INVALID
+d1_current_a_a: NOT_RUN
+d2_four_arm: NOT_RUN
+d3_committed_a_b: NOT_AUTHORIZED
+candidate_sql_execution_count: 0
+candidate_under_phase_a_protocol: REJECTED
+rollback_only_attribution: NOT_RUN
+steady_state_index_effect: NOT_PROVEN
+cascade_wal: NOT_PROVEN
+permanent_ddl_applied: false
+next_action: STABILIZE_HOST_THEN_RERUN_D1

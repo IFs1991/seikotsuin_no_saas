@@ -4,6 +4,34 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClientForDatabase } from '@/lib/supabase';
 import type { Database, Json } from '@/types/supabase';
 
+type GeneratedCustomers = Database['public']['Tables']['customers'];
+type GeneratedLineCredentials =
+  Database['public']['Tables']['clinic_line_credentials'];
+
+type CrmCustomerRow = GeneratedCustomers['Row'] & {
+  line_credential_generation_id: string | null;
+};
+
+type CrmCustomerInsert = GeneratedCustomers['Insert'] & {
+  line_credential_generation_id?: string | null;
+};
+
+type CrmCustomerUpdate = GeneratedCustomers['Update'] & {
+  line_credential_generation_id?: string | null;
+};
+
+type CrmLineCredentialsRow = GeneratedLineCredentials['Row'] & {
+  credential_generation_id: string;
+};
+
+type CrmLineCredentialsInsert = GeneratedLineCredentials['Insert'] & {
+  credential_generation_id?: string;
+};
+
+type CrmLineCredentialsUpdate = GeneratedLineCredentials['Update'] & {
+  credential_generation_id?: string;
+};
+
 export type PatientIdentityAliasRow = {
   id: string;
   clinic_id: string;
@@ -120,9 +148,26 @@ type CrmFunctions = {
 type PublicDatabase = Database['public'];
 
 export type CrmDatabase = Omit<Database, 'public'> & {
-  public: Omit<PublicDatabase, 'Functions'> & {
+  public: Omit<PublicDatabase, 'Functions' | 'Tables'> & {
     Functions: Omit<PublicDatabase['Functions'], keyof CrmFunctions> &
       CrmFunctions;
+    Tables: Omit<
+      PublicDatabase['Tables'],
+      'clinic_line_credentials' | 'customers'
+    > & {
+      clinic_line_credentials: {
+        Insert: CrmLineCredentialsInsert;
+        Relationships: GeneratedLineCredentials['Relationships'];
+        Row: CrmLineCredentialsRow;
+        Update: CrmLineCredentialsUpdate;
+      };
+      customers: {
+        Insert: CrmCustomerInsert;
+        Relationships: GeneratedCustomers['Relationships'];
+        Row: CrmCustomerRow;
+        Update: CrmCustomerUpdate;
+      };
+    };
   };
 };
 

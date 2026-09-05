@@ -31,13 +31,15 @@ export type LineStaffPreferenceView = {
 async function findCustomerByLineUserId(
   client: CrmSupabaseClient,
   clinicId: string,
-  lineUserId: string
+  lineUserId: string,
+  credentialGenerationId: string
 ): Promise<CustomerLineRow> {
   const { data, error } = await client
     .from('customers')
     .select('id, name, line_user_id')
     .eq('clinic_id', clinicId)
     .eq('line_user_id', lineUserId)
+    .eq('line_credential_generation_id', credentialGenerationId)
     .eq('is_deleted', false)
     .maybeSingle<CustomerLineRow>();
   if (error || !data) {
@@ -48,12 +50,17 @@ async function findCustomerByLineUserId(
 
 export async function listLineStaffPreferences(
   client: CrmSupabaseClient,
-  params: { clinicId: string; lineUserId: string }
+  params: {
+    clinicId: string;
+    credentialGenerationId: string;
+    lineUserId: string;
+  }
 ): Promise<LineStaffPreferenceView> {
   const customer = await findCustomerByLineUserId(
     client,
     params.clinicId,
-    params.lineUserId
+    params.lineUserId,
+    params.credentialGenerationId
   );
   const historyResult = await client
     .from('reservations')
@@ -114,6 +121,7 @@ export async function setLineStaffPreference(
   client: CrmSupabaseClient,
   params: {
     clinicId: string;
+    credentialGenerationId: string;
     lineUserId: string;
     staffId: string;
     notificationEnabled: boolean;
@@ -122,7 +130,8 @@ export async function setLineStaffPreference(
   const customer = await findCustomerByLineUserId(
     client,
     params.clinicId,
-    params.lineUserId
+    params.lineUserId,
+    params.credentialGenerationId
   );
   const { data: staff, error: staffError } = await client
     .from('resources')

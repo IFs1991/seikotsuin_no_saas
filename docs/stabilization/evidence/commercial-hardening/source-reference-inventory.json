@@ -7,10 +7,10 @@
     "clientModule records an explicit use-client directive, not the full import graph."
   ],
   "summary": {
-    "scannedSourceFiles": 627,
+    "scannedSourceFiles": 657,
     "catalogTables": 86,
     "catalogTablesWithLiteralReferences": 68,
-    "literalRpcNames": 14
+    "literalRpcNames": 37
   },
   "tables": [
     {
@@ -55,7 +55,7 @@
         },
         {
           "path": "src/lib/audit-logger.ts",
-          "line": 45,
+          "line": 46,
           "clientModule": false
         }
       ]
@@ -220,7 +220,7 @@
         },
         {
           "path": "src/lib/services/public-reservation-service.ts",
-          "line": 451,
+          "line": 456,
           "clientModule": false
         },
         {
@@ -359,13 +359,13 @@
       "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
       "calls": [
         {
-          "path": "src/app/api/admin/line-credentials/route.ts",
-          "line": 177,
+          "path": "src/app/api/admin/line-chat/settings/route.ts",
+          "line": 62,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/line-credentials/route.ts",
-          "line": 203,
+          "line": 187,
           "clientModule": false
         },
         {
@@ -380,17 +380,22 @@
         },
         {
           "path": "src/lib/line/gate.ts",
-          "line": 71,
+          "line": 85,
           "clientModule": false
         },
         {
-          "path": "src/lib/line/public-booking.ts",
-          "line": 42,
+          "path": "src/lib/line/setup-admin-service.ts",
+          "line": 133,
           "clientModule": false
         },
         {
           "path": "src/lib/mobile-uiux/entitlements.ts",
           "line": 159,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/reservation-notifications.ts",
+          "line": 472,
           "clientModule": false
         }
       ]
@@ -400,33 +405,58 @@
       "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
       "calls": [
         {
-          "path": "src/app/api/admin/line-credentials/route.ts",
-          "line": 159,
+          "path": "src/app/api/admin/line-chat/settings/route.ts",
+          "line": 67,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/line-credentials/route.ts",
-          "line": 339,
+          "line": 169,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/line-credentials/route.ts",
+          "line": 352,
           "clientModule": false
         },
         {
           "path": "src/lib/line/gate.ts",
-          "line": 77,
+          "line": 91,
           "clientModule": false
         },
         {
-          "path": "src/lib/line/public-booking.ts",
-          "line": 47,
-          "clientModule": false
-        },
-        {
-          "path": "src/lib/line/token-manager.ts",
-          "line": 142,
+          "path": "src/lib/line/setup-admin-service.ts",
+          "line": 128,
           "clientModule": false
         },
         {
           "path": "src/lib/line/token-manager.ts",
-          "line": 177,
+          "line": 145,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/line/token-manager.ts",
+          "line": 184,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/line/webhook-service.ts",
+          "line": 185,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/reservation-notifications.ts",
+          "line": 502,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 332,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/staff-availability-service.ts",
+          "line": 145,
           "clientModule": false
         }
       ]
@@ -452,12 +482,12 @@
         },
         {
           "path": "src/lib/notifications/reservation-notifications.ts",
-          "line": 407,
+          "line": 427,
           "clientModule": false
         },
         {
           "path": "src/lib/notifications/reservation-notifications.ts",
-          "line": 430,
+          "line": 450,
           "clientModule": false
         },
         {
@@ -472,17 +502,17 @@
         },
         {
           "path": "src/lib/services/public-my-page-service.ts",
-          "line": 393,
+          "line": 408,
           "clientModule": false
         },
         {
           "path": "src/lib/services/public-reservation-service.ts",
-          "line": 228,
+          "line": 233,
           "clientModule": false
         },
         {
           "path": "src/lib/services/public-reservation-service.ts",
-          "line": 254,
+          "line": 259,
           "clientModule": false
         }
       ]
@@ -547,28 +577,33 @@
           "clientModule": false
         },
         {
-          "path": "src/app/api/admin/tenants/route.ts",
-          "line": 299,
+          "path": "src/app/api/admin/tenants/add-preview/route.ts",
+          "line": 123,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 424,
+          "line": 317,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 818,
+          "line": 442,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 839,
+          "line": 836,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 1006,
+          "line": 857,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 1109,
           "clientModule": false
         },
         {
@@ -579,16 +614,6 @@
         {
           "path": "src/app/api/calendar/staff/[token]/route.ts",
           "line": 107,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/clinics/accessible/route.ts",
-          "line": 88,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/clinics/accessible/route.ts",
-          "line": 110,
           "clientModule": false
         },
         {
@@ -627,6 +652,16 @@
           "clientModule": false
         },
         {
+          "path": "src/lib/app-bootstrap/service.ts",
+          "line": 126,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/app-bootstrap/service.ts",
+          "line": 150,
+          "clientModule": false
+        },
+        {
           "path": "src/lib/auth/profile-read-model.ts",
           "line": 30,
           "clientModule": false
@@ -642,6 +677,11 @@
           "clientModule": false
         },
         {
+          "path": "src/lib/billing/admin.ts",
+          "line": 158,
+          "clientModule": false
+        },
+        {
           "path": "src/lib/billing/business-write.ts",
           "line": 119,
           "clientModule": false
@@ -653,7 +693,7 @@
         },
         {
           "path": "src/lib/billing/tenant-activation.ts",
-          "line": 267,
+          "line": 389,
           "clientModule": false
         },
         {
@@ -683,12 +723,12 @@
         },
         {
           "path": "src/lib/supabase/server.ts",
-          "line": 374,
+          "line": 339,
           "clientModule": false
         },
         {
           "path": "src/lib/supabase/server.ts",
-          "line": 408,
+          "line": 373,
           "clientModule": false
         }
       ]
@@ -840,13 +880,23 @@
           "clientModule": false
         },
         {
+          "path": "src/lib/line/chat-admin-service.ts",
+          "line": 315,
+          "clientModule": false
+        },
+        {
           "path": "src/lib/notifications/email/reservation-enqueue.ts",
           "line": 310,
           "clientModule": false
         },
         {
           "path": "src/lib/notifications/reservation-notifications.ts",
-          "line": 501,
+          "line": 495,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/reservation-notifications.ts",
+          "line": 605,
           "clientModule": false
         },
         {
@@ -856,17 +906,17 @@
         },
         {
           "path": "src/lib/outreach.ts",
-          "line": 326,
+          "line": 370,
           "clientModule": false
         },
         {
           "path": "src/lib/outreach.ts",
-          "line": 422,
+          "line": 477,
           "clientModule": false
         },
         {
           "path": "src/lib/outreach.ts",
-          "line": 570,
+          "line": 636,
           "clientModule": false
         },
         {
@@ -901,47 +951,52 @@
         },
         {
           "path": "src/lib/services/patient-staff-preference-service.ts",
-          "line": 37,
+          "line": 38,
           "clientModule": false
         },
         {
           "path": "src/lib/services/public-my-page-service.ts",
-          "line": 222,
+          "line": 230,
           "clientModule": false
         },
         {
           "path": "src/lib/services/public-my-page-service.ts",
-          "line": 314,
+          "line": 326,
           "clientModule": false
         },
         {
           "path": "src/lib/services/public-my-page-service.ts",
-          "line": 334,
+          "line": 348,
           "clientModule": false
         },
         {
           "path": "src/lib/services/public-reservation-service.ts",
-          "line": 519,
+          "line": 526,
           "clientModule": false
         },
         {
           "path": "src/lib/services/public-reservation-service.ts",
-          "line": 536,
+          "line": 544,
           "clientModule": false
         },
         {
           "path": "src/lib/services/public-reservation-service.ts",
-          "line": 565,
+          "line": 581,
           "clientModule": false
         },
         {
           "path": "src/lib/services/public-reservation-service.ts",
-          "line": 654,
+          "line": 671,
           "clientModule": false
         },
         {
           "path": "src/lib/services/staff-availability-service.ts",
-          "line": 157,
+          "line": 169,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/staff-availability-service.ts",
+          "line": 333,
           "clientModule": false
         }
       ]
@@ -1317,32 +1372,17 @@
       "calls": [
         {
           "path": "src/lib/notifications/line-outbox.ts",
-          "line": 62,
+          "line": 68,
           "clientModule": false
         },
         {
           "path": "src/lib/notifications/line-processor.ts",
-          "line": 251,
-          "clientModule": false
-        },
-        {
-          "path": "src/lib/notifications/line-processor.ts",
-          "line": 275,
-          "clientModule": false
-        },
-        {
-          "path": "src/lib/notifications/line-processor.ts",
-          "line": 306,
+          "line": 259,
           "clientModule": false
         },
         {
           "path": "src/lib/outreach.ts",
-          "line": 298,
-          "clientModule": false
-        },
-        {
-          "path": "src/lib/outreach.ts",
-          "line": 771,
+          "line": 311,
           "clientModule": false
         }
       ]
@@ -1563,7 +1603,7 @@
         },
         {
           "path": "src/lib/notifications/reservation-notifications.ts",
-          "line": 477,
+          "line": 581,
           "clientModule": false
         },
         {
@@ -1578,7 +1618,7 @@
         },
         {
           "path": "src/lib/services/public-reservation-service.ts",
-          "line": 291,
+          "line": 296,
           "clientModule": false
         }
       ]
@@ -1702,27 +1742,22 @@
       "calls": [
         {
           "path": "src/lib/outreach.ts",
-          "line": 459,
+          "line": 520,
           "clientModule": false
         },
         {
           "path": "src/lib/outreach.ts",
-          "line": 652,
+          "line": 778,
           "clientModule": false
         },
         {
           "path": "src/lib/outreach.ts",
-          "line": 684,
+          "line": 883,
           "clientModule": false
         },
         {
           "path": "src/lib/outreach.ts",
-          "line": 856,
-          "clientModule": false
-        },
-        {
-          "path": "src/lib/outreach.ts",
-          "line": 939,
+          "line": 966,
           "clientModule": false
         }
       ]
@@ -1732,43 +1767,33 @@
       "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
       "calls": [
         {
-          "path": "src/lib/notifications/line-processor.ts",
-          "line": 446,
+          "path": "src/lib/outreach.ts",
+          "line": 546,
           "clientModule": false
         },
         {
           "path": "src/lib/outreach.ts",
-          "line": 485,
+          "line": 607,
           "clientModule": false
         },
         {
           "path": "src/lib/outreach.ts",
-          "line": 545,
+          "line": 699,
           "clientModule": false
         },
         {
           "path": "src/lib/outreach.ts",
-          "line": 622,
+          "line": 904,
           "clientModule": false
         },
         {
           "path": "src/lib/outreach.ts",
-          "line": 783,
+          "line": 978,
           "clientModule": false
         },
         {
           "path": "src/lib/outreach.ts",
-          "line": 877,
-          "clientModule": false
-        },
-        {
-          "path": "src/lib/outreach.ts",
-          "line": 951,
-          "clientModule": false
-        },
-        {
-          "path": "src/lib/outreach.ts",
-          "line": 985,
+          "line": 1012,
           "clientModule": false
         }
       ]
@@ -1840,17 +1865,17 @@
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 402,
+          "line": 420,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 546,
+          "line": 564,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 715,
+          "line": 733,
           "clientModule": false
         },
         {
@@ -1965,7 +1990,7 @@
         },
         {
           "path": "src/lib/supabase/auth-context.ts",
-          "line": 106,
+          "line": 153,
           "clientModule": false
         }
       ]
@@ -2002,7 +2027,7 @@
       "calls": [
         {
           "path": "src/lib/notifications/line-processor.ts",
-          "line": 473,
+          "line": 482,
           "clientModule": false
         },
         {
@@ -2098,7 +2123,7 @@
         },
         {
           "path": "src/lib/outreach.ts",
-          "line": 901,
+          "line": 928,
           "clientModule": false
         },
         {
@@ -2113,12 +2138,12 @@
         },
         {
           "path": "src/lib/services/patient-staff-preference-service.ts",
-          "line": 59,
+          "line": 66,
           "clientModule": false
         },
         {
           "path": "src/lib/services/patient-staff-preference-service.ts",
-          "line": 142,
+          "line": 151,
           "clientModule": false
         },
         {
@@ -2128,27 +2153,27 @@
         },
         {
           "path": "src/lib/services/public-my-page-service.ts",
-          "line": 281,
+          "line": 292,
           "clientModule": false
         },
         {
           "path": "src/lib/services/public-my-page-service.ts",
-          "line": 353,
+          "line": 368,
           "clientModule": false
         },
         {
           "path": "src/lib/services/public-my-page-service.ts",
-          "line": 373,
+          "line": 388,
           "clientModule": false
         },
         {
           "path": "src/lib/services/public-reservation-service.ts",
-          "line": 600,
+          "line": 617,
           "clientModule": false
         },
         {
           "path": "src/lib/services/public-reservation-service.ts",
-          "line": 629,
+          "line": 646,
           "clientModule": false
         },
         {
@@ -2223,7 +2248,7 @@
         },
         {
           "path": "src/lib/services/staff-availability-service.ts",
-          "line": 164,
+          "line": 179,
           "clientModule": false
         }
       ]
@@ -2239,17 +2264,17 @@
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 384,
+          "line": 402,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 560,
+          "line": 578,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 725,
+          "line": 743,
           "clientModule": false
         },
         {
@@ -2389,7 +2414,7 @@
         },
         {
           "path": "src/lib/notifications/reservation-notifications.ts",
-          "line": 453,
+          "line": 557,
           "clientModule": false
         },
         {
@@ -2399,12 +2424,12 @@
         },
         {
           "path": "src/lib/services/patient-staff-preference-service.ts",
-          "line": 76,
+          "line": 83,
           "clientModule": false
         },
         {
           "path": "src/lib/services/patient-staff-preference-service.ts",
-          "line": 128,
+          "line": 137,
           "clientModule": false
         },
         {
@@ -2414,12 +2439,12 @@
         },
         {
           "path": "src/lib/services/public-reservation-service.ts",
-          "line": 313,
+          "line": 318,
           "clientModule": false
         },
         {
           "path": "src/lib/services/public-reservation-service.ts",
-          "line": 338,
+          "line": 343,
           "clientModule": false
         },
         {
@@ -2429,7 +2454,7 @@
         },
         {
           "path": "src/lib/services/staff-availability-service.ts",
-          "line": 191,
+          "line": 209,
           "clientModule": false
         },
         {
@@ -2795,22 +2820,22 @@
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 393,
+          "line": 411,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 553,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/admin/tenants/route.ts",
-          "line": 702,
+          "line": 571,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
           "line": 720,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 738,
           "clientModule": false
         },
         {
@@ -2933,6 +2958,16 @@
           "path": "src/app/api/manager/rosters/candidates/route.ts",
           "line": 198,
           "clientModule": false
+        },
+        {
+          "path": "src/lib/line/chat-admin-service.ts",
+          "line": 253,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/line/chat-admin-service.ts",
+          "line": 268,
+          "clientModule": false
         }
       ]
     },
@@ -3021,6 +3056,16 @@
         {
           "path": "src/app/api/manager/rosters/assign/route.ts",
           "line": 168,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/line/chat-admin-service.ts",
+          "line": 244,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/line/chat-admin-service.ts",
+          "line": 277,
           "clientModule": false
         },
         {
@@ -3138,7 +3183,7 @@
       "calls": [
         {
           "path": "src/app/api/admin/billing/checkout/route.ts",
-          "line": 185,
+          "line": 186,
           "clientModule": false
         },
         {
@@ -3208,7 +3253,7 @@
         },
         {
           "path": "src/lib/billing/tenant-activation.ts",
-          "line": 152,
+          "line": 251,
           "clientModule": false
         }
       ]
@@ -3305,17 +3350,17 @@
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 371,
+          "line": 389,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 573,
+          "line": 591,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 755,
+          "line": 773,
           "clientModule": false
         },
         {
@@ -3425,7 +3470,7 @@
         },
         {
           "path": "src/lib/supabase/auth-context.ts",
-          "line": 81,
+          "line": 128,
           "clientModule": false
         }
       ]
@@ -3573,7 +3618,77 @@
       "calls": [
         {
           "path": "src/lib/billing/tenant-activation.ts",
-          "line": 285,
+          "line": 407,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "assign_line_chat_conversation",
+      "calls": [
+        {
+          "path": "src/lib/line/chat-admin-service.ts",
+          "line": 222,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "bind_line_setup_push_request",
+      "calls": [
+        {
+          "path": "src/lib/line/setup-admin-service.ts",
+          "line": 255,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "claim_line_chat_outbox",
+      "calls": [
+        {
+          "path": "src/lib/line/chat-outbox-processor.ts",
+          "line": 61,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "claim_line_notification_outbox",
+      "calls": [
+        {
+          "path": "src/lib/notifications/line-processor.ts",
+          "line": 281,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "claim_line_setup_verification",
+      "calls": [
+        {
+          "path": "src/lib/line/setup-admin-service.ts",
+          "line": 240,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "close_line_setup_session",
+      "calls": [
+        {
+          "path": "src/lib/line/setup-admin-service.ts",
+          "line": 383,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "complete_line_self_serve_setup",
+      "calls": [
+        {
+          "path": "src/lib/line/setup-admin-service.ts",
+          "line": 358,
           "clientModule": false
         }
       ]
@@ -3603,7 +3718,7 @@
       "calls": [
         {
           "path": "src/lib/services/staff-availability-service.ts",
-          "line": 243,
+          "line": 261,
           "clientModule": false
         }
       ]
@@ -3613,7 +3728,72 @@
       "calls": [
         {
           "path": "src/lib/services/staff-availability-service.ts",
-          "line": 360,
+          "line": 395,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "enqueue_line_chat_message",
+      "calls": [
+        {
+          "path": "src/lib/line/chat-admin-service.ts",
+          "line": 198,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "enqueue_outreach_campaign",
+      "calls": [
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 819,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "expire_line_setup_sessions",
+      "calls": [
+        {
+          "path": "src/app/api/internal/process-line-outbox/route.ts",
+          "line": 23,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/line/setup-admin-service.ts",
+          "line": 201,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "finalize_line_chat_outbox",
+      "calls": [
+        {
+          "path": "src/lib/line/chat-outbox-processor.ts",
+          "line": 264,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "finalize_line_notification_outbox",
+      "calls": [
+        {
+          "path": "src/lib/notifications/line-processor.ts",
+          "line": 339,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "finalize_line_setup_verification",
+      "calls": [
+        {
+          "path": "src/lib/line/setup-admin-service.ts",
+          "line": 274,
           "clientModule": false
         }
       ]
@@ -3623,7 +3803,7 @@
       "calls": [
         {
           "path": "src/lib/services/staff-availability-service.ts",
-          "line": 274,
+          "line": 292,
           "clientModule": false
         }
       ]
@@ -3634,6 +3814,36 @@
         {
           "path": "src/lib/dashboard/read-model.ts",
           "line": 162,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "get_line_public_booking_context",
+      "calls": [
+        {
+          "path": "src/lib/line/public-booking.ts",
+          "line": 47,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "list_authorized_line_chat_messages",
+      "calls": [
+        {
+          "path": "src/lib/line/chat-admin-service.ts",
+          "line": 168,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "list_line_chat_delivery_clinics",
+      "calls": [
+        {
+          "path": "src/lib/line/chat-outbox-processor.ts",
+          "line": 169,
           "clientModule": false
         }
       ]
@@ -3689,6 +3899,46 @@
       ]
     },
     {
+      "name": "process_line_webhook_delivery",
+      "calls": [
+        {
+          "path": "src/lib/line/webhook-service.ts",
+          "line": 102,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "release_line_setup_verification_claim",
+      "calls": [
+        {
+          "path": "src/lib/line/setup-admin-service.ts",
+          "line": 293,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "renew_line_chat_outbox_claim",
+      "calls": [
+        {
+          "path": "src/lib/line/chat-outbox-processor.ts",
+          "line": 157,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "renew_line_notification_claim",
+      "calls": [
+        {
+          "path": "src/lib/notifications/line-processor.ts",
+          "line": 309,
+          "clientModule": false
+        }
+      ]
+    },
+    {
       "name": "replace_manager_clinic_assignments",
       "calls": [
         {
@@ -3697,9 +3947,69 @@
           "clientModule": false
         }
       ]
+    },
+    {
+      "name": "run_line_chat_cleanup_if_due",
+      "calls": [
+        {
+          "path": "src/lib/line/chat-cleanup-service.ts",
+          "line": 14,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "update_line_chat_settings",
+      "calls": [
+        {
+          "path": "src/app/api/admin/line-chat/settings/route.ts",
+          "line": 114,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "update_line_feature_settings",
+      "calls": [
+        {
+          "path": "src/lib/line/setup-admin-service.ts",
+          "line": 400,
+          "clientModule": false
+        }
+      ]
     }
   ],
   "nonCatalogFromReferences": [
+    {
+      "name": "clinic_line_chat_settings",
+      "calls": [
+        {
+          "path": "src/app/api/admin/line-chat/settings/route.ts",
+          "line": 55,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "clinic_line_setup_sessions",
+      "calls": [
+        {
+          "path": "src/lib/line/setup-admin-service.ts",
+          "line": 119,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/line/setup-admin-service.ts",
+          "line": 218,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/line/setup-admin-service.ts",
+          "line": 318,
+          "clientModule": false
+        }
+      ]
+    },
     {
       "name": "daily_report_revenue_breakdown_summary",
       "calls": [
@@ -3791,6 +4101,36 @@
       ]
     },
     {
+      "name": "line_chat_outbox",
+      "calls": [
+        {
+          "path": "src/lib/line/chat-outbox-processor.ts",
+          "line": 245,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "line_contacts",
+      "calls": [
+        {
+          "path": "src/lib/line/chat-admin-service.ts",
+          "line": 300,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "line_conversations",
+      "calls": [
+        {
+          "path": "src/lib/line/chat-admin-service.ts",
+          "line": 98,
+          "clientModule": false
+        }
+      ]
+    },
+    {
       "name": "patient_identity_aliases",
       "calls": [
         {
@@ -3825,17 +4165,17 @@
       "calls": [
         {
           "path": "src/lib/services/patient-staff-preference-service.ts",
-          "line": 88,
+          "line": 95,
           "clientModule": false
         },
         {
           "path": "src/lib/services/patient-staff-preference-service.ts",
-          "line": 155,
+          "line": 164,
           "clientModule": false
         },
         {
           "path": "src/lib/services/staff-availability-service.ts",
-          "line": 142,
+          "line": 154,
           "clientModule": false
         }
       ]
@@ -3925,7 +4265,7 @@
       "calls": [
         {
           "path": "src/lib/services/staff-availability-service.ts",
-          "line": 310,
+          "line": 345,
           "clientModule": false
         }
       ]
@@ -3935,7 +4275,7 @@
       "calls": [
         {
           "path": "src/lib/services/staff-availability-service.ts",
-          "line": 297,
+          "line": 320,
           "clientModule": false
         }
       ]

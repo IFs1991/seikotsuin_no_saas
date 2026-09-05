@@ -10,7 +10,7 @@ import {
   isRole,
   normalizeRole,
 } from '@/lib/constants/roles';
-import { AppError, ERROR_CODES, logError } from '@/lib/error-handler';
+import { logError } from '@/lib/error-handler';
 import {
   buildClinicScopeOrFilter,
   mergeScopedClinicHierarchyIds,
@@ -23,9 +23,17 @@ import {
   assertActiveAccount,
   fetchProfileStatus,
   fetchUserPermissionsRecord,
+  throwAuthorityUnavailable,
   type UserAuthAccessContext,
 } from './auth-context';
 import { logPerf, nowMs } from '@/lib/performance/server-timing';
+import type { RequestTimingMetric } from '@/lib/performance/request-timing';
+import {
+  getVerifiedSubjectAuthorityInput,
+  getOrCreateVerifiedSubjectAccessContext,
+  measureVerifiedSubject,
+  type VerifiedSubject,
+} from './request-auth-context';
 
 async function createSupabaseClient() {
   const cookieStore = await cookies();
@@ -179,49 +187,6 @@ export function resolveScopedClinicIds(
   return null;
 }
 
-function normalizeAuthorityError(error: unknown): {
-  error: Error;
-  metadata: Record<string, unknown>;
-} {
-  if (error instanceof Error) {
-    return { error, metadata: {} };
-  }
-
-  if (isRecord(error)) {
-    const message =
-      typeof error.message === 'string' && error.message.trim().length > 0
-        ? error.message
-        : 'Authority lookup failed';
-    const metadata: Record<string, unknown> = {};
-
-    if (typeof error.code === 'string') {
-      metadata.authorityErrorCode = error.code;
-    }
-    if (typeof error.details === 'string') {
-      metadata.authorityErrorDetails = error.details;
-    }
-    if (typeof error.hint === 'string') {
-      metadata.authorityErrorHint = error.hint;
-    }
-
-    return { error: new Error(message), metadata };
-  }
-
-  return { error: new Error(String(error)), metadata: {} };
-}
-
-function throwAuthorityUnavailable(
-  error: unknown,
-  context: Record<string, unknown>
-): never {
-  const normalizedError = normalizeAuthorityError(error);
-  logError(normalizedError.error, {
-    ...context,
-    ...normalizedError.metadata,
-  });
-  throw new AppError(ERROR_CODES.DATABASE_CONNECTION_ERROR, undefined, 503);
-}
-
 type JwtClinicScopeClaim =
   | { status: 'absent' }
   | { status: 'valid'; clinicIds: string[] }
@@ -273,14 +238,14 @@ function decodeJwtPayload(accessToken: string): Record<string, unknown> | null {
 }
 
 function readJwtClinicScopeClaim(
-  session: Session | null,
+  accessToken: string | null,
   authenticatedUserId: string
 ): JwtClinicScopeClaim {
-  if (!session?.access_token) {
+  if (!accessToken) {
     return { status: 'malformed' };
   }
 
-  const payload = decodeJwtPayload(session.access_token);
+  const payload = decodeJwtPayload(accessToken);
   if (!payload || payload.sub !== authenticatedUserId) {
     return { status: 'malformed' };
   }
@@ -422,20 +387,34 @@ async function resolveDatabaseClinicScopeIds(
   return mergeScopedClinicHierarchyIds([rootClinicId], data ?? []);
 }
 
+async function measureAuthorityOperation<T>(
+  subject: VerifiedSubject | undefined,
+  metric: RequestTimingMetric,
+  operation: () => Promise<T>
+): Promise<T> {
+  if (subject) {
+    return await measureVerifiedSubject(subject, metric, operation);
+  }
+
+  const startedAt = nowMs();
+  try {
+    return await operation();
+  } finally {
+    logPerf(metric, startedAt);
+  }
+}
+
 async function getDatabasePermissionsUncached(
-  userId: string
+  userId: string,
+  subject?: VerifiedSubject
 ): Promise<UserPermissions | null> {
-  const tTotal = nowMs();
   // Service role is limited to the already-validated subject's authority rows.
   const adminClient = createAdminClient();
-  const tPermissions = nowMs();
-  const permissionLookup = await fetchUserPermissionsRecord(
-    adminClient,
-    userId
+  const permissionLookup = await measureAuthorityOperation(
+    subject,
+    'authority.permissions',
+    () => fetchUserPermissionsRecord(adminClient, userId)
   );
-  logPerf('supabase.permissions.fetchUserPermissionsRecord', tPermissions, {
-    userId,
-  });
 
   if (permissionLookup.status === 'error') {
     throwAuthorityUnavailable(permissionLookup.error, {
@@ -448,28 +427,17 @@ async function getDatabasePermissionsUncached(
     return null;
   }
 
-  const tHierarchy = nowMs();
-  const databaseClinicScopeIds = await resolveDatabaseClinicScopeIds(
-    adminClient,
-    userId,
-    permissionLookup.value
-  );
-  logPerf(
-    'supabase.permissions.resolveHierarchicalClinicScopeIds',
-    tHierarchy,
-    {
-      userId,
-      count: databaseClinicScopeIds.length,
-    }
+  const databaseClinicScopeIds = await measureAuthorityOperation(
+    subject,
+    'authority.clinic_scope',
+    () =>
+      resolveDatabaseClinicScopeIds(adminClient, userId, permissionLookup.value)
   );
 
-  const result = {
+  return {
     ...permissionLookup.value,
     clinic_scope_ids: databaseClinicScopeIds,
   };
-  logPerf('supabase.permissions.total', tTotal, { userId });
-
-  return result;
 }
 
 export async function getUserPermissions(
@@ -485,7 +453,7 @@ export async function getUserPermissions(
   // accepted as proof of identity because it is caller-provided state.
   const tCurrentUser = nowMs();
   const currentUser = await getCurrentUser(supabase);
-  logPerf('supabase.permissions.getCurrentUser', tCurrentUser, { userId });
+  logPerf('auth.user', tCurrentUser);
 
   if (!currentUser || currentUser.id !== userId) {
     return null;
@@ -521,7 +489,7 @@ export async function getUserPermissions(
   } else {
     const tSession = nowMs();
     const sessionResult = await supabase.auth.getSession();
-    logPerf('supabase.permissions.getSession', tSession, { userId });
+    logPerf('auth.session', tSession);
 
     if (sessionResult.error) {
       throwAuthorityUnavailable(sessionResult.error, {
@@ -533,12 +501,43 @@ export async function getUserPermissions(
     session = sessionResult.data.session;
   }
 
-  const clinicScopeClaim = readJwtClinicScopeClaim(session, currentUser.id);
+  const clinicScopeClaim = readJwtClinicScopeClaim(
+    session?.access_token ?? null,
+    currentUser.id
+  );
 
   const clinic_scope_ids = applyJwtClinicScopeIntersection(
     databasePermissions.clinic_scope_ids ?? [],
     clinicScopeClaim,
     userId
+  );
+
+  return {
+    ...databasePermissions,
+    clinic_scope_ids,
+  };
+}
+
+async function getUserPermissionsForVerifiedSubject(
+  subject: VerifiedSubject
+): Promise<UserPermissions | null> {
+  const authorityInput = getVerifiedSubjectAuthorityInput(subject);
+  const databasePermissions = await getDatabasePermissionsUncached(
+    authorityInput.userId,
+    subject
+  );
+  if (!databasePermissions) {
+    return null;
+  }
+
+  const clinicScopeClaim = readJwtClinicScopeClaim(
+    authorityInput.accessToken,
+    authorityInput.userId
+  );
+  const clinic_scope_ids = applyJwtClinicScopeIntersection(
+    databasePermissions.clinic_scope_ids ?? [],
+    clinicScopeClaim,
+    authorityInput.userId
   );
 
   return {
@@ -582,6 +581,37 @@ export async function getUserAccessContext(
     profileLookup.status === 'found' ? profileLookup.value : null;
 
   return buildUserAuthAccessContext(permissions, profileStatus);
+}
+
+export async function getUserAccessContextForVerifiedSubject(
+  subject: VerifiedSubject,
+  client: SupabaseServerClient
+): Promise<UserAccessContext> {
+  const authorityInput = getVerifiedSubjectAuthorityInput(subject);
+  return await getOrCreateVerifiedSubjectAccessContext(
+    subject,
+    client,
+    async () => {
+      const [permissions, profileLookup] = await Promise.all([
+        getUserPermissionsForVerifiedSubject(subject),
+        measureVerifiedSubject(subject, 'authority.profile', () =>
+          fetchProfileStatus(client, authorityInput.userId)
+        ),
+      ]);
+
+      if (profileLookup.status === 'error') {
+        throwAuthorityUnavailable(profileLookup.error, {
+          operation: 'fetchProfileStatus',
+          userId: authorityInput.userId,
+        });
+      }
+
+      const profileStatus =
+        profileLookup.status === 'found' ? profileLookup.value : null;
+
+      return buildUserAuthAccessContext(permissions, profileStatus);
+    }
+  );
 }
 
 export async function requireAuth(client?: SupabaseServerClient) {

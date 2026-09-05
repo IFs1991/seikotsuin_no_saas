@@ -1,0 +1,1 @@
+{"kind": "experiment_preflight", "database": "postgres", "contract_pass": true, "migration_head": "20260716160402", "server_version_num": "170006", "blocks_trigger_enabled": true, "candidate_indexes_present": 0, "candidate_scope_helper_present": false}

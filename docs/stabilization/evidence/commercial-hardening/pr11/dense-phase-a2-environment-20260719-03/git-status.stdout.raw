@@ -1,0 +1,10 @@
+## codex/commercial-pr11-dense-phase-a2-investigation...origin/main
+?? docs/stabilization/evidence/commercial-hardening/pr11/dense-phase-a2-environment-20260719-01/
+?? docs/stabilization/evidence/commercial-hardening/pr11/dense-phase-a2-environment-20260719-02/
+?? docs/stabilization/evidence/commercial-hardening/pr11/dense-phase-a2-environment-20260719-03/
+?? docs/stabilization/report-pr11-dense-phase-a2-environment-validity-v0.1-20260719.md
+?? docs/stabilization/spec-commercial-pr11-dense-phase-a2-attribution-v1.0.md
+?? scripts/commercial-hardening/collect-pr11-phase-a2-host-telemetry.ps1
+?? scripts/commercial-hardening/run-pr11-dense-phase-a2-environment.mjs
+?? scripts/commercial-hardening/sql/pr11-phase-a2-environment-preflight.sql
+?? src/__tests__/security/commercial-pr11-dense-phase-a2-environment-contract.test.ts

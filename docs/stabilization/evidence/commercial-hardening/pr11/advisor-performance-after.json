@@ -1,0 +1,36 @@
+{
+  "captured_at": "2026-07-17T10:07:04+09:00",
+  "status": "LOCAL_APPLIED_PERFORMANCE_TIME_GATE_BLOCKED",
+  "target": "local",
+  "migration_head": "20260716160402",
+  "source": "supabase db advisors --local --type performance plus exact RED/catalog contracts",
+  "counts": {
+    "unindexed_foreign_keys": 50,
+    "auth_rls_initplan": 0,
+    "multiple_permissive_policies": 16,
+    "unused_index": "observe_only",
+    "public_policies": 183
+  },
+  "verification": {
+    "commercial_contracts_green": 16,
+    "pr11_pgtap_passed": 49,
+    "full_pgtap_passed": 434,
+    "recovery_guards_passed": 2,
+    "official_paired_execution_passed": 5,
+    "official_paired_execution_failed": 4,
+    "official_paired_wal_passed": 6,
+    "performance_plan_contract_passed": true,
+    "rls_semantic_contract_passed": true,
+    "independent_read_only_audits_passed": 2,
+    "performance_time_gate_passed": false
+  },
+  "notes": [
+    "The exact 50-row unindexed-FK residual and 16-row multiple-policy residual registries are bidirectionally contract-tested.",
+    "The operator-approved official paired local rerun completed 87/87 steps and 12 samples with localOnly=true and productionTouched=false.",
+    "All six write WAL-byte thresholds, the selective-read threshold, four of six write execution-time thresholds, the performance-plan contract, and the RLS-semantic contract passed.",
+    "The blocks sparse/dense write medians and both authenticated RLS execution-time medians exceeded their original frozen limits; paired BEFORE medians were diagnostic only.",
+    "Unused-index observations remain retention-only and are not removal evidence.",
+    "No hosted database, Auth setting, or production configuration was changed."
+  ],
+  "production_claim": false
+}

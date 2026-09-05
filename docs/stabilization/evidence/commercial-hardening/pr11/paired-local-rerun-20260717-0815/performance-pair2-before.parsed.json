@@ -1,0 +1,851 @@
+[
+  {
+    "probe": "created_by_read_100_of_20000",
+    "executionMs": 3.755,
+    "walRecords": 0,
+    "walBytes": 0,
+    "sharedDirtiedBlocks": 0,
+    "rootNode": "Aggregate",
+    "rawPlanMd5": "fc78e1b5a11cc1828e53734312bb8b8f",
+    "rawPlan": [
+      {
+        "Plan": {
+          "Plans": [
+            {
+              "Alias": "blocks",
+              "Filter": "(created_by = 'fb110000-0000-4000-8000-000000000010'::uuid)",
+              "WAL FPI": 0,
+              "Node Type": "Seq Scan",
+              "Plan Rows": 100,
+              "WAL Bytes": 0,
+              "Plan Width": 0,
+              "Total Cost": 596,
+              "Actual Rows": 100,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Async Capable": false,
+              "Relation Name": "blocks",
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 346,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "Outer",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Rows Removed by Filter": 19900
+            }
+          ],
+          "WAL FPI": 0,
+          "Strategy": "Plain",
+          "Node Type": "Aggregate",
+          "Plan Rows": 1,
+          "WAL Bytes": 0,
+          "Plan Width": 8,
+          "Total Cost": 596.26,
+          "Actual Rows": 1,
+          "WAL Records": 0,
+          "Actual Loops": 1,
+          "Partial Mode": "Simple",
+          "Startup Cost": 596.25,
+          "Async Capable": false,
+          "Parallel Aware": false,
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 346,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0
+        },
+        "Planning": {
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 74,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0
+        },
+        "Triggers": [],
+        "Planning Time": 0.295,
+        "Execution Time": 3.755
+      }
+    ]
+  },
+  {
+    "probe": "dense_insert_10000",
+    "executionMs": 651.16,
+    "walRecords": 100699,
+    "walBytes": 8760864,
+    "sharedDirtiedBlocks": 436,
+    "rootNode": "ModifyTable",
+    "rawPlanMd5": "8f1db0059f16ed3a2d4492d5f4155168",
+    "rawPlan": [
+      {
+        "Plan": {
+          "Alias": "blocks",
+          "Plans": [
+            {
+              "Alias": "series",
+              "WAL FPI": 0,
+              "Node Type": "Function Scan",
+              "Plan Rows": 10000,
+              "WAL Bytes": 0,
+              "Plan Width": 796,
+              "Total Cost": 350,
+              "Actual Rows": 10000,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Async Capable": false,
+              "Function Name": "generate_series",
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 0,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "Outer",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            }
+          ],
+          "WAL FPI": 0,
+          "Node Type": "ModifyTable",
+          "Operation": "Insert",
+          "Plan Rows": 0,
+          "WAL Bytes": 8760864,
+          "Plan Width": 0,
+          "Total Cost": 350,
+          "Actual Rows": 0,
+          "WAL Records": 100699,
+          "Actual Loops": 1,
+          "Startup Cost": 0,
+          "Async Capable": false,
+          "Relation Name": "blocks",
+          "Parallel Aware": false,
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 200666,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 436,
+          "Shared Written Blocks": 436
+        },
+        "Planning": {
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0
+        },
+        "Triggers": [
+          {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "RI_ConstraintTrigger_c_18934",
+            "Constraint Name": "blocks_clinic_id_fkey"
+          },
+          {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "RI_ConstraintTrigger_c_18939",
+            "Constraint Name": "blocks_created_by_fkey"
+          },
+          {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "RI_ConstraintTrigger_c_18944",
+            "Constraint Name": "blocks_deleted_by_fkey"
+          },
+          {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "RI_ConstraintTrigger_c_21913",
+            "Constraint Name": "blocks_resource_id_fkey"
+          },
+          {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "blocks_clinic_ref_check"
+          }
+        ],
+        "Planning Time": 0.174,
+        "Execution Time": 651.16
+      }
+    ]
+  },
+  {
+    "probe": "existing_recipient_campaign_path",
+    "executionMs": null,
+    "walRecords": null,
+    "walBytes": null,
+    "sharedDirtiedBlocks": null,
+    "rootNode": "Bitmap Heap Scan",
+    "rawPlanMd5": "dc9a946edcdd2fc2a54cad688a413ce4",
+    "rawPlan": [
+      {
+        "Plan": {
+          "Alias": "patient_outreach_recipients",
+          "Plans": [
+            {
+              "Node Type": "Bitmap Index Scan",
+              "Index Cond": "(campaign_id = 'fb110000-0000-4000-8000-000000000010'::uuid)",
+              "Index Name": "patient_outreach_recipients_campaign_idx",
+              "Async Capable": false,
+              "Parallel Aware": false,
+              "Parent Relationship": "Outer"
+            }
+          ],
+          "Node Type": "Bitmap Heap Scan",
+          "Recheck Cond": "(campaign_id = 'fb110000-0000-4000-8000-000000000010'::uuid)",
+          "Async Capable": false,
+          "Relation Name": "patient_outreach_recipients",
+          "Parallel Aware": false
+        }
+      }
+    ]
+  },
+  {
+    "probe": "existing_recipient_customer_path",
+    "executionMs": null,
+    "walRecords": null,
+    "walBytes": null,
+    "sharedDirtiedBlocks": null,
+    "rootNode": "Index Only Scan",
+    "rawPlanMd5": "fe9da73afceea5f28564c4c096a7ee5f",
+    "rawPlan": [
+      {
+        "Plan": {
+          "Alias": "patient_outreach_recipients",
+          "Node Type": "Index Only Scan",
+          "Index Cond": "((clinic_id = 'fb110000-0000-4000-8000-000000000001'::uuid) AND (customer_id = 'fb110000-0000-4000-8000-000000000010'::uuid))",
+          "Index Name": "patient_outreach_recipients_customer_idx",
+          "Async Capable": false,
+          "Relation Name": "patient_outreach_recipients",
+          "Parallel Aware": false,
+          "Scan Direction": "Forward"
+        }
+      }
+    ]
+  },
+  {
+    "probe": "existing_reservation_campaign_path",
+    "executionMs": null,
+    "walRecords": null,
+    "walBytes": null,
+    "sharedDirtiedBlocks": null,
+    "rootNode": "Index Scan",
+    "rawPlanMd5": "32621f00ce2c21eb4012455733e956a3",
+    "rawPlan": [
+      {
+        "Plan": {
+          "Alias": "reservations",
+          "Filter": "(clinic_id = 'fb110000-0000-4000-8000-000000000001'::uuid)",
+          "Node Type": "Index Scan",
+          "Index Cond": "(campaign_id = 'fb110000-0000-4000-8000-000000000010'::uuid)",
+          "Index Name": "reservations_campaign_id_idx",
+          "Async Capable": false,
+          "Relation Name": "reservations",
+          "Parallel Aware": false,
+          "Scan Direction": "Forward"
+        }
+      }
+    ]
+  },
+  {
+    "probe": "recipient_dense_composite_insert_1000",
+    "executionMs": 76.478,
+    "walRecords": 5040,
+    "walBytes": 607142,
+    "sharedDirtiedBlocks": 45,
+    "rootNode": "ModifyTable",
+    "rawPlanMd5": "544e6b3e625c2fd9e4aebe96ed691303",
+    "rawPlan": [
+      {
+        "Plan": {
+          "Alias": "patient_outreach_recipients",
+          "Plans": [
+            {
+              "Alias": "series",
+              "WAL FPI": 0,
+              "Node Type": "Function Scan",
+              "Plan Rows": 1000,
+              "WAL Bytes": 0,
+              "Plan Width": 160,
+              "Total Cost": 52.5,
+              "Actual Rows": 1000,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Async Capable": false,
+              "Function Name": "generate_series",
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 0,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "Outer",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            }
+          ],
+          "WAL FPI": 0,
+          "Node Type": "ModifyTable",
+          "Operation": "Insert",
+          "Plan Rows": 0,
+          "WAL Bytes": 607142,
+          "Plan Width": 0,
+          "Total Cost": 52.5,
+          "Actual Rows": 0,
+          "WAL Records": 5040,
+          "Actual Loops": 1,
+          "Startup Cost": 0,
+          "Async Capable": false,
+          "Relation Name": "patient_outreach_recipients",
+          "Parallel Aware": false,
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 8812,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 45,
+          "Shared Written Blocks": 45
+        },
+        "Planning": {
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0
+        },
+        "Triggers": [
+          {
+            "Calls": 1000,
+            "Relation": "patient_outreach_recipients",
+            "Trigger Name": "RI_ConstraintTrigger_c_21738",
+            "Constraint Name": "patient_outreach_recipients_campaign_clinic_fkey"
+          },
+          {
+            "Calls": 1000,
+            "Relation": "patient_outreach_recipients",
+            "Trigger Name": "RI_ConstraintTrigger_c_21796",
+            "Constraint Name": "patient_outreach_recipients_customer_clinic_fkey"
+          },
+          {
+            "Calls": 1000,
+            "Relation": "patient_outreach_recipients",
+            "Trigger Name": "RI_ConstraintTrigger_c_21801",
+            "Constraint Name": "patient_outreach_recipients_booked_reservation_clinic_fkey"
+          }
+        ],
+        "Planning Time": 0.048,
+        "Execution Time": 76.478
+      }
+    ]
+  },
+  {
+    "probe": "recipient_sparse_composite_insert_1000",
+    "executionMs": 33.887,
+    "walRecords": 5031,
+    "walBytes": 572354,
+    "sharedDirtiedBlocks": 50,
+    "rootNode": "ModifyTable",
+    "rawPlanMd5": "26951cd4984f1c00f78717cf369996f3",
+    "rawPlan": [
+      {
+        "Plan": {
+          "Alias": "patient_outreach_recipients",
+          "Plans": [
+            {
+              "Alias": "series",
+              "WAL FPI": 0,
+              "Node Type": "Function Scan",
+              "Plan Rows": 1000,
+              "WAL Bytes": 0,
+              "Plan Width": 160,
+              "Total Cost": 37.5,
+              "Actual Rows": 1000,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Async Capable": false,
+              "Function Name": "generate_series",
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 0,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "Outer",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            }
+          ],
+          "WAL FPI": 0,
+          "Node Type": "ModifyTable",
+          "Operation": "Insert",
+          "Plan Rows": 0,
+          "WAL Bytes": 572354,
+          "Plan Width": 0,
+          "Total Cost": 37.5,
+          "Actual Rows": 0,
+          "WAL Records": 5031,
+          "Actual Loops": 1,
+          "Startup Cost": 0,
+          "Async Capable": false,
+          "Relation Name": "patient_outreach_recipients",
+          "Parallel Aware": false,
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 7513,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 50,
+          "Shared Written Blocks": 46
+        },
+        "Planning": {
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0
+        },
+        "Triggers": [
+          {
+            "Calls": 1000,
+            "Relation": "patient_outreach_recipients",
+            "Trigger Name": "RI_ConstraintTrigger_c_21738",
+            "Constraint Name": "patient_outreach_recipients_campaign_clinic_fkey"
+          },
+          {
+            "Calls": 1000,
+            "Relation": "patient_outreach_recipients",
+            "Trigger Name": "RI_ConstraintTrigger_c_21796",
+            "Constraint Name": "patient_outreach_recipients_customer_clinic_fkey"
+          },
+          {
+            "Calls": 1000,
+            "Relation": "patient_outreach_recipients",
+            "Trigger Name": "RI_ConstraintTrigger_c_21801",
+            "Constraint Name": "patient_outreach_recipients_booked_reservation_clinic_fkey"
+          }
+        ],
+        "Planning Time": 0.075,
+        "Execution Time": 33.887
+      }
+    ]
+  },
+  {
+    "probe": "shift_full_only_insert_2000",
+    "executionMs": 147.568,
+    "walRecords": 12129,
+    "walBytes": 1406880,
+    "sharedDirtiedBlocks": 90,
+    "rootNode": "ModifyTable",
+    "rawPlanMd5": "ab1bad66209d2f603c0a7fc253cf9d15",
+    "rawPlan": [
+      {
+        "Plan": {
+          "Alias": "shift_requests",
+          "Plans": [
+            {
+              "Alias": "series",
+              "WAL FPI": 0,
+              "Node Type": "Function Scan",
+              "Plan Rows": 2000,
+              "WAL Bytes": 0,
+              "Plan Width": 316,
+              "Total Cost": 65,
+              "Actual Rows": 2000,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Async Capable": false,
+              "Function Name": "generate_series",
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 0,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "Outer",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            }
+          ],
+          "WAL FPI": 0,
+          "Node Type": "ModifyTable",
+          "Operation": "Insert",
+          "Plan Rows": 0,
+          "WAL Bytes": 1406880,
+          "Plan Width": 0,
+          "Total Cost": 65,
+          "Actual Rows": 0,
+          "WAL Records": 12129,
+          "Actual Loops": 1,
+          "Startup Cost": 0,
+          "Async Capable": false,
+          "Relation Name": "shift_requests",
+          "Parallel Aware": false,
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 22154,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 90,
+          "Shared Written Blocks": 85
+        },
+        "Planning": {
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 3,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0
+        },
+        "Triggers": [
+          {
+            "Calls": 2000,
+            "Relation": "shift_requests",
+            "Trigger Name": "RI_ConstraintTrigger_c_20519",
+            "Constraint Name": "shift_requests_clinic_id_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "shift_requests",
+            "Trigger Name": "RI_ConstraintTrigger_c_20524",
+            "Constraint Name": "shift_requests_period_id_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "shift_requests",
+            "Trigger Name": "RI_ConstraintTrigger_c_20529",
+            "Constraint Name": "shift_requests_staff_id_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "shift_requests",
+            "Trigger Name": "RI_ConstraintTrigger_c_20534",
+            "Constraint Name": "shift_requests_submitted_by_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "shift_requests",
+            "Trigger Name": "RI_ConstraintTrigger_c_20539",
+            "Constraint Name": "shift_requests_reviewed_by_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "shift_requests",
+            "Trigger Name": "RI_ConstraintTrigger_c_20544",
+            "Constraint Name": "shift_requests_converted_shift_id_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "shift_requests",
+            "Trigger Name": "validate_shift_requests_clinic_refs_trigger"
+          }
+        ],
+        "Planning Time": 0.082,
+        "Execution Time": 147.568
+      }
+    ]
+  },
+  {
+    "probe": "shift_full_plus_partial_insert_2000",
+    "executionMs": 136.39,
+    "walRecords": 12173,
+    "walBytes": 1449148,
+    "sharedDirtiedBlocks": 82,
+    "rootNode": "ModifyTable",
+    "rawPlanMd5": "9a14dc13c716140078861ef42138351a",
+    "rawPlan": [
+      {
+        "Plan": {
+          "Alias": "shift_requests",
+          "Plans": [
+            {
+              "Alias": "series",
+              "WAL FPI": 0,
+              "Node Type": "Function Scan",
+              "Plan Rows": 2000,
+              "WAL Bytes": 0,
+              "Plan Width": 316,
+              "Total Cost": 65,
+              "Actual Rows": 2000,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Async Capable": false,
+              "Function Name": "generate_series",
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 0,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "Outer",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            }
+          ],
+          "WAL FPI": 0,
+          "Node Type": "ModifyTable",
+          "Operation": "Insert",
+          "Plan Rows": 0,
+          "WAL Bytes": 1449148,
+          "Plan Width": 0,
+          "Total Cost": 65,
+          "Actual Rows": 0,
+          "WAL Records": 12173,
+          "Actual Loops": 1,
+          "Startup Cost": 0,
+          "Async Capable": false,
+          "Relation Name": "shift_requests",
+          "Parallel Aware": false,
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 26141,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 82,
+          "Shared Written Blocks": 82
+        },
+        "Planning": {
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0
+        },
+        "Triggers": [
+          {
+            "Calls": 2000,
+            "Relation": "shift_requests",
+            "Trigger Name": "RI_ConstraintTrigger_c_20519",
+            "Constraint Name": "shift_requests_clinic_id_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "shift_requests",
+            "Trigger Name": "RI_ConstraintTrigger_c_20524",
+            "Constraint Name": "shift_requests_period_id_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "shift_requests",
+            "Trigger Name": "RI_ConstraintTrigger_c_20529",
+            "Constraint Name": "shift_requests_staff_id_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "shift_requests",
+            "Trigger Name": "RI_ConstraintTrigger_c_20534",
+            "Constraint Name": "shift_requests_submitted_by_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "shift_requests",
+            "Trigger Name": "RI_ConstraintTrigger_c_20539",
+            "Constraint Name": "shift_requests_reviewed_by_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "shift_requests",
+            "Trigger Name": "RI_ConstraintTrigger_c_20544",
+            "Constraint Name": "shift_requests_converted_shift_id_fkey"
+          },
+          {
+            "Calls": 2000,
+            "Relation": "shift_requests",
+            "Trigger Name": "validate_shift_requests_clinic_refs_trigger"
+          }
+        ],
+        "Planning Time": 0.053,
+        "Execution Time": 136.39
+      }
+    ]
+  },
+  {
+    "probe": "sparse_insert_10000",
+    "executionMs": 586.431,
+    "walRecords": 100699,
+    "walBytes": 8612348,
+    "sharedDirtiedBlocks": 447,
+    "rootNode": "ModifyTable",
+    "rawPlanMd5": "bcebb065e983dfc658dc527194177b41",
+    "rawPlan": [
+      {
+        "Plan": {
+          "Alias": "blocks",
+          "Plans": [
+            {
+              "Alias": "series",
+              "WAL FPI": 0,
+              "Node Type": "Function Scan",
+              "Plan Rows": 10000,
+              "WAL Bytes": 0,
+              "Plan Width": 796,
+              "Total Cost": 325,
+              "Actual Rows": 10000,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Async Capable": false,
+              "Function Name": "generate_series",
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 0,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "Outer",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            }
+          ],
+          "WAL FPI": 0,
+          "Node Type": "ModifyTable",
+          "Operation": "Insert",
+          "Plan Rows": 0,
+          "WAL Bytes": 8612348,
+          "Plan Width": 0,
+          "Total Cost": 325,
+          "Actual Rows": 0,
+          "WAL Records": 100699,
+          "Actual Loops": 1,
+          "Startup Cost": 0,
+          "Async Capable": false,
+          "Relation Name": "blocks",
+          "Parallel Aware": false,
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 194211,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 447,
+          "Shared Written Blocks": 438
+        },
+        "Planning": {
+          "Local Hit Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Local Read Blocks": 0,
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0
+        },
+        "Triggers": [
+          {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "RI_ConstraintTrigger_c_18934",
+            "Constraint Name": "blocks_clinic_id_fkey"
+          },
+          {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "RI_ConstraintTrigger_c_18939",
+            "Constraint Name": "blocks_created_by_fkey"
+          },
+          {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "RI_ConstraintTrigger_c_18944",
+            "Constraint Name": "blocks_deleted_by_fkey"
+          },
+          {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "RI_ConstraintTrigger_c_21913",
+            "Constraint Name": "blocks_resource_id_fkey"
+          },
+          {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "blocks_clinic_ref_check"
+          }
+        ],
+        "Planning Time": 0.071,
+        "Execution Time": 586.431
+      }
+    ]
+  }
+]

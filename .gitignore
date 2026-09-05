@@ -159,3 +159,6 @@ nul
 
 .vercel
 .env*
+
+# PR-11 Phase A2 local-only quarantine (contains unnecessary local identifiers)
+/docs/stabilization/evidence/commercial-hardening/pr11/dense-phase-a2-environment-20260719-01/

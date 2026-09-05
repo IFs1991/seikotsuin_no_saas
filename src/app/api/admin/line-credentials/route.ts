@@ -23,6 +23,7 @@ import {
   evaluateLineBookingGate,
   isLineBookingGlobalKillSwitchEnabled,
 } from '@/lib/line/gate';
+import type { LineFeatureFlagsRow } from '@/lib/line/integration-db';
 import {
   createScopedAdminContext,
   ScopeAccessError,
@@ -51,12 +52,17 @@ const LINE_CREDENTIAL_COLUMNS = [
   'created_at',
   'updated_at',
   'updated_by',
+  'provider_identity_verified_at',
 ].join(', ');
 
 type ClinicLineCredentialsRow =
-  Database['public']['Tables']['clinic_line_credentials']['Row'];
-type ClinicFeatureFlagsInsert =
-  Database['public']['Tables']['clinic_feature_flags']['Insert'];
+  Database['public']['Tables']['clinic_line_credentials']['Row'] & {
+    provider_identity_verified_at: string | null;
+  };
+type LineFeatureSettings = Pick<
+  LineFeatureFlagsRow,
+  'line_booking_enabled' | 'line_notification_enabled'
+>;
 type ScopedAdminContext = ReturnType<typeof createScopedAdminContext>;
 
 const QuerySchema = z.object({
@@ -140,15 +146,19 @@ function buildAuditDetails(params: {
   };
 }
 
-function isLineBookingFlagRow(
-  value: unknown
-): value is { line_booking_enabled: boolean } {
+function isLineFeatureSettings(value: unknown): value is LineFeatureSettings {
   if (!value || typeof value !== 'object') {
     return false;
   }
 
-  const candidate = value as { line_booking_enabled?: unknown };
-  return typeof candidate.line_booking_enabled === 'boolean';
+  const candidate = value as {
+    line_booking_enabled?: unknown;
+    line_notification_enabled?: unknown;
+  };
+  return (
+    typeof candidate.line_booking_enabled === 'boolean' &&
+    typeof candidate.line_notification_enabled === 'boolean'
+  );
 }
 
 async function fetchLineCredentials(
@@ -169,15 +179,15 @@ async function fetchLineCredentials(
   return data ?? null;
 }
 
-async function fetchLineBookingEnabled(
+async function fetchLineFeatureSettings(
   client: ScopedAdminContext['client'],
   clinicId: string
-): Promise<boolean> {
+): Promise<LineFeatureSettings> {
   const { data, error } = await client
     .from('clinic_feature_flags')
-    .select('line_booking_enabled')
+    .select('line_booking_enabled, line_notification_enabled')
     .eq('clinic_id', clinicId)
-    .returns<{ line_booking_enabled: boolean }>()
+    .returns<LineFeatureSettings>()
     .maybeSingle();
 
   if (error) {
@@ -185,27 +195,9 @@ async function fetchLineBookingEnabled(
   }
 
   const row: unknown = data;
-  return isLineBookingFlagRow(row) && row.line_booking_enabled === true;
-}
-
-async function upsertLineBookingFlag(params: {
-  client: ScopedAdminContext['client'];
-  clinicId: string;
-  enabled: boolean;
-  userId: string;
-}): Promise<void> {
-  const payload: ClinicFeatureFlagsInsert = {
-    clinic_id: params.clinicId,
-    line_booking_enabled: params.enabled,
-    updated_by: params.userId,
-  };
-  const { error } = await params.client
-    .from('clinic_feature_flags')
-    .upsert(payload, { onConflict: 'clinic_id' });
-
-  if (error) {
-    throw error;
-  }
+  return isLineFeatureSettings(row)
+    ? row
+    : { line_booking_enabled: false, line_notification_enabled: false };
 }
 
 function buildResponsePayload(params: {
@@ -224,6 +216,11 @@ function buildResponsePayload(params: {
       globalKillSwitchEnabled: isLineBookingGlobalKillSwitchEnabled(),
       lineBookingEnabled: params.lineBookingEnabled,
       credentialsActive: params.row?.is_active === true,
+      providerIdentityVerified:
+        typeof params.row?.provider_identity_verified_at === 'string',
+      runtimeMetadataReady:
+        Boolean(params.row?.liff_id?.trim()) &&
+        Boolean(params.row?.login_channel_id?.trim()),
       encryptionReady,
     }),
   };
@@ -263,13 +260,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [row, lineBookingEnabled] = await Promise.all([
+    const [row, featureSettings] = await Promise.all([
       fetchLineCredentials(adminCtx.client, parsedQuery.data.clinic_id),
-      fetchLineBookingEnabled(adminCtx.client, parsedQuery.data.clinic_id),
+      fetchLineFeatureSettings(adminCtx.client, parsedQuery.data.clinic_id),
     ]);
 
     return createSuccessResponse(
-      buildResponsePayload({ row, lineBookingEnabled })
+      buildResponsePayload({
+        row,
+        lineBookingEnabled: featureSettings.line_booking_enabled,
+      })
     );
   } catch (error) {
     logError(error, {
@@ -329,9 +329,22 @@ export async function PUT(request: NextRequest) {
       adminCtx.client,
       parsedBody.data.clinic_id
     );
+    if (existing) {
+      return createErrorResponse(
+        '既存のLINE連携は店舗別セットアップから再接続してください',
+        409
+      );
+    }
+    if (parsedBody.data.line_booking_enabled === true) {
+      return createErrorResponse(
+        'LINE予約を有効にするには店舗別セットアップでProvider同一性を確認してください',
+        409
+      );
+    }
+
     const upsertPayload = buildLineCredentialsUpsertPayload({
       input: toUpsertInput(parsedBody.data),
-      existing,
+      existing: null,
       userId: authResult.auth.id,
     });
 
@@ -343,18 +356,9 @@ export async function PUT(request: NextRequest) {
       throw error;
     }
 
-    if (parsedBody.data.line_booking_enabled !== undefined) {
-      await upsertLineBookingFlag({
-        client: adminCtx.client,
-        clinicId: parsedBody.data.clinic_id,
-        enabled: parsedBody.data.line_booking_enabled,
-        userId: authResult.auth.id,
-      });
-    }
-
-    const [row, lineBookingEnabled] = await Promise.all([
+    const [row, featureSettings] = await Promise.all([
       fetchLineCredentials(adminCtx.client, parsedBody.data.clinic_id),
-      fetchLineBookingEnabled(adminCtx.client, parsedBody.data.clinic_id),
+      fetchLineFeatureSettings(adminCtx.client, parsedBody.data.clinic_id),
     ]);
     if (!row) {
       throw new Error('clinic_line_credentials upsert returned no row');
@@ -365,11 +369,17 @@ export async function PUT(request: NextRequest) {
       authResult.auth.email,
       'line_credentials_upsert',
       row.clinic_id,
-      buildAuditDetails({ row, lineBookingEnabled })
+      buildAuditDetails({
+        row,
+        lineBookingEnabled: featureSettings.line_booking_enabled,
+      })
     );
 
     return createSuccessResponse(
-      buildResponsePayload({ row, lineBookingEnabled })
+      buildResponsePayload({
+        row,
+        lineBookingEnabled: featureSettings.line_booking_enabled,
+      })
     );
   } catch (error) {
     if (error instanceof LineCredentialsSecretRequiredError) {

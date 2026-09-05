@@ -1,0 +1,47 @@
+{
+  "kind": "blocks_resource_index_performance_evidence_audit_addendum",
+  "protocol": "pr11-blocks-resource-index-drop-rollback-phase-a-v1",
+  "scope": "post-run read-only audit addendum",
+  "manifest_external": true,
+  "changes_phase_a_gate_result": false,
+  "phase_a_gate_result": "FAIL",
+  "finding": {
+    "severity": "P1",
+    "gate": "cascade_wal",
+    "classification": "NOT_PROVEN",
+    "recorded_current_median_bytes": 84,
+    "recorded_candidate_median_bytes": 84,
+    "reason": "The raw EXPLAIN JSON reports WAL for the root resources ModifyTable node only. The 10,000 child blocks are deleted by an AFTER RI trigger whose trigger instrumentation exposes Time and Calls but not child WAL, so the recorded 84 bytes cannot prove the cascade WAL gate.",
+    "supersedes_summary_fields": ["cascade.walPass", "cascade.pass"]
+  },
+  "cascade_execution": {
+    "classification": "PASS",
+    "current_median_ms": 39.918,
+    "candidate_median_ms": 26.732,
+    "candidate_limit_ms": 89.918,
+    "deleted_child_rows_per_sample": 10000,
+    "lock_timeout_observed": false
+  },
+  "independent_failures": {
+    "fixed_execution_passed": 1,
+    "fixed_execution_total": 7,
+    "sparse_candidate_median_ms": 1107.727,
+    "sparse_limit_ms": 435.7373,
+    "sparse_pair_wins": 0,
+    "dense_candidate_median_ms": 1739.842,
+    "dense_limit_ms": 521.55125,
+    "dense_pair_wins": 1
+  },
+  "final_normalized_state_recheck": {
+    "logical_sha256": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+    "physical_sha256": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86",
+    "logical_records": 1,
+    "physical_records": 172,
+    "relation_count": 17,
+    "active_other_clients": 0,
+    "blocked_other_clients": 0,
+    "vacuum_progress_count": 0,
+    "create_index_progress_count": 0
+  },
+  "note": "The cascade WAL defect does not change the overall FAIL because six fixed execution gates and both paired causal gates already fail. Do not use the generated summary's cascade WAL PASS fields as release evidence."
+}

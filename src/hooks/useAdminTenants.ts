@@ -4,17 +4,21 @@ import { getApiErrorMessage } from '@/lib/api-error-message';
 import type {
   ClinicFilters,
   ClinicSummary,
+  CreateClinicResult,
   CreateClinicPayload,
   UpdateClinicPayload,
 } from '@/lib/admin/tenants';
+import type { TenantAddPreview } from '@/lib/billing/tenant-add-preview';
 import { logger } from '@/lib/logger';
 
 export type {
   ClinicFilters,
   ClinicSummary,
+  CreateClinicResult,
   CreateClinicPayload,
   UpdateClinicPayload,
 } from '@/lib/admin/tenants';
+export type { TenantAddPreview } from '@/lib/billing/tenant-add-preview';
 
 const TENANTS_ENDPOINT = API_ENDPOINTS.ADMIN.TENANTS;
 const JSON_HEADERS = {
@@ -173,17 +177,35 @@ export function useAdminTenants() {
 
   const createClinic = useCallback(
     async (payload: CreateClinicPayload) => {
-      return await runClinicMutation('クリニック作成エラー:', async () => {
-        const response = await fetch(
-          TENANTS_ENDPOINT,
-          buildJsonRequestInit('POST', payload)
-        );
+      const created = await runTenantRequest(
+        'クリニック作成エラー:',
+        async () => {
+          const response = await fetch(
+            TENANTS_ENDPOINT,
+            buildJsonRequestInit('POST', payload)
+          );
 
-        return await parseTenantResponse<ClinicSummary>(response);
-      });
+          return await parseTenantResponse<CreateClinicResult>(response);
+        }
+      );
+
+      if (created) {
+        upsertClinic(created);
+      }
+
+      return created;
     },
-    [runClinicMutation]
+    [runTenantRequest, upsertClinic]
   );
+
+  const previewTenantAdd = useCallback(async (parentId: string) => {
+    const params = new URLSearchParams({ parent_id: parentId });
+    const response = await fetch(
+      `${API_ENDPOINTS.ADMIN.TENANT_ADD_PREVIEW}?${params.toString()}`
+    );
+
+    return await parseTenantResponse<TenantAddPreview>(response);
+  }, []);
 
   const updateClinic = useCallback(
     async (clinicId: string, payload: UpdateClinicPayload) => {
@@ -206,6 +228,7 @@ export function useAdminTenants() {
     fetchClinics,
     listClinics,
     createClinic,
+    previewTenantAdd,
     updateClinic,
     setClinics,
   };

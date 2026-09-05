@@ -1,0 +1,78 @@
+[
+  {
+    "kind": "experiment_preflight",
+    "database": "postgres",
+    "contract_pass": true,
+    "migration_head": "20260716160402",
+    "server_version_num": "170006",
+    "blocks_trigger_enabled": true,
+    "candidate_indexes_present": 0,
+    "candidate_scope_helper_present": false
+  },
+  {
+    "kind": "rls_scope_candidate_catalog",
+    "index_count": 2,
+    "helper_count": 1,
+    "policy_count": 2,
+    "contract_pass": true,
+    "index_contract_pass": true,
+    "helper_contract_pass": true,
+    "policy_contract_pass": true,
+    "source_helpers_unchanged": true
+  },
+  {
+    "sub": "fb110000-0000-4000-8000-000000001010",
+    "role": "authenticated",
+    "app_metadata": {
+      "clinic_scope_ids": [
+        "fb110000-0000-4000-8000-000000001001"
+      ]
+    }
+  },
+  {
+    "sub": "fb110000-0000-4000-8000-000000001020",
+    "role": "authenticated",
+    "app_metadata": {
+      "clinic_scope_ids": [
+        "fb110000-0000-4000-8000-000000001001"
+      ]
+    }
+  },
+  {
+    "sub": "fb110000-0000-4000-8000-000000001030",
+    "role": "authenticated",
+    "app_metadata": {
+      "clinic_scope_ids": [
+        "fb110000-0000-4000-8000-000000001001"
+      ]
+    }
+  },
+  {
+    "sub": "fb110000-0000-4000-8000-000000001040",
+    "role": "authenticated",
+    "app_metadata": {
+      "clinic_scope_ids": [
+        "fb110000-0000-4000-8000-000000001001"
+      ]
+    }
+  },
+  {
+    "sub": "fb110000-0000-4000-8000-000000001010",
+    "role": "authenticated",
+    "app_metadata": {
+      "clinic_scope_ids": [
+        "fb110000-0000-4000-8000-000000001001"
+      ]
+    }
+  },
+  {
+    "kind": "experiment_preflight",
+    "database": "postgres",
+    "contract_pass": true,
+    "migration_head": "20260716160402",
+    "server_version_num": "170006",
+    "blocks_trigger_enabled": true,
+    "candidate_indexes_present": 0,
+    "candidate_scope_helper_present": false
+  }
+]

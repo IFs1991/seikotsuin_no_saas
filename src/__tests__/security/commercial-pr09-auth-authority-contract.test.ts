@@ -219,7 +219,7 @@ describe('commercial PR-09 DB-authoritative auth contract', () => {
     expect(authContext).not.toContain('roleFromJwt');
     expect(authContext).not.toContain('clinicIdFromJwt');
     expect(server).toContain('applyJwtClinicScopeIntersection');
-    expect(server).toContain('DATABASE_CONNECTION_ERROR');
+    expect(authContext).toContain('DATABASE_CONNECTION_ERROR');
     expect(adminLogin).not.toContain('ensureProfileExists');
     expect(clientProfile).not.toContain('appMeta?.user_role');
     expect(clientProfile).not.toContain('appMeta?.clinic_id');

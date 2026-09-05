@@ -33,7 +33,12 @@ import {
   type ScopedClinicLookupRow,
 } from '@/lib/admin/tenants';
 import { selectReservableAdminClinicRows } from '@/lib/clinics/scope';
-import { countActiveChildClinics } from '@/lib/billing/admin';
+import {
+  countActiveChildClinics,
+  countUnresolvedBillingChildClinics,
+} from '@/lib/billing/admin';
+import { fetchGroupBillingPriceCatalog } from '@/lib/billing/price-catalog';
+import { calculatePaidExtraStoreQuantity } from '@/lib/billing/plans';
 import {
   activateBillableStoreIfCapacity,
   buildStoreActivationPlan,
@@ -70,6 +75,17 @@ const ClinicCreateSchema = z
     login_full_name: z.string().trim().min(1).max(255).optional(),
     login_email: emailSchema.optional(),
     login_password: passwordSchema.optional(),
+    billing_confirmation: z
+      .object({
+        acknowledged_paid_increase: z.literal(true),
+        active_store_count: z.number().int().nonnegative(),
+        target_paid_extra_store_quantity: z.number().int().positive(),
+        store_addon_unit_amount: z.number().int().positive(),
+        monthly_increase: z.number().int().positive(),
+        standard_monthly_total: z.number().int().positive(),
+      })
+      .strict()
+      .optional(),
   })
   .superRefine((value, ctx) => {
     const hasLoginEmail = value.login_email !== undefined;
@@ -113,6 +129,7 @@ type NormalizedClinicCreateInput = {
   loginEmail: string | null;
   loginPassword: string | null;
   shouldCreateClinicAdmin: boolean;
+  billingConfirmation: ClinicCreateInput['billing_confirmation'] | null;
 };
 type RollbackStage =
   | 'rollback_user_permissions'
@@ -277,6 +294,7 @@ function normalizeClinicCreateInput(
     loginEmail,
     loginPassword,
     shouldCreateClinicAdmin: loginEmail !== null && loginPassword !== null,
+    billingConfirmation: input.billing_confirmation ?? null,
   };
 }
 
@@ -957,7 +975,11 @@ export async function POST(request: NextRequest) {
     > = null;
 
     if (tenantBillingGuardActive) {
-      const [subscription, activeBillableStoreCount] = await Promise.all([
+      const [
+        subscription,
+        activeBillableStoreCount,
+        unresolvedActivationCount,
+      ] = await Promise.all([
         fetchTenantBillingSubscription({
           client: adminSupabase,
           orgRootClinicId: normalizedInput.clinic.parent_id,
@@ -966,7 +988,19 @@ export async function POST(request: NextRequest) {
           client: adminSupabase,
           orgRootClinicId: normalizedInput.clinic.parent_id,
         }),
+        countUnresolvedBillingChildClinics({
+          client: adminSupabase,
+          orgRootClinicId: normalizedInput.clinic.parent_id,
+        }),
       ]);
+
+      if (unresolvedActivationCount > 0) {
+        return createErrorResponse(
+          '前の店舗追加処理が完了していません。一覧の状態を確認してからもう一度お試しください',
+          409
+        );
+      }
+
       const plan = buildStoreActivationPlan({
         subscription,
         activeBillableStoreCount,
@@ -974,6 +1008,75 @@ export async function POST(request: NextRequest) {
 
       if (plan.success === false) {
         return createBillingActivationPlanErrorResponse(plan);
+      }
+
+      const requiredCurrentPaidExtraStoreQuantity =
+        calculatePaidExtraStoreQuantity(
+          activeBillableStoreCount,
+          subscription?.included_store_quantity ?? 0
+        );
+      if (
+        !subscription ||
+        subscription.paid_extra_store_quantity <
+          requiredCurrentPaidExtraStoreQuantity
+      ) {
+        return createErrorResponse(
+          '契約数量を同期しています。反映後に追加内容をもう一度確認してください',
+          409
+        );
+      }
+
+      if (plan.requiresStripeQuantityIncrease) {
+        if (!subscription.stripe_subscription_id) {
+          return createErrorResponse(
+            '契約数量を更新できません。契約・料金画面をご確認ください',
+            409
+          );
+        }
+
+        const confirmation = normalizedInput.billingConfirmation;
+        if (!confirmation) {
+          return createErrorResponse(
+            '追加料金を確認してから店舗を追加してください',
+            409
+          );
+        }
+
+        try {
+          const prices = await fetchGroupBillingPriceCatalog();
+          const quantityIncrease =
+            plan.targetPaidExtraStoreQuantity -
+            plan.currentPaidExtraStoreQuantity;
+          const expectedMonthlyIncrease =
+            prices.storeAddon.unitAmount * quantityIncrease;
+          const expectedStandardMonthlyTotal =
+            prices.groupBase.unitAmount +
+            prices.storeAddon.unitAmount * plan.targetPaidExtraStoreQuantity;
+          const confirmationMatches =
+            confirmation.active_store_count === plan.activeBillableStoreCount &&
+            confirmation.target_paid_extra_store_quantity ===
+              plan.targetPaidExtraStoreQuantity &&
+            confirmation.store_addon_unit_amount ===
+              prices.storeAddon.unitAmount &&
+            confirmation.monthly_increase === expectedMonthlyIncrease &&
+            confirmation.standard_monthly_total ===
+              expectedStandardMonthlyTotal;
+
+          if (!confirmationMatches) {
+            return createErrorResponse(
+              '料金条件が変わったため、追加内容をもう一度確認してください',
+              409
+            );
+          }
+        } catch (priceError) {
+          logTenantPostError(priceError, auth.id, {
+            stage: 'validate_store_addon_confirmation',
+          });
+          return createErrorResponse(
+            '料金情報を確認できません。時間をおいてもう一度お試しください',
+            409
+          );
+        }
       }
 
       tenantBillingSubscription = subscription;
@@ -1016,9 +1119,9 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('クリニックの作成に失敗しました', 500);
     }
 
-    let childClinicId: string;
+    let resolvedChildClinicId: string;
     try {
-      childClinicId = await resolveChildClinicInScope(
+      resolvedChildClinicId = await resolveChildClinicInScope(
         adminCtx,
         data.id,
         parentClinicId
@@ -1037,6 +1140,7 @@ export async function POST(request: NextRequest) {
       });
       return createErrorResponse('クリニックの作成に失敗しました', 500);
     }
+    const childClinicId = resolvedChildClinicId;
 
     if (
       tenantBillingGuardActive &&
@@ -1173,6 +1277,7 @@ export async function POST(request: NextRequest) {
             },
           });
           const storeAddOnResult = await ensureStripeStoreAddOnQuantity({
+            orgRootClinicId: parentClinicId,
             subscription: tenantBillingSubscription,
             targetPaidExtraStoreQuantity:
               storeActivationPlan.targetPaidExtraStoreQuantity,
@@ -1218,7 +1323,6 @@ export async function POST(request: NextRequest) {
           responseClinic.billing_activation_status = 'billing_failed';
           responseClinic.billing_activation_failed_at =
             new Date().toISOString();
-          responseClinic.billing_activation_error = errorMessage;
           billingActivationResult = {
             status: 'billing_failed',
             error_code: 'stripe_quantity_update_failed',

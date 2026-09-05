@@ -858,6 +858,8 @@ export type Database = {
         Row: {
           clinic_id: string;
           line_booking_enabled: boolean;
+          line_chat_enabled: boolean;
+          line_notification_enabled: boolean;
           mobile_uiux_daily_report_write_enabled: boolean;
           mobile_uiux_enabled: boolean;
           mobile_uiux_real_data_enabled: boolean;
@@ -871,6 +873,8 @@ export type Database = {
         Insert: {
           clinic_id: string;
           line_booking_enabled?: boolean;
+          line_chat_enabled?: boolean;
+          line_notification_enabled?: boolean;
           mobile_uiux_daily_report_write_enabled?: boolean;
           mobile_uiux_enabled?: boolean;
           mobile_uiux_real_data_enabled?: boolean;
@@ -884,6 +888,8 @@ export type Database = {
         Update: {
           clinic_id?: string;
           line_booking_enabled?: boolean;
+          line_chat_enabled?: boolean;
+          line_notification_enabled?: boolean;
           mobile_uiux_daily_report_write_enabled?: boolean;
           mobile_uiux_enabled?: boolean;
           mobile_uiux_real_data_enabled?: boolean;
@@ -911,54 +917,192 @@ export type Database = {
           },
         ];
       };
-      clinic_line_credentials: {
+      clinic_line_chat_settings: {
         Row: {
-          access_token_encrypted: string | null;
-          assertion_kid: string;
-          assertion_private_key_encrypted: string;
-          channel_secret_encrypted: string;
+          auto_reply_enabled: boolean;
+          auto_reply_message: string;
           clinic_id: string;
           created_at: string;
-          is_active: boolean;
-          liff_id: string | null;
-          login_channel_id: string | null;
-          messaging_channel_id: string;
-          oa_basic_id: string | null;
-          token_expires_at: string | null;
+          retention_days: number;
           updated_at: string;
           updated_by: string | null;
         };
         Insert: {
-          access_token_encrypted?: string | null;
-          assertion_kid: string;
-          assertion_private_key_encrypted: string;
-          channel_secret_encrypted: string;
+          auto_reply_enabled?: boolean;
+          auto_reply_message?: string;
           clinic_id: string;
           created_at?: string;
-          is_active?: boolean;
-          liff_id?: string | null;
-          login_channel_id?: string | null;
-          messaging_channel_id: string;
-          oa_basic_id?: string | null;
-          token_expires_at?: string | null;
+          retention_days?: number;
           updated_at?: string;
           updated_by?: string | null;
         };
         Update: {
+          auto_reply_enabled?: boolean;
+          auto_reply_message?: string;
+          clinic_id?: string;
+          created_at?: string;
+          retention_days?: number;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'clinic_line_chat_settings_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: true;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'clinic_line_chat_settings_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: true;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      clinic_line_credential_generations: {
+        Row: {
+          clinic_id: string;
+          created_at: string;
+          id: string;
+          replaced_at: string | null;
+          status: string;
+        };
+        Insert: {
+          clinic_id: string;
+          created_at?: string;
+          id: string;
+          replaced_at?: string | null;
+          status?: string;
+        };
+        Update: {
+          clinic_id?: string;
+          created_at?: string;
+          id?: string;
+          replaced_at?: string | null;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'clinic_line_credential_generations_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'clinic_line_credential_generations_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      clinic_line_credentials: {
+        Row: {
+          access_token_encrypted: string | null;
+          access_token_key_id: string | null;
+          app_endpoint_id: string | null;
+          app_type: string;
+          assertion_kid: string;
+          assertion_private_key_encrypted: string;
+          bot_display_name: string | null;
+          bot_picture_url: string | null;
+          bot_user_id: string | null;
+          channel_secret_encrypted: string;
+          clinic_id: string;
+          created_at: string;
+          credential_fingerprint: string | null;
+          credential_generation_id: string;
+          credentials_verified_at: string | null;
+          is_active: boolean;
+          last_metadata_verified_at: string | null;
+          last_push_test_error: string | null;
+          last_push_test_sent_at: string | null;
+          last_token_test_error: string | null;
+          last_token_verified_at: string | null;
+          last_webhook_received_at: string | null;
+          liff_id: string | null;
+          login_channel_id: string | null;
+          messaging_channel_id: string;
+          oa_basic_id: string | null;
+          provider_identity_verified_at: string | null;
+          setup_completed_at: string | null;
+          token_expires_at: string | null;
+          updated_at: string;
+          updated_by: string | null;
+          webhook_verified_at: string | null;
+        };
+        Insert: {
           access_token_encrypted?: string | null;
+          access_token_key_id?: string | null;
+          app_endpoint_id?: string | null;
+          app_type?: string;
+          assertion_kid: string;
+          assertion_private_key_encrypted: string;
+          bot_display_name?: string | null;
+          bot_picture_url?: string | null;
+          bot_user_id?: string | null;
+          channel_secret_encrypted: string;
+          clinic_id: string;
+          created_at?: string;
+          credential_fingerprint?: string | null;
+          credential_generation_id?: string;
+          credentials_verified_at?: string | null;
+          is_active?: boolean;
+          last_metadata_verified_at?: string | null;
+          last_push_test_error?: string | null;
+          last_push_test_sent_at?: string | null;
+          last_token_test_error?: string | null;
+          last_token_verified_at?: string | null;
+          last_webhook_received_at?: string | null;
+          liff_id?: string | null;
+          login_channel_id?: string | null;
+          messaging_channel_id: string;
+          oa_basic_id?: string | null;
+          provider_identity_verified_at?: string | null;
+          setup_completed_at?: string | null;
+          token_expires_at?: string | null;
+          updated_at?: string;
+          updated_by?: string | null;
+          webhook_verified_at?: string | null;
+        };
+        Update: {
+          access_token_encrypted?: string | null;
+          access_token_key_id?: string | null;
+          app_endpoint_id?: string | null;
+          app_type?: string;
           assertion_kid?: string;
           assertion_private_key_encrypted?: string;
+          bot_display_name?: string | null;
+          bot_picture_url?: string | null;
+          bot_user_id?: string | null;
           channel_secret_encrypted?: string;
           clinic_id?: string;
           created_at?: string;
+          credential_fingerprint?: string | null;
+          credential_generation_id?: string;
+          credentials_verified_at?: string | null;
           is_active?: boolean;
+          last_metadata_verified_at?: string | null;
+          last_push_test_error?: string | null;
+          last_push_test_sent_at?: string | null;
+          last_token_test_error?: string | null;
+          last_token_verified_at?: string | null;
+          last_webhook_received_at?: string | null;
           liff_id?: string | null;
           login_channel_id?: string | null;
           messaging_channel_id?: string;
           oa_basic_id?: string | null;
+          provider_identity_verified_at?: string | null;
+          setup_completed_at?: string | null;
           token_expires_at?: string | null;
           updated_at?: string;
           updated_by?: string | null;
+          webhook_verified_at?: string | null;
         };
         Relationships: [
           {
@@ -972,6 +1116,94 @@ export type Database = {
             foreignKeyName: 'clinic_line_credentials_clinic_id_fkey';
             columns: ['clinic_id'];
             isOneToOne: true;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'clinic_line_credentials_current_generation_fkey';
+            columns: ['clinic_id', 'credential_generation_id'];
+            isOneToOne: true;
+            referencedRelation: 'clinic_line_credential_generations';
+            referencedColumns: ['clinic_id', 'id'];
+          },
+        ];
+      };
+      clinic_line_setup_sessions: {
+        Row: {
+          clinic_id: string;
+          consumed_at: string | null;
+          created_at: string;
+          created_by: string;
+          credential_fingerprint: string;
+          encrypted_private_jwk: string | null;
+          encrypted_verification_payload: string | null;
+          expires_at: string;
+          id: string;
+          provider_identity_verified: boolean;
+          public_jwk: Json;
+          public_key_kid: string | null;
+          push_test_retry_key: string;
+          status: string;
+          updated_at: string;
+          verification_claim_token: string | null;
+          verification_claimed_at: string | null;
+          verification_request_digest: string | null;
+          verified_at: string | null;
+        };
+        Insert: {
+          clinic_id: string;
+          consumed_at?: string | null;
+          created_at?: string;
+          created_by: string;
+          credential_fingerprint: string;
+          encrypted_private_jwk?: string | null;
+          encrypted_verification_payload?: string | null;
+          expires_at?: string;
+          id?: string;
+          provider_identity_verified?: boolean;
+          public_jwk: Json;
+          public_key_kid?: string | null;
+          push_test_retry_key?: string;
+          status?: string;
+          updated_at?: string;
+          verification_claim_token?: string | null;
+          verification_claimed_at?: string | null;
+          verification_request_digest?: string | null;
+          verified_at?: string | null;
+        };
+        Update: {
+          clinic_id?: string;
+          consumed_at?: string | null;
+          created_at?: string;
+          created_by?: string;
+          credential_fingerprint?: string;
+          encrypted_private_jwk?: string | null;
+          encrypted_verification_payload?: string | null;
+          expires_at?: string;
+          id?: string;
+          provider_identity_verified?: boolean;
+          public_jwk?: Json;
+          public_key_kid?: string | null;
+          push_test_retry_key?: string;
+          status?: string;
+          updated_at?: string;
+          verification_claim_token?: string | null;
+          verification_claimed_at?: string | null;
+          verification_request_digest?: string | null;
+          verified_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'clinic_line_setup_sessions_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'clinic_line_setup_sessions_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
             referencedRelation: 'clinics';
             referencedColumns: ['id'];
           },
@@ -1346,6 +1578,7 @@ export type Database = {
           is_deleted: boolean | null;
           last_visit_date: string | null;
           lifetime_value: number | null;
+          line_credential_generation_id: string | null;
           line_display_name: string | null;
           line_user_id: string | null;
           name: string;
@@ -1374,6 +1607,7 @@ export type Database = {
           is_deleted?: boolean | null;
           last_visit_date?: string | null;
           lifetime_value?: number | null;
+          line_credential_generation_id?: string | null;
           line_display_name?: string | null;
           line_user_id?: string | null;
           name: string;
@@ -1402,6 +1636,7 @@ export type Database = {
           is_deleted?: boolean | null;
           last_visit_date?: string | null;
           lifetime_value?: number | null;
+          line_credential_generation_id?: string | null;
           line_display_name?: string | null;
           line_user_id?: string | null;
           name?: string;
@@ -1429,6 +1664,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'clinics';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'customers_line_generation_fkey';
+            columns: ['clinic_id', 'line_credential_generation_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_line_credential_generations';
+            referencedColumns: ['clinic_id', 'id'];
           },
         ];
       };
@@ -2457,11 +2699,315 @@ export type Database = {
         };
         Relationships: [];
       };
+      line_chat_outbox: {
+        Row: {
+          attempts: number;
+          claim_token: string | null;
+          claimed_at: string | null;
+          clinic_id: string;
+          conversation_id: string;
+          created_at: string;
+          credential_generation_id: string;
+          id: string;
+          last_error_code: string | null;
+          message_id: string;
+          next_attempt_at: string;
+          sent_at: string | null;
+          status: string;
+        };
+        Insert: {
+          attempts?: number;
+          claim_token?: string | null;
+          claimed_at?: string | null;
+          clinic_id: string;
+          conversation_id: string;
+          created_at?: string;
+          credential_generation_id: string;
+          id?: string;
+          last_error_code?: string | null;
+          message_id: string;
+          next_attempt_at?: string;
+          sent_at?: string | null;
+          status?: string;
+        };
+        Update: {
+          attempts?: number;
+          claim_token?: string | null;
+          claimed_at?: string | null;
+          clinic_id?: string;
+          conversation_id?: string;
+          created_at?: string;
+          credential_generation_id?: string;
+          id?: string;
+          last_error_code?: string | null;
+          message_id?: string;
+          next_attempt_at?: string;
+          sent_at?: string | null;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'line_chat_outbox_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'line_chat_outbox_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'line_chat_outbox_conversation_clinic_fkey';
+            columns: [
+              'conversation_id',
+              'clinic_id',
+              'credential_generation_id',
+            ];
+            isOneToOne: false;
+            referencedRelation: 'line_conversations';
+            referencedColumns: ['id', 'clinic_id', 'credential_generation_id'];
+          },
+          {
+            foreignKeyName: 'line_chat_outbox_message_conversation_fkey';
+            columns: [
+              'message_id',
+              'clinic_id',
+              'conversation_id',
+              'credential_generation_id',
+            ];
+            isOneToOne: false;
+            referencedRelation: 'line_messages';
+            referencedColumns: [
+              'id',
+              'clinic_id',
+              'conversation_id',
+              'credential_generation_id',
+            ];
+          },
+        ];
+      };
+      line_contacts: {
+        Row: {
+          blocked_at: string | null;
+          clinic_id: string;
+          created_at: string;
+          credential_generation_id: string;
+          customer_id: string | null;
+          display_name: string | null;
+          followed_at: string | null;
+          id: string;
+          line_user_id: string;
+          picture_url: string | null;
+          unfollowed_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          blocked_at?: string | null;
+          clinic_id: string;
+          created_at?: string;
+          credential_generation_id: string;
+          customer_id?: string | null;
+          display_name?: string | null;
+          followed_at?: string | null;
+          id?: string;
+          line_user_id: string;
+          picture_url?: string | null;
+          unfollowed_at?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          blocked_at?: string | null;
+          clinic_id?: string;
+          created_at?: string;
+          credential_generation_id?: string;
+          customer_id?: string | null;
+          display_name?: string | null;
+          followed_at?: string | null;
+          id?: string;
+          line_user_id?: string;
+          picture_url?: string | null;
+          unfollowed_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'line_contacts_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'line_contacts_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'line_contacts_credential_generation_fkey';
+            columns: ['clinic_id', 'credential_generation_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_line_credential_generations';
+            referencedColumns: ['clinic_id', 'id'];
+          },
+          {
+            foreignKeyName: 'line_contacts_customer_identity_fkey';
+            columns: [
+              'clinic_id',
+              'customer_id',
+              'credential_generation_id',
+              'line_user_id',
+            ];
+            isOneToOne: false;
+            referencedRelation: 'customers';
+            referencedColumns: [
+              'clinic_id',
+              'id',
+              'line_credential_generation_id',
+              'line_user_id',
+            ];
+          },
+        ];
+      };
+      line_conversations: {
+        Row: {
+          assigned_membership_id: string | null;
+          clinic_id: string;
+          closed_at: string | null;
+          contact_id: string;
+          created_at: string;
+          credential_generation_id: string;
+          id: string;
+          last_inbound_at: string | null;
+          last_message_at: string | null;
+          last_outbound_at: string | null;
+          status: string;
+          unread_count: number;
+          updated_at: string;
+        };
+        Insert: {
+          assigned_membership_id?: string | null;
+          clinic_id: string;
+          closed_at?: string | null;
+          contact_id: string;
+          created_at?: string;
+          credential_generation_id: string;
+          id?: string;
+          last_inbound_at?: string | null;
+          last_message_at?: string | null;
+          last_outbound_at?: string | null;
+          status?: string;
+          unread_count?: number;
+          updated_at?: string;
+        };
+        Update: {
+          assigned_membership_id?: string | null;
+          clinic_id?: string;
+          closed_at?: string | null;
+          contact_id?: string;
+          created_at?: string;
+          credential_generation_id?: string;
+          id?: string;
+          last_inbound_at?: string | null;
+          last_message_at?: string | null;
+          last_outbound_at?: string | null;
+          status?: string;
+          unread_count?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'line_conversations_assignee_clinic_fkey';
+            columns: ['assigned_membership_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_clinic_memberships';
+            referencedColumns: ['id', 'clinic_id'];
+          },
+          {
+            foreignKeyName: 'line_conversations_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'line_conversations_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'line_conversations_contact_generation_fkey';
+            columns: ['contact_id', 'clinic_id', 'credential_generation_id'];
+            isOneToOne: false;
+            referencedRelation: 'line_contacts';
+            referencedColumns: ['id', 'clinic_id', 'credential_generation_id'];
+          },
+        ];
+      };
+      line_job_heartbeats: {
+        Row: {
+          clinic_id: string | null;
+          id: string;
+          job_name: string;
+          last_completed_at: string | null;
+          last_error_code: string | null;
+          last_started_at: string | null;
+          last_status: string;
+          updated_at: string;
+        };
+        Insert: {
+          clinic_id?: string | null;
+          id?: string;
+          job_name: string;
+          last_completed_at?: string | null;
+          last_error_code?: string | null;
+          last_started_at?: string | null;
+          last_status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          clinic_id?: string | null;
+          id?: string;
+          job_name?: string;
+          last_completed_at?: string | null;
+          last_error_code?: string | null;
+          last_started_at?: string | null;
+          last_status?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'line_job_heartbeats_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'line_job_heartbeats_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       line_message_outbox: {
         Row: {
           attempts: number;
+          claim_token: string | null;
+          claimed_at: string | null;
           clinic_id: string;
           created_at: string;
+          credential_generation_id: string | null;
+          customer_id: string | null;
           id: string;
           last_error: string | null;
           line_user_id: string;
@@ -2473,8 +3019,12 @@ export type Database = {
         };
         Insert: {
           attempts?: number;
+          claim_token?: string | null;
+          claimed_at?: string | null;
           clinic_id: string;
           created_at?: string;
+          credential_generation_id?: string | null;
+          customer_id?: string | null;
           id?: string;
           last_error?: string | null;
           line_user_id: string;
@@ -2486,8 +3036,12 @@ export type Database = {
         };
         Update: {
           attempts?: number;
+          claim_token?: string | null;
+          claimed_at?: string | null;
           clinic_id?: string;
           created_at?: string;
+          credential_generation_id?: string | null;
+          customer_id?: string | null;
           id?: string;
           last_error?: string | null;
           line_user_id?: string;
@@ -2511,6 +3065,258 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'clinics';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'line_message_outbox_customer_clinic_fkey';
+            columns: ['customer_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'customers';
+            referencedColumns: ['id', 'clinic_id'];
+          },
+          {
+            foreignKeyName: 'line_message_outbox_customer_clinic_fkey';
+            columns: ['customer_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'patient_visit_summary';
+            referencedColumns: ['patient_id', 'clinic_id'];
+          },
+          {
+            foreignKeyName: 'line_message_outbox_generation_fkey';
+            columns: ['clinic_id', 'credential_generation_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_line_credential_generations';
+            referencedColumns: ['clinic_id', 'id'];
+          },
+        ];
+      };
+      line_messages: {
+        Row: {
+          clinic_id: string;
+          contact_id: string;
+          conversation_id: string;
+          created_at: string;
+          credential_generation_id: string;
+          direction: string;
+          id: string;
+          line_message_id: string | null;
+          message_type: string;
+          occurred_at: string;
+          sent_by: string | null;
+          status: string;
+          text_content: string | null;
+          unsent_at: string | null;
+          updated_at: string;
+          webhook_event_id: string | null;
+        };
+        Insert: {
+          clinic_id: string;
+          contact_id: string;
+          conversation_id: string;
+          created_at?: string;
+          credential_generation_id: string;
+          direction: string;
+          id?: string;
+          line_message_id?: string | null;
+          message_type?: string;
+          occurred_at?: string;
+          sent_by?: string | null;
+          status?: string;
+          text_content?: string | null;
+          unsent_at?: string | null;
+          updated_at?: string;
+          webhook_event_id?: string | null;
+        };
+        Update: {
+          clinic_id?: string;
+          contact_id?: string;
+          conversation_id?: string;
+          created_at?: string;
+          credential_generation_id?: string;
+          direction?: string;
+          id?: string;
+          line_message_id?: string | null;
+          message_type?: string;
+          occurred_at?: string;
+          sent_by?: string | null;
+          status?: string;
+          text_content?: string | null;
+          unsent_at?: string | null;
+          updated_at?: string;
+          webhook_event_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'line_messages_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'line_messages_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'line_messages_conversation_contact_generation_fkey';
+            columns: [
+              'conversation_id',
+              'clinic_id',
+              'contact_id',
+              'credential_generation_id',
+            ];
+            isOneToOne: false;
+            referencedRelation: 'line_conversations';
+            referencedColumns: [
+              'id',
+              'clinic_id',
+              'contact_id',
+              'credential_generation_id',
+            ];
+          },
+          {
+            foreignKeyName: 'line_messages_webhook_event_contact_fkey';
+            columns: [
+              'webhook_event_id',
+              'clinic_id',
+              'contact_id',
+              'credential_generation_id',
+            ];
+            isOneToOne: false;
+            referencedRelation: 'line_webhook_events';
+            referencedColumns: [
+              'id',
+              'clinic_id',
+              'contact_id',
+              'credential_generation_id',
+            ];
+          },
+        ];
+      };
+      line_unsend_tombstones: {
+        Row: {
+          clinic_id: string;
+          created_at: string;
+          credential_generation_id: string;
+          line_message_digest: string;
+          unsent_at: string;
+        };
+        Insert: {
+          clinic_id: string;
+          created_at?: string;
+          credential_generation_id: string;
+          line_message_digest: string;
+          unsent_at: string;
+        };
+        Update: {
+          clinic_id?: string;
+          created_at?: string;
+          credential_generation_id?: string;
+          line_message_digest?: string;
+          unsent_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'line_unsend_tombstones_clinic_id_credential_generation_id_fkey';
+            columns: ['clinic_id', 'credential_generation_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_line_credential_generations';
+            referencedColumns: ['clinic_id', 'id'];
+          },
+        ];
+      };
+      line_webhook_events: {
+        Row: {
+          clinic_id: string;
+          contact_id: string | null;
+          created_at: string;
+          credential_generation_id: string;
+          error_code: string | null;
+          event_type: string;
+          id: string;
+          is_redelivery: boolean;
+          line_user_id: string | null;
+          occurred_at: string | null;
+          payload_digest: string;
+          processed_at: string | null;
+          status: string;
+          unsend_message_id: string | null;
+          webhook_event_id: string;
+        };
+        Insert: {
+          clinic_id: string;
+          contact_id?: string | null;
+          created_at?: string;
+          credential_generation_id: string;
+          error_code?: string | null;
+          event_type: string;
+          id?: string;
+          is_redelivery?: boolean;
+          line_user_id?: string | null;
+          occurred_at?: string | null;
+          payload_digest: string;
+          processed_at?: string | null;
+          status?: string;
+          unsend_message_id?: string | null;
+          webhook_event_id: string;
+        };
+        Update: {
+          clinic_id?: string;
+          contact_id?: string | null;
+          created_at?: string;
+          credential_generation_id?: string;
+          error_code?: string | null;
+          event_type?: string;
+          id?: string;
+          is_redelivery?: boolean;
+          line_user_id?: string | null;
+          occurred_at?: string | null;
+          payload_digest?: string;
+          processed_at?: string | null;
+          status?: string;
+          unsend_message_id?: string | null;
+          webhook_event_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'line_webhook_events_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'line_webhook_events_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'line_webhook_events_contact_identity_fkey';
+            columns: [
+              'contact_id',
+              'clinic_id',
+              'credential_generation_id',
+              'line_user_id',
+            ];
+            isOneToOne: false;
+            referencedRelation: 'line_contacts';
+            referencedColumns: [
+              'id',
+              'clinic_id',
+              'credential_generation_id',
+              'line_user_id',
+            ];
+          },
+          {
+            foreignKeyName: 'line_webhook_events_generation_fkey';
+            columns: ['clinic_id', 'credential_generation_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_line_credential_generations';
+            referencedColumns: ['clinic_id', 'id'];
           },
         ];
       };
@@ -6751,9 +7557,27 @@ export type Database = {
           staff_name: string;
         }[];
       };
+      assign_line_chat_conversation: {
+        Args: {
+          p_actor_user_id: string;
+          p_assigned_membership_id?: string;
+          p_clinic_id: string;
+          p_conversation_id: string;
+        };
+        Returns: undefined;
+      };
       belongs_to_clinic: {
         Args: { target_clinic_id: string };
         Returns: boolean;
+      };
+      bind_line_setup_push_request: {
+        Args: {
+          p_claim_token: string;
+          p_clinic_id: string;
+          p_setup_session_id: string;
+          p_verification_request_digest: string;
+        };
+        Returns: undefined;
       };
       calculate_churn_risk_score: {
         Args: { patient_uuid: string };
@@ -6780,6 +7604,51 @@ export type Database = {
           conflicting_reservation_id: string;
           has_conflict: boolean;
         }[];
+      };
+      claim_line_chat_outbox: {
+        Args: { p_clinic_id: string; p_limit?: number };
+        Returns: {
+          claim_token: string;
+          line_user_id: string;
+          outbox_id: string;
+          text_content: string;
+        }[];
+      };
+      claim_line_notification_outbox: {
+        Args: {
+          p_clinic_id: string;
+          p_expected_attempts: number;
+          p_outbox_id: string;
+        };
+        Returns: string;
+      };
+      claim_line_setup_verification: {
+        Args: { p_clinic_id: string; p_setup_session_id: string };
+        Returns: {
+          claim_token: string;
+          encrypted_private_jwk: string;
+          push_test_retry_key: string;
+        }[];
+      };
+      close_line_setup_session: {
+        Args: {
+          p_clinic_id: string;
+          p_setup_session_id: string;
+          p_status: string;
+        };
+        Returns: undefined;
+      };
+      complete_line_self_serve_setup: {
+        Args: {
+          p_clinic_id: string;
+          p_credentials: Json;
+          p_enable_booking: boolean;
+          p_enable_notifications: boolean;
+          p_new_generation_id: string;
+          p_setup_session_id: string;
+          p_updated_by: string;
+        };
+        Returns: string;
       };
       confirm_daily_report_item_pricing: {
         Args: {
@@ -6879,6 +7748,65 @@ export type Database = {
       };
       encrypt_mfa_secret: { Args: { secret_text: string }; Returns: string };
       encrypt_patient_data: { Args: { plain_text: string }; Returns: string };
+      enqueue_line_chat_message: {
+        Args: {
+          p_clinic_id: string;
+          p_conversation_id: string;
+          p_sent_by: string;
+          p_text: string;
+        };
+        Returns: string;
+      };
+      enqueue_outreach_campaign: {
+        Args: {
+          p_campaign_id: string;
+          p_clinic_id: string;
+          p_deliveries: Json;
+          p_expected_message_body: string;
+        };
+        Returns: {
+          enqueued_count: number;
+          sent_at: string;
+        }[];
+      };
+      expire_line_setup_sessions: {
+        Args: { p_clinic_id?: string };
+        Returns: number;
+      };
+      finalize_line_chat_outbox: {
+        Args: {
+          p_claim_token: string;
+          p_clinic_id: string;
+          p_error_code?: string;
+          p_line_message_id?: string;
+          p_outbox_id: string;
+          p_succeeded: boolean;
+        };
+        Returns: undefined;
+      };
+      finalize_line_notification_outbox: {
+        Args: {
+          p_claim_token: string;
+          p_clinic_id: string;
+          p_last_error: string;
+          p_next_attempt_at: string;
+          p_outbox_id: string;
+          p_sent_at: string;
+          p_status: string;
+        };
+        Returns: undefined;
+      };
+      finalize_line_setup_verification: {
+        Args: {
+          p_claim_token: string;
+          p_clinic_id: string;
+          p_encrypted_verification_payload: string;
+          p_provider_identity_verified: boolean;
+          p_public_key_kid: string;
+          p_setup_session_id: string;
+        };
+        Returns: undefined;
+      };
       finalize_staff_availability_delivery: {
         Args: {
           p_clinic_id: string;
@@ -6939,6 +7867,18 @@ export type Database = {
           role: string;
         }[];
       };
+      get_line_public_booking_context: {
+        Args: { p_clinic_id: string };
+        Returns: {
+          credential_generation_id: string;
+          is_active: boolean;
+          liff_id: string;
+          line_booking_enabled: boolean;
+          login_channel_id: string;
+          oa_basic_id: string;
+          provider_identity_verified_at: string;
+        }[];
+      };
       get_sibling_clinic_ids: {
         Args: { clinic_id: string };
         Returns: string[];
@@ -6946,6 +7886,27 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean };
       jwt_clinic_id: { Args: never; Returns: string };
       jwt_is_admin: { Args: never; Returns: boolean };
+      list_authorized_line_chat_messages: {
+        Args: {
+          p_actor_user_id: string;
+          p_clinic_id: string;
+          p_conversation_id: string;
+        };
+        Returns: {
+          direction: string;
+          id: string;
+          message_type: string;
+          occurred_at: string;
+          status: string;
+          text_content: string;
+        }[];
+      };
+      list_line_chat_delivery_clinics: {
+        Args: { p_limit?: number };
+        Returns: {
+          clinic_id: string;
+        }[];
+      };
       manager_patient_period_series: {
         Args: {
           p_bucket?: string;
@@ -7034,11 +7995,67 @@ export type Database = {
           predicted_revenue: number;
         }[];
       };
+      process_line_webhook_delivery: {
+        Args: {
+          p_clinic_id: string;
+          p_credential_generation_id: string;
+          p_events: Json;
+        };
+        Returns: Json;
+      };
+      purge_expired_line_chat_data: {
+        Args: { p_clinic_id?: string };
+        Returns: {
+          deleted_messages: number;
+          deleted_webhook_events: number;
+        }[];
+      };
+      quarantine_unverified_line_notification_history: {
+        Args: never;
+        Returns: undefined;
+      };
       recalculate_daily_report_totals: {
         Args: { p_daily_report_id: string };
         Returns: undefined;
       };
       refresh_daily_stats: { Args: never; Returns: undefined };
+      release_line_setup_verification_claim: {
+        Args: {
+          p_claim_token: string;
+          p_clinic_id: string;
+          p_setup_session_id: string;
+        };
+        Returns: undefined;
+      };
+      relink_line_contact_generation: {
+        Args: {
+          p_clinic_id: string;
+          p_customer_id?: string;
+          p_line_user_id: string;
+          p_previous_contact_id: string;
+        };
+        Returns: string;
+      };
+      renew_line_chat_outbox_claim: {
+        Args: {
+          p_claim_token: string;
+          p_clinic_id: string;
+          p_outbox_id: string;
+        };
+        Returns: {
+          credential_generation_id: string;
+          line_user_id: string;
+          text_content: string;
+        }[];
+      };
+      renew_line_notification_claim: {
+        Args: {
+          p_claim_token: string;
+          p_clinic_id: string;
+          p_outbox_id: string;
+        };
+        Returns: boolean;
+      };
       replace_manager_clinic_assignments:
         | {
             Args: {
@@ -7059,6 +8076,44 @@ export type Database = {
             };
             Returns: undefined;
           };
+      rotate_line_credential_generation: {
+        Args: {
+          p_clinic_id: string;
+          p_credentials: Json;
+          p_new_generation_id: string;
+          p_setup_session_id: string;
+          p_updated_by: string;
+        };
+        Returns: string;
+      };
+      run_line_chat_cleanup_if_due: {
+        Args: never;
+        Returns: {
+          deleted_messages: number;
+          deleted_webhook_events: number;
+          skipped: boolean;
+        }[];
+      };
+      update_line_chat_settings: {
+        Args: {
+          p_auto_reply_enabled: boolean;
+          p_auto_reply_message: string;
+          p_clinic_id: string;
+          p_line_chat_enabled: boolean;
+          p_retention_days: number;
+          p_updated_by: string;
+        };
+        Returns: undefined;
+      };
+      update_line_feature_settings: {
+        Args: {
+          p_clinic_id: string;
+          p_enable_booking: boolean;
+          p_enable_notifications: boolean;
+          p_updated_by: string;
+        };
+        Returns: undefined;
+      };
       upsert_clinic_settings: {
         Args: {
           p_category: string;

@@ -5,6 +5,7 @@ import React, {
   useDeferredValue,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { AdminFormCard } from '@/components/admin/admin-form-card';
@@ -221,6 +222,10 @@ export default function AdminUsersPage() {
     useState<AdminUsersRoleFilter>(ROLE_FILTER_ALL);
   const [clinicFilter, setClinicFilter] = useState<string>(CLINIC_FILTER_ALL);
   const [shiftClinicId, setShiftClinicId] = useState('');
+  const [requestedClinicId, setRequestedClinicId] = useState<string | null>(
+    null
+  );
+  const clinicPreselectionHandled = useRef(false);
 
   const [notice, setNotice] = useState<string | null>(null);
   const [editingPermissionId, setEditingPermissionId] = useState<string | null>(
@@ -257,6 +262,36 @@ export default function AdminUsersPage() {
       fetchClinics({ isActive: null });
     }
   }, [fetchClinics, isHqAdmin]);
+
+  useEffect(() => {
+    setRequestedClinicId(
+      new URLSearchParams(window.location.search).get('clinic_id')
+    );
+  }, []);
+
+  useEffect(() => {
+    if (
+      clinicPreselectionHandled.current ||
+      !requestedClinicId ||
+      clinicOptionsLoading
+    ) {
+      return;
+    }
+
+    const isAllowedClinic = clinicOptions.some(
+      clinic => clinic.id === requestedClinicId
+    );
+    if (!isAllowedClinic) {
+      return;
+    }
+
+    clinicPreselectionHandled.current = true;
+    setClinicFilter(requestedClinicId);
+    setFormState(current => ({
+      ...current,
+      clinic_id: requestedClinicId,
+    }));
+  }, [clinicOptions, clinicOptionsLoading, requestedClinicId]);
 
   useEffect(() => {
     if (shiftClinicId || clinicOptionsLoading) {

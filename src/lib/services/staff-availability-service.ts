@@ -12,9 +12,12 @@ type CustomerLineRow = {
   id: string;
   name: string;
   line_user_id: string | null;
+  line_credential_generation_id: string | null;
   email: string | null;
   is_deleted: boolean | null;
 };
+
+type CurrentLineCredentialRow = { credential_generation_id: string };
 
 type ReservationHistoryRow = { customer_id: string };
 type StaffNameRow = { id: string; name: string };
@@ -138,6 +141,15 @@ async function fetchEligibleCustomers(
   client: CrmSupabaseClient,
   params: { clinicId: string; staffId: string }
 ): Promise<CustomerLineRow[]> {
+  const { data: credentials, error: credentialsError } = await client
+    .from('clinic_line_credentials')
+    .select('credential_generation_id')
+    .eq('clinic_id', params.clinicId)
+    .eq('is_active', true)
+    .maybeSingle<CurrentLineCredentialRow>();
+  if (credentialsError) throw credentialsError;
+  if (!credentials) return [];
+
   const { data: preferences, error: preferenceError } = await client
     .from('patient_staff_preferences')
     .select('customer_id')
@@ -155,10 +167,13 @@ async function fetchEligibleCustomers(
   const [customerResult, historyResult] = await Promise.all([
     client
       .from('customers')
-      .select('id, name, line_user_id, email, is_deleted')
+      .select(
+        'id, name, line_user_id, line_credential_generation_id, email, is_deleted'
+      )
       .eq('clinic_id', params.clinicId)
       .in('id', customerIds)
       .eq('is_deleted', false)
+      .eq('line_credential_generation_id', credentials.credential_generation_id)
       .returns<CustomerLineRow[]>(),
     client
       .from('reservations')
@@ -178,7 +193,10 @@ async function fetchEligibleCustomers(
   );
   return (customerResult.data ?? []).filter(
     customer =>
-      Boolean(customer.line_user_id) && relatedCustomerIds.has(customer.id)
+      Boolean(customer.line_user_id) &&
+      customer.line_credential_generation_id ===
+        credentials.credential_generation_id &&
+      relatedCustomerIds.has(customer.id)
   );
 }
 
@@ -291,7 +309,12 @@ export type PublicStaffAvailabilityEvent = {
 
 export async function getPublicStaffAvailabilityEvent(
   client: CrmSupabaseClient,
-  params: { clinicId: string; eventId: string; lineUserId: string }
+  params: {
+    clinicId: string;
+    credentialGenerationId: string;
+    eventId: string;
+    lineUserId: string;
+  }
 ): Promise<PublicStaffAvailabilityEvent> {
   const { data: notification, error: notificationError } = await client
     .from('staff_availability_notifications')
@@ -305,6 +328,18 @@ export async function getPublicStaffAvailabilityEvent(
   if (!['pending', 'sent'].includes(notification.status)) {
     throw new StaffAvailabilityUnavailableError();
   }
+
+  const { data: customer, error: customerError } = await client
+    .from('customers')
+    .select('id')
+    .eq('id', notification.customer_id)
+    .eq('clinic_id', params.clinicId)
+    .eq('line_user_id', params.lineUserId)
+    .eq('line_credential_generation_id', params.credentialGenerationId)
+    .eq('is_deleted', false)
+    .maybeSingle();
+  if (customerError) throw customerError;
+  if (!customer) throw new StaffAvailabilityNotFoundError();
 
   const { data: event, error: eventError } = await client
     .from('staff_availability_events')

@@ -79,6 +79,10 @@ export function QueryProvider({ children }: QueryProviderProps) {
 
 // React Queryのキー管理
 export const queryKeys = {
+  appBootstrap: {
+    all: ['appBootstrap'] as const,
+  },
+
   // システム設定関連
   systemSettings: {
     all: ['systemSettings'] as const,

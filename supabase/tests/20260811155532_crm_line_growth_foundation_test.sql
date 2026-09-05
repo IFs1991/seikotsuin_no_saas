@@ -108,6 +108,30 @@ values
   ('a6080000-0000-4000-8000-000000000001', '__crm_line_clinic_a__'),
   ('a6080000-0000-4000-8000-000000000002', '__crm_line_clinic_b__');
 
+insert into public.clinic_line_credentials (
+  clinic_id, messaging_channel_id, login_channel_id,
+  channel_secret_encrypted, assertion_private_key_encrypted, assertion_kid,
+  is_active, credentials_verified_at, setup_completed_at
+)
+values (
+  'a6080000-0000-4000-8000-000000000001',
+  'crm-messaging-channel-a',
+  'crm-login-channel-a',
+  'encrypted-crm-channel-secret-a',
+  'encrypted-crm-private-key-a',
+  'crm-assertion-kid-a',
+  true,
+  now(),
+  now()
+);
+
+insert into public.clinic_feature_flags (
+  clinic_id, line_booking_enabled, line_notification_enabled, line_chat_enabled
+)
+values (
+  'a6080000-0000-4000-8000-000000000001', false, true, false
+);
+
 insert into public.resources (
   id, clinic_id, name, type, is_active, is_bookable, is_deleted
 )

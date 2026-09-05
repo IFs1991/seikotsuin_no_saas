@@ -1,0 +1,2 @@
+psql:C:/Users/seekf/Desktop/seikotsuin_management_saas/.worktrees/commercial-hardening-pr11/scripts/commercial-hardening/sql/pr11-paired-normalize.sql:74: ERROR:  PR-11 paired normalization refused: migration head drift
+CONTEXT:  PL/pgSQL function inline_code_block line 17 at RAISE

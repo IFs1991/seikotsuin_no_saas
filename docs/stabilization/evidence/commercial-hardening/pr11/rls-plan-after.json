@@ -1,0 +1,58 @@
+{
+  "captured_at": "2026-07-17T10:07:04+09:00",
+  "status": "SEMANTICS_PASS_LATENCY_GATE_BLOCKED",
+  "target": "local",
+  "migration_head": "20260716160402",
+  "probe": "scripts/commercial-hardening/sql/pr11-rls-plan-probe.sql",
+  "actor": {
+    "database_role": "authenticated",
+    "application_role": "clinic_admin",
+    "visible_clinic": "tenant_a",
+    "fixture_rows_per_table": 2000,
+    "returned_rows": 250
+  },
+  "customer_insurance_coverages": {
+    "execution_ms": [285.94, 150.062, 151.494],
+    "median_execution_ms": 151.494,
+    "maximum_allowed_ms": 66.757,
+    "latency_pass": false,
+    "planning_ms": [2.726, 2.297, 2.628],
+    "shared_hit_blocks": [10173, 10176, 10177],
+    "index_names": [
+      "customer_insurance_coverages_customer_clinic_idx",
+      "customer_insurance_coverages_id_clinic_unique",
+      "customer_insurance_coverages_id_clinic_unique"
+    ],
+    "raw_plan_md5": [
+      "7df5eca4a4c01e953717aa955572b4e0",
+      "072b9e886e948699f6a1a2f7c0207712",
+      "a822e03124e8e45412cecad6ffc4328d"
+    ]
+  },
+  "menu_billing_profiles": {
+    "execution_ms": [122.905, 157.577, 98.138],
+    "median_execution_ms": 122.905,
+    "maximum_allowed_ms": 63.386,
+    "latency_pass": false,
+    "planning_ms": [1.346, 1.514, 0.611],
+    "shared_hit_blocks": [10036, 10038, 10039],
+    "index_names": [
+      "menu_billing_profiles_menu_clinic_idx",
+      "menu_billing_profiles_id_clinic_unique",
+      "menu_billing_profiles_id_clinic_unique"
+    ],
+    "raw_plan_md5": [
+      "d3aa449d290a5bceecdcb7ef13e6211d",
+      "9165168cf11b8d9431527ddc9000fd0a",
+      "8ec99d6bb7dc75f3c03c4ec7047a1b1c"
+    ]
+  },
+  "select_policy_count_per_table": 1,
+  "rls_filter": "can_access_clinic AND role = ANY [admin, clinic_admin, manager, therapist, staff]",
+  "retired_narrow_filter_present": false,
+  "auth_rls_initplan_findings": 0,
+  "semantic_contract_pass": true,
+  "latency_contract_pass": false,
+  "transaction_rolled_back": true,
+  "production_claim": false
+}

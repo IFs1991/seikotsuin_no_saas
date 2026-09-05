@@ -502,7 +502,11 @@ describe('PublicReservationService', () => {
         'テスト患者',
         '09012345678',
         undefined,
-        { lineUserId: 'Uline-user-001', displayName: 'LINE 太郎' }
+        {
+          credentialGenerationId: '22222222-2222-4222-8222-222222222222',
+          lineUserId: 'Uline-user-001',
+          displayName: 'LINE 太郎',
+        }
       );
 
       expect(result).toEqual({ customerId: CUSTOMER_ID, created: false });
@@ -510,12 +514,17 @@ describe('PublicReservationService', () => {
         'line_user_id',
         'Uline-user-001'
       );
+      expect(customerFindQuery.eq).toHaveBeenCalledWith(
+        'line_credential_generation_id',
+        '22222222-2222-4222-8222-222222222222'
+      );
       expect(customerFindQuery.eq).not.toHaveBeenCalledWith(
         'normalized_phone',
         '09012345678'
       );
       expect(update).toHaveBeenCalledWith({
         line_user_id: 'Uline-user-001',
+        line_credential_generation_id: '22222222-2222-4222-8222-222222222222',
         line_display_name: 'LINE 太郎',
       });
       expect(updateQuery.eq).toHaveBeenCalledWith(
@@ -548,7 +557,11 @@ describe('PublicReservationService', () => {
         'テスト患者',
         '090-1234-5678',
         undefined,
-        { lineUserId: 'Uattacker-line', displayName: 'Attacker' }
+        {
+          credentialGenerationId: '22222222-2222-4222-8222-222222222222',
+          lineUserId: 'Uattacker-line',
+          displayName: 'Attacker',
+        }
       );
 
       expect(result).toEqual({ customerId: CUSTOMER_ID, created: true });
@@ -594,7 +607,11 @@ describe('PublicReservationService', () => {
         'テスト患者',
         undefined,
         'victim@example.com',
-        { lineUserId: 'Uattacker-line', displayName: 'Attacker' }
+        {
+          credentialGenerationId: '22222222-2222-4222-8222-222222222222',
+          lineUserId: 'Uattacker-line',
+          displayName: 'Attacker',
+        }
       );
 
       expect(result).toEqual({ customerId: CUSTOMER_ID, created: true });

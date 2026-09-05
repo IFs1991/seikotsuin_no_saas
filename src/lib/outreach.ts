@@ -8,6 +8,10 @@ import {
   toJSTDateString,
 } from '@/lib/jst';
 import type { LineMessagePayload } from '@/lib/notifications/line-outbox';
+import type {
+  LineCustomerRow,
+  LineIntegrationClient,
+} from '@/lib/line/integration-db';
 
 export const OUTREACH_ALLOWED_ROLES = [
   'admin',
@@ -167,7 +171,7 @@ export type OutreachAttribution = {
 };
 
 type CustomerCandidateRow = Pick<
-  Database['public']['Tables']['customers']['Row'],
+  LineCustomerRow,
   | 'id'
   | 'name'
   | 'last_visit_date'
@@ -175,17 +179,30 @@ type CustomerCandidateRow = Pick<
   | 'lifetime_value'
   | 'line_display_name'
   | 'line_user_id'
+  | 'line_credential_generation_id'
 >;
 
 type CustomerRecipientRow = Pick<
-  Database['public']['Tables']['customers']['Row'],
-  'id' | 'name' | 'last_visit_date' | 'line_user_id'
+  LineCustomerRow,
+  | 'id'
+  | 'name'
+  | 'last_visit_date'
+  | 'line_user_id'
+  | 'line_credential_generation_id'
 >;
 
 type CustomerSendRow = Pick<
-  Database['public']['Tables']['customers']['Row'],
-  'id' | 'name' | 'line_user_id' | 'consent_marketing' | 'is_deleted'
+  LineCustomerRow,
+  | 'id'
+  | 'name'
+  | 'line_user_id'
+  | 'line_credential_generation_id'
+  | 'consent_marketing'
+  | 'is_deleted'
 >;
+
+type CurrentLineCredentialRow = { credential_generation_id: string };
+type OutreachLineClient = Pick<LineIntegrationClient, 'from' | 'rpc'>;
 
 type OutreachCampaignRow = Pick<
   Database['public']['Tables']['patient_outreach_campaigns']['Row'],
@@ -229,12 +246,8 @@ type OutreachCampaignInsert =
   Database['public']['Tables']['patient_outreach_campaigns']['Insert'];
 type OutreachRecipientInsert =
   Database['public']['Tables']['patient_outreach_recipients']['Insert'];
-type OutreachCampaignUpdate =
-  Database['public']['Tables']['patient_outreach_campaigns']['Update'];
 type OutreachRecipientUpdate =
   Database['public']['Tables']['patient_outreach_recipients']['Update'];
-type LineMessageOutboxInsert =
-  Database['public']['Tables']['line_message_outbox']['Insert'];
 
 export class OutreachDraftValidationError extends Error {
   constructor(message: string) {
@@ -285,7 +298,7 @@ function mapCandidateRow(
 }
 
 async function fetchFailedOutreachLineUserIds(
-  supabase: Pick<SupabaseServerClient, 'from'>,
+  supabase: OutreachLineClient,
   clinicId: string,
   lineUserIds: readonly string[]
 ): Promise<Set<string>> {
@@ -311,8 +324,23 @@ async function fetchFailedOutreachLineUserIds(
   return new Set((data ?? []).map(row => row.line_user_id));
 }
 
+async function fetchCurrentLineCredentialGeneration(
+  supabase: OutreachLineClient,
+  clinicId: string
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('clinic_line_credentials')
+    .select('credential_generation_id')
+    .eq('clinic_id', clinicId)
+    .eq('is_active', true)
+    .maybeSingle<CurrentLineCredentialRow>();
+
+  if (error) throw error;
+  return data?.credential_generation_id ?? null;
+}
+
 export async function fetchDormantCandidates(
-  supabase: Pick<SupabaseServerClient, 'from'>,
+  supabase: OutreachLineClient,
   input: DormantCandidatesQuery,
   now: Date = new Date()
 ): Promise<DormantCandidatesResponse> {
@@ -322,14 +350,31 @@ export async function fetchDormantCandidates(
     now
   );
 
+  const credentialGenerationId = await fetchCurrentLineCredentialGeneration(
+    supabase,
+    input.clinic_id
+  );
+  if (!credentialGenerationId) {
+    return {
+      clinic_id: input.clinic_id,
+      days_from: input.days_from,
+      days_to: input.days_to,
+      date_from: dateFrom,
+      date_to: dateTo,
+      max_recipients: MAX_OUTREACH_RECIPIENTS,
+      candidates: [],
+    };
+  }
+
   const { data, error } = await supabase
     .from('customers')
     .select(
-      'id, name, last_visit_date, total_visits, lifetime_value, line_display_name, line_user_id'
+      'id, name, last_visit_date, total_visits, lifetime_value, line_display_name, line_user_id, line_credential_generation_id'
     )
     .eq('clinic_id', input.clinic_id)
     .eq('is_deleted', false)
     .eq('consent_marketing', true)
+    .eq('line_credential_generation_id', credentialGenerationId)
     .not('line_user_id', 'is', null)
     .gte('last_visit_date', dateFrom)
     .lte('last_visit_date', dateTo)
@@ -350,6 +395,7 @@ export async function fetchDormantCandidates(
   );
 
   const candidates = (data ?? [])
+    .filter(row => row.line_credential_generation_id === credentialGenerationId)
     .map(row => mapCandidateRow(row, today, failedLineUserIds))
     .filter((candidate): candidate is DormantCandidate => candidate !== null);
 
@@ -399,7 +445,7 @@ function assertAllSelectedCustomersEligible(params: {
 }
 
 export async function createOutreachDraft(
-  supabase: Pick<SupabaseServerClient, 'from'>,
+  supabase: OutreachLineClient,
   input: OutreachDraftInput,
   createdBy: string,
   now: Date = new Date()
@@ -417,13 +463,25 @@ export async function createOutreachDraft(
     now
   );
   const createdAt = now.toISOString();
+  const credentialGenerationId = await fetchCurrentLineCredentialGeneration(
+    supabase,
+    input.clinic_id
+  );
+  if (!credentialGenerationId) {
+    throw new OutreachDraftValidationError(
+      'LINE公式アカウントの接続を完了してから対象患者を再抽出してください'
+    );
+  }
 
   const { data: customers, error: customerError } = await supabase
     .from('customers')
-    .select('id, name, last_visit_date, line_user_id')
+    .select(
+      'id, name, last_visit_date, line_user_id, line_credential_generation_id'
+    )
     .eq('clinic_id', input.clinic_id)
     .eq('is_deleted', false)
     .eq('consent_marketing', true)
+    .eq('line_credential_generation_id', credentialGenerationId)
     .not('line_user_id', 'is', null)
     .gte('last_visit_date', dateFrom)
     .lte('last_visit_date', dateTo)
@@ -434,7 +492,10 @@ export async function createOutreachDraft(
     throw customerError;
   }
 
-  const eligibleCustomers = customers ?? [];
+  const eligibleCustomers = (customers ?? []).filter(
+    customer =>
+      customer.line_credential_generation_id === credentialGenerationId
+  );
   assertAllSelectedCustomersEligible({
     requestedIds: uniqueCustomerIds,
     rows: eligibleCustomers,
@@ -524,6 +585,7 @@ function buildOutreachLinePayload(params: {
   customerId: string;
 }): LineMessagePayload {
   return {
+    customerId: params.customerId,
     text: `${replaceNameToken(
       params.messageBody,
       params.customerName
@@ -538,7 +600,7 @@ function buildOutreachLinePayload(params: {
 }
 
 async function fetchOutreachRecipientsForCampaign(
-  supabase: Pick<SupabaseServerClient, 'from'>,
+  supabase: OutreachLineClient,
   params: { clinicId: string; campaignId: string }
 ): Promise<OutreachRecipientRow[]> {
   const { data, error } = await supabase
@@ -558,8 +620,12 @@ async function fetchOutreachRecipientsForCampaign(
 }
 
 async function fetchCustomerSendRows(
-  supabase: Pick<SupabaseServerClient, 'from'>,
-  params: { clinicId: string; customerIds: readonly string[] }
+  supabase: OutreachLineClient,
+  params: {
+    clinicId: string;
+    credentialGenerationId: string;
+    customerIds: readonly string[];
+  }
 ): Promise<Map<string, CustomerSendRow>> {
   const uniqueCustomerIds = Array.from(new Set(params.customerIds));
   if (uniqueCustomerIds.length === 0) {
@@ -568,8 +634,11 @@ async function fetchCustomerSendRows(
 
   const { data, error } = await supabase
     .from('customers')
-    .select('id, name, line_user_id, consent_marketing, is_deleted')
+    .select(
+      'id, name, line_user_id, line_credential_generation_id, consent_marketing, is_deleted'
+    )
     .eq('clinic_id', params.clinicId)
+    .eq('line_credential_generation_id', params.credentialGenerationId)
     .in('id', uniqueCustomerIds)
     .returns<CustomerSendRow[]>();
 
@@ -580,10 +649,16 @@ async function fetchCustomerSendRows(
   return new Map((data ?? []).map(row => [row.id, row]));
 }
 
-function assertRecipientsStillEligible(params: {
+function partitionRecipientsByEligibility(params: {
   recipients: readonly OutreachRecipientRow[];
   customersById: ReadonlyMap<string, CustomerSendRow>;
-}): void {
+  credentialGenerationId: string;
+}): {
+  eligible: OutreachRecipientRow[];
+  excluded: OutreachRecipientRow[];
+} {
+  const eligible: OutreachRecipientRow[] = [];
+  const excluded: OutreachRecipientRow[] = [];
   for (const recipient of params.recipients) {
     const customer = params.customersById.get(recipient.customer_id);
     if (
@@ -591,17 +666,19 @@ function assertRecipientsStillEligible(params: {
       customer.is_deleted ||
       customer.consent_marketing !== true ||
       !customer.line_user_id ||
-      customer.line_user_id !== recipient.line_user_id
+      customer.line_user_id !== recipient.line_user_id ||
+      customer.line_credential_generation_id !== params.credentialGenerationId
     ) {
-      throw new OutreachDraftValidationError(
-        '対象外の患者が含まれています。再抽出してから配信してください'
-      );
+      excluded.push(recipient);
+    } else {
+      eligible.push(recipient);
     }
   }
+  return { eligible, excluded };
 }
 
 async function fetchRecentOutreachRecipients(
-  supabase: Pick<SupabaseServerClient, 'from'>,
+  supabase: OutreachLineClient,
   params: {
     clinicId: string;
     campaignId: string;
@@ -635,61 +712,8 @@ async function fetchRecentOutreachRecipients(
   return data ?? [];
 }
 
-async function claimDraftCampaignForSend(
-  supabase: Pick<SupabaseServerClient, 'from'>,
-  params: {
-    clinicId: string;
-    campaignId: string;
-    sentAt: string;
-  }
-): Promise<OutreachCampaignRow> {
-  const update: OutreachCampaignUpdate = {
-    status: 'sent',
-    sent_at: params.sentAt,
-  };
-
-  const { data, error } = await supabase
-    .from('patient_outreach_campaigns')
-    .update(update)
-    .eq('id', params.campaignId)
-    .eq('clinic_id', params.clinicId)
-    .eq('status', 'draft')
-    .select('id, clinic_id, name, status, message_body, created_at, sent_at')
-    .returns<OutreachCampaignRow>()
-    .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-
-  if (!data) {
-    throw new OutreachDraftValidationError(
-      '配信できる下書きキャンペーンが見つかりません'
-    );
-  }
-
-  return data;
-}
-
-async function resetCampaignSendClaim(
-  supabase: Pick<SupabaseServerClient, 'from'>,
-  params: { clinicId: string; campaignId: string }
-): Promise<void> {
-  const update: OutreachCampaignUpdate = {
-    status: 'draft',
-    sent_at: null,
-  };
-
-  await supabase
-    .from('patient_outreach_campaigns')
-    .update(update)
-    .eq('id', params.campaignId)
-    .eq('clinic_id', params.clinicId)
-    .eq('status', 'sent');
-}
-
 export async function sendOutreachCampaign(
-  supabase: Pick<SupabaseServerClient, 'from'>,
+  supabase: OutreachLineClient,
   input: {
     clinicId: string;
     campaignId: string;
@@ -712,16 +736,36 @@ export async function sendOutreachCampaign(
     );
   }
 
+  const credentialGenerationId = await fetchCurrentLineCredentialGeneration(
+    supabase,
+    input.clinicId
+  );
+  if (!credentialGenerationId) {
+    throw new OutreachDraftValidationError(
+      'LINE公式アカウントの接続を完了してから配信してください'
+    );
+  }
+
   const customersById = await fetchCustomerSendRows(supabase, {
     clinicId: input.clinicId,
+    credentialGenerationId,
     customerIds: recipients.map(recipient => recipient.customer_id),
   });
-  assertRecipientsStillEligible({ recipients, customersById });
+  const { eligible: eligibleRecipients } = partitionRecipientsByEligibility({
+    recipients,
+    customersById,
+    credentialGenerationId,
+  });
+  if (eligibleRecipients.length === 0) {
+    throw new OutreachDraftValidationError(
+      '現在のLINE公式アカウントへ再リンク済みの配信対象者がいません'
+    );
+  }
 
   const recentRecipients = await fetchRecentOutreachRecipients(supabase, {
     clinicId: input.clinicId,
     campaignId: input.campaignId,
-    customerIds: recipients.map(recipient => recipient.customer_id),
+    customerIds: eligibleRecipients.map(recipient => recipient.customer_id),
     now,
   });
   if (recentRecipients.length > 0) {
@@ -730,82 +774,65 @@ export async function sendOutreachCampaign(
     );
   }
 
-  const sentAt = now.toISOString();
-  const campaign = await claimDraftCampaignForSend(supabase, {
+  const { data: campaign, error: campaignError } = await supabase
+    .from('patient_outreach_campaigns')
+    .select('id, clinic_id, name, status, message_body, created_at, sent_at')
+    .eq('id', input.campaignId)
+    .eq('clinic_id', input.clinicId)
+    .eq('status', 'draft')
+    .maybeSingle<OutreachCampaignRow>();
+  if (campaignError) throw campaignError;
+  if (!campaign) {
+    throw new OutreachDraftValidationError(
+      '配信できる下書きキャンペーンが見つかりません'
+    );
+  }
+
+  const bookingUrl = buildOutreachBookingUrl({
     clinicId: input.clinicId,
     campaignId: input.campaignId,
-    sentAt,
+    appUrl: input.appUrl,
+  });
+  const deliveries: Json = eligibleRecipients.map(recipient => {
+    const customer = customersById.get(recipient.customer_id);
+    if (!customer) {
+      throw new OutreachDraftValidationError(
+        '対象外の患者が含まれています。再抽出してから配信してください'
+      );
+    }
+    return {
+      recipient_id: recipient.id,
+      customer_id: recipient.customer_id,
+      line_user_id: recipient.line_user_id,
+      payload: buildOutreachLinePayload({
+        messageBody: campaign.message_body,
+        customerName: customer.name,
+        bookingUrl,
+        campaignId: input.campaignId,
+        recipientId: recipient.id,
+        customerId: recipient.customer_id,
+      }),
+    };
   });
 
-  try {
-    const bookingUrl = buildOutreachBookingUrl({
-      clinicId: input.clinicId,
-      campaignId: input.campaignId,
-      appUrl: input.appUrl,
-    });
-    const outboxRows: LineMessageOutboxInsert[] = recipients.map(recipient => {
-      const customer = customersById.get(recipient.customer_id);
-      if (!customer) {
-        throw new OutreachDraftValidationError(
-          '対象外の患者が含まれています。再抽出してから配信してください'
-        );
-      }
-
-      return {
-        clinic_id: input.clinicId,
-        line_user_id: recipient.line_user_id,
-        message_type: 'outreach',
-        payload: buildOutreachLinePayload({
-          messageBody: campaign.message_body,
-          customerName: customer.name,
-          bookingUrl,
-          campaignId: input.campaignId,
-          recipientId: recipient.id,
-          customerId: recipient.customer_id,
-        }),
-        status: 'pending',
-      };
-    });
-
-    const { error: outboxError } = await supabase
-      .from('line_message_outbox')
-      .insert(outboxRows);
-
-    if (outboxError) {
-      throw outboxError;
-    }
-
-    const recipientUpdate: OutreachRecipientUpdate = {
-      delivery_status: 'pending',
-      sent_at: sentAt,
-    };
-    const { error: recipientError } = await supabase
-      .from('patient_outreach_recipients')
-      .update(recipientUpdate)
-      .eq('clinic_id', input.clinicId)
-      .eq('campaign_id', input.campaignId)
-      .in(
-        'id',
-        recipients.map(recipient => recipient.id)
-      );
-
-    if (recipientError) {
-      throw recipientError;
-    }
-
-    return {
-      campaign_id: input.campaignId,
-      status: 'sent',
-      enqueued_count: recipients.length,
-      sent_at: sentAt,
-    };
-  } catch (error) {
-    await resetCampaignSendClaim(supabase, {
-      clinicId: input.clinicId,
-      campaignId: input.campaignId,
-    });
-    throw error;
+  const { data: enqueueResult, error: enqueueError } = await supabase
+    .rpc('enqueue_outreach_campaign', {
+      p_campaign_id: input.campaignId,
+      p_clinic_id: input.clinicId,
+      p_deliveries: deliveries,
+      p_expected_message_body: campaign.message_body,
+    })
+    .single();
+  if (enqueueError || !enqueueResult) {
+    throw enqueueError ?? new Error('Failed to enqueue outreach campaign');
   }
+
+  return {
+    campaign_id: input.campaignId,
+    status: 'sent',
+    enqueued_count: enqueueResult.enqueued_count,
+    sent_at: enqueueResult.sent_at,
+  };
 }
 
 function summarizeCampaigns(params: {

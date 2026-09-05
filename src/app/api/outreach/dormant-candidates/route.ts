@@ -8,6 +8,7 @@ import {
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { createAdminClient } from '@/lib/supabase';
 import { AppError } from '@/lib/error-handler';
+import { toLineIntegrationClient } from '@/lib/line/integration-db';
 import {
   dormantCandidatesQuerySchema,
   fetchDormantCandidates,
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
     });
 
     const data = await fetchDormantCandidates(
-      createAdminClient(),
+      toLineIntegrationClient(createAdminClient()),
       parsedQuery.data
     );
 

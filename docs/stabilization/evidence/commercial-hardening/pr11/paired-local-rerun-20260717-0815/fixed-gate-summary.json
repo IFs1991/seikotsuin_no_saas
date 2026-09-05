@@ -1,0 +1,254 @@
+{
+  "fixedLimits": {
+    "performance": {
+      "created_by_read_100_of_20000": {
+        "executionMs": 2.851
+      },
+      "sparse_insert_10000": {
+        "executionMs": 435.7373,
+        "walBytes": 9292168.2
+      },
+      "dense_insert_10000": {
+        "executionMs": 521.55125,
+        "walBytes": 11133665
+      },
+      "shift_full_only_insert_2000": {
+        "executionMs": 198.387,
+        "walBytes": 1868505.6
+      },
+      "shift_full_plus_partial_insert_2000": {
+        "executionMs": 219.224,
+        "walBytes": 2028773.6
+      },
+      "recipient_sparse_composite_insert_1000": {
+        "executionMs": 46.665,
+        "walBytes": 600946.5
+      },
+      "recipient_dense_composite_insert_1000": {
+        "executionMs": 81.761,
+        "walBytes": 755065
+      }
+    },
+    "rls": {
+      "customer_insurance_coverages": {
+        "executionMs": 66.757
+      },
+      "menu_billing_profiles": {
+        "executionMs": 63.3855
+      }
+    }
+  },
+  "primaryGateUsesOriginalFrozenLimits": true,
+  "pairedBeforeIsDiagnosticOnly": true,
+  "performance": {
+    "created_by_read_100_of_20000": {
+      "afterExecutionSamples": [
+        0.078,
+        0.08,
+        0.219
+      ],
+      "afterExecutionMedian": 0.08,
+      "fixedExecutionLimit": 2.851,
+      "executionPass": true,
+      "afterWalSamples": [
+        0,
+        0,
+        0
+      ],
+      "afterWalMedian": null,
+      "fixedWalLimit": null,
+      "walPass": null,
+      "diagnosticBeforeExecutionSamples": [
+        3.484,
+        3.755,
+        3.818
+      ],
+      "diagnosticBeforeExecutionMedian": 3.755
+    },
+    "sparse_insert_10000": {
+      "afterExecutionSamples": [
+        900.388,
+        661.338,
+        656.796
+      ],
+      "afterExecutionMedian": 661.338,
+      "fixedExecutionLimit": 435.7373,
+      "executionPass": false,
+      "afterWalSamples": [
+        8605060,
+        8590604,
+        8597844
+      ],
+      "afterWalMedian": 8597844,
+      "fixedWalLimit": 9292168.2,
+      "walPass": true,
+      "diagnosticBeforeExecutionSamples": [
+        772.648,
+        586.431,
+        611.703
+      ],
+      "diagnosticBeforeExecutionMedian": 611.703
+    },
+    "dense_insert_10000": {
+      "afterExecutionSamples": [
+        875.486,
+        805.017,
+        651.967
+      ],
+      "afterExecutionMedian": 805.017,
+      "fixedExecutionLimit": 521.55125,
+      "executionPass": false,
+      "afterWalSamples": [
+        9497484,
+        9504724,
+        9501068
+      ],
+      "afterWalMedian": 9501068,
+      "fixedWalLimit": 11133665,
+      "walPass": true,
+      "diagnosticBeforeExecutionSamples": [
+        779.401,
+        651.16,
+        729.877
+      ],
+      "diagnosticBeforeExecutionMedian": 729.877
+    },
+    "shift_full_only_insert_2000": {
+      "afterExecutionSamples": [
+        140.262,
+        161.993,
+        196.304
+      ],
+      "afterExecutionMedian": 161.993,
+      "fixedExecutionLimit": 198.387,
+      "executionPass": true,
+      "afterWalSamples": [
+        1697688,
+        1697640,
+        1697688
+      ],
+      "afterWalMedian": 1697688,
+      "fixedWalLimit": 1868505.6,
+      "walPass": true,
+      "diagnosticBeforeExecutionSamples": [
+        155.153,
+        147.568,
+        148.498
+      ],
+      "diagnosticBeforeExecutionMedian": 148.498
+    },
+    "shift_full_plus_partial_insert_2000": {
+      "afterExecutionSamples": [
+        174.521,
+        202.837,
+        158.067
+      ],
+      "afterExecutionMedian": 174.521,
+      "fixedExecutionLimit": 219.224,
+      "executionPass": true,
+      "afterWalSamples": [
+        1886672,
+        1890304,
+        1882968
+      ],
+      "afterWalMedian": 1886672,
+      "fixedWalLimit": 2028773.6,
+      "walPass": true,
+      "diagnosticBeforeExecutionSamples": [
+        168.985,
+        136.39,
+        163.576
+      ],
+      "diagnosticBeforeExecutionMedian": 163.576
+    },
+    "recipient_sparse_composite_insert_1000": {
+      "afterExecutionSamples": [
+        39.738,
+        30.101,
+        42.075
+      ],
+      "afterExecutionMedian": 39.738,
+      "fixedExecutionLimit": 46.665,
+      "executionPass": true,
+      "afterWalSamples": [
+        572354,
+        572330,
+        572354
+      ],
+      "afterWalMedian": 572354,
+      "fixedWalLimit": 600946.5,
+      "walPass": true,
+      "diagnosticBeforeExecutionSamples": [
+        50.06,
+        33.887,
+        52.83
+      ],
+      "diagnosticBeforeExecutionMedian": 50.06
+    },
+    "recipient_dense_composite_insert_1000": {
+      "afterExecutionSamples": [
+        80.062,
+        48.632,
+        67.521
+      ],
+      "afterExecutionMedian": 67.521,
+      "fixedExecutionLimit": 81.761,
+      "executionPass": true,
+      "afterWalSamples": [
+        723034,
+        723082,
+        723058
+      ],
+      "afterWalMedian": 723058,
+      "fixedWalLimit": 755065,
+      "walPass": true,
+      "diagnosticBeforeExecutionSamples": [
+        62.014,
+        76.478,
+        84.101
+      ],
+      "diagnosticBeforeExecutionMedian": 76.478
+    }
+  },
+  "rls": {
+    "customer_insurance_coverages": {
+      "afterExecutionSamples": [
+        107.709,
+        73.184,
+        105.951
+      ],
+      "afterExecutionMedian": 105.951,
+      "fixedExecutionLimit": 66.757,
+      "executionPass": false,
+      "diagnosticBeforeExecutionSamples": [
+        93.381,
+        73.624,
+        98.043
+      ],
+      "diagnosticBeforeExecutionMedian": 93.381
+    },
+    "menu_billing_profiles": {
+      "afterExecutionSamples": [
+        79.671,
+        53.522,
+        68.152
+      ],
+      "afterExecutionMedian": 68.152,
+      "fixedExecutionLimit": 63.3855,
+      "executionPass": false,
+      "diagnosticBeforeExecutionSamples": [
+        62.234,
+        85.291,
+        95.654
+      ],
+      "diagnosticBeforeExecutionMedian": 85.291
+    }
+  },
+  "performancePlanContractPass": true,
+  "rlsSemanticContractPass": true,
+  "externalVerificationRequired": [
+    "npm run commercial:red:db",
+    "focused and full pgTAP"
+  ],
+  "primaryPass": false
+}
