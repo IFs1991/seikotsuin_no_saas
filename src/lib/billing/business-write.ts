@@ -2,7 +2,6 @@ import 'server-only';
 
 import { fetchBillingSubscription } from '@/lib/billing/admin';
 import {
-  assertBillingServerEnv,
   isBillingEnabled,
   isBillingOverridesEnabled,
   isBillingUiEnabled,
@@ -17,21 +16,23 @@ import {
   type BillingOverride,
 } from '@/lib/billing/state';
 import { AppError, ERROR_CODES } from '@/lib/error-handler';
+import { env } from '@/lib/env';
+import {
+  inspectBillingConfiguration,
+  resolveBusinessWriteGateMode,
+  type BusinessWriteGateEnvironment,
+  type BusinessWriteGateMode,
+} from '@/lib/billing/configuration-policy';
+export {
+  resolveBusinessWriteGateMode,
+  type BusinessWriteGateEnvironment,
+  type BusinessWriteGateMode,
+} from '@/lib/billing/configuration-policy';
 import {
   createScopedAdminContext,
   type SupabaseServerClient,
   type UserPermissions,
 } from '@/lib/supabase';
-
-export type BusinessWriteGateEnvironment = {
-  nodeEnv: string;
-  pilotMode: boolean;
-  billingEnabled: boolean;
-  billingUiEnabled: boolean;
-  tenantGuardEnabled: boolean;
-};
-
-export type BusinessWriteGateMode = 'bypass' | 'enforce' | 'misconfigured';
 
 export type BusinessWriteAccessResult =
   | {
@@ -42,23 +43,6 @@ export type BusinessWriteAccessResult =
       orgRootClinicId: string;
       billingState: BillingState;
     };
-
-export function resolveBusinessWriteGateMode(
-  environment: BusinessWriteGateEnvironment
-): BusinessWriteGateMode {
-  const guardFullyEnabled =
-    environment.billingEnabled && environment.tenantGuardEnabled;
-  const isCommercialProduction =
-    environment.nodeEnv === 'production' && !environment.pilotMode;
-
-  if (isCommercialProduction) {
-    return guardFullyEnabled && environment.billingUiEnabled
-      ? 'enforce'
-      : 'misconfigured';
-  }
-
-  return guardFullyEnabled ? 'enforce' : 'bypass';
-}
 
 export function getBusinessWriteGateEnvironment(): BusinessWriteGateEnvironment {
   return {
@@ -90,12 +74,12 @@ export function assertBusinessWriteGateConfiguration(): Exclude<
   }
 
   if (mode === 'enforce' && isCommercialProduction(environment)) {
-    try {
-      const billingEnv = assertBillingServerEnv();
-      if (billingEnv.enabledPlans.length === 0) {
-        throw new Error('BILLING_ENABLED_PLANS must include at least one plan');
-      }
-    } catch {
+    const configuration = inspectBillingConfiguration({
+      ...env,
+      NODE_ENV: environment.nodeEnv,
+      NEXT_PUBLIC_PILOT_MODE: String(environment.pilotMode),
+    });
+    if (configuration.missing.length > 0 || configuration.invalid.length > 0) {
       throw new AppError(
         ERROR_CODES.BILLING_CONFIGURATION_ERROR,
         '本番のStripe課金設定が不足しています',
