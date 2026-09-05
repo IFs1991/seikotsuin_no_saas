@@ -75,14 +75,29 @@ describe('getPathRateLimit', () => {
     expect(getPathRateLimit('/api/health', 'GET')).toEqual([]);
   });
 
-  it('applies auth entry point rate limits to login and signup surfaces only', () => {
-    expect(getPathRateLimit('/login')).toEqual([loginRateLimit]);
-    expect(getPathRateLimit('/admin/login')).toEqual([loginRateLimit]);
-    expect(getPathRateLimit('/register')).toEqual([loginRateLimit]);
-    expect(getPathRateLimit('/invite')).toEqual([loginRateLimit]);
-    expect(getPathRateLimit('/forgot-password')).toEqual([loginRateLimit]);
-    expect(getPathRateLimit('/reset-password/admin')).toEqual([loginRateLimit]);
-    expect(getPathRateLimit('/reset-password/clinic')).toEqual([
+  it('does not spend password budgets on page views or double-count guarded Server Actions', () => {
+    for (let visit = 0; visit < 20; visit++) {
+      for (const path of [
+        '/login',
+        '/admin/login',
+        '/register',
+        '/invite',
+        '/forgot-password',
+        '/reset-password/admin',
+        '/reset-password/clinic',
+      ]) {
+        expect(getPathRateLimit(path, 'GET')).toEqual([]);
+        expect(getPathRateLimit(path, 'HEAD')).toEqual([]);
+      }
+    }
+    for (const path of ['/login', '/admin/login', '/invite']) {
+      expect(getPathRateLimit(path, 'POST')).toEqual([]);
+    }
+    expect(getPathRateLimit('/register', 'POST')).toEqual([loginRateLimit]);
+    expect(getPathRateLimit('/forgot-password', 'POST')).toEqual([
+      loginRateLimit,
+    ]);
+    expect(getPathRateLimit('/reset-password/clinic', 'POST')).toEqual([
       loginRateLimit,
     ]);
     expect(getPathRateLimit('/api/auth/profile')).toEqual([]);
