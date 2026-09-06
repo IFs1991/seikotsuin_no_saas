@@ -1,0 +1,28 @@
+
+> seikotsuin-management-saas@0.1.0-pilot pretest
+> node scripts/check-swc-binary.mjs
+
+
+> seikotsuin-management-saas@0.1.0-pilot test
+> node scripts/run-jest.mjs --ci --config .next/jest-pd.config.cjs --runTestsByPath src/__tests__/security/commercial-pr11-deferred-production-forward-fix.test.ts
+
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\seekf\Desktop\seikotsuin_management_saas\package-lock.json as the root directory.
+ To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+ Detected additional lockfiles:
+   * C:\Users\seekf\Desktop\seikotsuin_management_saas\.w\pd\package-lock.json
+
+PASS server src/__tests__/security/commercial-pr11-deferred-production-forward-fix.test.ts
+  PR-11 deferred production forward-fix contract
+    √ ships the migration, specification, and validation-only rollback together (9 ms)
+    √ accepts only the exact approved history and rejects partial state (12 ms)
+    √ is bounded, idempotent, and reasserts the exact security contract (3 ms)
+    √ does not mutate application data or remove catalog objects (1 ms)
+    √ reproduces the production history-only recovery in an explicitly approved local reset (2 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       5 passed, 5 total
+Snapshots:   0 total
+Time:        1.312 s
+Ran all test suites within paths "src/__tests__/security/commercial-pr11-deferred-production-forward-fix.test.ts".

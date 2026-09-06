@@ -40,3 +40,16 @@ PR-D初回commit `8602f6e9` の [CI 34003707831](https://github.com/IFs1991/seik
 - route manifestとsource reference inventoryを統合後のコードから再生成し、両方のcheck PASS。`security:verify-mutating-routes`（132 mutations / 9 GET例外）とmobile production assetsもcheck PASS。DB関連SQL、full Jest、production buildは更新commitのCIを引き続き必須とする。
 
 PR-Cの修正をPR-Dの独立成果へ読み替えない。stacked PRのbaseは親がPR-Cへ変更し、mainと他ブランチはこの作業では変更していない。予約commit→handoff開始の残るcrash windowや、配備先DB・providerの未検証は上記のまま。
+
+## CIの既存DB検証fixture・head契約の追従
+
+[CI 34004238530](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34004238530)ではmigration replay、新規通知SQL、予約CAS SQLがPASS。既存の完全EXECUTE行列は新private trigger関数のservice_role一組が期待値にないためFAILした。`916a4637`で期待値一行だけを追記し、実権限や双方向の差分比較は変更していない。
+
+次の [CI 34004618455](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34004618455)では新規通知SQLと完全権限行列はPASSしたが、後段のdeferred PR-11検証が最新headを固定のrecovery番号と比較してFAILした。これは新しいappend-only migrationが正常適用された場合にも発生する既存検証の前提違いである。後段の生成型・E2Eの成功とは読み替えない。
+
+- `deferred-history-red.log`: 旧固定head判定をhelperへそのまま抽出して本scriptへ接続した状態で、offline **3 failed / 4 passed**。後続migrationの正常適用拒否、中間履歴欠落・重複の未検知を再現。module未存在や環境エラーはREDとして数えない。
+- 修正は適用対象repo SQLから最新headと全version一覧を取得し、実DBの全versionとの完全一致を検証する。baseline / repaired / recoveryの固定番号、旧repairとrecovery各1件、artifact-free状態、CLI pin、loopback、reset承認、rollback guard、finallyの復元処理は維持する。欠落・重複・余計な履歴を許容する変更ではない。
+- `deferred-history-green.log`: `npm run test:release-tooling` **46 tests PASS**（既存39＋新規7）。既存glob内のoffline試験であり、DBには接続しない。
+- `deferred-history-contract.log`: 既存 `commercial-pr11-deferred-production-forward-fix.test.ts` **5 tests PASS**。`commercial:verify:migrations`もPASS（50 frozen / 18 appended）。
+
+実DBへの復旧シーケンス再実行と後段gateは、新しいcommitのCIで確認する。ローカル既存DBへのreset / applyは引き続き未実施。
