@@ -2,21 +2,28 @@
 
 確認日: 2026-09-06 JST。対象: `IFs1991/seikotsuin_no_saas`。目標は10社・合計100院での運用に必要な、患者データ・経営数字・予約・通知・本番相当CSPの正確性である。
 
-**判定は NO_GO / 出荷未判定。** 以下のコード修正は独立ブランチ上の成果であり、容量検証と運用準備の完了を意味しない。各PRの状態は次表を正本とし、後段の修正説明をmain統合済み・実環境検証済みと読み替えない。
+**判定は NO_GO / 出荷未判定。** コード修正・main統合の完了は容量検証と運用準備の完了を意味しない。各PRの統合状態は次表を正本とし、過去のCIと最新の統合後CIを区別する。
+
+2026-09-06 JST、ユーザーから「プレビュー確認したのでマージをよろしく」と確認・統合依頼を受領した。Preview受入は **USER_CONFIRMED** とし、A〜Eを依存順にmainへ統合した。Fの文書更新と統合結果はPR #122の履歴を参照する。実Redis、100院容量、配備先DB、実通知、復旧・運用の検証とは別の証跡である。
 
 ## 基準とPR進捗
 
 | 対象 | commit / PR | 確認済み状態 | 未完了・次の確認 |
 | --- | --- | --- | --- |
-| current main | `c028573d089cb6085ab3e29121fa9fe4d2f923c0`、[PR #116](https://github.com/IFs1991/seikotsuin_no_saas/pull/116) merge済み | [CI 33996399702](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/33996399702) 8 jobs SUCCESS。Jest 444 suites / 3733 passed / 2 skipped。E2E 9 passed / 3 flaky（retry成功）/ 1 skipped | 今回のPR-A〜Fはまだmainへmergeしていない |
-| PR-A 患者PATCH | `2b10dfd`、[PR #117](https://github.com/IFs1991/seikotsuin_no_saas/pull/117) | [CI 34001862639](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34001862639) 8 jobs SUCCESS。Jest 444 suites / 3742 passed / 2 skipped。E2E 11 passed / 1 flaky（retry成功）/ 1 skipped。独立read-only監査2名PASS | main未統合。統合後のCI・Preview確認 |
-| PR-B 日報・収益 | `a913ea2`、[PR #118](https://github.com/IFs1991/seikotsuin_no_saas/pull/118) | [CI 34002471970](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34002471970) 8 jobs SUCCESS。Jest 445 suites / 3748 passed / 2 skipped。E2E 11 passed / 1 flaky（retry成功）/ 1 skipped。独立read-only監査2名PASS | main未統合。統合後のCI・Preview確認 |
-| PR-C 予約整合性 | `609c761`、[PR #119](https://github.com/IFs1991/seikotsuin_no_saas/pull/119) | [CI 34002601375](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34002601375) 8 jobs SUCCESS。Jest 445 suites / 3751 passed / 2 skipped。E2E 12 passed / 1 skipped。独立read-only監査2名PASS | main未統合。統合後のCI・Preview確認 |
-| PR-D 通知耐久性 | 最終 `5f7c77017d218fc18e44242d5c84f274d978d976`、[PR #121](https://github.com/IFs1991/seikotsuin_no_saas/pull/121)。PR baseはC #119のブランチ。C / D統合 `61de7312`、grant fixture追補 `916a4637` | [CI 34005318786](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34005318786) 8 jobs SUCCESS。Jest 447 suites / 3773 passed / 2 skipped。DB 21 files / 858 tests、deferred経路・招待同時実行・GoTrue・生成型diffも成功。E2E 11 passed / 1 flaky（retry成功）/ 1 skipped。統合回帰17 suites / 229 tests、release-tooling 46 tests、独立read-only監査2名PASS。C / D競合解消済み | main未統合。先にCを統合してからDのbaseと最新CIを確認する。配備先migration適用・実通知・worker停止復帰は未実施 |
-| PR-E production CSP | `4bb46947` / `cdf0e12c`、[PR #120](https://github.com/IFs1991/seikotsuin_no_saas/pull/120) | [CI 34003531144](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34003531144) 8 jobs SUCCESS。Jest 444 suites / 3734 passed / 2 skipped。Build内production CSPブラウザ1 passed、App E2E 11 passed / 1 flaky（retry成功）/ 1 skipped。独立read-only監査2名PASS。ローカルproduction build / ブラウザ1件（exit 0）、Jest 9 suites / 116 tests、型・lint（0 errors / 129 warnings）・source inventoryもPASS。Windowsの終了停滞時は起動した所有PIDだけを停止 | main未統合。認証後のproduction相当検証は実Redis / 信頼proxy不足でBLOCKED |
-| PR-F 文書・証跡 | 初版 `3fd6acd`、文書最終版は本PR HEAD | コード変更前の再分類を保持し、修正前再分類・本書・release result・branch protection提案の4文書を整理。独立read-only監査2名PASS。CI結果は本PR checksを参照 | main未統合。文書・コードの成功を容量検証・運用準備の完了へ読み替えない |
+| 修正前基準main | `c028573d089cb6085ab3e29121fa9fe4d2f923c0`、[PR #116](https://github.com/IFs1991/seikotsuin_no_saas/pull/116) merge済み | [CI 33996399702](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/33996399702) 8 jobs SUCCESS。Jest 444 suites / 3733 passed / 2 skipped。E2E 9 passed / 3 flaky（retry成功）/ 1 skipped | 修正前の履歴。追加修正の統合後CIへ読み替えない |
+| コード統合main | `1d95419e918b8748ac45c69b6b3ee84e3a369579`（PR-Eのmerge commit） | A〜Eのmain統合完了。全コードを含むE更新headのCI 8 jobs成功。Previewはユーザー確認済み | Fの文書更新・merge結果はPR #122履歴、merge後main CIはGitHub checksを参照。容量・運用は別判定 |
+| PR-A 患者PATCH | `2b10dfd`、[PR #117](https://github.com/IFs1991/seikotsuin_no_saas/pull/117) | [CI 34001862639](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34001862639) 8 jobs SUCCESS。Jest 444 suites / 3742 passed / 2 skipped。E2E 11 passed / 1 flaky（retry成功）/ 1 skipped。独立read-only監査2名PASS | **MERGED**、main merge commit `03fc8b66`（2026-09-06）。全コードの組合せCIはE行を参照 |
+| PR-B 日報・収益 | `a913ea2`、[PR #118](https://github.com/IFs1991/seikotsuin_no_saas/pull/118) | [CI 34002471970](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34002471970) 8 jobs SUCCESS。Jest 445 suites / 3748 passed / 2 skipped。E2E 11 passed / 1 flaky（retry成功）/ 1 skipped。独立read-only監査2名PASS | **MERGED**、main merge commit `d636e713`（2026-09-06）。全コードの組合せCIはE行を参照 |
+| PR-C 予約整合性 | 実装 `609c761`、更新head `79c3a932d5448468b21af21d4097314aada83d43`、[PR #119](https://github.com/IFs1991/seikotsuin_no_saas/pull/119) | 更新headの[CI 34008756777](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34008756777) 8 jobs SUCCESS、Jest 446 suites / 3775 passed / 2 skipped。初回[CI 34002601375](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34002601375)も8 jobs成功。独立read-only監査2名PASS | **MERGED**、main merge commit `f8dd988d65cb01df08acabd8f3ce02b83fbf16f6`（2026-09-06 12:32:04 JST）。全コードの組合せCIはE行を参照 |
+| PR-D 通知耐久性 | 更新head `3a9cf4ad0ec7ca6bacd8bdd2c08450aa5e6e3ebc`、[PR #121](https://github.com/IFs1991/seikotsuin_no_saas/pull/121)。C #119への依存PRとして作成。C / D統合 `61de7312`、grant fixture追補 `916a4637` | [CI 34008810877](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34008810877) 8 jobs SUCCESS。Jest 448 suites / 3797 passed / 2 skipped。DB 21 files / 858 tests PASS、App E2E 12 passed / 0 flaky / 1 skipped。統合回帰17 suites / 229 tests、release-tooling 46 tests、独立read-only監査2名PASS | **MERGED**、main merge commit `fcb64ec03a3894988617e6e1b726a7b083485ad4`（2026-09-06 12:33:50 JST）。配備先migration適用・実通知・worker停止復帰は未実施 |
+| PR-E production CSP | 更新head `fda08bdd1aa1a62c01bc837e8015891b9e3eba93`、[PR #120](https://github.com/IFs1991/seikotsuin_no_saas/pull/120)。初回修正 `4bb46947` / `cdf0e12c` | [CI 34008902307](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34008902307) 8 jobs SUCCESS。Jest 448 suites / 3798 passed / 2 skipped。DB 21 files / 858 tests、Build内production CSPブラウザ1 passed、App E2E 11 passed / 1 flaky（retry成功）/ 1 skipped。全コードの組合せ回帰17 suites / 229 tests、独立read-only監査2名PASS | **MERGED**、main merge commit `1d95419e918b8748ac45c69b6b3ee84e3a369579`（2026-09-06 12:34:46 JST）。実認証後のproduction相当CSPは実Redis / 信頼proxy不足でBLOCKED |
+| PR-F 文書・証跡 | 初版 `3fd6acd`、[PR #122](https://github.com/IFs1991/seikotsuin_no_saas/pull/122)。文書最終版・統合状態・merge commitはPR履歴を参照 | コード変更前の再分類を保持し、4文書へユーザーPreview確認とA〜Eの統合結果を記録。更新前の独立read-only監査2名PASS。今回追記の再監査・CI結果は本PRに記録する | 本書自身のmerge SHAは埋め込まない。本PRのCIとmerge後main CIはGitHub checksを参照し、完了を先取りしない。容量・運用の完了へ読み替えない |
 
 8 jobsは Quality Checks / Build / Database Contract / Security Tests / Supabase Types Contract / Fixture Preflight (Static) / Full Jest Regression / App E2E (Local Supabase + Chromium)。skipは未実行、flakyはretry成功として明記し、初回成功件数へ加えない。mainの既存CIと、各修正commitのCIは別の証跡である。
+
+Eの更新head `fda08bdd1aa1a62c01bc837e8015891b9e3eba93` はA / B / C / D / Eの全コードを含み、上表の8 jobs成功後にmainへmergeした。source inventoryの競合はgenerator再生成で解消し、route / source / security（132 mutations / 9 GET例外）/ mobile assetsのcheck、focused17 suites / 229 tests、独立read-only監査2名がPASSした。コード組合せのCI成功と、merge後mainのCIは区別して記録する。
+
+Dの実装時head `5f7c77017d218fc18e44242d5c84f274d978d976` の[CI 34005318786](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34005318786)も8 jobs成功（Jest 447 suites / 3773 passed / 2 skipped、DB 21 files / 858 tests、E2E 11 passed / 1 flaky / 1 skipped）。deferred経路・招待同時実行・GoTrue・生成型diffの成功を含む。E初回の[CI 34003531144](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34003531144)も8 jobs成功した。これらの実装段階の証跡を、上表の更新head・merge commitの結果へ読み替えない。
 
 PR-Dの初回 `8602f6e9` / [CI 34003707831](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34003707831) はsource inventoryの生成漏れでQuality ChecksがFAIL、他7 jobsはSKIPPEDだった。Cとの統合時にinventoryを更新し、`61de7312` / [CI 34004238530](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34004238530)のQuality Checksは成功した。同runでは新migration再生・D通知SQL・C CAS SQLは成功したが、既存の完全grant行列fixtureに新private関数service_role 1組が未登録のためDatabase Contractが1 failed / 858 testsとなり、型の後段とE2Eは未実行だった。過去の失敗を後続検証のPASSへ書き換えない。
 
@@ -69,7 +76,7 @@ PR-Dの初回 `8602f6e9` / [CI 34003707831](https://github.com/IFs1991/seikotsui
 - 原因: Core100 release resultに作業途中のcommit / CIが現状として残り、既存解消項目・追加修正・容量 / 運用の未検証を分けて読む必要があった。mainのbranch protection / rulesetも未適用だった。
 - 修正内容: 最初にコード変更なしでFindingを再分類し、既存解消項目を再実装対象から除外した。Core100のmain統合SHAとCI事実を歴史的ログから分離し、本書ではFindingごとの修正・証跡と8領域判定を整理する。成功した8 CI gateをrequired check候補として文書化し、repository settingsは変更しない。
 - 対象ファイル: `docs/stabilization/post-core100-audit-status.md`、`core100-release-result.md`、`post-core100-branch-protection.md`、`post-core100-remediation-result.md`。
-- 確認: コード / 既存仕様・各担当検証記録と照合し、文書内のローカルリンク切れ0件を確認した。4文書の独立read-only監査2名PASS。初版は `3fd6acd`、文書最終版は本PR HEAD、CI結果は本PR checksを参照する。文書確認のためにアプリテストや負荷試験を再実行したとは主張しない。
+- 確認: コード / 既存仕様・各担当検証記録と照合し、文書内のローカルリンク切れ0件を確認した。更新前の4文書は独立read-only監査2名PASS。初版は `3fd6acd`、今回更新の再監査・CI・統合状態はPR #122のchecksと履歴を参照する。文書確認のためにアプリテストや負荷試験を再実行したとは主張しない。
 
 ## B. 既に解消済みだった項目
 
@@ -88,7 +95,7 @@ PR-Dの初回 `8602f6e9` / [CI 34003707831](https://github.com/IFs1991/seikotsui
 | 10社100院容量、200 / 400 VU | BLOCKED | 承認された専用app / DB、外部送信遮断、plan / region / 上限 / 100院IP構成を確定。既存toolingでseed / load / verifyし、件数・金額照合とrequest count / p50 / p95 / p99 / CPU / DB接続 / PostgREST latencyを保存 |
 | 実Redisと信頼proxy | BLOCKED | 使用許可されたRedis RESTとproxy条件。IP / account閾値、原子性、TTL、復帰、Auth側制限を実証。設定不足時の503維持は業務成功の証拠ではない |
 | production相当の認証後CSP | BLOCKED | 実Redis / 信頼proxyと検証用accountを用意。dashboard、reservationsと作成 / 更新、daily report、manager/dashboardをfull-enforceのproduction buildで検証 |
-| Preview固有の業務受入 | BLOCKED | 対象deployment / commit、検証account、DBと必要設定の一致を確定。CIの使い捨てSupabaseによるE2Eと区別する |
+| Preview受入 | USER_CONFIRMED | 2026-09-06、ユーザーがPreview確認とmergeを依頼。CIの自動E2E、実Redisや配備先DB設定の検証とは区別する |
 | 配備先DB / PostgREST設定 | BLOCKED | migration / 生成型 / 権限 / aggregate有効設定を照合。PR-D migrationは承認済み対象で適用・検証してからアプリ展開。CIのreplay成功を配備先適用へ読み替えない |
 | backup restore / RPO / RTO | BLOCKED | 承認されたbackupと隔離復元先。Storage / 鍵 / Auth設定を含め復元し、会社分離、件数・金額、RPO / RTOを測定 |
 | LINE / email実通知 | BLOCKED | 承認されたtest宛先 / provider / workerでoutbox保持、停止・再開、再試行、重複、受信を確認。provider failureとenqueue failureを区別 |
@@ -98,7 +105,7 @@ PR-Dの初回 `8602f6e9` / [CI 34003707831](https://github.com/IFs1991/seikotsui
 
 ## D. 運用開始前に残るリスク
 
-- PR-A〜Fの独立CIとmain統合後の回帰・Preview受入が終わるまで、各ブランチの成功を組合せ全体の成功と判定しない。PR-C / Dの予約route競合は `61de7312`で解消し、保存成功・競合409・通知待機の順序を回帰と独立監査で確認済み。A〜F全体をmainへ統合した状態の検証は別途必要である。
+- ユーザーPreview確認後、A〜Eを依存順にmainへ統合した。Eの全コード組合せCIは成功し、PR-C / Dの保存成功・競合409・通知待機の順序も回帰と独立監査で確認済み。Fの文書更新とmerge後main CIはPR履歴・GitHub checksを参照し、組合せbranchのCIとは区別する。
 - 日報 / Revenueの複数ページ取得は同一transactionのsnapshotではない。取得中の過去データ編集まで厳密な同時点整合性を保証しない。managerの50院countはコード上200 HEAD要求だが、実測前のRPC化・性能PASSは行わない。
 - PR-CのCASはAPIの読取から保存までの競合を対象とする。画面を長時間開いた編集開始時点まで遡ったversion管理や、全予約経路の直列化は保証しない。
 - PR-Dの最小境界では予約commitと通知handoffは別transactionであり、その間のprocess停止は残る。lease / provider冪等性も無期限のexactly-onceを保証しない。曖昧な配送を照合する運用と、実worker停止・復帰試験が必要である。
@@ -110,8 +117,8 @@ PR-Dの初回 `8602f6e9` / [CI 34003707831](https://github.com/IFs1991/seikotsui
 
 | 領域 | 判定 | 根拠・完了条件 |
 | --- | --- | --- |
-| Code readiness | IMPLEMENTED / main未統合 | PR-A〜Eは各CI8 jobs成功・独立監査2名PASS。C / Dの統合回帰・DB契約も成功。Fは4文書・独立監査2名PASS、文書PRのCI結果は本PR checksを参照。main統合後の必要gate・Preview確認が必要 |
-| Data correctness | PARTIALLY VERIFIED | 患者PATCH・日報 / Revenue・予約保存 / CASは各PRのfocused回帰とCI8 jobs成功。CのDatabase Contractも成功。C / D統合後の保存・通知境界はfocused回帰229件で確認。A〜F全体の業務受入と配備先DBの検証は未完了 |
+| Code readiness | IMPLEMENTED / A〜E MERGED | 各更新headと全コードを含むEのCI8 jobs成功、独立監査2名PASS、Previewはユーザー確認済み。コード統合mainは `1d95419e`。Fの文書統合状態とmerge後main CIは本PR履歴・GitHub checksを参照 |
+| Data correctness | PARTIALLY VERIFIED | 患者PATCH・日報 / Revenue・予約保存 / CAS・通知境界は各PRと全コード組合せのCIで確認。最新DB 21 files / 858 tests PASS、ユーザーPreview確認済み。配備先DB・実環境の検証は未完了 |
 | Security | PARTIALLY VERIFIED | 基準mainとPR-A〜EのSecurity / Database Contractは成功。Eのproduction CSPブラウザgateはCI Build内でも成功。実認証後CSP、実Redis / proxy、配備設定確認が残る |
 | Capacity | BLOCKED | 10社100院大規模試験、200 / 400 VUとDB資源実測は未実行 |
 | Recovery | BLOCKED | backup restoreとRPO / RTO未実測 |

@@ -79,13 +79,15 @@ DoD対応: DOD-06/07=E2E、DOD-08/09=認可・clinic境界維持、DOD-10=build�
 
 ## 修正前分類後の追加確認（2026-09-06 JST）
 
-上の表は初版commit `3fd6acd` に記録した修正前の分類である。後の実測で得た事実を以下へ追記し、初版の `NEEDS_ENVIRONMENT_VERIFICATION` を当時未実施だった試験のPASSへ書き換えない。現時点のmainは基準SHAのままで、各修正PRはmain未統合。
+上の表は初版commit `3fd6acd` に記録した修正前の分類である。後の実測で得た事実を以下へ追記し、初版の `NEEDS_ENVIRONMENT_VERIFICATION` を当時未実施だった試験のPASSへ書き換えない。2026-09-06のユーザーPreview確認・merge依頼を受け、A〜Eをmainへ統合した。コード統合mainは `1d95419e918b8748ac45c69b6b3ee84e3a369579`。各PRの証跡とFの文書統合状態は修正結果の進捗表・PR #122の履歴で管理する。
 
 | 対象 | 追加確認と現在の修正状態 | 証跡・未完了範囲 |
 | --- | --- | --- |
 | production CSP / middleware入口 | CONFIRMED。修正前production buildのmiddleware manifestが空でloginにCSPがなかった。入口登録後にSSR nonce欠落・Next Imageのstyle属性違反・client navigation時の `nextjs#bundler` 拒否とhard reloadもRED再現。PR-Eで薄いsrc入口、request nonce / CSP、動的SSR、画像3箇所、正確なTrusted Types policy名を修正 | [PR #120](https://github.com/IFs1991/seikotsuin_no_saas/pull/120)、`4bb46947` / `cdf0e12c`。[CI 34003531144](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34003531144) 8 jobs SUCCESS、Jest 444 suites / 3734 passed / 2 skipped、Build内production CSP 1 passed、App E2E 11 passed / 1 flaky / 1 skipped、独立read-only監査2名PASS。ローカルproduction build / ブラウザ1件、9 suites / 116 tests、型・lint・inventoryもPASS。実認証後CSPは実Redis / 信頼proxy不足でBLOCKED |
 | F-14等のmiddleware内rate limit | 初版RESOLVEDはuser + clinicキー等のhelper実装確認を意味する。PR-Eで入口未登録が判明したため、production runtimeでの有効性は追加修正・環境検証が必要。helperを再実装せず入口修正へ関連付ける | PR-Eの `src/middleware.ts` 登録後は既存API制限が実行される。Redis未設定時の503はfail-closedを維持。実閾値・原子性・TTL・復帰・proxy境界の合格を意味しない |
-| 患者PATCH、日報 / Revenue、予約保存 / CAS | PR-A / B / CでRED後の最小修正、各CI8 jobs成功、独立read-only監査2名PASS | A: [CI 34001862639](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34001862639)、B: [CI 34002471970](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34002471970)、C: [CI 34002601375](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34002601375)。main統合後の組合せ回帰・Preview受入は別途必要 |
-| 予約保存 / CASと通知handoffの統合 | C / Dの競合を `61de7312`で解消。clinic scope・raw updated_at CASを保持し、保存後にscoped clientで通知handoffをawaitしてからprojectionを読む。通知失敗後の保存成功も維持 | [PR #121](https://github.com/IFs1991/seikotsuin_no_saas/pull/121)はC #119がbase。新規4回帰を含む17 suites / 229 tests、型・lint・inventory・独立read-only監査2名PASS。CI失敗履歴と最新結果は修正結果のD行を参照。実通知・配備先DBはBLOCKED |
+| 患者PATCH、日報 / Revenue、予約保存 / CAS | PR-A / B / CでRED後の最小修正、各CI8 jobs成功、独立read-only監査2名PASS | A: [CI 34001862639](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34001862639)、B: [CI 34002471970](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34002471970)、C: [CI 34002601375](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34002601375)。Previewはユーザー確認済み。main最終統合headのCIは各PRの既存CIと区別する |
+| 予約保存 / CASと通知handoffの統合 | C / Dの競合を `61de7312`で解消。clinic scope・raw updated_at CASを保持し、保存後にscoped clientで通知handoffをawaitしてからprojectionを読む。通知失敗後の保存成功も維持 | [PR #121](https://github.com/IFs1991/seikotsuin_no_saas/pull/121)はC #119へ依存するPRとして作成。新規4回帰を含む17 suites / 229 tests、型・lint・inventory・独立read-only監査2名PASS。CI失敗履歴と最新結果は修正結果のD行を参照。実通知・配備先DBはBLOCKED |
+
+全コードを含むE更新head `fda08bdd` の[CI 34008902307](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34008902307)は8 jobs成功（Jest 448 suites / 3798 passed / 2 skipped、DB 21 files / 858 tests、production CSP 1 passed、App E2E 11 passed / 1 flaky / 1 skipped）。コード統合mainとの実装コード一致も確認した。Previewは2026-09-06にユーザー確認済み。merge後main CIとF文書PRの状態はGitHub checks・PR履歴を参照する。
 
 最終commit / CI件数・8領域の判定は [Post-Core100修正結果](post-core100-remediation-result.md) へ集約する。容量・復元・実通知・配備設定・監視受信・運用の未検証は継続し、コードのCI成功だけで出荷判定を引き上げない。

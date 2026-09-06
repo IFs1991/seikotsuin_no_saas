@@ -17,7 +17,7 @@ required status checksの候補（CI33996399702で実際に成功したcheck名�
 
 GitHub Actionsをcheckの提供元に指定する。schema/type driftの正本はDatabase Contract。Supabase Types Contractは既存check名の移行互換用として当面保持し、削除は別途承認・移行後に判断する。
 
-Post-Core100のPR #117 / #118 / #119 / #120でも上記8 checkが成功し、独立read-only監査はそれぞれ2名PASS。ただし監査記録はGitHubでrequired reviewが設定済みであることを意味しない。PR #120の[CI 34003531144](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34003531144)では、既存Build jobへ追加したproduction CSPブラウザ1件もPASSした。新しいcheck名へ置換しておらず、追加のrequired check名は不要。main統合後のcheck名・状態は適用前に再確認する。各commit / CI証跡は [修正結果](post-core100-remediation-result.md) を参照する。
+Post-Core100のPR #117 / #118 / #119 / #120 / #121でも上記8 checkが成功し、独立read-only監査はそれぞれ2名PASS。ただし監査記録はGitHubでrequired reviewが設定済みであることを意味しない。PR #120の[CI 34003531144](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34003531144)では、既存Build jobへ追加したproduction CSPブラウザ1件もPASSした。新しいcheck名へ置換しておらず、追加のrequired check名は不要。ユーザーのPreview確認後、A〜Eはmain統合済み。全コードを含むE更新headのCIも8 jobs成功した。branch protection設定時には、最新mainのcheck名・状態を再確認する。各commit / CI証跡は [修正結果](post-core100-remediation-result.md) を参照する。
 
 Claude Code Reviewは別workflowであり、API認証情報未設定による失敗が残る。この状態でrequired checkへ加えると全PRのmergeが停止する。認証情報を有料設定も含めownerが用意し成功を確認した後に別途判断する。失敗を消すためのworkflow無効化や秘密鍵追加は行っていない。
 
