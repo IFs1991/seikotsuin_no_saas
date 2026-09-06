@@ -392,6 +392,7 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
   it('keeps PATCH successful even when reservation_change enqueue fails', async () => {
     const assertClinicInScope = jest.fn();
     const existingRow = {
+      updated_at: '2026-04-14T08:00:00.123456+00:00',
       id: 'res-003',
       clinic_id: 'clinic-001',
       customer_id: 'customer-003',

@@ -1076,6 +1076,14 @@ export function buildMobileUiuxBridgeScript(
       return false;
     }
 
+    // 保存済みの予約は表示情報の障害で再送を促さない。
+    if (options.mutationKey === "reservations" &&
+        isRecord(result.payload.data) && isRecord(result.payload.data.reservation) &&
+        result.payload.data.reservation.projectionStatus === "unavailable") {
+      showMutationStatus("success", "予約は保存済みです。一覧の表示情報を取得できませんでした。再保存せず、一覧を再読み込みしてください。");
+      return true;
+    }
+
     if (options.applyReadScreen && typeof window.__MOBILE_UIUX_APPLY_READ_DATA__ === "function") {
       const applied = applyReadData(options.applyReadScreen, result.payload);
       if (applied !== true) {
