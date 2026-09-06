@@ -1,4 +1,6 @@
 import { NextRequest } from 'next/server';
+import { createClient as createSupabaseTestClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/supabase';
 
 import { reservationUpdateSchema } from '@/app/api/reservations/schema';
 import { processApiRequest } from '@/lib/api-helpers';
@@ -587,6 +589,18 @@ describe('GET /api/mobile-uiux/reservations', () => {
 });
 
 describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
+  const notificationClient = createSupabaseTestClient<Database>(
+    'http://127.0.0.1:54331',
+    'synthetic-only-key',
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+      },
+    }
+  );
+  const assertNotificationScope = jest.fn();
   it('accepts JST-offset timestamps for reservation time updates', () => {
     const parsed = reservationUpdateSchema.safeParse({
       clinic_id: clinicId,
@@ -612,6 +626,14 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
       MOBILE_UIUX_RESERVATION_WRITE_ENABLED: 'true',
       MOBILE_UIUX_ALLOWED_CLINIC_IDS: clinicId,
     };
+    assertNotificationScope.mockReset();
+    enqueueReservationCreatedMock.mockResolvedValue(undefined);
+    enqueueReservationChangeMock.mockResolvedValue(undefined);
+    createScopedAdminContextMock.mockReturnValue({
+      client: notificationClient,
+      scopedClinicIds: [clinicId],
+      assertClinicInScope: assertNotificationScope,
+    });
   });
 
   afterAll(() => {
@@ -694,6 +716,7 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
       })
     );
     expect(JSON.stringify(warnSpy.mock.calls)).not.toContain(clinicId);
+    expect(createScopedAdminContextMock).not.toHaveBeenCalled();
     expect(processClinicScopedBodyMock).toHaveBeenCalledWith(
       request,
       expect.anything(),
@@ -924,11 +947,28 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
       permissions,
       supabase: client,
     });
-    enqueueReservationCreatedMock.mockResolvedValueOnce({ id: 'outbox-1' });
+    let releaseEnqueue = () => {};
+    enqueueReservationCreatedMock.mockReturnValueOnce(
+      new Promise<void>(resolve => {
+        releaseEnqueue = resolve;
+      })
+    );
 
     const { POST } = await import('@/app/api/mobile-uiux/reservations/route');
     const request = buildMutationRequest('POST');
-    const response = await POST(request);
+    let responseFinished = false;
+    const responsePending = POST(request).then(response => {
+      responseFinished = true;
+      return response;
+    });
+    try {
+      await new Promise<void>(resolve => setImmediate(resolve));
+      expect(enqueueReservationCreatedMock).toHaveBeenCalledTimes(1);
+      expect(responseFinished).toBe(false);
+    } finally {
+      releaseEnqueue();
+    }
+    const response = await responsePending;
     const payload = await response.json();
 
     expect(response.status).toBe(201);
@@ -970,7 +1010,7 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
       },
     });
     expect(enqueueReservationCreatedMock).toHaveBeenCalledWith(
-      client,
+      notificationClient,
       expect.objectContaining({
         id: reservationId,
         clinic_id: clinicId,
@@ -979,6 +1019,8 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
         staff_id: staffId,
       })
     );
+    expect(createScopedAdminContextMock).toHaveBeenCalledWith(permissions);
+    expect(assertNotificationScope).toHaveBeenCalledWith(clinicId);
   });
 
   it('updates a reservation through PATCH using the mobile BFF and returns the read model', async () => {
@@ -995,11 +1037,28 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
       permissions,
       supabase: client,
     });
-    enqueueReservationChangeMock.mockResolvedValueOnce({ id: 'outbox-2' });
+    let releaseEnqueue = () => {};
+    enqueueReservationChangeMock.mockReturnValueOnce(
+      new Promise<void>(resolve => {
+        releaseEnqueue = resolve;
+      })
+    );
 
     const { PATCH } = await import('@/app/api/mobile-uiux/reservations/route');
     const request = buildMutationRequest('PATCH');
-    const response = await PATCH(request);
+    let responseFinished = false;
+    const responsePending = PATCH(request).then(response => {
+      responseFinished = true;
+      return response;
+    });
+    try {
+      await new Promise<void>(resolve => setImmediate(resolve));
+      expect(enqueueReservationChangeMock).toHaveBeenCalledTimes(1);
+      expect(responseFinished).toBe(false);
+    } finally {
+      releaseEnqueue();
+    }
+    const response = await responsePending;
     const payload = await response.json();
 
     expect(response.status).toBe(200);
@@ -1035,7 +1094,7 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
       },
     });
     expect(enqueueReservationChangeMock).toHaveBeenCalledWith(
-      client,
+      notificationClient,
       expect.objectContaining({
         id: reservationId,
         clinic_id: clinicId,
@@ -1048,5 +1107,26 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
       }),
       '2026-04-14T09:30:00.000Z'
     );
+    expect(assertNotificationScope).toHaveBeenCalledWith(clinicId);
+  });
+
+  it('does not cross a denied notification clinic scope after committing the reservation', async () => {
+    const { client, reservationsTable } = buildMutationClient();
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: true,
+      dto: mutationDto,
+      auth,
+      permissions,
+      supabase: client,
+    });
+    assertNotificationScope.mockImplementationOnce(() => {
+      throw new Error('clinic scope denied');
+    });
+    const { POST } = await import('@/app/api/mobile-uiux/reservations/route');
+    const response = await POST(buildMutationRequest('POST'));
+    expect(response.status).toBe(201);
+    expect(reservationsTable.insert).toHaveBeenCalledTimes(1);
+    expect(assertNotificationScope).toHaveBeenCalledWith(clinicId);
+    expect(enqueueReservationCreatedMock).not.toHaveBeenCalled();
   });
 });

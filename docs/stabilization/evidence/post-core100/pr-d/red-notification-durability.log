@@ -1,0 +1,144 @@
+
+> seikotsuin-management-saas@0.1.0-pilot pretest
+> node scripts/check-swc-binary.mjs
+
+
+> seikotsuin-management-saas@0.1.0-pilot test
+> node scripts/run-jest.mjs --ci --config .next/jest-pd.config.cjs --runTestsByPath src/__tests__/api/email-processor.test.ts src/__tests__/api/email-resend-provider.test.ts src/__tests__/api/reservations-email-enqueue-route.test.ts
+
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\seekf\Desktop\seikotsuin_management_saas\package-lock.json as the root directory.
+ To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+ Detected additional lockfiles:
+   * C:\Users\seekf\Desktop\seikotsuin_management_saas\.w\pd\package-lock.json
+
+FAIL server src/__tests__/api/reservations-email-enqueue-route.test.ts
+  ● POST/PATCH /api/reservations email enqueue route › passes menu_id and the scoped admin client into reservation_created enqueue
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: false
+    Received: true
+
+      289 |       await new Promise<void>(resolve => setImmediate(resolve));
+      290 |       expect(enqueueReservationCreatedMock).toHaveBeenCalledTimes(1);
+    > 291 |       expect(responseFinished).toBe(false);
+          |                                ^
+      292 |     } finally {
+      293 |       releaseEnqueue();
+      294 |     }
+
+      at Object.toBe (src/__tests__/api/reservations-email-enqueue-route.test.ts:291:32)
+
+FAIL server src/__tests__/api/email-processor.test.ts
+  ● Console
+
+    console.error
+      Unexpected email processor error { jobId: 'job-1', error: 'Unknown template type: unknown_template' }
+
+      429 |       return;
+      430 |     }
+    > 431 |     originalError.call(console, ...args);
+          |                   ^
+      432 |   };
+      433 | });
+      434 |
+
+      at console.call [as error] (jest.setup.after.js:431:19)
+      at error (src/lib/notifications/email/processor.ts:352:15)
+      at Object.<anonymous> (src/__tests__/api/email-processor.test.ts:247:5)
+
+  ● processEmailOutbox › reclaims an expired processing lease and counts the new attempt
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 0
+
+      207 |     const provider = createMockProvider();
+      208 |     const result = await processEmailOutbox(createMockSupabase([job]), provider);
+    > 209 |     expect(result.succeeded).toBe(1);
+          |                              ^
+      210 |     expect(job.status).toBe('sent');
+      211 |     expect(job.attempts).toBe(2);
+      212 |     expect(provider.send).toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: 'idmp-abc' }));
+
+      at Object.toBe (src/__tests__/api/email-processor.test.ts:209:30)
+
+  ● processEmailOutbox › terminally fails an expired lease after four claims without sending
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "failed"
+    Received: "processing"
+
+      226 |     await processEmailOutbox(createMockSupabase([job]), provider);
+      227 |     expect(provider.send).not.toHaveBeenCalled();
+    > 228 |     expect(job.status).toBe('failed');
+          |                        ^
+      229 |     expect(job.last_error).toBe('claim_lease_expired_max_attempts');
+      230 |   });
+      231 |
+
+      at Object.toBe (src/__tests__/api/email-processor.test.ts:228:24)
+
+  ● processEmailOutbox › does not let an old worker complete a job owned by a newer lease
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0
+    Received: 1
+
+      237 |     }) });
+      238 |     const result = await processEmailOutbox(createMockSupabase([job]), provider);
+    > 239 |     expect(result.succeeded).toBe(0);
+          |                              ^
+      240 |     expect(job.status).toBe('processing');
+      241 |     expect(job.provider_message_id).toBeNull();
+      242 |   });
+
+      at Object.toBe (src/__tests__/api/email-processor.test.ts:239:30)
+
+  ● processEmailOutbox › returns malformed templates to bounded retry instead of leaving processing stuck
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "pending"
+    Received: "processing"
+
+      247 |     await processEmailOutbox(createMockSupabase([job]), provider);
+      248 |     expect(provider.send).not.toHaveBeenCalled();
+    > 249 |     expect(job.status).toBe('pending');
+          |                        ^
+      250 |     expect(job.attempts).toBe(1);
+      251 |     expect(job.last_error).toContain('Unknown template type');
+      252 |   });
+
+      at Object.toBe (src/__tests__/api/email-processor.test.ts:249:24)
+
+FAIL server src/__tests__/api/email-resend-provider.test.ts
+  ● ResendEmailProvider › passes idempotencyKey as HTTP request options, not a message header
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectNotContaining {"headers": Anything}, {"idempotencyKey": "idmp_abc123"}
+    Received: {"from": "Tiramisu <no-reply@mail.tiramisu-app.com>", "headers": {"Idempotency-Key": "idmp_abc123"}, "html": "<p>テスト</p>", "replyTo": undefined, "subject": "テスト件名", "tags": undefined, "text": "テスト", "to": "patient@example.com"}
+
+    Number of calls: 1
+
+      50 |
+      51 |     expect(mockSend).toHaveBeenCalledTimes(1);
+    > 52 |     expect(mockSend).toHaveBeenCalledWith(
+         |                      ^
+      53 |       expect.not.objectContaining({ headers: expect.anything() }),
+      54 |       { idempotencyKey: 'idmp_abc123' }
+      55 |     );
+
+      at Object.toHaveBeenCalledWith (src/__tests__/api/email-resend-provider.test.ts:52:22)
+
+Test Suites: 3 failed, 3 total
+Tests:       6 failed, 13 passed, 19 total
+Snapshots:   0 total
+Time:        6.243 s
+Ran all test suites within paths "src/__tests__/api/email-processor.test.ts", "src/__tests__/api/email-resend-provider.test.ts", "src/__tests__/api/reservations-email-enqueue-route.test.ts".

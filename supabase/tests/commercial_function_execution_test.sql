@@ -113,6 +113,7 @@ select is(
         ('app_private.jwt_is_admin()', 'anon'),
         ('app_private.jwt_is_admin()', 'authenticated'),
         ('app_private.jwt_is_admin()', 'service_role'),
+        ('app_private.persist_reservation_notification_outbox()', 'service_role'),
         ('app_private.user_role()', 'anon'),
         ('app_private.user_role()', 'authenticated'),
         ('app_private.user_role()', 'service_role'),

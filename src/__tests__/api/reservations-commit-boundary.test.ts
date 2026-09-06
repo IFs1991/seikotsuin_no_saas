@@ -12,6 +12,7 @@ const mockCapture = jest.fn(async (..._args: unknown[]) => undefined);
 let mockProjection: 'error' | 'missing' | 'ok' = 'error';
 let mockConcurrent = false;
 let mockWrites = 0;
+let mockProjectionReads = 0;
 let mockDto: Record<string, unknown>;
 let mockUpdateFilters: Map<string, unknown>;
 
@@ -59,6 +60,7 @@ class Query {
   }
   async single() {
     if (this.table === 'reservation_list_view') {
+      mockProjectionReads += 1;
       return {
         data:
           mockProjection === 'ok'
@@ -154,6 +156,7 @@ describe.each(['standard', 'mobile'] as const)('%s 予約の保存境界', route
     jest.clearAllMocks();
     mockConcurrent = false;
     mockWrites = 0;
+    mockProjectionReads = 0;
     mockUpdateFilters = new Map();
     mockDto = {
       clinic_id: clinicId,
@@ -215,6 +218,48 @@ describe.each(['standard', 'mobile'] as const)('%s 予約の保存境界', route
       const response = await invoke(method);
       expect(response.status).toBe(method === 'POST' ? 201 : 200);
       expect(mockWrites).toBe(1);
+    }
+  );
+
+  it.each(['POST', 'PATCH'] as const)(
+    '%s 通知handoffが失敗で決着するまでprojectionと応答を待ち、保存成功を保つ',
+    async method => {
+      mockProjection = 'error';
+      let markEnqueueStarted: () => void = () => undefined;
+      const enqueueStarted = new Promise<void>(resolve => {
+        markEnqueueStarted = resolve;
+      });
+      let failEnqueue: () => void = () => undefined;
+      const pendingEnqueue = new Promise<void>((_resolve, reject) => {
+        failEnqueue = () => reject(new Error('synthetic handoff failure'));
+      });
+      const enqueue = method === 'POST' ? mockCreated : mockChanged;
+      enqueue.mockImplementationOnce(async () => {
+        markEnqueueStarted();
+        await pendingEnqueue;
+        return undefined;
+      });
+      let responseSettled = false;
+      const responsePromise = invoke(method).then(response => {
+        responseSettled = true;
+        return response;
+      });
+
+      await enqueueStarted;
+      expect(mockWrites).toBe(1);
+      expect(mockProjectionReads).toBe(0);
+      expect(responseSettled).toBe(false);
+      failEnqueue();
+
+      const response = await responsePromise;
+      const json = await response.json();
+      expect(response.status).toBe(method === 'POST' ? 201 : 200);
+      expect(mockWrites).toBe(1);
+      expect(mockProjectionReads).toBe(1);
+      const reservation =
+        route === 'standard' ? json.data : json.data.reservation;
+      expect(reservation.projectionStatus).toBe('unavailable');
+      expect(JSON.stringify(json)).not.toContain('synthetic handoff failure');
     }
   );
 

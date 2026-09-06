@@ -751,7 +751,7 @@ export async function POST(request: NextRequest) {
       dto.clinic_id
     );
     if (notificationSupabase) {
-      enqueueReservationCreated(notificationSupabase, {
+      await enqueueReservationCreated(notificationSupabase, {
         id: data.id,
         clinic_id: data.clinic_id,
         customer_id: data.customer_id,
@@ -953,7 +953,7 @@ export async function PATCH(request: NextRequest) {
       dto.clinic_id
     );
     if (notificationSupabase) {
-      enqueueReservationChange(
+      await enqueueReservationChange(
         notificationSupabase,
         before,
         after,

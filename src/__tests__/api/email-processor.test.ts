@@ -4,11 +4,7 @@ import type { EmailProvider } from '@/lib/notifications/email/types';
 type MockJob = {
   id: string;
   clinic_id: string;
-  template_type:
-    | 'reservation_created'
-    | 'reservation_updated'
-    | 'reservation_cancelled'
-    | 'reminder_day_before';
+  template_type: string;
   resend_idempotency_key: string;
   to_email: string;
   payload: Record<string, unknown>;
@@ -19,6 +15,8 @@ type MockJob = {
   provider_message_id: string | null;
   last_error: string | null;
   sent_at: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 type MockSupabaseOptions = {
@@ -61,6 +59,8 @@ function createJob(overrides: Partial<MockJob>): MockJob {
     provider_message_id: null,
     last_error: null,
     sent_at: null,
+    created_at: new Date(Date.now() - 60_000).toISOString(),
+    updated_at: new Date(Date.now() - 60_000).toISOString(),
     ...overrides,
   };
 }
@@ -78,7 +78,11 @@ function createMockSupabase(
   });
 
   const select = jest.fn().mockImplementation(() => {
-    const filters: { status?: string; nextAttemptAt?: string } = {};
+    const filters: {
+      status?: string;
+      nextAttemptAt?: string;
+      updatedAt?: string;
+    } = {};
 
     return {
       eq(field: string, value: string) {
@@ -91,6 +95,7 @@ function createMockSupabase(
         if (field === 'next_attempt_at') {
           filters.nextAttemptAt = value;
         }
+        if (field === 'updated_at') filters.updatedAt = value;
         return this;
       },
       order() {
@@ -108,9 +113,12 @@ function createMockSupabase(
             ) {
               return false;
             }
+            if (filters.updatedAt && job.updated_at > filters.updatedAt)
+              return false;
             return true;
           })
-          .slice(0, batchSize);
+          .slice(0, batchSize)
+          .map(job => ({ ...job }));
 
         return { data, error: null };
       }),
@@ -120,7 +128,11 @@ function createMockSupabase(
   const update = jest
     .fn()
     .mockImplementation((values: Record<string, unknown>) => {
-      const state: { jobId?: string; expectedStatus?: string } = {};
+      const state: {
+        jobId?: string;
+        expectedStatus?: string;
+        updatedAt?: string;
+      } = {};
 
       return {
         eq(field: string, value: string) {
@@ -130,6 +142,7 @@ function createMockSupabase(
           if (field === 'status') {
             state.expectedStatus = value;
           }
+          if (field === 'updated_at') state.updatedAt = value;
           return this;
         },
         select() {
@@ -139,7 +152,8 @@ function createMockSupabase(
           const job = jobs.find(candidate => candidate.id === state.jobId);
           if (
             !job ||
-            (state.expectedStatus && job.status !== state.expectedStatus)
+            (state.expectedStatus && job.status !== state.expectedStatus) ||
+            (state.updatedAt && job.updated_at !== state.updatedAt)
           ) {
             return { data: null, error: null };
           }
@@ -168,7 +182,13 @@ function createMockSupabase(
           }
 
           Object.assign(job, values);
-          return { data: { id: job.id }, error: null };
+          job.updated_at = new Date(
+            Math.max(Date.now(), Date.parse(job.updated_at) + 1)
+          ).toISOString();
+          return {
+            data: { id: job.id, updated_at: job.updated_at },
+            error: null,
+          };
         }),
       };
     });
@@ -181,16 +201,140 @@ function createMockSupabase(
   });
 
   return {
-    from,
+    from: from as Parameters<typeof processEmailOutbox>[0]['from'],
     _state: { jobs },
     _mocks: { select, update, logInsert },
-  } as any;
+  };
 }
 
 describe('processEmailOutbox', () => {
   afterEach(() => {
     jest.useRealTimers();
     jest.restoreAllMocks();
+  });
+
+  it('reclaims an expired processing lease and counts the new attempt', async () => {
+    const job = createJob({
+      status: 'processing',
+      attempts: 1,
+      updated_at: new Date(Date.now() - 6 * 60_000).toISOString(),
+    });
+    const provider = createMockProvider();
+    const result = await processEmailOutbox(
+      createMockSupabase([job]),
+      provider
+    );
+    expect(result.succeeded).toBe(1);
+    expect(job.status).toBe('sent');
+    expect(job.attempts).toBe(2);
+    expect(provider.send).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: 'idmp-abc' })
+    );
+  });
+
+  it('leaves a fresh processing lease alone', async () => {
+    const job = createJob({
+      status: 'processing',
+      attempts: 1,
+      updated_at: new Date().toISOString(),
+    });
+    const provider = createMockProvider();
+    await processEmailOutbox(createMockSupabase([job]), provider);
+    expect(provider.send).not.toHaveBeenCalled();
+    expect(job.status).toBe('processing');
+  });
+
+  it.each([
+    { created_at: new Date(Date.now() - 24 * 60 * 60_000).toISOString() },
+    { provider_message_id: 'provider-already-accepted' },
+    { sent_at: new Date().toISOString() },
+  ])(
+    'requires delivery review instead of replaying an ambiguous expired lease: %j',
+    async overrides => {
+      const job = createJob({
+        status: 'processing',
+        attempts: 1,
+        updated_at: new Date(Date.now() - 6 * 60_000).toISOString(),
+        ...overrides,
+      });
+      const provider = createMockProvider();
+      await processEmailOutbox(createMockSupabase([job]), provider);
+      expect(provider.send).not.toHaveBeenCalled();
+      expect(job.status).toBe('failed');
+      expect(job.last_error).toBe('claim_lease_expired_manual_delivery_review');
+    }
+  );
+
+  it('does not retry a pending attempted job after the provider idempotency window', async () => {
+    const job = createJob({
+      attempts: 1,
+      created_at: new Date(Date.now() - 24 * 60 * 60_000).toISOString(),
+    });
+    const provider = createMockProvider();
+    await processEmailOutbox(createMockSupabase([job]), provider);
+    expect(provider.send).not.toHaveBeenCalled();
+    expect(job.status).toBe('failed');
+    expect(job.last_error).toBe('idempotency_window_manual_delivery_review');
+  });
+
+  it('reports a database read failure instead of claiming an empty successful batch', async () => {
+    const supabase = createMockSupabase();
+    supabase._mocks.select.mockReturnValue({
+      eq: jest.fn().mockReturnThis(),
+      lte: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      limit: jest
+        .fn()
+        .mockResolvedValue({
+          data: null,
+          error: { message: 'database unavailable' },
+        }),
+    });
+    await expect(
+      processEmailOutbox(supabase, createMockProvider())
+    ).rejects.toThrow('database unavailable');
+  });
+
+  it('terminally fails an expired lease after four claims without sending', async () => {
+    const job = createJob({
+      status: 'processing',
+      attempts: 4,
+      updated_at: new Date(Date.now() - 6 * 60_000).toISOString(),
+    });
+    const provider = createMockProvider();
+    await processEmailOutbox(createMockSupabase([job]), provider);
+    expect(provider.send).not.toHaveBeenCalled();
+    expect(job.status).toBe('failed');
+    expect(job.last_error).toBe('claim_lease_expired_max_attempts');
+  });
+
+  it('does not let an old worker complete a job owned by a newer lease', async () => {
+    const job = createJob({});
+    const provider = createMockProvider({
+      send: jest.fn(async () => {
+        job.updated_at = new Date(
+          Date.parse(job.updated_at) + 1000
+        ).toISOString();
+        return { provider: 'resend', messageId: 'old-worker-message' };
+      }),
+    });
+    const result = await processEmailOutbox(
+      createMockSupabase([job]),
+      provider
+    );
+    expect(result.succeeded).toBe(0);
+    expect(job.status).toBe('processing');
+    expect(job.provider_message_id).toBeNull();
+  });
+
+  it('returns malformed templates to bounded retry instead of leaving processing stuck', async () => {
+    const job = createJob({ template_type: 'unknown_template' });
+    const provider = createMockProvider();
+    await processEmailOutbox(createMockSupabase([job]), provider);
+    expect(provider.send).not.toHaveBeenCalled();
+    expect(job.status).toBe('pending');
+    expect(job.attempts).toBe(1);
+    expect(job.last_error).toContain('Unknown template type');
   });
 
   it('retries failed jobs by returning them to pending until retry budget is exhausted', async () => {
@@ -211,7 +355,7 @@ describe('processEmailOutbox', () => {
     });
     const supabase = createMockSupabase([job]);
 
-    const firstResult = await processEmailOutbox(supabase as any, provider);
+    const firstResult = await processEmailOutbox(supabase, provider);
 
     expect(firstResult.processed).toBe(1);
     expect(firstResult.succeeded).toBe(0);
@@ -223,7 +367,7 @@ describe('processEmailOutbox', () => {
 
     jest.setSystemTime(new Date('2026-04-14T00:06:00.000Z'));
 
-    const secondResult = await processEmailOutbox(supabase as any, provider);
+    const secondResult = await processEmailOutbox(supabase, provider);
 
     expect(secondResult.processed).toBe(1);
     expect(secondResult.succeeded).toBe(1);
@@ -251,7 +395,7 @@ describe('processEmailOutbox', () => {
       failSentUpdateIds: ['job-1'],
     });
 
-    const result = await processEmailOutbox(supabase as any, provider);
+    const result = await processEmailOutbox(supabase, provider);
 
     expect(result.processed).toBe(2);
     expect(result.succeeded).toBe(1);
@@ -280,7 +424,7 @@ describe('processEmailOutbox', () => {
       failProcessingUpdateIds: ['job-1'],
     });
 
-    const result = await processEmailOutbox(supabase as any, provider);
+    const result = await processEmailOutbox(supabase, provider);
 
     expect(result.processed).toBe(2);
     expect(result.succeeded).toBe(1);
@@ -309,7 +453,7 @@ describe('processEmailOutbox', () => {
       failFailedUpdateIds: ['job-1'],
     });
 
-    const result = await processEmailOutbox(supabase as any, provider);
+    const result = await processEmailOutbox(supabase, provider);
 
     expect(result.processed).toBe(2);
     expect(result.succeeded).toBe(1);
@@ -325,7 +469,7 @@ describe('processEmailOutbox', () => {
     const provider = createMockProvider();
     const supabase = createMockSupabase([]);
 
-    const result = await processEmailOutbox(supabase as any, provider);
+    const result = await processEmailOutbox(supabase, provider);
 
     expect(result.processed).toBe(0);
     expect(result.succeeded).toBe(0);

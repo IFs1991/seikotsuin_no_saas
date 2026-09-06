@@ -8055,7 +8055,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/mobile-uiux/reservations/route.ts",
-        "line": 444,
+        "line": 469,
         "exportKind": "function"
       },
       "executionPath": {
@@ -8068,6 +8068,7 @@
         ],
         "internalSecret": [],
         "clinicScope": [
+          "createScopedAdminContext",
           "processClinicScopedBody"
         ],
         "billing": [
@@ -8077,7 +8078,9 @@
           "processClinicScopedBody",
           "validation helper"
         ],
-        "serviceRole": [],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
         "origin": [
           "processClinicScopedBody"
         ],
@@ -8149,7 +8152,7 @@
       "method": "PATCH",
       "source": {
         "path": "src/app/api/mobile-uiux/reservations/route.ts",
-        "line": 591,
+        "line": 621,
         "exportKind": "function"
       },
       "executionPath": {
@@ -8162,6 +8165,7 @@
         ],
         "internalSecret": [],
         "clinicScope": [
+          "createScopedAdminContext",
           "processClinicScopedBody"
         ],
         "billing": [
@@ -8171,7 +8175,9 @@
           "processClinicScopedBody",
           "validation helper"
         ],
-        "serviceRole": [],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
         "origin": [
           "processClinicScopedBody"
         ],
