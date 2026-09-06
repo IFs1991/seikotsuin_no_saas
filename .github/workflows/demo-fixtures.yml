@@ -1,0 +1,123 @@
+name: Demo Fixture Contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/demo/**'
+      - 'src/types/supabase.ts'
+      - 'package.json'
+      - '.github/workflows/demo-fixtures.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/demo/**'
+      - 'src/types/supabase.ts'
+      - 'package.json'
+      - '.github/workflows/demo-fixtures.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo-fixture-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  demo-fixtures:
+    name: KKD Demo Seed Integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --silent
+
+      - name: Read pinned Supabase CLI version
+        id: supabase-cli-version
+        shell: bash
+        run: echo "version=$(node scripts/verify-supabase-cli-version.mjs --print)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: ${{ steps.supabase-cli-version.outputs.version }}
+
+      - name: Verify pinned Supabase CLI
+        run: npm run supabase:cli:verify
+
+      - name: Start local Supabase
+        shell: bash
+        run: |
+          if ! supabase start > /tmp/supabase-start.log 2>&1; then
+            tail -n 200 /tmp/supabase-start.log
+            exit 1
+          fi
+
+      - name: Replay current migrations and repository seed
+        shell: bash
+        run: |
+          if ! supabase db reset --local > /tmp/supabase-reset.log 2>&1; then
+            tail -n 300 /tmp/supabase-reset.log
+            exit 1
+          fi
+
+      - name: Export local Supabase environment
+        run: |
+          supabase status -o env \
+            --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
+            --override-name auth.anon_key=NEXT_PUBLIC_SUPABASE_ANON_KEY \
+            --override-name auth.service_role_key=SUPABASE_SERVICE_ROLE_KEY \
+            | sed -E 's/^([A-Za-z_][A-Za-z0-9_]*)="(.*)"$/\1=\2/' \
+            >> "$GITHUB_ENV"
+
+      - name: Validate deterministic fixture and generated type contract
+        run: npm run demo:fixtures:check -- --today 2026-07-22
+
+      - name: Seed and validate KKD demo dataset
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run demo:seed -- --today 2026-07-22 2>&1 | tee /tmp/kkd-seed.log
+          npm run demo:validate -- --today 2026-07-22 2>&1 | tee /tmp/kkd-validate.log
+        env:
+          KKD_DEMO_PASSWORD: 'LocalDemo#2026!'
+          KKD_DEMO_CONFIRM: 'SEED_KKD_DEMO_V1'
+
+      - name: Verify idempotent reseed
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run demo:seed -- --today 2026-07-22 2>&1 | tee /tmp/kkd-reseed.log
+          npm run demo:validate -- --today 2026-07-22 2>&1 | tee /tmp/kkd-revalidate.log
+        env:
+          KKD_DEMO_PASSWORD: 'LocalDemo#2026!'
+          KKD_DEMO_CONFIRM: 'SEED_KKD_DEMO_V1'
+
+      - name: Reset fixed KKD demo namespace
+        shell: bash
+        run: npm run demo:reset -- --today 2026-07-22 2>&1 | tee /tmp/kkd-reset.log
+        env:
+          KKD_DEMO_RESET_CONFIRM: 'RESET_KKD_DEMO_V1'
+
+      - name: Upload integration logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kkd-demo-seed-integration-logs
+          path: |
+            /tmp/kkd-seed.log
+            /tmp/kkd-validate.log
+            /tmp/kkd-reseed.log
+            /tmp/kkd-revalidate.log
+            /tmp/kkd-reset.log
+          if-no-files-found: ignore
+          retention-days: 3
