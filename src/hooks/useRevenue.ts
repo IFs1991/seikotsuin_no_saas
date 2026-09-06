@@ -32,10 +32,10 @@ interface RevenueData {
   menuRanking: MenuRanking[];
   hourlyRevenue: string;
   dailyRevenueByDayOfWeek: string;
-  lastYearRevenue: number;
-  growthRate: string;
-  revenueForecast: number;
-  costAnalysis: string;
+  lastYearRevenue: number | null;
+  growthRate: string | null;
+  revenueForecast: number | null;
+  costAnalysis: string | null;
   staffRevenueContribution: string;
 }
 
@@ -94,10 +94,10 @@ const INITIAL_DATA: RevenueData = {
   menuRanking: [],
   hourlyRevenue: '',
   dailyRevenueByDayOfWeek: '',
-  lastYearRevenue: 0,
-  growthRate: '0%',
-  revenueForecast: 0,
-  costAnalysis: '',
+  lastYearRevenue: null,
+  growthRate: null,
+  revenueForecast: null,
+  costAnalysis: null,
   staffRevenueContribution: '',
 };
 
@@ -117,19 +117,6 @@ function summarizeHourlyRevenue(
   return hourlyRevenue.length > 0
     ? `データ点: ${hourlyRevenue.length}件`
     : 'データなし';
-}
-
-function estimateLastYearRevenue(data: RevenueAnalysisData): number {
-  if (!data.growthRate.endsWith('%')) {
-    return 0;
-  }
-
-  const growthRate = Number.parseFloat(data.growthRate.replace('%', '')) / 100;
-  if (Number.isNaN(growthRate) || growthRate === -1) {
-    return 0;
-  }
-
-  return Math.round(data.monthlyRevenue / (1 + growthRate));
 }
 
 function sumNeedsReviewCount(
@@ -247,10 +234,11 @@ export const useRevenue = (
               menuRanking: mapMenuRanking(revenueData.menuRanking),
               hourlyRevenue: summarizeHourlyRevenue(revenueData.hourlyRevenue),
               dailyRevenueByDayOfWeek: '',
-              lastYearRevenue: estimateLastYearRevenue(revenueData),
-              growthRate: revenueData.growthRate || '0%',
-              revenueForecast: Number(revenueData.revenueForecast || 0),
-              costAnalysis: revenueData.costAnalysis || '',
+              // 実額0と未算出を区別し、丸めた成長率から前年実績を逆算しない。
+              lastYearRevenue: revenueData.lastYearRevenue ?? null,
+              growthRate: revenueData.growthRate ?? null,
+              revenueForecast: revenueData.revenueForecast ?? null,
+              costAnalysis: revenueData.costAnalysis ?? null,
               staffRevenueContribution: '',
             });
             hasLoadedDataRef.current = true;

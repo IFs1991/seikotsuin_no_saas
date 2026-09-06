@@ -558,6 +558,19 @@ describe('RevenuePage', () => {
       expect(screen.getByText('4,500,000')).toBeInTheDocument();
     });
 
+    test('算出根拠のない数字は未算出と表示する', () => {
+      mockUseRevenue.mockReturnValue({
+        ...mockRevenueData,
+        lastYearRevenue: null,
+        growthRate: null,
+        revenueForecast: null,
+        costAnalysis: null,
+      });
+      render(<RevenuePage />);
+      expect(screen.getAllByText('未算出')).toHaveLength(4);
+      expect(screen.queryByText('32.5%')).not.toBeInTheDocument();
+    });
+
     test('should display cost analysis', () => {
       render(<RevenuePage />);
 

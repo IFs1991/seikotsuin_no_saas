@@ -8055,7 +8055,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/mobile-uiux/reservations/route.ts",
-        "line": 461,
+        "line": 469,
         "exportKind": "function"
       },
       "executionPath": {
@@ -8068,6 +8068,7 @@
         ],
         "internalSecret": [],
         "clinicScope": [
+          "createScopedAdminContext",
           "processClinicScopedBody"
         ],
         "billing": [
@@ -8077,7 +8078,9 @@
           "processClinicScopedBody",
           "validation helper"
         ],
-        "serviceRole": [],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
         "origin": [
           "processClinicScopedBody"
         ],
@@ -8149,7 +8152,7 @@
       "method": "PATCH",
       "source": {
         "path": "src/app/api/mobile-uiux/reservations/route.ts",
-        "line": 620,
+        "line": 621,
         "exportKind": "function"
       },
       "executionPath": {
@@ -8162,6 +8165,7 @@
         ],
         "internalSecret": [],
         "clinicScope": [
+          "createScopedAdminContext",
           "processClinicScopedBody"
         ],
         "billing": [
@@ -8171,7 +8175,9 @@
           "processClinicScopedBody",
           "validation helper"
         ],
-        "serviceRole": [],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
         "origin": [
           "processClinicScopedBody"
         ],
@@ -9373,7 +9379,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/reservations/route.ts",
-        "line": 656,
+        "line": 659,
         "exportKind": "function"
       },
       "executionPath": {
@@ -9470,7 +9476,7 @@
       "method": "PATCH",
       "source": {
         "path": "src/app/api/reservations/route.ts",
-        "line": 809,
+        "line": 786,
         "exportKind": "function"
       },
       "executionPath": {
@@ -9567,7 +9573,7 @@
       "method": "DELETE",
       "source": {
         "path": "src/app/api/reservations/route.ts",
-        "line": 1017,
+        "line": 983,
         "exportKind": "function"
       },
       "executionPath": {
@@ -9889,7 +9895,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/revenue/route.ts",
-        "line": 578,
+        "line": 584,
         "exportKind": "function"
       },
       "executionPath": {

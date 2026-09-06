@@ -1,3 +1,8 @@
+import {
+  readCommittedReservation,
+  RESERVATION_MUTATION_RETURN_SELECT,
+  RESERVATION_CONCURRENT_UPDATE_MESSAGE,
+} from '@/lib/reservations/mutation-result';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   buildReservationPagination,
@@ -82,10 +87,8 @@ type PostgresReservationError = {
   code?: string;
   message?: string;
 };
-const RESERVATION_INSERT_RETURN_SELECT =
-  'id, clinic_id, customer_id, menu_id, status, start_time, end_time, staff_id, updated_at';
-const RESERVATION_UPDATE_RETURN_SELECT =
-  'id, clinic_id, customer_id, menu_id, status, staff_id, start_time, end_time, notes, updated_at';
+const RESERVATION_INSERT_RETURN_SELECT = RESERVATION_MUTATION_RETURN_SELECT;
+const RESERVATION_UPDATE_RETURN_SELECT = RESERVATION_MUTATION_RETURN_SELECT;
 const MANAGER_RESERVATION_CREATE_DENIED_MESSAGE =
   'マネージャーは予約の作成はできません。';
 const MANAGER_RESERVATION_UPDATE_DENIED_MESSAGE =
@@ -742,43 +745,13 @@ export async function POST(request: NextRequest) {
       throw normalizeSupabaseError(error, PATH);
     }
 
-    // GET と同じ view から再取得し shape を揃える。view から見えない場合は
-    // INNER JOIN / is_deleted / clinic_id 不整合の可能性があるため 500 で落とす。
-    const { data: viewRow, error: viewError } = await reservationMutationClient
-      .from('reservation_list_view')
-      .select(RESERVATION_LIST_SELECT)
-      .eq('clinic_id', dto.clinic_id)
-      .eq('id', data.id)
-      .maybeSingle();
-
-    if (viewError) {
-      throw normalizeSupabaseError(viewError, PATH);
-    }
-
-    if (!viewRow) {
-      logger.error(
-        'Created reservation is not visible in reservation_list_view',
-        {
-          reservationId: data.id,
-          clinicId: dto.clinic_id,
-          customerId: dto.customerId,
-          menuId: dto.menuId,
-          staffId: dto.staffId,
-        }
-      );
-      return createErrorResponse(
-        '予約は作成されましたが、予約一覧への反映に失敗しました',
-        500
-      );
-    }
-
     // メール通知エンキュー (失敗しても予約は成功扱い)
     const notificationSupabase = createNotificationClient(
       result.permissions,
       dto.clinic_id
     );
     if (notificationSupabase) {
-      enqueueReservationCreated(notificationSupabase, {
+      await enqueueReservationCreated(notificationSupabase, {
         id: data.id,
         clinic_id: data.clinic_id,
         customer_id: data.customer_id,
@@ -800,7 +773,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return createSuccessResponse(mapReservationListViewRow(viewRow), 201);
+    const reservation = await readCommittedReservation(
+      reservationMutationClient,
+      data
+    );
+    return createSuccessResponse(reservation, 201);
   } catch (error) {
     return handleRouteError(error, PATH);
   }
@@ -836,7 +813,7 @@ export async function PATCH(request: NextRequest) {
       await reservationMutationClient
         .from('reservations')
         .select(
-          'id, clinic_id, customer_id, menu_id, status, staff_id, start_time, end_time, notes, selected_options, is_staff_requested'
+          'id, clinic_id, customer_id, menu_id, status, staff_id, start_time, end_time, notes, selected_options, is_staff_requested, updated_at'
         )
         .eq('id', dto.id)
         .eq('clinic_id', dto.clinic_id)
@@ -844,6 +821,10 @@ export async function PATCH(request: NextRequest) {
 
     if (existingError) {
       throw normalizeSupabaseError(existingError, PATH);
+    }
+
+    if (!existing.updated_at) {
+      return createErrorResponse('予約の更新状態を確認できません', 503);
     }
 
     let existingStaffResource: ReservationResourceGuardRow | undefined;
@@ -928,8 +909,14 @@ export async function PATCH(request: NextRequest) {
       .update(updatePayload)
       .eq('id', dto.id)
       .eq('clinic_id', dto.clinic_id)
+      // DBのマイクロ秒精度を保ったまま、読取後の更新を検知する。
+      .eq('updated_at', existing.updated_at)
       .select(RESERVATION_UPDATE_RETURN_SELECT)
       .single();
+
+    if (error?.code === 'PGRST116') {
+      return createErrorResponse(RESERVATION_CONCURRENT_UPDATE_MESSAGE, 409);
+    }
 
     if (error) {
       if (isReservationNoOverlapError(error)) {
@@ -966,7 +953,7 @@ export async function PATCH(request: NextRequest) {
       dto.clinic_id
     );
     if (notificationSupabase) {
-      enqueueReservationChange(
+      await enqueueReservationChange(
         notificationSupabase,
         before,
         after,
@@ -983,32 +970,11 @@ export async function PATCH(request: NextRequest) {
       });
     }
 
-    const { data: viewRow, error: viewError } = await reservationMutationClient
-      .from('reservation_list_view')
-      .select(RESERVATION_LIST_SELECT)
-      .eq('clinic_id', dto.clinic_id)
-      .eq('id', data.id)
-      .maybeSingle();
-
-    if (viewError) {
-      throw normalizeSupabaseError(viewError, PATH);
-    }
-
-    if (!viewRow) {
-      logger.error(
-        'Updated reservation is not visible in reservation_list_view',
-        {
-          reservationId: data.id,
-          clinicId: dto.clinic_id,
-        }
-      );
-      return createErrorResponse(
-        '予約は更新されましたが、予約一覧への反映に失敗しました',
-        500
-      );
-    }
-
-    return createSuccessResponse(mapReservationListViewRow(viewRow));
+    const reservation = await readCommittedReservation(
+      reservationMutationClient,
+      data
+    );
+    return createSuccessResponse(reservation);
   } catch (error) {
     return handleRouteError(error, PATH);
   }

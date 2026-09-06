@@ -1,0 +1,62 @@
+
+> seikotsuin-management-saas@0.1.0-pilot test:release-tooling
+> node --test scripts/lib/image-pull-retry.test.mjs scripts/release/*.test.mjs scripts/release/__tests__/*.test.mjs
+
+✔ retries transient image pulls with bounded delays and unchanged output (2.093ms)
+✔ exhausts at three attempts (2.6707ms)
+✔ does not retry permanent or unrelated failure: SQL failed 429 (0.3921ms)
+✔ does not retry permanent or unrelated failure: type mismatch postgres-meta (0.2374ms)
+✔ does not retry permanent or unrelated failure: pull postgres-meta manifest unknown 429 (0.2241ms)
+✔ does not retry permanent or unrelated failure: pull postgres-meta unauthorized 429 (0.1666ms)
+✔ does not validate or retry malformed successful output (0.3195ms)
+✔ standard profile freezes 10 roots, 100 operational clinics, 500 users, 100k customers and 1.5m reservations (6.4057ms)
+✔ A and B preserve clinic ordinals and data while changing only company allocation in separate run IDs (3.5899ms)
+✔ IDs are deterministic, distinct by table and valid UUIDs (0.6943ms)
+✔ date arithmetic preserves JST month boundaries and rejects invalid dates and arbitrary scales (1.2255ms)
+✔ fixture references stay in their operational clinic and resource slots never overlap (178.1114ms)
+✔ customer fixtures contain no reachable notification recipients or consents (11.7967ms)
+✔ normal users keep role permissions and negative fixtures remain excluded (18.1846ms)
+✔ business operation schedule preserves 45/25/15/5/10 allocation without granting manager writes (5.4279ms)
+✔ load write slots isolate users, reserve change space and reject manager inputs (244.27ms)
+✔ execution refuses missing approval, wrong target, production, ambient mismatch and missing delivery isolation (1.6408ms)
+✔ allowlist resolves exact origins/project refs and refuses production refs even when labelled staging (0.7327ms)
+✔ outbound fetch refuses cross-origin before invoking transport and disables redirect following (31.3595ms)
+✔ CLI plan and default seed dry-run work without installed SDK, credentials or a network transport (235.5904ms)
+✔ HTTP 200 business failure and 402/429 are failures, and endpoint latency is not diluted (1.5137ms)
+✔ burst rate control is separate from unexpected normal failures (0.2296ms)
+✔ normal SLO fails for untracked operation errors and truncated list integrity even when HTTP metrics pass (0.3648ms)
+✔ readback validates reservation identity, scope, time and status (3.2439ms)
+✔ aggregate checks reject missing clinics, cross-company results and wrong revenue even on HTTP 200 (3.3392ms)
+✔ report verification uses independent counts and totals rather than merely HTTP success (0.4932ms)
+✔ daily report POST and GET validate their different existing response contracts (0.2177ms)
+✔ reservation pages use the current array data and top-level pagination contract (0.2998ms)
+✔ batches preserve bounded memory and reject unbounded sizes (0.2182ms)
+✔ seed refuses an unrelated clinic before creating auth users or writing table data (4.1402ms)
+✔ complete synthetic seed and read-only verifier round trip; report corruption fails instead of turning green (2075.9401ms)
+✔ an interrupted seed resumes the same journal without duplicating auth users or reservations (1770.3219ms)
+✔ native runner uses ordinary cookies, performs writes/readbacks and records data for post-load verification (2073.3587ms)
+✔ native runner records valid HTTP 200 but truncated final calendar pages as integrity failures (1655.1456ms)
+✔ accepts a future append while preserving the fixed recovery count (2.7216ms)
+✔ accepts the original complete recovery history (0.294ms)
+✔ rejects a missing non-head migration even when head and counts match (0.4315ms)
+✔ rejects duplicate and unexpected non-head history (0.3802ms)
+✔ rejects missing or duplicate repaired/recovery entries and a wrong head (0.3748ms)
+✔ reads all applicable SQL filenames in version order (10.0689ms)
+✔ rejects missing required migration, duplicate version and malformed SQL filename (20.3162ms)
+(node:8796) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/seekf/Desktop/seikotsuin_management_saas/.w/pd/src/lib/billing/configuration-policy.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\C:\Users\seekf\Desktop\seikotsuin_management_saas\.w\pd\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ valid group-only configuration needs no unused price, but does not authorize release (1.8223ms)
+✔ reports configuration faults using names without exposing secrets or endpoints (1.3286ms)
+✔ pilot bypass and missing trusted proxy cannot pass core-100 preflight (0.4805ms)
+✔ health platform faults and empty plan sets remain configuration blockers (0.3775ms)
+✔ browser init uses the inlined public DSN when runtime process.env is empty (106.6809ms)
+ℹ tests 46
+ℹ suites 0
+ℹ pass 46
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8561.1371

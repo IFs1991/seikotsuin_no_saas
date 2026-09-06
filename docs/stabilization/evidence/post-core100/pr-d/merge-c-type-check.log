@@ -1,0 +1,3 @@
+
+> seikotsuin-management-saas@0.1.0-pilot type-check
+> tsc --noEmit

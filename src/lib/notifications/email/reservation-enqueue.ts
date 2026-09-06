@@ -6,6 +6,7 @@ import {
   type ReservationNotificationType,
 } from '@/lib/notifications/reservation-notifications';
 import { logger } from '@/lib/logger';
+import { captureOperationalError } from '@/lib/monitoring/sentry';
 import type { SupabaseServerClient } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 
@@ -79,17 +80,26 @@ async function insertEnqueueLookupFailureLog(
     reservationId: string;
     customerId: string;
     templateType: EmailTemplateType;
-    stage: 'customer' | 'context';
+    stage: 'customer' | 'context' | 'outbox';
     errorMessage: string;
     staffId: string;
     menuId?: string | null;
   }
 ): Promise<void> {
+  await captureOperationalError(
+    new Error('Reservation notification enqueue failed'),
+    {
+      source: 'reservation-notification',
+      operation: 'enqueue',
+      reason: input.stage,
+    }
+  );
   try {
     const logInsert: EmailLogInsert = {
       clinic_id: input.clinicId,
       outbox_id: null,
-      event_type: 'enqueue_lookup_failed',
+      event_type:
+        input.stage === 'outbox' ? 'enqueue_failed' : 'enqueue_lookup_failed',
       provider: 'resend',
       detail: {
         template_type: input.templateType,
@@ -170,7 +180,17 @@ export async function enqueueReservationCreated(
       dedupeTimestamp: reservation.updated_at,
     });
   } catch (err) {
-    // enqueue 失敗は予約操作をブロックしない
+    // 通知障害は保存済み予約を失敗へ戻さず、運用監査へ残す。
+    await insertEnqueueLookupFailureLog(supabase, {
+      clinicId: reservation.clinic_id,
+      reservationId: reservation.id,
+      customerId: reservation.customer_id,
+      staffId: reservation.staff_id,
+      menuId: reservation.menu_id,
+      templateType: 'reservation_created',
+      stage: 'outbox',
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
     logger.error('Failed to enqueue reservation_created email', err);
   }
 }
@@ -187,8 +207,9 @@ export async function enqueueReservationChange(
   after: ReservationSnapshot,
   updatedAt: string
 ): Promise<void> {
+  let templateType: EmailTemplateType | null = null;
   try {
-    const templateType = determineNotificationType({ before, after });
+    templateType = determineNotificationType({ before, after });
     if (!templateType) return;
 
     const dependencies = await resolveEnqueueDependencies(supabase, after);
@@ -249,6 +270,17 @@ export async function enqueueReservationChange(
       { ignoreDuplicate: true }
     );
   } catch (err) {
+    if (templateType)
+      await insertEnqueueLookupFailureLog(supabase, {
+        clinicId: after.clinic_id,
+        reservationId: after.id,
+        customerId: after.customer_id,
+        staffId: after.staff_id,
+        menuId: after.menu_id,
+        templateType,
+        stage: 'outbox',
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
     logger.error('Failed to enqueue reservation change email', err);
   }
 }
@@ -350,7 +382,7 @@ async function fetchReservationContext(
       .eq('id', reservation.clinic_id)
       .maybeSingle(),
     supabase
-      .from('staff')
+      .from('resources')
       .select('name')
       .eq('id', reservation.staff_id)
       .eq('clinic_id', reservation.clinic_id)
@@ -372,9 +404,11 @@ async function fetchReservationContext(
     !clinicRes.error && !clinicRes.data
       ? `clinics lookup returned no row for clinic_id=${reservation.clinic_id}`
       : null,
-    staffRes.error ? `staff lookup failed: ${staffRes.error.message}` : null,
+    staffRes.error
+      ? `resources lookup failed: ${staffRes.error.message}`
+      : null,
     !staffRes.error && !staffRes.data
-      ? `staff lookup returned no row for staff_id=${reservation.staff_id}, clinic_id=${reservation.clinic_id}`
+      ? `resources lookup returned no row for staff_id=${reservation.staff_id}, clinic_id=${reservation.clinic_id}`
       : null,
     menuRes.error ? `menus lookup failed: ${menuRes.error.message}` : null,
     reservation.menu_id && !menuRes.error && !menuRes.data

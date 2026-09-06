@@ -32,6 +32,7 @@ export type LineMessagePayload = {
   reservation?: {
     notificationType: ReservationNotificationType;
     reservationId: string;
+    updatedAt?: string;
   };
   availability?: {
     eventId: string;

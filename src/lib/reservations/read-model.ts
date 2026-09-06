@@ -35,6 +35,7 @@ export type ReservationListApiRow = Pick<
 >;
 
 export type ReservationListItem = {
+  projectionStatus?: 'unavailable';
   id: string;
   customerId: string;
   customerName: string | null;

@@ -163,6 +163,7 @@ function ReservationsPageContent() {
   );
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
+  const [mutationNotice, setMutationNotice] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
   const [showPendingModal, setShowPendingModal] = useState(false);
@@ -382,7 +383,8 @@ function ReservationsPageContent() {
   );
 
   const handleRegistrationSuccess = useCallback(
-    (newAppointment: Appointment) => {
+    (newAppointment: Appointment, notice?: string) => {
+      setMutationNotice(notice ?? null);
       if (!canWriteReservations) {
         setUpdateError(readOnlyReservationMessage);
         return;
@@ -423,6 +425,7 @@ function ReservationsPageContent() {
 
       setUpdateError(null);
       const result = await updateAppointment(updatedAppointment);
+      setMutationNotice(result.notice ?? null);
       if (result.ok) {
         setSelectedAppointment(updatedAppointment);
       } else {
@@ -452,6 +455,7 @@ function ReservationsPageContent() {
         newStartHour,
         newStartMinute
       );
+      setMutationNotice(result.notice ?? null);
       if (!result.ok) {
         setUpdateError(result.error ?? 'Failed to move reservation.');
       }
@@ -471,6 +475,7 @@ function ReservationsPageContent() {
 
       setUpdateError(null);
       const result = await cancelAppointment(id);
+      setMutationNotice(result.notice ?? null);
       if (!result.ok) {
         setUpdateError(result.error ?? 'Failed to cancel reservation.');
       }
@@ -658,6 +663,14 @@ function ReservationsPageContent() {
             resourceCount={resources.length}
             onOpenCancelledAppointments={openCancelledModal}
           />
+          {mutationNotice && (
+            <div
+              role='status'
+              className='mx-4 mt-4 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700'
+            >
+              {mutationNotice}
+            </div>
+          )}
           {updateError && (
             <div className='mx-4 mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700'>
               {updateError}

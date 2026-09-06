@@ -37,8 +37,61 @@ const baseAppointment: Appointment = {
 };
 
 describe('useAppointments reservation behavior', () => {
+  it('保存済みprojection障害では楽観更新を戻さず再保存不要の案内を返す', async () => {
+    const { result } = renderHook(() => useAppointments('clinic-1'));
+    act(() => result.current.addAppointment(baseAppointment));
+    mockApi.updateReservation.mockResolvedValueOnce({
+      id: 'appt-1',
+      customerId: 'customer-1',
+      menuId: 'menu-1',
+      staffId: 'staff-2',
+      startTime: '2026-02-22T00:30:00Z',
+      endTime: '2026-02-22T01:30:00Z',
+      projectionStatus: 'unavailable',
+    });
+    await act(async () => {
+      const response = await result.current.moveAppointment(
+        'appt-1',
+        'staff-2',
+        9,
+        30
+      );
+      expect(response).toMatchObject({
+        ok: true,
+        notice: expect.stringContaining('保存済み'),
+      });
+    });
+    expect(result.current.appointments[0]).toMatchObject({
+      resourceId: 'staff-2',
+      startHour: 9,
+    });
+    expect(mockApi.updateReservation).toHaveBeenCalledTimes(1);
+  });
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('保存後の表示障害でもキャンセルを維持する', async () => {
+    const { result } = renderHook(() => useAppointments('clinic-1'));
+    act(() => result.current.addAppointment(baseAppointment));
+    mockApi.cancelReservation.mockResolvedValueOnce({
+      id: 'appt-1',
+      customerId: 'customer-1',
+      menuId: 'menu-1',
+      staffId: 'staff-1',
+      startTime: '2026-02-22T01:00:00Z',
+      endTime: '2026-02-22T02:00:00Z',
+      status: 'cancelled',
+      projectionStatus: 'unavailable',
+    });
+    await act(async () => {
+      expect(await result.current.cancelAppointment('appt-1')).toMatchObject({
+        ok: true,
+        notice: expect.stringContaining('保存済み'),
+      });
+    });
+    expect(result.current.appointments[0]?.status).toBe('cancelled');
+    expect(mockApi.cancelReservation).toHaveBeenCalledTimes(1);
   });
 
   it('preserves JST reservation instants when loading then saving only a memo on a UTC device', async () => {
