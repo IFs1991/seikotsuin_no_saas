@@ -28,6 +28,8 @@ npm run test:e2e:pw -- --config playwright.production.config.ts
 
 最終production buildとブラウザ1件は成功（exit 0）。Windowsでは検証後のserver終了処理が停滞したため、起動したport 3112のPIDとcommandの一致を確認してその子プロセスだけを終了した。lint:ciは0 error / 129既存warnings、type-check成功。CIのBuild jobにも同じproductionブラウザ試験を追加し、build時と起動時のSupabase設定をloopback / dummyに固定する。
 
+通常の `playwright.config.ts` はdev用なのでこのproduction専用specを対象外とし、専用configのtestMatchとCI Build jobで実行を保証する。試験をskipしてPASSにする設定ではない。
+
 ## 未検証と運用影響
 
 - production buildでの認証後dashboard、reservations、予約create/update、daily report、manager/dashboardは **BLOCKED**。実Redis RESTと信頼proxy情報がないため既存のproduction認証guardが503で拒否する。認証制限を迂回してPASSにしない。専用環境と検証account、外部配送遮断を用意してCore100の実ログインを含む試験を行う必要がある。

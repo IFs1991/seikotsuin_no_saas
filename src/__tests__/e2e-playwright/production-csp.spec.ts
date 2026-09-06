@@ -21,6 +21,8 @@ test('production CSP: loginのSSR scriptsがnonce付きで実行される', asyn
   const nonce = /'nonce-([^']+)'/.exec(csp)?.[1];
   expect(nonce).toBeTruthy();
   expect(csp).not.toMatch(/unsafe-inline|unsafe-eval/);
+  expect(csp).toMatch(/require-trusted-types-for 'script'/);
+  expect(csp).toMatch(/trusted-types [^;]*nextjs#bundler/);
   const scripts = await page
     .locator('script')
     .evaluateAll(elements =>

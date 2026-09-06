@@ -10,6 +10,7 @@ export default defineConfig({
   testDir: 'src/__tests__/e2e-playwright',
   testMatch: 'production-csp.spec.ts',
   fullyParallel: false,
+  forbidOnly: !!process.env.CI,
   workers: 1,
   retries: 0,
   reporter: 'list',
