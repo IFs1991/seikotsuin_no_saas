@@ -3,6 +3,7 @@ import type { ReservationOptionSelection } from '@/types/reservation';
 import type { IntakeResponseSnapshot } from '@/lib/booking-form/settings';
 
 export interface ReservationApiItem {
+  projectionStatus?: 'unavailable';
   id: string;
   customerId: string;
   customerName?: string;

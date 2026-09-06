@@ -1973,7 +1973,7 @@ describe('mobile-uiux bridge contract', () => {
     });
   });
 
-  it('patches reservation updates through the mobile BFF and applies the returned read model', async () => {
+  it.each([false, true])('patches reservation updates and preserves committed success (projection unavailable: %s)', async degraded => {
     const script = buildMobileUiuxBridgeScript({
       realDataEnabled: true,
       manifest: MOBILE_UIUX_SCREEN_MANIFEST,
@@ -1986,6 +1986,7 @@ describe('mobile-uiux bridge contract', () => {
         reservation: {
           id: 'reservation-1',
           status: 'confirmed',
+          ...(degraded ? { projectionStatus: 'unavailable' } : {}),
         },
       },
       generatedAt: '2026-06-30T00:00:00.000Z',
@@ -2032,13 +2033,13 @@ describe('mobile-uiux bridge contract', () => {
       'pending'
     );
     await expect(pending).resolves.toBe(true);
-    expect(applyReadData).toHaveBeenCalledWith('reservations', mutationPayload);
+    if (!degraded) expect(applyReadData).toHaveBeenCalledWith('reservations', mutationPayload);
     expect(calls).toContainEqual({
       url: '/api/mobile-uiux/reservations',
       method: 'PATCH',
       body: JSON.stringify(payload),
     });
-    expect(window.document.body.textContent).toContain('予約を保存しました');
+    expect(window.document.body.textContent).toContain(degraded ? '予約は保存済みです' : '予約を保存しました');
   });
 
   it('shows a reservation conflict message for 409 PATCH responses without rendering details', async () => {
