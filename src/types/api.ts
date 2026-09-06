@@ -324,10 +324,11 @@ export interface RevenueAnalysisData {
   workersCompEstimated: number;
   menuRanking: MenuRanking[];
   hourlyRevenue: HourlyRevenue[];
-  revenueForecast: number;
-  growthRate: string;
+  revenueForecast: number | null;
+  lastYearRevenue: number | null;
+  growthRate: string | null;
   revenueTrends: RevenueTrend[];
-  costAnalysis: string;
+  costAnalysis: string | null;
   staffRevenueContribution: StaffRevenue[];
   revenueContextSummary: RevenueContextSummary[];
   revenueBreakdownSummary: RevenueBreakdownSummary[];

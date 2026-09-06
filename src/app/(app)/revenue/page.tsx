@@ -763,13 +763,13 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({
                   前年同期売上:
                 </p>
                 <p className='text-lg font-semibold text-red-600 dark:text-red-400'>
-                  {lastYearRevenue.toLocaleString()}
+                  {lastYearRevenue?.toLocaleString() ?? '未算出'}
                 </p>
               </div>
               <div className='w-full md:w-1/2'>
                 <p className='text-sm font-medium text-foreground'>成長率:</p>
                 <p className='text-lg font-semibold text-teal-600 dark:text-teal-400'>
-                  {growthRate}
+                  {growthRate ?? '未算出'}
                 </p>
               </div>
             </div>
@@ -788,7 +788,7 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({
           <CardContent className='bg-card'>
             <p className='text-sm font-medium text-foreground'>予測収益:</p>
             <p className='text-lg font-semibold text-indigo-600 dark:text-indigo-400'>
-              {revenueForecast.toLocaleString()}
+              {revenueForecast?.toLocaleString() ?? '未算出'}
             </p>
           </CardContent>
         </Card>
@@ -801,7 +801,7 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({
           <CardContent className='bg-card'>
             <p className='text-sm font-medium text-foreground'>人件費率:</p>
             <p className='text-lg font-semibold text-pink-600 dark:text-pink-400'>
-              {costAnalysis || 'データなし'}
+              {costAnalysis ?? '未算出'}
             </p>
           </CardContent>
         </Card>
