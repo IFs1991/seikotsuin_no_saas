@@ -493,6 +493,118 @@ describe('POST /api/customers', () => {
 describe('PATCH /api/customers', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    ensureClinicAccessMock.mockReset();
+  });
+
+  it.each<{
+    label: string;
+    patch: Record<string, unknown>;
+    expected: Record<string, unknown>;
+  }>([
+    {
+      label: '名前だけ変更してemailとnotesを保持',
+      patch: { name: '変更後' },
+      expected: { name: '変更後' },
+    },
+    {
+      label: '電話だけ変更して他項目を保持',
+      patch: { phone: '090-2222-3333' },
+      expected: { phone: '090-2222-3333' },
+    },
+    {
+      label: 'emailを意図した値へ変更',
+      patch: { email: ' new@example.com ' },
+      expected: { email: 'new@example.com' },
+    },
+    {
+      label: 'notesを意図した値へ変更',
+      patch: { notes: ' 新しいメモ ' },
+      expected: { notes: '新しいメモ' },
+    },
+    {
+      label: 'emailのnullを明示削除として扱う',
+      patch: { email: null },
+      expected: { email: null },
+    },
+    {
+      label: 'notesのnullを明示削除として扱う',
+      patch: { notes: null },
+      expected: { notes: null },
+    },
+    {
+      label: 'フォームの空emailを明示削除として扱う',
+      patch: { email: '' },
+      expected: { email: null },
+    },
+    {
+      label: '空白notesを明示削除として扱う',
+      patch: { notes: '   ' },
+      expected: { notes: null },
+    },
+    {
+      label: 'undefinedは未指定として保持',
+      patch: { name: '変更後', email: undefined, notes: undefined },
+      expected: { name: '変更後' },
+    },
+  ])('$label', async ({ patch, expected }) => {
+    const original = {
+      id: validId,
+      name: '既存の患者',
+      phone: '090-0000-1111',
+      email: 'existing@example.com',
+      notes: '消えてはいけないメモ',
+      custom_attributes: { source: '受付' },
+    };
+    let stored: Record<string, unknown> = { ...original };
+    const single = jest.fn(async () => ({ data: stored, error: null }));
+    const select = jest.fn(() => ({ single }));
+    const eqClinic = jest.fn(() => ({ select }));
+    const eqId = jest.fn(() => ({ eq: eqClinic }));
+    const update = jest.fn((values: Record<string, unknown>) => {
+      // PostgRESTへ送るJSONと同じくundefinedキーだけを除外し、nullは実際に保存する。
+      stored = {
+        ...stored,
+        ...Object.fromEntries(
+          Object.entries(values).filter(([, value]) => value !== undefined)
+        ),
+      };
+      return { eq: eqId };
+    });
+    const from = jest.fn(() => ({ update }));
+    const permissions = {
+      role: 'staff',
+      clinic_id: validClinicId,
+      clinic_scope_ids: [validClinicId],
+    };
+    processApiRequestMock.mockResolvedValueOnce({
+      success: true,
+      body: { clinic_id: validClinicId, id: validId, ...patch },
+      auth: { id: 'user-1', email: 'staff@example.com', role: 'staff' },
+      permissions,
+      supabase: { from: jest.fn() },
+    });
+    canAccessClinicScopeMock.mockReturnValue(true);
+    ensureClinicAccessMock.mockResolvedValueOnce({
+      user: { id: 'user-1', email: 'staff@example.com' },
+      permissions,
+      supabase: { from: jest.fn() },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client: { from },
+      assertClinicInScope: jest.fn(),
+    });
+
+    const { PATCH } = await import('@/app/api/customers/route');
+    const request = new NextRequest('http://localhost/api/customers', {
+      method: 'PATCH',
+      body: JSON.stringify({ clinic_id: validClinicId, id: validId, ...patch }),
+    });
+    const response = await PATCH(request);
+    expect(response.status).toBe(200);
+    expect(stored).toEqual({ ...original, ...expected });
+    expect((await response.json()).data).toEqual({ ...original, ...expected });
+    expect(eqId).toHaveBeenCalledWith('id', validId);
+    expect(eqClinic).toHaveBeenCalledWith('clinic_id', validClinicId);
   });
 
   it('verifies clinic_id scope on update', async () => {

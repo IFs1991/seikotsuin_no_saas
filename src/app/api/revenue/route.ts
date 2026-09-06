@@ -15,6 +15,7 @@ import type { SelectableRevenueContextCode } from '@/lib/revenue-context';
 import { calculateCareEpisodeMetrics } from '@/lib/care-episode';
 import { REVENUE_ESTIMATE_DISCLAIMER } from '@/lib/revenue-estimate';
 import { createAuthorityUnavailableResponse } from '@/lib/api-helpers';
+import { fetchAllRows } from '@/lib/manager-fetch';
 
 const PATH = '/api/revenue';
 
@@ -413,95 +414,98 @@ export async function GET(request: NextRequest) {
     const lastYearEnd = addYearsToDateString(dateFilter.lte, -1);
 
     const [
-      dailyReportsResult,
-      dailyReportItemsResult,
-      lastYearReportsResult,
-      revenueContextSummaryResult,
-      revenueEstimateSummaryResult,
-      revenueBreakdownSummaryResult,
+      dailyReports,
+      dailyReportItems,
+      lastYearReports,
+      revenueContextRows,
+      revenueEstimateRows,
+      revenueBreakdownRows,
     ] = await Promise.all([
-      supabase
-        .from('daily_reports')
-        .select(DAILY_REPORT_SELECT)
-        .eq('clinic_id', clinicId)
-        .gte('report_date', dateFilter.gte)
-        .lte('report_date', dateFilter.lte),
-      supabase
-        .from('daily_report_items')
-        .select(DAILY_REPORT_ITEM_SELECT)
-        .eq('clinic_id', clinicId)
-        .gte('report_date', dateFilter.gte)
-        .lte('report_date', dateFilter.lte),
-      supabase
-        .from('daily_reports')
-        .select('total_revenue')
-        .eq('clinic_id', clinicId)
-        .gte('report_date', lastYearStart)
-        .lte('report_date', lastYearEnd),
-      supabase
-        .from('daily_report_revenue_context_summary')
-        .select(REVENUE_CONTEXT_SUMMARY_SELECT)
-        .eq('clinic_id', clinicId)
-        .gte('report_date', dateFilter.gte)
-        .lte('report_date', dateFilter.lte),
-      supabase
-        .from('daily_report_revenue_estimate_summary')
-        .select(REVENUE_ESTIMATE_SUMMARY_SELECT)
-        .eq('clinic_id', clinicId)
-        .gte('report_date', dateFilter.gte)
-        .lte('report_date', dateFilter.lte),
-      supabase
-        .from('daily_report_revenue_breakdown_summary')
-        .select(REVENUE_BREAKDOWN_SUMMARY_SELECT)
-        .eq('clinic_id', clinicId)
-        .gte('report_date', dateFilter.gte)
-        .lte('report_date', dateFilter.lte),
+      // 日付・ID・viewのgroup keyで一意順を固定し、全ページを取得する。
+      // 後続ページの失敗時は部分的な経営数字を返さない。
+      fetchAllRows((from, to) =>
+        supabase
+          .from('daily_reports')
+          .select(DAILY_REPORT_SELECT)
+          .eq('clinic_id', clinicId)
+          .gte('report_date', dateFilter.gte)
+          .lte('report_date', dateFilter.lte)
+          .order('report_date', { ascending: true })
+          .range(from, to)
+      ),
+      fetchAllRows((from, to) =>
+        supabase
+          .from('daily_report_items')
+          .select(DAILY_REPORT_ITEM_SELECT)
+          .eq('clinic_id', clinicId)
+          .gte('report_date', dateFilter.gte)
+          .lte('report_date', dateFilter.lte)
+          .order('id', { ascending: true })
+          .range(from, to)
+      ),
+      fetchAllRows((from, to) =>
+        supabase
+          .from('daily_reports')
+          .select('total_revenue')
+          .eq('clinic_id', clinicId)
+          .gte('report_date', lastYearStart)
+          .lte('report_date', lastYearEnd)
+          .order('report_date', { ascending: true })
+          .range(from, to)
+      ),
+      fetchAllRows((from, to) =>
+        supabase
+          .from('daily_report_revenue_context_summary')
+          .select(REVENUE_CONTEXT_SUMMARY_SELECT)
+          .eq('clinic_id', clinicId)
+          .gte('report_date', dateFilter.gte)
+          .lte('report_date', dateFilter.lte)
+          .order('report_date', { ascending: true })
+          .order('revenue_context_code', { ascending: true })
+          .range(from, to)
+      ),
+      fetchAllRows((from, to) =>
+        supabase
+          .from('daily_report_revenue_estimate_summary')
+          .select(REVENUE_ESTIMATE_SUMMARY_SELECT)
+          .eq('clinic_id', clinicId)
+          .gte('report_date', dateFilter.gte)
+          .lte('report_date', dateFilter.lte)
+          .order('report_date', { ascending: true })
+          .range(from, to)
+      ),
+      fetchAllRows((from, to) =>
+        supabase
+          .from('daily_report_revenue_breakdown_summary')
+          .select(REVENUE_BREAKDOWN_SUMMARY_SELECT)
+          .eq('clinic_id', clinicId)
+          .gte('report_date', dateFilter.gte)
+          .lte('report_date', dateFilter.lte)
+          .order('report_date', { ascending: true })
+          .order('amount_role', { ascending: true })
+          .range(from, to)
+      ),
     ]);
 
-    if (dailyReportsResult.error) {
-      throw dailyReportsResult.error;
-    }
-    if (dailyReportItemsResult.error) {
-      throw dailyReportItemsResult.error;
-    }
-    if (lastYearReportsResult.error) {
-      throw lastYearReportsResult.error;
-    }
-    if (revenueContextSummaryResult.error) {
-      throw revenueContextSummaryResult.error;
-    }
-    if (revenueEstimateSummaryResult.error) {
-      throw revenueEstimateSummaryResult.error;
-    }
-    if (revenueBreakdownSummaryResult.error) {
-      throw revenueBreakdownSummaryResult.error;
-    }
+    const summary = summarizeDailyReports(dailyReports, dateFilter);
+    const revenueContextSummary =
+      buildRevenueContextSummary(revenueContextRows);
 
-    const summary = summarizeDailyReports(
-      dailyReportsResult.data ?? [],
-      dateFilter
-    );
-    const revenueContextSummary = buildRevenueContextSummary(
-      revenueContextSummaryResult.data ?? []
-    );
-
-    const lastYearTotal = sumLastYearRevenue(lastYearReportsResult.data ?? []);
-    const careEpisodeMetrics: CareEpisodeMetrics = calculateCareEpisodeMetrics(
-      dailyReportItemsResult.data ?? []
-    );
-    const revenueEstimateSummary = buildRevenueEstimateSummary(
-      revenueEstimateSummaryResult.data ?? []
-    );
-    const revenueBreakdownSummary = buildRevenueBreakdownSummary(
-      revenueBreakdownSummaryResult.data ?? []
-    );
+    const lastYearTotal =
+      lastYearReports.length > 0 ? sumLastYearRevenue(lastYearReports) : null;
+    const careEpisodeMetrics: CareEpisodeMetrics =
+      calculateCareEpisodeMetrics(dailyReportItems);
+    const revenueEstimateSummary =
+      buildRevenueEstimateSummary(revenueEstimateRows);
+    const revenueBreakdownSummary =
+      buildRevenueBreakdownSummary(revenueBreakdownRows);
     const growthRate =
-      lastYearTotal > 0
-        ? (
+      lastYearTotal !== null && lastYearTotal > 0
+        ? `${(
             ((summary.totalRevenue - lastYearTotal) / lastYearTotal) *
             100
-          ).toFixed(1)
-        : '0';
+          ).toFixed(1)}%`
+        : null;
 
     const hourlyRevenue: HourlyRevenue[] = [];
     const responseData: RevenueAnalysisData = {
@@ -510,12 +514,14 @@ export async function GET(request: NextRequest) {
       monthlyRevenue: summary.totalRevenue,
       insuranceRevenue: summary.insuranceRevenue,
       selfPayRevenue: summary.privateRevenue,
-      menuRanking: buildMenuRanking(dailyReportItemsResult.data ?? []),
+      menuRanking: buildMenuRanking(dailyReportItems),
       hourlyRevenue,
-      revenueForecast: summary.totalRevenue * 1.1,
-      growthRate: `${growthRate}%`,
+      // 算出根拠のない予測・人件費率は実績と区別して未算出とする。
+      revenueForecast: null,
+      lastYearRevenue: lastYearTotal,
+      growthRate,
       revenueTrends: summary.revenueTrends,
-      costAnalysis: '32.5%',
+      costAnalysis: null,
       staffRevenueContribution: [],
       revenueContextSummary,
       trafficAccidentRevenue: sumContextRevenueByCode(
