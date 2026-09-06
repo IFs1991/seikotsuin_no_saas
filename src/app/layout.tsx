@@ -1,6 +1,7 @@
 import React from 'react';
 import './globals.css';
 import type { Metadata } from 'next';
+import { connection } from 'next/server';
 
 export const metadata: Metadata = {
   title: '整骨院経営管理システム',
@@ -15,7 +16,9 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-export default function RootLayout({ children }: LayoutProps) {
+export default async function RootLayout({ children }: LayoutProps) {
+  // リクエストごとのnonceをSSRへ付けるため、静的HTMLを再利用しない。
+  await connection();
   return (
     <html lang='ja'>
       <body className='min-h-screen' suppressHydrationWarning>
