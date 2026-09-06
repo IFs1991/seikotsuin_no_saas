@@ -264,7 +264,8 @@ export class CSPConfig {
       'upgrade-insecure-requests': [], // HTTPS強制
       'block-all-mixed-content': [], // 混合コンテンツブロック
       'require-trusted-types-for': ["'script'"], // Trusted Types API
-      'trusted-types': ['default'], // 信頼できる型のみ
+      // Next.jsの追加chunk読込が作るpolicy名だけを許可し、Trusted Types強制を維持。
+      'trusted-types': ['default', 'nextjs#bundler'],
       'report-uri': ['/api/security/csp-report'],
     };
 

@@ -104,6 +104,8 @@ function ClinicLoginPageContent() {
             alt='ティラミス'
             width={72}
             height={72}
+            // Next Imageの既定inline styleを出さず、厳格CSPを維持する。
+            style={{ color: undefined }}
             className='mx-auto mb-4 h-[72px] w-[72px] object-contain'
             priority
           />

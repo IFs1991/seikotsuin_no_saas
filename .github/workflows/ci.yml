@@ -82,9 +82,8 @@ jobs:
 
   # --------------------------------------------------------------------------
   # 2. Build  (DOD-10)
-  # NEXT_PUBLIC_* vars are inlined at build time; placeholder values are
-  # sufficient for build verification. Replace with repository secrets once
-  # the project is connected to a real Supabase project.
+  # NEXT_PUBLIC_*はbuild時に埋め込まれる。CSPブラウザ検証もこのbuildを
+  # 起動するため、接続先・認証情報はローカルのダミー値に固定する。
   # --------------------------------------------------------------------------
   build:
     name: Build
@@ -106,8 +105,8 @@ jobs:
       - name: Next.js build
         run: npm run build
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
+          NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54331'
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'placeholder-anon-key'
           # src/lib/env.ts requires this at module load during page-data
           # collection. The build never uses the real key, so a placeholder
           # is sufficient (least privilege: do not pass the real secret).
@@ -121,6 +120,19 @@ jobs:
           NEXT_PUBLIC_GEMINI_MODEL: 'gemini-1.5-flash'
           NEXT_PUBLIC_CLINIC_GROUP_NAME: 'CI'
           NEXT_PUBLIC_DEFAULT_TIMEZONE: 'Asia/Tokyo'
+
+      - name: CSP検証用のChromiumを準備
+        run: npx playwright install --with-deps chromium
+
+      - name: 本番ビルドのCSPと画面遷移を検証
+        # ローカルの本番ビルドだけを対象とし、実サービスには接続しない。
+        run: npm run test:e2e:pw -- --config playwright.production.config.ts
+        env:
+          PLAYWRIGHT_BASE_URL: 'http://localhost:3000'
+          NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54331'
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'placeholder-anon-key'
+          SUPABASE_SERVICE_ROLE_KEY: 'placeholder-service-role-key'
+          NEXT_PUBLIC_APP_URL: 'http://localhost:3000'
 
   # --------------------------------------------------------------------------
   # 3. Supabase Types Contract  (DOD-12, auxiliary)
