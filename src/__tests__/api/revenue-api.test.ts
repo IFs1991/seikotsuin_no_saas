@@ -10,13 +10,18 @@ const ensureClinicAccessMock = ensureClinicAccess as jest.Mock;
 
 const clinicId = '123e4567-e89b-12d3-a456-426614174000';
 
-function createResolvedRangeQuery<TData>(data: TData) {
+function createResolvedRangeQuery<TData>(data: TData[]) {
   const result = Promise.resolve({ data, error: null });
 
   return {
     eq: jest.fn().mockReturnThis(),
     gte: jest.fn().mockReturnThis(),
     lte: jest.fn().mockReturnThis(),
+    order: jest.fn().mockReturnThis(),
+    range: jest.fn(async (from: number, to: number) => ({
+      data: data.slice(from, to + 1),
+      error: null,
+    })),
     then: result.then.bind(result),
   };
 }

@@ -1109,7 +1109,7 @@
         },
         {
           "path": "src/app/api/revenue/route.ts",
-          "line": 430,
+          "line": 438,
           "clientModule": false
         },
         {
@@ -1180,22 +1180,22 @@
         },
         {
           "path": "src/app/api/revenue/route.ts",
-          "line": 424,
+          "line": 428,
           "clientModule": false
         },
         {
           "path": "src/app/api/revenue/route.ts",
-          "line": 436,
+          "line": 448,
           "clientModule": false
         },
         {
           "path": "src/lib/daily-reports/read-model.ts",
-          "line": 153,
+          "line": 152,
           "clientModule": false
         },
         {
           "path": "src/lib/daily-reports/read-model.ts",
-          "line": 200,
+          "line": 212,
           "clientModule": false
         },
         {
@@ -4025,7 +4025,7 @@
       "calls": [
         {
           "path": "src/app/api/revenue/route.ts",
-          "line": 454,
+          "line": 479,
           "clientModule": false
         }
       ]
@@ -4035,7 +4035,7 @@
       "calls": [
         {
           "path": "src/app/api/revenue/route.ts",
-          "line": 442,
+          "line": 458,
           "clientModule": false
         }
       ]
@@ -4045,7 +4045,7 @@
       "calls": [
         {
           "path": "src/app/api/revenue/route.ts",
-          "line": 448,
+          "line": 469,
           "clientModule": false
         }
       ]
