@@ -2,16 +2,33 @@
 
 判定: **NO_GO / 出荷未判定**。コード変更とローカル検証、100院容量、運用準備を混同しない。
 
-- 検証対象: `806a5afab8e976a48cf2ecb771a1bc277bb53500` + 検証時の作業ツリーの変更（検証時は未commit、未push、未deploy）。Windows / PowerShell / Node24.19.0 / npm11.7.0、2026-09-05〜06 JST。
-- 実装コミット: `7dca4a530a0308f5b5baf55caac579c9b140a794`（`codex/line-crm-data-foundation`）。commit前に85ファイルのSHA256が検証記録と一致することを確認した。以降は文書のcommit情報のみ更新。新しいcommitに対するCI成功・実環境検証を意味しない。
+- 修正前基準main SHA: `c028573d089cb6085ab3e29121fa9fe4d2f923c0`。[PR #116](https://github.com/IFs1991/seikotsuin_no_saas/pull/116)は2026-09-06 07:36 JSTにmerge済み。追加A〜Eのコード統合mainは `1d95419e918b8748ac45c69b6b3ee84e3a369579`。各PRのmerge・CI証跡は [Post-Core100修正結果](post-core100-remediation-result.md) の進捗表を参照する。
+- 基準mainの[CI run 33996399702](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/33996399702): **8 jobs PASS**。Quality Checks / Build / Database Contract / Security Tests / Supabase Types Contract / Fixture Preflight (Static) / Full Jest Regression / App E2E (Local Supabase + Chromium)。追加PR統合後のCIとは区別する。
+- Full Jest: **444 suites passed / 3733 tests passed / 2既存skipped**。CI E2E: **9 passed / 3 flaky（retry成功）/ 1既存skipped**。skipとretryは初回成功に算入しない。
+- local E2E: 実施未完了。CIの使い捨てSupabaseでのE2E成功と区別する。Previewは2026-09-06 JSTにユーザーから確認済みとmerge依頼を受領し、**USER_CONFIRMED**。実Redis・配備先DB・容量・運用の確認を意味しない。
+- 過去のlocal検証対象は `806a5afab8e976a48cf2ecb771a1bc277bb53500` + 当時の作業ツリー、実装commitは `7dca4a530a0308f5b5baf55caac579c9b140a794`。下記と85ファイルのハッシュはその時点の履歴として保持し、最新mainのハッシュや新規修正のCIへ読み替えない。
 - コード: **IMPLEMENTED**。TASK-01/02A/02B/03/04/05/06。TASK-07は提供範囲・既存契約影響の確定待ち **BLOCKED**。
 - 容量: **BLOCKED**。大規模データ投入、200/400VU、実Redis、DB照合の実測は未実行。
 - 運用: **BLOCKED**。復元、実通知受信、本番設定、branch protection/required checks、出荷承認は未完了。
 - 詳細: [実装差分](core100-release-changes.md)、[運用runbook](../operations/CORE100_RUNBOOK.md)、[機械可読結果](evidence/core100/result.json)。既存のTiramisuLPの読取不能/削除状態、入れ子worktree、先行未追跡文書は本タスクの変更に含めていない。
 
+## Post-Core100追加修正の現在状態
+
+2026-09-06、ユーザーPreview確認後にA〜Eをmainへ統合した。全コードを含むE更新head `fda08bdd` の[CI 34008902307](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34008902307)は8 jobs SUCCESS。Jest 448 suites / 3798 passed / 2 skipped、DB 21 files / 858 tests、production CSPブラウザ1 passed、App E2E 11 passed / 1 flaky（retry成功）/ 1 skipped。コード統合main `1d95419e` は、このCI成功headと実装コードが一致する。
+
+Core100のmain実績と追加修正PRの証跡は分離する。A / B / Cの初回CIは各8 jobs成功、独立read-only監査2名PASS。AはJest 444 suites / 3742 passed / 2 skipped・E2E 11 passed / 1 flaky / 1 skipped、Bは445 / 3748 / 2・E2E 11 / 1 flaky / 1 skipped、Cは445 / 3751 / 2・E2E 12 passed / 1 skipped。対象commitとCIへのリンクは [Post-Core100修正結果](post-core100-remediation-result.md) を正本とする。
+
+Eの初回修正（PR #120、`4bb46947` / `cdf0e12c`）は[CI 34003531144](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34003531144)の8 jobsがSUCCESS。Jest 444 suites / 3734 passed / 2 skipped、Build内production CSPブラウザ1 passed、App E2E 11 passed / 1 flaky（retry成功）/ 1 skipped、独立read-only監査2名PASS。ローカルproduction build、loginからadmin loginへのReact操作・reloadなし遷移のブラウザ1件、Jest 9 suites / 116 tests、型、lint（0 errors / 129 warnings）、source inventoryも成功した。
+
+Dは `61de7312`でCの予約保存 / CASと通知handoffを統合し、競合解消後の17 suites / 229 tests、型・lint・inventory、独立read-only監査2名PASS。PR #121はC #119へ依存する通知差分として作成した。CIの失敗履歴・最新結果は [Post-Core100修正結果](post-core100-remediation-result.md) のD行を参照する。Fは初版 `3fd6acd`、文書最終版とmerge commitは[PR #122](https://github.com/IFs1991/seikotsuin_no_saas/pull/122)の履歴を参照する。
+
+mainへのmerge commitはA `03fc8b66`、B `d636e713`、C `f8dd988d`、D `fcb64ec0`、E `1d95419e`。Fの文書最終版・統合状態・merge commitは[PR #122](https://github.com/IFs1991/seikotsuin_no_saas/pull/122)の履歴、文書PRとmerge後mainのCIはGitHub checksを参照する。既存4文書の監査2名PASSと、今回の統合結果追記に対する再監査・CIを区別する。
+
+修正前のmiddleware入口未登録とnonce / style / Trusted Types不整合は、EでRED再現後に修正した。認証後dashboard / reservations / daily report / managerのproduction相当CSPは実Redis・信頼proxy不足でBLOCKED。Core100業務E2E、production login局所試験、Preview固有の認証後業務受入を同じPASSとして扱わない。
+
 ## 実行した検証
 
-以下はすべてlocal。後日同じコマンドが通る保証やCI成功の代用ではない。
+以下はCore100実装中のlocal履歴。基準mainのCIは冒頭に別記した。後日同じコマンドが通る保証ではない。
 
 | コマンド / 条件 | 結果・範囲 |
 | --- | --- |
@@ -48,8 +65,8 @@ DB/Auth/billingの新しい条件はREDを先に確認。例えば本部aggregat
 | --- | --- |
 | 実Redis/Auth集中 | 承認されたRedis REST/信頼proxy環境で単一IPとaccount双方の閾値・原子性・TTL・復帰を確認。Supabase Auth側制限も確認 |
 | 本部aggregate | 対象PostgRESTでaggregate有効設定を確認。無効なら正しく500になるが業務受入は不合格。設定変更は未実施 |
-| DB replay/pgTAP/生成型/招待競合/GoTrue | 使い捨てlocal/専用stagingと実行承認。既存CIのコマンドを省略せず実行。local DBに起動済みstackがあることは実行承認ではない |
-| 実E2E | 承認済みfixture seedと使い捨て環境。実ログイン→患者→予約→日報→本部、manager担当院、他社scopeを実行 |
+| 配備環境のDB一致 | CIのreplay/pgTAP/生成型/GoTrue gateは基準mainでPASS。配備先のmigration・設定一致は未検証。既存local DBに対するreset/applyは未実施 |
+| Preview受入 | ユーザーが2026-09-06にPreview確認とmergeを依頼済み。CIの使い捨てSupabaseによる自動E2E、実環境のDB・外部サービス検証とは分離して記録する |
 | Stripe test mode | 対象test環境の契約/価格/webhookを供給し、既存状態機械・数量並行操作を実サービスで確認。実課金禁止 |
 | 容量A/B | 専用ターゲット、外部送信遮断、app/DBプラン・region・上限・100院IP構成を確定して標準seed/load/verify。CPU/接続/ロック/転送量等の外部計測も保存 |
 | 未払会社の通常session試験 | 主容量datasetの10社はactive。未払会社の別fixtureと期待402、通常負荷とは分けた実証を追加実行。unitの状態判定だけで実証済みにしない |
@@ -59,7 +76,22 @@ DB/Auth/billingの新しい条件はREDを先に確認。例えば本部aggregat
 
 ローカルread-onlyで `max_rows=1000`、Auth `sign_in_sign_ups=30`、`token_refresh=150`、最新migration `20260820060700` を確認した。本番設定・本番性能の証明ではない。実Redis評価、本番操作、有料変更、reset/migration apply、実患者投入、通知送信、restoreは行っていない。
 
-GitHub読取: 最新確認時の[CI run33370878657](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/33370878657)は基準beb0978のFAIL。今回の未commit変更のCIは存在しない。`main` protection取得は404 `Branch not protected`。設定は変更していない。
+GitHub読取（2026-09-06 JST）: 修正前基準mainのCI33996399702はSUCCESS。古いCI33370878657のFAILは以前の基準beb0978に対する履歴。今回の統合headとCIは [Post-Core100修正結果](post-core100-remediation-result.md) へ分離する。mainのprotected=false、rulesets=[]は変更していない。推奨設定は [branch protection提案](post-core100-branch-protection.md) を参照する。
+
+## 運用開始に向けた判定
+
+| 領域 | 判定・範囲 |
+| --- | --- |
+| Code readiness | A〜Eはmain統合済み。各PRと全コード組合せのCI、独立監査、ユーザーPreview確認は成功。コード統合mainは `1d95419e`。Fの文書統合状態とmerge後main CIはPR #122履歴・GitHub checksを参照 |
+| Data correctness | 患者PATCH・日報集計・予約保存 / CAS・通知境界は各PRと全コード組合せのCIでPASS。ユーザーPreview確認済み。配備先DB・実環境の検証は未完了 |
+| Security | 基準main、A〜E、全コード組合せのSecurity / Database Contract PASS。production CSPブラウザgateもCI Build内でPASS、実認証後CSP・実Redis・配備済み設定は未検証 |
+| Capacity | BLOCKED。10社100院大規模データ・200/400VU・実Redis未実測 |
+| Recovery | BLOCKED。backup restoreとRPO/RTO未実測 |
+| Notifications | NOT VERIFIED。LINE/email実通知とprovider障害時の実環境動作未確認 |
+| Production configuration | BLOCKED。本番設定、PostgREST aggregate有効化、Stripe test environment未検証 |
+| Operational readiness | BLOCKED。monitoring alert delivery・担当体制・承認未完了 |
+
+この文書更新は出荷判定の引き上げではない。本番DB・Auth・有料設定・branch protectionの変更は実施していない。
 
 ## 依存脆弱性
 
