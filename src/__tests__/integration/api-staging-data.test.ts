@@ -493,18 +493,42 @@ function createDailyReportsSupabaseMock({
   return {
     from: jest.fn((table: string) => {
       if (table === 'daily_reports') {
-        const query = {
-          gte: jest.fn(() => query),
-          lte: jest.fn(() => query),
-          returns: jest.fn(() => query),
-          order: jest.fn(() => ({
-            limit: jest.fn(async () => ({ data: reports, error: null })),
-          })),
-        };
         return {
-          select: jest.fn(() => ({
-            eq: jest.fn(() => query),
-          })),
+          select: jest.fn((selection: string) => {
+            const data = selection.includes('.sum()')
+              ? [
+                  {
+                    totalReports: reports.length,
+                    totalPatients: reports.reduce(
+                      (sum, row) => sum + Number(row.total_patients ?? 0),
+                      0
+                    ),
+                    totalRevenue: reports.reduce(
+                      (sum, row) => sum + Number(row.total_revenue ?? 0),
+                      0
+                    ),
+                  },
+                ]
+              : reports;
+            const result = Promise.resolve({ data, error: null });
+            const query = {
+              eq: jest.fn(() => query),
+              gte: jest.fn(() => query),
+              lte: jest.fn(() => query),
+              returns: jest.fn(() => query),
+              order: jest.fn(() => query),
+              limit: jest.fn(async (limit: number) => ({
+                data: data.slice(0, limit),
+                error: null,
+              })),
+              range: jest.fn(async (from: number, to: number) => ({
+                data: data.slice(from, to + 1),
+                error: null,
+              })),
+              then: result.then.bind(result),
+            };
+            return query;
+          }),
         };
       }
       throw new Error(`Unexpected table: ${table}`);

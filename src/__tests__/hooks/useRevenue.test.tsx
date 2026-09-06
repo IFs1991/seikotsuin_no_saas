@@ -309,6 +309,52 @@ describe('useRevenue', () => {
   });
 
   describe('サンプル値排除', () => {
+    it.each([
+      { lastYearRevenue: null, growthRate: null },
+      { lastYearRevenue: 0, growthRate: null },
+      { lastYearRevenue: 333, growthRate: '200.3%' },
+    ])('前年実額と未算出をAPIどおり保持する: %j', async comparison => {
+      jest.mocked(mockApi.api.revenue.getAnalysis).mockResolvedValueOnce({
+        success: true,
+        data: {
+          ...mockRevenueData,
+          ...comparison,
+          revenueForecast: null,
+          costAnalysis: null,
+          revenueContextSummary: [],
+          menuRanking: [],
+          hourlyRevenue: [],
+          careEpisodeMetrics: {
+            totalEpisodes: 0,
+            secondVisitReachedCount: 0,
+            fifthVisitReachedCount: 0,
+            secondVisitReachRate: 0,
+            fifthVisitReachRate: 0,
+            episodeContinuationRate: 0,
+            averageRevenuePerEpisode: 0,
+            averageVisitsPerEpisode: 0,
+          },
+          revenueEstimateSummary: {
+            estimatedTotal: 0,
+            estimateCount: 0,
+            calculatedCount: 0,
+            needsReviewCount: 0,
+            blockedCount: 0,
+            overriddenCount: 0,
+            warningCount: 0,
+            disclaimer: '概算',
+          },
+        },
+      });
+      const { result } = renderHook(() => useRevenue(mockClinicId));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.error).toBeNull();
+      expect(result.current.lastYearRevenue).toBe(comparison.lastYearRevenue);
+      expect(result.current.growthRate).toBe(comparison.growthRate);
+      expect(result.current.revenueForecast).toBeNull();
+      expect(result.current.costAnalysis).toBeNull();
+    });
+
     it('初期状態ではサンプル値ではなく空/ゼロ値になる', () => {
       const { result } = renderHook(() => useRevenue(mockClinicId));
 
