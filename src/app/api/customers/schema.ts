@@ -75,6 +75,16 @@ const jsonSchema: z.ZodType<Json> = z.lazy(() =>
 
 const optionalCustomAttributes = z.record(jsonSchema).optional();
 
+// PATCH: 未指定は保持。nullまたはフォームの空文字（空白のみを含む）は明示削除。
+const patchNullableString = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .nullable()
+    .optional()
+    .transform(value => (value === '' ? null : value));
+
 export const customersQuerySchema = z.object({
   clinic_id: z.string().uuid('有効なクリニックIDを指定してください'),
   q: searchQuerySchema,
@@ -115,8 +125,8 @@ export const customerUpdateSchema = z
     id: z.string().uuid(),
     name: z.string().trim().min(1).max(255).optional(),
     phone: z.string().trim().min(1).max(32).optional(),
-    email: optionalTrimmedString(255),
-    notes: optionalTrimmedString(2000),
+    email: patchNullableString(255),
+    notes: patchNullableString(2000),
     customAttributes: optionalCustomAttributes,
   })
   .strict();
@@ -141,10 +151,10 @@ export function mapCustomerUpdateToRow(
   dto: CustomerUpdateDTO
 ): CustomerUpdateRow {
   return {
-    name: dto.name,
-    phone: dto.phone,
-    email: dto.email ?? null,
-    notes: dto.notes ?? null,
+    ...(dto.name !== undefined ? { name: dto.name } : {}),
+    ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
+    ...(dto.email !== undefined ? { email: dto.email } : {}),
+    ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
     ...(dto.customAttributes !== undefined
       ? { custom_attributes: dto.customAttributes }
       : {}),
