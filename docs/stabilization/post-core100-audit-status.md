@@ -54,8 +54,16 @@
 | F-13 managerのadmin CSP権限 | RESOLVED | stats/violations routeのADMIN_UI_ROLES | 不要 | 維持 | なし |
 | F-14 admin security rate limit除外 | RESOLVED | rate-limiting/middlewareのuser+clinicキー、read30/write10 | 不要 | 維持 | なし |
 | F-15 Sentry release/source-map | RESOLVED | monitoring/sentry、next.config.js、SENTRY_RELEASE_AND_SOURCEMAPS.md。実受信・artifactは別途未検証 | コード再実装不要 | 維持 | Fで境界記録 |
+| F-16 notification table grant | RESOLVED | `supabase/migrations/20260707000200_pr06_outreach_rls_integrity_and_notification_grants.sql:8` でservice_role grant、anon/authenticated revoke | 不要。実配備状態は未確認 | 維持 | なし |
+| F-17 outreach UPDATEのmanager許可 | RESOLVED | 同migration17–42のUSING/WITH CHECKはadmin/clinic_adminとclinic scopeに限定 | 不要 | 維持 | なし |
+| F-18 outreach他院参照 | RESOLVED | 同migration119–138のcustomer/予約/campaign複合FKとpreflight | 不要 | 維持 | なし |
+| F-19 canonical rollback欠落 | RESOLVED | supabase/rollbacksの20260507000100、20260508000100、20260508000200が存在。存在は実行安全性を保証せずsecurity regression時はforward fixを使う | 欠落の再修正不要 | 維持 | なし |
 | F-20 API client型安全 | PARTIALLY_CONFIRMED | 対象ファイルのanyは除去済み。ただし `src/lib/api-client.ts:466,491` のgeneric成功payloadはas Tのまま | 広範囲の全API再設計は今回対象外。変更対象の契約で必要な検証を維持 | P2 | 別途対象を限定 |
 | 収益の前年値逆算・月次item上限 | CONFIRMED | `src/hooks/useRevenue.ts:122` は丸めた成長率から前年額逆算。revenue routeの月間daily_report_items等は未ページング | 経営数字の正確性としてB内で再現し最小対応 | P1 | B |
+| 公開予約/公開cancel enqueue待機 | RESOLVED | public予約route573、公開cancel130は既にawait | 再実装不要 | 維持 | Dで維持 |
+| 通知claimとoutboxの間で停止 | CONFIRMED | reservation-notifications.tsはclaimとoutbox insertが別書込、ignoreDuplicatesで再試行がduplicateになる | notification耐久性として対応 | P1 | D |
+| 通知staff参照先の不一致 | CONFIRMED | email/reservation-enqueue.tsはstaff検索だが予約staff_idのFKはresources。有効resourceのみの予約でenqueue失敗 | resources+clinicへ整合 | P1 | D |
+| Resend idempotency引数 | CONFIRMED | resend-provider.tsはメール本文headersに設定、SDKのHTTP冪等キーは第2引数options.idempotencyKey | lease回復時の重複送信防止に最小修正 | P1 | D |
 
 ## 確認済みCIと未検証の境界
 
@@ -68,3 +76,16 @@
 Next.js最新公式CSPガイドと[Next15版](https://nextjs.org/docs/15/app/guides/content-security-policy)を確認。nonce利用はrequest CSPからのSSR伝播と動的renderingを必要とする。実測前にCSPを弱めたり構成を変更しない。
 
 DoD対応: DOD-06/07=E2E、DOD-08/09=認可・clinic境界維持、DOD-10=build、DOD-11=Jest、DB変更時DOD-02/04/12=replay・drift・型。歴史的 `DoD-v0.1.md` のPASSを今回の出荷証拠へ流用しない。
+
+## 修正前分類後の追加確認（2026-09-06 JST）
+
+上の表は初版commit `3fd6acd` に記録した修正前の分類である。後の実測で得た事実を以下へ追記し、初版の `NEEDS_ENVIRONMENT_VERIFICATION` を当時未実施だった試験のPASSへ書き換えない。現時点のmainは基準SHAのままで、各修正PRはmain未統合。
+
+| 対象 | 追加確認と現在の修正状態 | 証跡・未完了範囲 |
+| --- | --- | --- |
+| production CSP / middleware入口 | CONFIRMED。修正前production buildのmiddleware manifestが空でloginにCSPがなかった。入口登録後にSSR nonce欠落・Next Imageのstyle属性違反・client navigation時の `nextjs#bundler` 拒否とhard reloadもRED再現。PR-Eで薄いsrc入口、request nonce / CSP、動的SSR、画像3箇所、正確なTrusted Types policy名を修正 | [PR #120](https://github.com/IFs1991/seikotsuin_no_saas/pull/120)、`4bb46947` / `cdf0e12c`。[CI 34003531144](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34003531144) 8 jobs SUCCESS、Jest 444 suites / 3734 passed / 2 skipped、Build内production CSP 1 passed、App E2E 11 passed / 1 flaky / 1 skipped、独立read-only監査2名PASS。ローカルproduction build / ブラウザ1件、9 suites / 116 tests、型・lint・inventoryもPASS。実認証後CSPは実Redis / 信頼proxy不足でBLOCKED |
+| F-14等のmiddleware内rate limit | 初版RESOLVEDはuser + clinicキー等のhelper実装確認を意味する。PR-Eで入口未登録が判明したため、production runtimeでの有効性は追加修正・環境検証が必要。helperを再実装せず入口修正へ関連付ける | PR-Eの `src/middleware.ts` 登録後は既存API制限が実行される。Redis未設定時の503はfail-closedを維持。実閾値・原子性・TTL・復帰・proxy境界の合格を意味しない |
+| 患者PATCH、日報 / Revenue、予約保存 / CAS | PR-A / B / CでRED後の最小修正、各CI8 jobs成功、独立read-only監査2名PASS | A: [CI 34001862639](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34001862639)、B: [CI 34002471970](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34002471970)、C: [CI 34002601375](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34002601375)。main統合後の組合せ回帰・Preview受入は別途必要 |
+| 予約保存 / CASと通知handoffの統合 | C / Dの競合を `61de7312`で解消。clinic scope・raw updated_at CASを保持し、保存後にscoped clientで通知handoffをawaitしてからprojectionを読む。通知失敗後の保存成功も維持 | [PR #121](https://github.com/IFs1991/seikotsuin_no_saas/pull/121)はC #119がbase。新規4回帰を含む17 suites / 229 tests、型・lint・inventory・独立read-only監査2名PASS。CI失敗履歴と最新結果は修正結果のD行を参照。実通知・配備先DBはBLOCKED |
+
+最終commit / CI件数・8領域の判定は [Post-Core100修正結果](post-core100-remediation-result.md) へ集約する。容量・復元・実通知・配備設定・監視受信・運用の未検証は継続し、コードのCI成功だけで出荷判定を引き上げない。
