@@ -382,6 +382,8 @@ export const Header = React.memo(function Header({
             alt='ティラミス'
             width={143}
             height={40}
+            // Next Imageの既定inline styleを出さず、厳格CSPを維持する。
+            style={{ color: undefined }}
             className='h-10 w-auto shrink-0 object-contain'
             priority
           />

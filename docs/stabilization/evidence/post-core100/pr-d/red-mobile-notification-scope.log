@@ -1,0 +1,131 @@
+
+> seikotsuin-management-saas@0.1.0-pilot pretest
+> node scripts/check-swc-binary.mjs
+
+
+> seikotsuin-management-saas@0.1.0-pilot test
+> node scripts/run-jest.mjs --ci --config .next/jest-pd.config.cjs --runTestsByPath src/__tests__/api/mobile-uiux-reservations.test.ts
+
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\seekf\Desktop\seikotsuin_management_saas\package-lock.json as the root directory.
+ To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+ Detected additional lockfiles:
+   * C:\Users\seekf\Desktop\seikotsuin_management_saas\.w\pd\package-lock.json
+
+FAIL server src/__tests__/api/mobile-uiux-reservations.test.ts
+  GET /api/mobile-uiux/reservations
+    √ queries reservation_list_view with clinic scope and a JST day range (61 ms)
+    √ accepts fixture-style UUID values used by e2e seed data (2 ms)
+    √ uses the PC manager assignment-aware guard and stops on assigned clinic violation (2 ms)
+    √ uses the admin read client for manager after assignment-aware access passes (1 ms)
+    √ returns 403 for mobile reservation writes while write flags are off (3 ms)
+  POST/PATCH /api/mobile-uiux/reservations write pilot
+    √ accepts JST-offset timestamps for reservation time updates (2 ms)
+    √ returns 403 when the global write flag is off (1 ms)
+    √ returns 403 when the reservation write flag is off (1 ms)
+    √ denies manager writes before DB access (3 ms)
+    √ denies manager reservation updates before DB access (1 ms)
+    √ returns 403 for PATCH when clinic scope validation fails before DB access (1 ms)
+    √ returns 409 when the requested reservation slot conflicts (2 ms)
+    √ returns 409 when reservation insert hits the DB exclusion constraint (2 ms)
+    √ returns 409 for PATCH when the requested reservation slot conflicts (1 ms)
+    √ returns 409 when reservation update hits the DB exclusion constraint (1 ms)
+    √ returns 403 without inserting when references are outside the clinic scope (1 ms)
+    × creates a reservation through the mobile BFF using PC schema and read serializer (6 ms)
+    × updates a reservation through PATCH using the mobile BFF and returns the read model (3 ms)
+    × does not cross a denied notification clinic scope after committing the reservation (1 ms)
+
+  ● POST/PATCH /api/mobile-uiux/reservations write pilot › creates a reservation through the mobile BFF using PC schema and read serializer
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    - Expected
+    + Received
+
+      Object {
+    -   "auth": Object {
+    -     "getSession": [Function mockConstructor],
+    -     "getUser": [Function mockConstructor],
+    -     "onAuthStateChange": [Function mockConstructor],
+    -     "signIn": [Function mockConstructor],
+    -     "signInWithPassword": [Function mockConstructor],
+    -     "signOut": [Function mockConstructor],
+    -     "signUp": [Function mockConstructor],
+    -   },
+    -   "channel": [Function mockConstructor],
+        "from": [Function mockConstructor],
+      },
+      {"clinic_id": "123e4567-e89b-12d3-a456-426614174000", "customer_id": "123e4567-e89b-12d3-a456-426614174002", "end_time": "2026-04-15T10:30:00.000Z", "id": "123e4567-e89b-12d3-a456-426614174001", "menu_id": "123e4567-e89b-12d3-a456-426614174003", "staff_id": "123e4567-e89b-12d3-a456-426614174004", "start_time": "2026-04-15T10:00:00.000Z", "status": "unconfirmed", "updated_at": "2026-04-14T09:00:00.000Z"},
+
+    Number of calls: 1
+
+      988 |       },
+      989 |     });
+    > 990 |     expect(enqueueReservationCreatedMock).toHaveBeenCalledWith(
+          |                                           ^
+      991 |       notificationClient,
+      992 |       expect.objectContaining({
+      993 |         id: reservationId,
+
+      at Object.toHaveBeenCalledWith (src/__tests__/api/mobile-uiux-reservations.test.ts:990:43)
+
+  ● POST/PATCH /api/mobile-uiux/reservations write pilot › updates a reservation through PATCH using the mobile BFF and returns the read model
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    - Expected
+    + Received
+
+      Object {
+    -   "auth": Object {
+    -     "getSession": [Function mockConstructor],
+    -     "getUser": [Function mockConstructor],
+    -     "onAuthStateChange": [Function mockConstructor],
+    -     "signIn": [Function mockConstructor],
+    -     "signInWithPassword": [Function mockConstructor],
+    -     "signOut": [Function mockConstructor],
+    -     "signUp": [Function mockConstructor],
+    -   },
+    -   "channel": [Function mockConstructor],
+        "from": [Function mockConstructor],
+      },
+      {"clinic_id": "123e4567-e89b-12d3-a456-426614174000", "customer_id": "123e4567-e89b-12d3-a456-426614174002", "end_time": "2026-04-15T10:30:00.000Z", "id": "123e4567-e89b-12d3-a456-426614174001", "menu_id": "123e4567-e89b-12d3-a456-426614174003", "notes": null, "staff_id": "123e4567-e89b-12d3-a456-426614174004", "start_time": "2026-04-15T10:00:00.000Z", "status": "unconfirmed"},
+      {"clinic_id": "123e4567-e89b-12d3-a456-426614174000", "customer_id": "123e4567-e89b-12d3-a456-426614174002", "end_time": "2026-04-15T10:30:00.000Z", "id": "123e4567-e89b-12d3-a456-426614174001", "menu_id": "123e4567-e89b-12d3-a456-426614174003", "notes": null, "staff_id": "123e4567-e89b-12d3-a456-426614174004", "start_time": "2026-04-15T10:00:00.000Z", "status": "confirmed"},
+      "2026-04-14T09:30:00.000Z",
+
+    Number of calls: 1
+
+      1063 |       },
+      1064 |     });
+    > 1065 |     expect(enqueueReservationChangeMock).toHaveBeenCalledWith(
+           |                                          ^
+      1066 |       notificationClient,
+      1067 |       expect.objectContaining({
+      1068 |         id: reservationId,
+
+      at Object.toHaveBeenCalledWith (src/__tests__/api/mobile-uiux-reservations.test.ts:1065:42)
+
+  ● POST/PATCH /api/mobile-uiux/reservations write pilot › does not cross a denied notification clinic scope after committing the reservation
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "123e4567-e89b-12d3-a456-426614174000"
+
+    Number of calls: 0
+
+      1088 |     expect(response.status).toBe(201);
+      1089 |     expect(reservationsTable.insert).toHaveBeenCalledTimes(1);
+    > 1090 |     expect(assertNotificationScope).toHaveBeenCalledWith(clinicId);
+           |                                     ^
+      1091 |     expect(enqueueReservationCreatedMock).not.toHaveBeenCalled();
+      1092 |   });
+      1093 | });
+
+      at Object.toHaveBeenCalledWith (src/__tests__/api/mobile-uiux-reservations.test.ts:1090:37)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 16 passed, 19 total
+Snapshots:   0 total
+Time:        1.473 s, estimated 2 s
+Ran all test suites within paths "src/__tests__/api/mobile-uiux-reservations.test.ts".

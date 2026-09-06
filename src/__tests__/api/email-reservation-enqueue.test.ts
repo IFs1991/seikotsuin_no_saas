@@ -5,7 +5,7 @@ import {
 import type { ReservationSnapshot } from '@/lib/notifications/email/types';
 
 // Supabase mock helpers
-function createInsertMock(resolvedData: any = { id: 'outbox-1' }) {
+function createInsertMock(resolvedData: unknown = { id: 'outbox-1' }) {
   const single = jest
     .fn()
     .mockResolvedValue({ data: resolvedData, error: null });
@@ -14,7 +14,7 @@ function createInsertMock(resolvedData: any = { id: 'outbox-1' }) {
   return { insert, select, single };
 }
 
-function createSelectMock(data: any) {
+function createSelectMock(data: unknown) {
   const single = jest.fn().mockResolvedValue({ data, error: null });
   const maybeSingle = jest.fn().mockResolvedValue({ data, error: null });
   const selectEq2 = jest.fn().mockReturnValue({ single, maybeSingle });
@@ -41,7 +41,14 @@ function createNotificationMock() {
   const upsert = jest.fn().mockReturnValue({ select });
   const eq = jest.fn().mockResolvedValue({ error: null });
   const update = jest.fn().mockReturnValue({ eq });
-  return { upsert, select, maybeSingle, update, eq };
+  const confirmation = {
+    eq: jest.fn().mockReturnThis(),
+    maybeSingle: jest
+      .fn()
+      .mockResolvedValue({ data: { status: 'enqueued' }, error: null }),
+  };
+  const read = jest.fn().mockReturnValue(confirmation);
+  return { upsert, select, maybeSingle, update, eq, read };
 }
 
 describe('reservation email enqueue helpers', () => {
@@ -66,16 +73,19 @@ describe('reservation email enqueue helpers', () => {
         if (table === 'reservation_notifications') {
           return {
             upsert: notification.upsert,
+            select: notification.read,
             update: notification.update,
           };
         }
         if (table === 'customers') return { select: customerSelect.select };
         if (table === 'clinics') return { select: clinicSelect.select };
-        if (table === 'staff') return { select: staffSelect.select };
+        if (table === 'resources') return { select: staffSelect.select };
         return {};
       });
 
-      const supabase = { from } as any;
+      const supabase = {
+        from: from as Parameters<typeof enqueueReservationCreated>[0]['from'],
+      };
 
       const reservation = {
         id: 'res-001',
@@ -90,12 +100,13 @@ describe('reservation email enqueue helpers', () => {
 
       await enqueueReservationCreated(supabase, reservation);
 
-      expect(outboxInsert.insert).toHaveBeenCalledTimes(1);
-      const insertArg = outboxInsert.insert.mock.calls[0][0];
-      expect(insertArg.clinic_id).toBe('clinic-001');
+      expect(outboxInsert.insert).not.toHaveBeenCalled();
+      const insertArg = notification.upsert.mock.calls[0][0].detail.enqueue;
+      expect(notification.upsert.mock.calls[0][0].clinic_id).toBe('clinic-001');
+      expect(staffSelect.eq2).toHaveBeenCalledWith('clinic_id', 'clinic-001');
       expect(insertArg.template_type).toBe('reservation_created');
       expect(insertArg.to_email).toBe('patient@example.com');
-      expect(insertArg.status).toBe('pending');
+      expect(notification.upsert.mock.calls[0][0].status).toBe('claimed');
     });
 
     it('skips enqueue when customer has no email', async () => {
@@ -115,16 +126,19 @@ describe('reservation email enqueue helpers', () => {
         if (table === 'reservation_notifications') {
           return {
             upsert: notification.upsert,
+            select: notification.read,
             update: notification.update,
           };
         }
         if (table === 'customers') return { select: customerSelect.select };
         if (table === 'clinics') return { select: clinicSelect.select };
-        if (table === 'staff') return { select: staffSelect.select };
+        if (table === 'resources') return { select: staffSelect.select };
         return {};
       });
 
-      const supabase = { from } as any;
+      const supabase = {
+        from: from as Parameters<typeof enqueueReservationCreated>[0]['from'],
+      };
 
       const reservation = {
         id: 'res-002',
@@ -184,8 +198,7 @@ describe('reservation email enqueue helpers', () => {
         maybeSingle: jest.fn().mockResolvedValue({
           data: {
             is_active: true,
-            credential_generation_id:
-              '11111111-1111-4111-8111-111111111111',
+            credential_generation_id: '11111111-1111-4111-8111-111111111111',
             provider_identity_verified_at: '2026-08-14T00:00:00.000Z',
           },
           error: null,
@@ -207,12 +220,13 @@ describe('reservation email enqueue helpers', () => {
         if (table === 'reservation_notifications') {
           return {
             upsert: notification.upsert,
+            select: notification.read,
             update: notification.update,
           };
         }
         if (table === 'customers') return { select: customerSelect.select };
         if (table === 'clinics') return { select: clinicSelect.select };
-        if (table === 'staff') return { select: staffSelect.select };
+        if (table === 'resources') return { select: staffSelect.select };
         if (table === 'clinic_settings') {
           return { select: communicationSelect.select };
         }
@@ -245,14 +259,18 @@ describe('reservation email enqueue helpers', () => {
         process.env.LINE_CREDENTIALS_ENCRYPTION_KEY = originalLineKey;
       }
 
-      expect(lineInsert.insert).toHaveBeenCalledWith(
+      expect(notification.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           clinic_id: 'clinic-001',
-          line_user_id: 'U1234567890',
-          message_type: 'received',
-          status: 'pending',
-        })
+          channel: 'line',
+          notification_type: 'received',
+          detail: expect.objectContaining({
+            enqueue: expect.objectContaining({ line_user_id: 'U1234567890' }),
+          }),
+        }),
+        expect.anything()
       );
+      expect(lineInsert.insert).not.toHaveBeenCalled();
       expect(outboxInsert.insert).not.toHaveBeenCalled();
     });
 
@@ -276,7 +294,7 @@ describe('reservation email enqueue helpers', () => {
         if (table === 'email_outbox') return { insert: outboxInsert.insert };
         if (table === 'email_logs') return { insert: logInsert };
         if (table === 'customers') return customerSelect;
-        if (table === 'clinics' || table === 'staff' || table === 'menus') {
+        if (table === 'clinics' || table === 'resources' || table === 'menus') {
           return {
             select: jest.fn().mockReturnValue({
               eq: jest.fn().mockReturnValue({
@@ -295,7 +313,9 @@ describe('reservation email enqueue helpers', () => {
         return {};
       });
 
-      const supabase = { from } as any;
+      const supabase = {
+        from: from as Parameters<typeof enqueueReservationCreated>[0]['from'],
+      };
 
       await enqueueReservationCreated(supabase, {
         id: 'res-003',
@@ -336,11 +356,13 @@ describe('reservation email enqueue helpers', () => {
         if (table === 'email_logs') return { insert: logInsert };
         if (table === 'customers') return { select: customerSelect.select };
         if (table === 'clinics') return { select: clinicSelect.select };
-        if (table === 'staff') return { select: staffSelect.select };
+        if (table === 'resources') return { select: staffSelect.select };
         return {};
       });
 
-      const supabase = { from } as any;
+      const supabase = {
+        from: from as Parameters<typeof enqueueReservationCreated>[0]['from'],
+      };
 
       await enqueueReservationCreated(supabase, {
         id: 'res-004',
@@ -399,16 +421,19 @@ describe('reservation email enqueue helpers', () => {
         if (table === 'reservation_notifications') {
           return {
             upsert: notification.upsert,
+            select: notification.read,
             update: notification.update,
           };
         }
         if (table === 'customers') return { select: customerSelect.select };
         if (table === 'clinics') return { select: clinicSelect.select };
-        if (table === 'staff') return { select: staffSelect.select };
+        if (table === 'resources') return { select: staffSelect.select };
         return {};
       });
 
-      const supabase = { from } as any;
+      const supabase = {
+        from: from as Parameters<typeof enqueueReservationCreated>[0]['from'],
+      };
       const after: ReservationSnapshot = { ...before, status: 'cancelled' };
 
       await enqueueReservationChange(
@@ -418,8 +443,8 @@ describe('reservation email enqueue helpers', () => {
         '2026-04-14T10:00:00.000Z'
       );
 
-      expect(outboxInsert.insert).toHaveBeenCalledTimes(1);
-      const insertArg = outboxInsert.insert.mock.calls[0][0];
+      expect(outboxInsert.insert).not.toHaveBeenCalled();
+      const insertArg = notification.upsert.mock.calls[0][0].detail.enqueue;
       expect(insertArg.template_type).toBe('reservation_cancelled');
       expect(notification.upsert).toHaveBeenCalledTimes(1);
     });
@@ -438,11 +463,13 @@ describe('reservation email enqueue helpers', () => {
         if (table === 'email_outbox') return { insert: outboxInsert.insert };
         if (table === 'customers') return { select: customerSelect.select };
         if (table === 'clinics') return { select: clinicSelect.select };
-        if (table === 'staff') return { select: staffSelect.select };
+        if (table === 'resources') return { select: staffSelect.select };
         return {};
       });
 
-      const supabase = { from } as any;
+      const supabase = {
+        from: from as Parameters<typeof enqueueReservationCreated>[0]['from'],
+      };
       const after: ReservationSnapshot = {
         ...before,
         start_time: '2026-04-16T14:00:00Z',
@@ -458,6 +485,20 @@ describe('reservation email enqueue helpers', () => {
       expect(outboxInsert.insert).toHaveBeenCalledTimes(1);
       const insertArg = outboxInsert.insert.mock.calls[0][0];
       expect(insertArg.template_type).toBe('reservation_updated');
+      const secondAfter = { ...after, start_time: '2026-04-16T15:00:00Z' };
+      await enqueueReservationChange(
+        supabase,
+        after,
+        secondAfter,
+        '2026-04-14T11:00:00.000Z'
+      );
+      expect(outboxInsert.insert).toHaveBeenCalledTimes(2);
+      const secondInsert = outboxInsert.insert.mock.calls[1][0];
+      expect(secondInsert.dedupe_key).not.toBe(insertArg.dedupe_key);
+      expect(secondInsert.resend_idempotency_key).not.toBe(
+        insertArg.resend_idempotency_key
+      );
+      expect(secondInsert.payload.startTime).toBe(secondAfter.start_time);
     });
 
     it('does not enqueue when only notes change', async () => {
@@ -468,7 +509,9 @@ describe('reservation email enqueue helpers', () => {
         return {};
       });
 
-      const supabase = { from } as any;
+      const supabase = {
+        from: from as Parameters<typeof enqueueReservationCreated>[0]['from'],
+      };
       const after: ReservationSnapshot = { ...before, notes: 'updated' };
 
       await enqueueReservationChange(
@@ -505,7 +548,7 @@ describe('reservation email enqueue helpers', () => {
         if (table === 'email_logs') return { insert: logInsert };
         if (table === 'customers') return { select: customerSelect.select };
         if (table === 'clinics') return clinicSelect;
-        if (table === 'staff' || table === 'menus') {
+        if (table === 'resources' || table === 'menus') {
           return {
             select: jest.fn().mockReturnValue({
               eq: jest.fn().mockReturnValue({
@@ -524,7 +567,9 @@ describe('reservation email enqueue helpers', () => {
         return {};
       });
 
-      const supabase = { from } as any;
+      const supabase = {
+        from: from as Parameters<typeof enqueueReservationCreated>[0]['from'],
+      };
       const after: ReservationSnapshot = {
         ...before,
         menu_id: 'menu-001',
@@ -569,12 +614,14 @@ describe('reservation email enqueue helpers', () => {
         if (table === 'email_logs') return { insert: logInsert };
         if (table === 'customers') return { select: customerSelect.select };
         if (table === 'clinics') return { select: clinicSelect.select };
-        if (table === 'staff') return { select: staffSelect.select };
+        if (table === 'resources') return { select: staffSelect.select };
         if (table === 'menus') return { select: menuSelect.select };
         return {};
       });
 
-      const supabase = { from } as any;
+      const supabase = {
+        from: from as Parameters<typeof enqueueReservationCreated>[0]['from'],
+      };
       const after: ReservationSnapshot = {
         ...before,
         menu_id: 'menu-missing',

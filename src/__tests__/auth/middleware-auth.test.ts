@@ -68,6 +68,26 @@ describe('認証と権限制御 Middleware', () => {
     process.env = originalEnv;
   });
 
+  test('SSRへnonceとCSPを渡し、クライアント指定nonceを上書きする', async () => {
+    const response = await middleware(
+      new NextRequest('http://localhost:3000/login', {
+        headers: {
+          'x-nonce': 'client-supplied',
+          'Content-Security-Policy': "script-src 'unsafe-inline'",
+        },
+      })
+    );
+    expect(response.headers.get('x-middleware-request-x-nonce')).toBe(
+      'test-nonce'
+    );
+    expect(
+      response.headers.get('x-middleware-request-content-security-policy')
+    ).toBe('default-src self');
+    expect(response.headers.get('content-security-policy')).toBe(
+      'default-src self'
+    );
+  });
+
   describe('未認証ユーザーのアクセス制御', () => {
     const protectedRoutes = [
       '/dashboard',

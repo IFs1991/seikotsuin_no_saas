@@ -13,21 +13,20 @@ export class ResendEmailProvider implements EmailProvider {
   }
 
   async send(input: SendEmailInput): Promise<SendEmailResult> {
-    const headers: Record<string, string> = {};
-    if (input.idempotencyKey) {
-      headers['Idempotency-Key'] = input.idempotencyKey;
-    }
-
-    const { data, error } = await this.client.emails.send({
-      from: input.from ?? DEFAULT_FROM,
-      to: input.to,
-      subject: input.subject,
-      html: input.html,
-      text: input.text,
-      replyTo: input.replyTo,
-      tags: input.tags,
-      headers: Object.keys(headers).length > 0 ? headers : undefined,
-    });
+    const { data, error } = await this.client.emails.send(
+      {
+        from: input.from ?? DEFAULT_FROM,
+        to: input.to,
+        subject: input.subject,
+        html: input.html,
+        text: input.text,
+        replyTo: input.replyTo,
+        tags: input.tags,
+      },
+      input.idempotencyKey
+        ? { idempotencyKey: input.idempotencyKey }
+        : undefined
+    );
 
     if (error || !data) {
       throw new Error(error?.message ?? 'Resend send failed');

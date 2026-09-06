@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { jstDateTimeToDate, toJSTDateString } from '@/lib/jst';
+import { RESERVATION_SAVED_NOTICE } from '@/lib/reservations/mutation-messages';
 import {
   Appointment,
   MenuItem,
@@ -124,7 +125,10 @@ interface Props {
   clinicId: string;
   resources: SchedulerResource[];
   menus: MenuItem[];
-  onSuccess: (newAppointment: Appointment) => void | Promise<void>;
+  onSuccess: (
+    newAppointment: Appointment,
+    notice?: string
+  ) => void | Promise<void>;
   onCancel: () => void;
   initialData?: {
     resourceId?: string;
@@ -447,38 +451,43 @@ export const AppointmentForm: React.FC<Props> = ({
       )?.name;
       const menuName = menus.find(m => m.id === formData.menuId)?.name;
 
-      await onSuccess({
-        id: reservation.id,
-        resourceId: formData.resourceId,
-        date: formData.date,
-        startHour: formData.startHour,
-        startMinute: formData.startMinute,
-        endHour: endTime.hour,
-        endMinute: endTime.minute,
-        title: displayName,
-        lastName: formData.lastName,
-        firstName: formData.firstName,
-        menuId: formData.menuId,
-        optionId:
-          selectedOption?.id === 'none' ? undefined : selectedOption?.id,
-        subTitle: menuName,
-        type: 'normal',
-        color: statusToColor(reservation.status ?? 'unconfirmed'),
-        status: reservation.status ?? 'unconfirmed',
-        customerId: customer.id,
-        staffId: formData.resourceId,
-        menuName,
-        staffName: resourceName,
-        selectedOptions,
-        isStaffRequested:
-          reservation.isStaffRequested ??
-          (selectedResource?.type === 'staff' && formData.isStaffRequested),
-        staffNominationFee:
-          reservation.staffNominationFee ??
-          (selectedResource?.type === 'staff' && formData.isStaffRequested
-            ? (selectedResource.nominationFee ?? 0)
-            : 0),
-      });
+      await onSuccess(
+        {
+          id: reservation.id,
+          resourceId: formData.resourceId,
+          date: formData.date,
+          startHour: formData.startHour,
+          startMinute: formData.startMinute,
+          endHour: endTime.hour,
+          endMinute: endTime.minute,
+          title: displayName,
+          lastName: formData.lastName,
+          firstName: formData.firstName,
+          menuId: formData.menuId,
+          optionId:
+            selectedOption?.id === 'none' ? undefined : selectedOption?.id,
+          subTitle: menuName,
+          type: 'normal',
+          color: statusToColor(reservation.status ?? 'unconfirmed'),
+          status: reservation.status ?? 'unconfirmed',
+          customerId: customer.id,
+          staffId: formData.resourceId,
+          menuName,
+          staffName: resourceName,
+          selectedOptions,
+          isStaffRequested:
+            reservation.isStaffRequested ??
+            (selectedResource?.type === 'staff' && formData.isStaffRequested),
+          staffNominationFee:
+            reservation.staffNominationFee ??
+            (selectedResource?.type === 'staff' && formData.isStaffRequested
+              ? (selectedResource.nominationFee ?? 0)
+              : 0),
+        },
+        reservation.projectionStatus === 'unavailable'
+          ? RESERVATION_SAVED_NOTICE
+          : undefined
+      );
     } catch (err) {
       setErrorMessage(
         err instanceof Error

@@ -6,6 +6,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { readPinnedSupabaseCliVersion } from '../verify-supabase-cli-version.mjs';
+import {
+  assertDeferredMigrationHistory,
+  readExpectedMigrationVersions,
+} from './deferred-migration-history.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../..');
@@ -23,6 +27,10 @@ const cliEnvironment = {
   PGCONNECT_TIMEOUT: '10',
   SUPABASE_TELEMETRY_DISABLED: '1',
 };
+const expectedMigrationVersions = readExpectedMigrationVersions(
+  path.join(REPO_ROOT, 'supabase/migrations'),
+  [BASELINE_VERSION, REPAIRED_VERSION, RECOVERY_VERSION]
+);
 
 function invariant(condition, message) {
   if (!condition) throw new Error(message);
@@ -200,14 +208,16 @@ try {
       select
         max(version),
         count(*) filter (where version = '${REPAIRED_VERSION}'),
-        count(*) filter (where version = '${RECOVERY_VERSION}')
+        count(*) filter (where version = '${RECOVERY_VERSION}'),
+        string_agg(version, ',' order by version)
       from supabase_migrations.schema_migrations;
     `,
     'verify deferred migration history'
   );
-  invariant(
-    historyResult.trim() === `${RECOVERY_VERSION}|1|1`,
-    'Deferred migration history did not reach the recovery head exactly once'
+  assertDeferredMigrationHistory(
+    historyResult,
+    expectedMigrationVersions,
+    RECOVERY_VERSION
   );
 
   runSupabase(
@@ -228,6 +238,7 @@ try {
       baselineVersion: BASELINE_VERSION,
       repairedVersion: REPAIRED_VERSION,
       recoveryVersion: RECOVERY_VERSION,
+      headVersion: expectedMigrationVersions.at(-1),
     })
   );
 } finally {

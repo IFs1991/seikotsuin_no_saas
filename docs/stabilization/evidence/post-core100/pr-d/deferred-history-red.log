@@ -1,0 +1,80 @@
+✖ accepts a future append while preserving the fixed recovery count (2.3965ms)
+✔ accepts the original complete recovery history (0.2143ms)
+✖ rejects a missing non-head migration even when head and counts match (0.3068ms)
+✖ rejects duplicate and unexpected non-head history (0.2011ms)
+✔ rejects missing or duplicate repaired/recovery entries and a wrong head (0.206ms)
+✔ reads all applicable SQL filenames in version order (6.938ms)
+✔ rejects missing required migration, duplicate version and malformed SQL filename (13.3934ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 4
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 152.3277
+
+✖ failing tests:
+
+test at scripts\release\__tests__\deferred-migration-history.test.mjs:33:1
+✖ accepts a future append while preserving the fixed recovery count (2.3965ms)
+  AssertionError [ERR_ASSERTION]: Got unwanted exception.
+  Actual message: "Deferred migration history did not reach the recovery head exactly once"
+      at TestContext.<anonymous> (file:///C:/Users/seekf/Desktop/seikotsuin_management_saas/.w/pd/scripts/release/__tests__/deferred-migration-history.test.mjs:35:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: Error: Deferred migration history did not reach the recovery head exactly once
+        at invariant (file:///C:/Users/seekf/Desktop/seikotsuin_management_saas/.w/pd/scripts/commercial-hardening/deferred-migration-history.mjs:6:25)
+        at assertDeferredMigrationHistory (file:///C:/Users/seekf/Desktop/seikotsuin_management_saas/.w/pd/scripts/commercial-hardening/deferred-migration-history.mjs:38:3)
+        at file:///C:/Users/seekf/Desktop/seikotsuin_management_saas/.w/pd/scripts/release/__tests__/deferred-migration-history.test.mjs:36:5
+        at getActual (node:assert:611:5)
+        at strict.doesNotThrow (node:assert:779:32)
+        at TestContext.<anonymous> (file:///C:/Users/seekf/Desktop/seikotsuin_management_saas/.w/pd/scripts/release/__tests__/deferred-migration-history.test.mjs:35:10)
+        at Test.runInAsyncScope (node:async_hooks:227:14)
+        at Test.run (node:internal/test_runner/test:1382:25)
+        at Test.start (node:internal/test_runner/test:1242:17)
+        at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17),
+    expected: undefined,
+    operator: 'doesNotThrow',
+    diff: 'simple'
+  }
+
+test at scripts\release\__tests__\deferred-migration-history.test.mjs:46:1
+✖ rejects a missing non-head migration even when head and counts match (0.3068ms)
+  AssertionError [ERR_ASSERTION]: Missing expected exception.
+      at TestContext.<anonymous> (file:///C:/Users/seekf/Desktop/seikotsuin_management_saas/.w/pd/scripts/release/__tests__/deferred-migration-history.test.mjs:48:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: undefined,
+    operator: 'throws',
+    diff: 'simple'
+  }
+
+test at scripts\release\__tests__\deferred-migration-history.test.mjs:53:1
+✖ rejects duplicate and unexpected non-head history (0.2011ms)
+  AssertionError [ERR_ASSERTION]: Missing expected exception.
+      at TestContext.<anonymous> (file:///C:/Users/seekf/Desktop/seikotsuin_management_saas/.w/pd/scripts/release/__tests__/deferred-migration-history.test.mjs:58:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: undefined,
+    operator: 'throws',
+    diff: 'simple'
+  }

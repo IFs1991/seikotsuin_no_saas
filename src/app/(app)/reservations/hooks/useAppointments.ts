@@ -1,3 +1,4 @@
+import { RESERVATION_SAVED_NOTICE } from '@/lib/reservations/mutation-messages';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Appointment, AppointmentUpdateResult } from '../types';
 import {
@@ -306,7 +307,7 @@ export const useAppointments = (clinicId: string | null) => {
           updatedAppointment.endHour + ':' + updatedAppointment.endMinute
         );
 
-        await updateReservation({
+        const saved = await updateReservation({
           clinicId: clinic,
           id: updatedAppointment.id,
           staffId: updatedAppointment.resourceId,
@@ -317,7 +318,9 @@ export const useAppointments = (clinicId: string | null) => {
           isStaffRequested: updatedAppointment.isStaffRequested ?? false,
           status: updatedAppointment.status,
         });
-        return { ok: true };
+        return saved.projectionStatus === 'unavailable'
+          ? { ok: true, notice: RESERVATION_SAVED_NOTICE }
+          : { ok: true };
       } catch (err) {
         if (previousAppointment) {
           setAppointments(prev =>
@@ -385,7 +388,7 @@ export const useAppointments = (clinicId: string | null) => {
       replaceCachedAppointment(clinicId, nextAppointment);
 
       try {
-        await updateReservation({
+        const saved = await updateReservation({
           clinicId,
           id,
           staffId: newResourceId,
@@ -395,7 +398,9 @@ export const useAppointments = (clinicId: string | null) => {
           selectedOptions: current.selectedOptions,
           isStaffRequested: current.isStaffRequested ?? false,
         });
-        return { ok: true };
+        return saved.projectionStatus === 'unavailable'
+          ? { ok: true, notice: RESERVATION_SAVED_NOTICE }
+          : { ok: true };
       } catch (err) {
         setAppointments(prev =>
           prev.map(appt => (appt.id === id ? current : appt))
@@ -437,8 +442,10 @@ export const useAppointments = (clinicId: string | null) => {
       replaceCachedAppointment(clinicId, cancelledAppointment);
 
       try {
-        await cancelReservation({ clinicId, id });
-        return { ok: true };
+        const saved = await cancelReservation({ clinicId, id });
+        return saved.projectionStatus === 'unavailable'
+          ? { ok: true, notice: RESERVATION_SAVED_NOTICE }
+          : { ok: true };
       } catch (err) {
         setAppointments(prev =>
           prev.map(appt => (appt.id === id ? target : appt))

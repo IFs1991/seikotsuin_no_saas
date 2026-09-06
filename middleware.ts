@@ -57,13 +57,10 @@ function matchesAnyPrefix(pathname: string, prefixes: readonly string[]) {
   return prefixes.some(prefix => pathname.startsWith(prefix));
 }
 
-function createNextResponse(request: NextRequest, pathname: string) {
-  if (!matchesAnyPrefix(pathname, ADMIN_ONLY_PREFIXES)) {
-    return NextResponse.next({ request });
+function createNextResponse(requestHeaders: Headers, pathname: string) {
+  if (matchesAnyPrefix(pathname, ADMIN_ONLY_PREFIXES)) {
+    requestHeaders.set(ADMIN_ROUTE_PATH_HEADER, pathname);
   }
-
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set(ADMIN_ROUTE_PATH_HEADER, pathname);
   return NextResponse.next({
     request: {
       headers: requestHeaders,
@@ -137,11 +134,16 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const response = createNextResponse(request, pathname);
-
   const nonce = CSPConfig.generateNonce();
-  response.headers.set('x-nonce', nonce);
-  response.headers.set('x-nonce-timestamp', Date.now().toString());
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+  // Next.jsはrequest CSPからnonceを読みSSR scriptsへ適用する。
+  requestHeaders.delete('Content-Security-Policy');
+  requestHeaders.delete('Content-Security-Policy-Report-Only');
+  const securityHeaders = new Headers({
+    'x-nonce': nonce,
+    'x-nonce-timestamp': Date.now().toString(),
+  });
 
   try {
     const phaseEnv =
@@ -154,10 +156,11 @@ export async function middleware(request: NextRequest) {
       ? CSPConfig.getMobileUiuxCSP()
       : CSPConfig.getGradualRolloutCSP(phaseEnv, nonce);
     if (rollout.csp) {
-      response.headers.set('Content-Security-Policy', rollout.csp);
+      requestHeaders.set('Content-Security-Policy', rollout.csp);
+      securityHeaders.set('Content-Security-Policy', rollout.csp);
     }
     if (rollout.cspReportOnly) {
-      response.headers.set(
+      securityHeaders.set(
         'Content-Security-Policy-Report-Only',
         rollout.cspReportOnly
       );
@@ -166,6 +169,9 @@ export async function middleware(request: NextRequest) {
     // Fail open: CSP should not take the whole app down.
     logger.warn('CSP header application failed:', error);
   }
+
+  const response = createNextResponse(requestHeaders, pathname);
+  securityHeaders.forEach((value, name) => response.headers.set(name, value));
 
   const isProtectedRoute = matchesAnyPrefix(pathname, PROTECTED_ROUTE_PREFIXES);
   if (!isProtectedRoute) {

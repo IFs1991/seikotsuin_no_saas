@@ -1,0 +1,3 @@
+
+> seikotsuin-management-saas@0.1.0-pilot lint
+> eslint --quiet --no-error-on-unmatched-pattern "src/**/*.{js,jsx,ts,tsx}" "supabase/**/*.{js,jsx,ts,tsx}" middleware.ts next.config.js postcss.config.js tailwind.config.ts

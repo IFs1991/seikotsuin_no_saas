@@ -1382,7 +1382,7 @@ describe('POST /api/reservations', () => {
     expect(reservationsTable.insert).not.toHaveBeenCalled();
   });
 
-  it('returns 500 when inserted reservation is not visible in reservation_list_view', async () => {
+  it('returns committed success when inserted reservation is not visible in reservation_list_view', async () => {
     const selectedStaffId = '123e4567-e89b-12d3-a456-426614174004';
     const menuId = '123e4567-e89b-12d3-a456-426614174003';
 
@@ -1500,9 +1500,9 @@ describe('POST /api/reservations', () => {
     const response = await POST({} as unknown as NextRequest);
     const json = await response.json();
 
-    expect(response.status).toBe(500);
-    expect(json.success).toBe(false);
-    expect(typeof json.error).toBe('string');
+    expect(response.status).toBe(201);
+    expect(json.success).toBe(true);
+    expect(json.data).toMatchObject({ id: validId, projectionStatus: 'unavailable' });
   });
 });
 
@@ -1557,6 +1557,7 @@ describe('PATCH /api/reservations', () => {
 
   it('passes allowedRoles to processClinicScopedBody for role guard', async () => {
     const existingRow = {
+      updated_at: '2026-04-14T08:00:00.123456+00:00',
       id: validId,
       clinic_id: validClinicId,
       customer_id: 'cust-001',
@@ -1659,6 +1660,7 @@ describe('PATCH /api/reservations', () => {
     const menuId = '123e4567-e89b-12d3-a456-426614174003';
     const staffId = '123e4567-e89b-12d3-a456-426614174004';
     const existingRow = {
+      updated_at: '2026-04-14T08:00:00.123456+00:00',
       id: validId,
       clinic_id: validClinicId,
       customer_id: validCustomerId,
@@ -1749,7 +1751,7 @@ describe('PATCH /api/reservations', () => {
 
     expect(response.status).toBe(200);
     expect(updateSelect.select).toHaveBeenCalledWith(
-      'id, clinic_id, customer_id, menu_id, status, staff_id, start_time, end_time, notes, updated_at'
+      'id, clinic_id, customer_id, menu_id, status, start_time, end_time, staff_id, channel, notes, selected_options, intake_responses, is_staff_requested, staff_nomination_fee, updated_at'
     );
     expect(reservationListViewTable.select).toHaveBeenCalledWith(
       'id, customer_id, customer_name, menu_id, menu_name, staff_id, staff_name, start_time, end_time, status, channel, notes, selected_options, intake_responses, is_staff_requested, staff_nomination_fee'
@@ -1785,6 +1787,7 @@ describe('PATCH /api/reservations', () => {
 
   it('returns 409 when reservation update hits the DB exclusion constraint', async () => {
     const existingRow = {
+      updated_at: '2026-04-14T08:00:00.123456+00:00',
       id: validId,
       clinic_id: validClinicId,
       customer_id: 'cust-001',
@@ -1858,6 +1861,7 @@ describe('PATCH /api/reservations', () => {
     const selectedStaffId = '123e4567-e89b-12d3-a456-426614174004';
     const menuId = '123e4567-e89b-12d3-a456-426614174003';
     const existingRow = {
+      updated_at: '2026-04-14T08:00:00.123456+00:00',
       id: validId,
       clinic_id: validClinicId,
       customer_id: validCustomerId,
