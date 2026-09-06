@@ -273,10 +273,26 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
       },
       supabase: notificationClient,
     });
-    enqueueReservationCreatedMock.mockResolvedValueOnce({ id: 'outbox-001' });
+    let releaseEnqueue = () => {};
+    const enqueuePending = new Promise<void>(resolve => {
+      releaseEnqueue = resolve;
+    });
+    enqueueReservationCreatedMock.mockReturnValueOnce(enqueuePending);
 
     const { POST } = await import('@/app/api/reservations/route');
-    const response = await POST(buildRequest());
+    let responseFinished = false;
+    const responsePending = POST(buildRequest()).then(response => {
+      responseFinished = true;
+      return response;
+    });
+    try {
+      await new Promise<void>(resolve => setImmediate(resolve));
+      expect(enqueueReservationCreatedMock).toHaveBeenCalledTimes(1);
+      expect(responseFinished).toBe(false);
+    } finally {
+      releaseEnqueue();
+    }
+    const response = await responsePending;
 
     expect(response.status).toBe(201);
     expect(createScopedAdminContextMock).toHaveBeenCalledWith({
@@ -452,12 +468,28 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
       },
       supabase: notificationClient,
     });
-    enqueueReservationChangeMock.mockRejectedValueOnce(
-      new Error('RLS: permission denied for table email_outbox')
+    let releaseEnqueue = () => {};
+    enqueueReservationChangeMock.mockReturnValueOnce(
+      new Promise<void>((_resolve, reject) => {
+        releaseEnqueue = () =>
+          reject(new Error('RLS: permission denied for table email_outbox'));
+      })
     );
 
     const { PATCH } = await import('@/app/api/reservations/route');
-    const response = await PATCH(buildRequest());
+    let responseFinished = false;
+    const responsePending = PATCH(buildRequest()).then(response => {
+      responseFinished = true;
+      return response;
+    });
+    try {
+      await new Promise<void>(resolve => setImmediate(resolve));
+      expect(enqueueReservationChangeMock).toHaveBeenCalledTimes(1);
+      expect(responseFinished).toBe(false);
+    } finally {
+      releaseEnqueue();
+    }
+    const response = await responsePending;
 
     expect(response.status).toBe(200);
     expect(createScopedAdminContextMock).toHaveBeenCalledWith({

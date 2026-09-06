@@ -40,7 +40,7 @@ describe('ResendEmailProvider', () => {
     });
   });
 
-  it('passes idempotencyKey in headers when provided', async () => {
+  it('passes idempotencyKey as HTTP request options, not a message header', async () => {
     mockSend.mockResolvedValue({ data: { id: 'msg-456' }, error: null });
 
     await provider.send({
@@ -49,11 +49,9 @@ describe('ResendEmailProvider', () => {
     });
 
     expect(mockSend).toHaveBeenCalledTimes(1);
-    const callArg = mockSend.mock.calls[0][0];
-    expect(callArg.headers).toEqual(
-      expect.objectContaining({
-        'Idempotency-Key': 'idmp_abc123',
-      })
+    expect(mockSend).toHaveBeenCalledWith(
+      expect.not.objectContaining({ headers: expect.anything() }),
+      { idempotencyKey: 'idmp_abc123' }
     );
   });
 

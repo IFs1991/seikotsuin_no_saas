@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 
 import { processApiRequest } from '@/lib/api-helpers';
+import { logger } from '@/lib/logger';
 import {
   reservationInsertSchema,
   reservationUpdateSchema,
@@ -52,7 +53,10 @@ import {
   hasReservationConflict,
   isReservationNoOverlapError,
 } from '@/lib/reservations/conflict';
-import type { SupabaseServerClient } from '@/lib/supabase';
+import {
+  createScopedAdminContext,
+  type SupabaseServerClient,
+} from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 import type { ReservationOptionSelection } from '@/types/reservation';
 
@@ -312,7 +316,25 @@ async function fetchReservationListItem(
   return data ? mapReservationListViewRow(data as ReservationListApiRow) : null;
 }
 
-function enqueueCreatedWithoutBlocking(
+function createNotificationClient(
+  permissions: Parameters<typeof createScopedAdminContext>[0],
+  clinicId: string
+): SupabaseServerClient | null {
+  try {
+    const context = createScopedAdminContext(permissions);
+    context.assertClinicInScope(clinicId);
+    return context.client;
+  } catch (error) {
+    // 保存済み予約を失敗に戻さず、通知側も認可不足なら拒否する。
+    logger.error(
+      'Mobile notification clinic scope could not be verified',
+      error
+    );
+    return null;
+  }
+}
+
+async function enqueueCreatedWithoutBlocking(
   supabase: SupabaseServerClient,
   row: {
     id: string;
@@ -325,8 +347,8 @@ function enqueueCreatedWithoutBlocking(
     staff_id: string;
     updated_at: string | null;
   }
-): void {
-  enqueueReservationCreated(supabase, {
+): Promise<void> {
+  await enqueueReservationCreated(supabase, {
     id: row.id,
     clinic_id: row.clinic_id,
     customer_id: row.customer_id,
@@ -336,17 +358,20 @@ function enqueueCreatedWithoutBlocking(
     end_time: row.end_time,
     staff_id: row.staff_id,
     updated_at: row.updated_at ?? new Date().toISOString(),
-  }).catch(() => undefined);
+  }).catch(error =>
+    logger.error('Mobile reservation notification enqueue failed', error)
+  );
 }
 
-function enqueueChangeWithoutBlocking(
+async function enqueueChangeWithoutBlocking(
   supabase: SupabaseServerClient,
   before: ReservationSnapshot,
   after: ReservationSnapshot,
   updatedAt: string
-): void {
-  enqueueReservationChange(supabase, before, after, updatedAt).catch(
-    () => undefined
+): Promise<void> {
+  await enqueueReservationChange(supabase, before, after, updatedAt).catch(
+    error =>
+      logger.error('Mobile reservation notification enqueue failed', error)
   );
 }
 
@@ -604,7 +629,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    enqueueCreatedWithoutBlocking(result.supabase, data);
+    const notificationClient = createNotificationClient(
+      result.permissions,
+      dto.clinic_id
+    );
+    if (notificationClient)
+      await enqueueCreatedWithoutBlocking(notificationClient, data);
 
     const response: MobileUiuxReservationMutationResponse = {
       clinicId: dto.clinic_id,
@@ -836,12 +866,17 @@ export async function PATCH(request: NextRequest) {
       staff_id: data.staff_id,
       notes: data.notes,
     };
-    enqueueChangeWithoutBlocking(
-      result.supabase,
-      before,
-      after,
-      data.updated_at ?? new Date().toISOString()
+    const notificationClient = createNotificationClient(
+      result.permissions,
+      dto.clinic_id
     );
+    if (notificationClient)
+      await enqueueChangeWithoutBlocking(
+        notificationClient,
+        before,
+        after,
+        data.updated_at ?? new Date().toISOString()
+      );
 
     const response: MobileUiuxReservationMutationResponse = {
       clinicId: dto.clinic_id,

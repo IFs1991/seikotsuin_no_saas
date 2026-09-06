@@ -15,8 +15,19 @@ function createNotificationClient(params: {
   });
   const selectNotification = jest.fn().mockReturnValue({ maybeSingle });
   const upsert = jest.fn().mockReturnValue({ select: selectNotification });
-  const updateEq = jest.fn().mockResolvedValue({ error: null });
-  const update = jest.fn().mockReturnValue({ eq: updateEq });
+  const retry = {
+    eq: jest.fn().mockReturnThis(),
+    in: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+  };
+  const update = jest.fn().mockReturnValue(retry);
+  const confirmation = {
+    eq: jest.fn().mockReturnThis(),
+    maybeSingle: jest
+      .fn()
+      .mockResolvedValue({ data: { status: 'enqueued' }, error: null }),
+  };
   const emailInsert = jest.fn().mockReturnValue({
     select: jest.fn().mockReturnValue({
       single: jest.fn().mockResolvedValue({
@@ -28,7 +39,11 @@ function createNotificationClient(params: {
 
   const from = jest.fn((table: string) => {
     if (table === 'reservation_notifications') {
-      return { upsert, update };
+      return {
+        upsert,
+        update,
+        select: jest.fn().mockReturnValue(confirmation),
+      };
     }
     if (table === 'email_outbox') {
       return { insert: emailInsert };
@@ -82,8 +97,16 @@ describe('reservation notification idempotency', () => {
         ignoreDuplicates: true,
       }
     );
-    expect(emailInsert).toHaveBeenCalledTimes(1);
-    expect(update).toHaveBeenCalledTimes(1);
+    expect(emailInsert).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          enqueue: expect.objectContaining({ to_email: 'patient@example.com' }),
+        }),
+      }),
+      expect.anything()
+    );
   });
 
   it('does not enqueue email when the notification claim is a duplicate', async () => {
@@ -199,6 +222,14 @@ function createLineNotificationClient(params: {
       return {
         upsert: notificationUpsert,
         update: notificationUpdate,
+        select: jest
+          .fn()
+          .mockReturnValue({
+            eq: jest.fn().mockReturnThis(),
+            maybeSingle: jest
+              .fn()
+              .mockResolvedValue({ data: { status: 'enqueued' }, error: null }),
+          }),
       };
     }
     if (table === 'line_message_outbox') {
@@ -252,26 +283,27 @@ describe('reservation notification channel priority', () => {
         ignoreDuplicates: true,
       })
     );
-    expect(lineInsert).toHaveBeenCalledWith(
+    expect(notificationUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        clinic_id: 'clinic-001',
-        line_user_id: 'U1234567890',
-        message_type: 'reminder_day_before',
-        status: 'pending',
-      })
+        detail: expect.objectContaining({
+          enqueue: expect.objectContaining({
+            line_user_id: 'U1234567890',
+            dedupe_timestamp: baseInput.dedupeTimestamp,
+            payload: expect.objectContaining({ customerId: 'customer-001' }),
+          }),
+        }),
+      }),
+      expect.anything()
     );
-    expect(lineInsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        payload: expect.objectContaining({ customerId: 'customer-001' }),
-      })
-    );
+    expect(lineInsert).not.toHaveBeenCalled();
     expect(emailInsert).not.toHaveBeenCalled();
   });
 
   it('falls back to email when clinic communication LINE is disabled', async () => {
-    const { client, lineInsert, emailInsert } = createLineNotificationClient({
-      lineEnabled: false,
-    });
+    const { client, notificationUpsert, lineInsert, emailInsert } =
+      createLineNotificationClient({
+        lineEnabled: false,
+      });
 
     const result = await enqueuePatientReservationNotification(client, {
       ...baseInput,
@@ -280,14 +312,24 @@ describe('reservation notification channel priority', () => {
 
     expect(result).toBe('enqueued');
     expect(lineInsert).not.toHaveBeenCalled();
-    expect(emailInsert).toHaveBeenCalledTimes(1);
+    expect(emailInsert).not.toHaveBeenCalled();
+    expect(notificationUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channel: 'email',
+        detail: expect.objectContaining({
+          enqueue: expect.objectContaining({ to_email: 'patient@example.com' }),
+        }),
+      }),
+      expect.anything()
+    );
   });
 
   it('falls back to email when the clinic notification feature is disabled', async () => {
-    const { client, lineInsert, emailInsert } = createLineNotificationClient({
-      lineEnabled: true,
-      notificationEnabled: false,
-    });
+    const { client, notificationUpsert, lineInsert, emailInsert } =
+      createLineNotificationClient({
+        lineEnabled: true,
+        notificationEnabled: false,
+      });
 
     const result = await enqueuePatientReservationNotification(client, {
       ...baseInput,
@@ -296,14 +338,24 @@ describe('reservation notification channel priority', () => {
 
     expect(result).toBe('enqueued');
     expect(lineInsert).not.toHaveBeenCalled();
-    expect(emailInsert).toHaveBeenCalledTimes(1);
+    expect(emailInsert).not.toHaveBeenCalled();
+    expect(notificationUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channel: 'email',
+        detail: expect.objectContaining({
+          enqueue: expect.objectContaining({ to_email: 'patient@example.com' }),
+        }),
+      }),
+      expect.anything()
+    );
   });
 
   it('falls back to email until the patient is relinked to the current provider', async () => {
-    const { client, lineInsert, emailInsert } = createLineNotificationClient({
-      lineEnabled: true,
-      identityGeneration: 'generation-replaced',
-    });
+    const { client, notificationUpsert, lineInsert, emailInsert } =
+      createLineNotificationClient({
+        lineEnabled: true,
+        identityGeneration: 'generation-replaced',
+      });
 
     const result = await enqueuePatientReservationNotification(client, {
       ...baseInput,
@@ -312,6 +364,15 @@ describe('reservation notification channel priority', () => {
 
     expect(result).toBe('enqueued');
     expect(lineInsert).not.toHaveBeenCalled();
-    expect(emailInsert).toHaveBeenCalledTimes(1);
+    expect(emailInsert).not.toHaveBeenCalled();
+    expect(notificationUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channel: 'email',
+        detail: expect.objectContaining({
+          enqueue: expect.objectContaining({ to_email: 'patient@example.com' }),
+        }),
+      }),
+      expect.anything()
+    );
   });
 });

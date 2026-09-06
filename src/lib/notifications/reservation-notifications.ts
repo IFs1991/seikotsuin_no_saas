@@ -1,8 +1,11 @@
 import { enqueueEmail } from '@/lib/notifications/email/enqueue-email';
+import {
+  generateDedupeKey,
+  generateIdempotencyKey,
+} from '@/lib/notifications/email/dedupe';
 import { normalizeCommunicationSettings } from '@/lib/admin-settings/normalize';
 import { getLineCredentialsEncryptionStatus } from '@/lib/line/crypto';
 import {
-  enqueueLineMessage,
   type LineEmailFallbackPayload,
   type LineMessagePayload,
 } from '@/lib/notifications/line-outbox';
@@ -33,8 +36,6 @@ type ReservationNotificationStatus =
 
 type ReservationNotificationInsert =
   Database['public']['Tables']['reservation_notifications']['Insert'];
-type ReservationNotificationUpdate =
-  Database['public']['Tables']['reservation_notifications']['Update'];
 
 type NotificationSupabaseClient = Pick<SupabaseServerClient, 'from'>;
 type PublicReservationCancellationReservation = Pick<
@@ -104,10 +105,6 @@ function isUniqueViolation(error: unknown): boolean {
   );
 }
 
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 async function claimReservationNotification(
   supabase: NotificationSupabaseClient,
   params: ClaimParams
@@ -145,22 +142,44 @@ async function claimReservationNotification(
   return { claimed: true, id: data.id };
 }
 
-async function updateReservationNotification(
+async function persistNotificationIntent(
   supabase: NotificationSupabaseClient,
-  id: string,
-  update: ReservationNotificationUpdate
-): Promise<void> {
-  const { error } = await supabase
-    .from('reservation_notifications')
-    .update(update)
-    .eq('id', id);
-
-  if (error) {
-    logger.warn('Failed to update reservation notification log', {
-      notificationId: id,
-      error: error.message,
-    });
+  params: ClaimParams
+): Promise<'enqueued' | 'duplicate'> {
+  const claim = await claimReservationNotification(supabase, params);
+  let notificationId = claim.id;
+  if (!claim.claimed) {
+    // 既存の未完了claimだけを再取得する。同時実行はDBの行ロックと状態条件で直列化する。
+    const { data, error } = await supabase
+      .from('reservation_notifications')
+      .update({
+        channel: params.channel,
+        status: 'claimed',
+        detail: params.detail,
+        scheduled_for: params.scheduledFor ?? null,
+      })
+      .eq('reservation_id', params.reservationId)
+      .eq('clinic_id', params.clinicId)
+      .eq('notification_type', params.notificationType)
+      .in('status', ['claimed', 'failed'])
+      .select('id')
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    notificationId = data?.id ?? null;
   }
+  if (!notificationId) return 'duplicate';
+
+  // AFTER triggerのoutbox保存完了を確認する。migration未適用時も成功扱いにしない。
+  const { data, error } = await supabase
+    .from('reservation_notifications')
+    .select('status')
+    .eq('id', notificationId)
+    .eq('clinic_id', params.clinicId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (data?.status !== 'enqueued')
+    throw new Error('Durable notification enqueue was not confirmed');
+  return 'enqueued';
 }
 
 export async function enqueuePatientReservationEmail(
@@ -180,49 +199,29 @@ export async function enqueuePatientReservationEmail(
     return claim.claimed ? 'skipped' : 'duplicate';
   }
 
-  const claim = await claimReservationNotification(supabase, {
+  const dedupeKey = generateDedupeKey(
+    input.templateType,
+    input.reservationId,
+    input.dedupeTimestamp
+  );
+  return persistNotificationIntent(supabase, {
     clinicId: input.clinicId,
     reservationId: input.reservationId,
     notificationType: input.notificationType,
     channel: 'email',
     scheduledFor: input.scheduledFor,
-  });
-
-  if (!claim.claimed) {
-    return 'duplicate';
-  }
-
-  try {
-    const outbox = await enqueueEmail(
-      supabase,
-      {
-        clinicId: input.clinicId,
-        reservationId: input.reservationId,
-        customerId: input.customerId,
-        templateType: input.templateType,
-        toEmail: input.toEmail,
-        payload: input.payload,
-      },
-      input.dedupeTimestamp,
-      { ignoreDuplicate: true }
-    );
-
-    await updateReservationNotification(supabase, claim.id, {
-      status: 'enqueued',
-      email_outbox_id: outbox?.id ?? null,
-      detail: { template_type: input.templateType },
-    });
-    return 'enqueued';
-  } catch (error) {
-    await updateReservationNotification(supabase, claim.id, {
-      status: 'failed',
-      detail: {
+    detail: {
+      enqueue: {
+        version: 1,
+        customer_id: input.customerId,
         template_type: input.templateType,
-        error: getErrorMessage(error),
+        to_email: input.toEmail,
+        payload: input.payload,
+        dedupe_key: dedupeKey,
+        resend_idempotency_key: generateIdempotencyKey(dedupeKey),
       },
-    });
-    throw error;
-  }
+    },
+  });
 }
 
 async function shouldUseLineNotification(
@@ -322,6 +321,7 @@ function buildReservationLinePayload(
     reservation: {
       notificationType: input.notificationType,
       reservationId: input.reservationId,
+      updatedAt: input.dedupeTimestamp,
     },
     ...(confirmationUrl ? { confirmationUrl } : {}),
     ...createLineEmailFallback(input),
@@ -343,46 +343,25 @@ export async function enqueuePatientReservationNotification(
     return enqueuePatientReservationEmail(supabase, input);
   }
 
-  const claim = await claimReservationNotification(supabase, {
+  return persistNotificationIntent(supabase, {
     clinicId: input.clinicId,
     reservationId: input.reservationId,
     notificationType: input.notificationType,
     channel: 'line',
     scheduledFor: input.scheduledFor,
+    detail: {
+      enqueue: {
+        version: 1,
+        customer_id: input.customerId,
+        line_user_id: lineUserId,
+        dedupe_timestamp: input.dedupeTimestamp,
+        payload: {
+          ...buildReservationLinePayload(input),
+          customerId: input.customerId,
+        },
+      },
+    },
   });
-
-  if (!claim.claimed) {
-    return 'duplicate';
-  }
-
-  try {
-    const outbox = await enqueueLineMessage(supabase, {
-      clinicId: input.clinicId,
-      customerId: input.customerId,
-      lineUserId,
-      messageType: input.notificationType,
-      payload: buildReservationLinePayload(input),
-    });
-
-    await updateReservationNotification(supabase, claim.id, {
-      status: 'enqueued',
-      detail: {
-        line_outbox_id: outbox.id,
-        message_type: input.notificationType,
-        fallback_email: Boolean(input.toEmail),
-      },
-    });
-    return 'enqueued';
-  } catch (error) {
-    await updateReservationNotification(supabase, claim.id, {
-      status: 'failed',
-      detail: {
-        message_type: input.notificationType,
-        error: getErrorMessage(error),
-      },
-    });
-    throw error;
-  }
 }
 
 export type PublicReservationNotificationInput = {
