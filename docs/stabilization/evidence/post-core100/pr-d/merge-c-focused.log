@@ -1,0 +1,55 @@
+
+> seikotsuin-management-saas@0.1.0-pilot pretest
+> node scripts/check-swc-binary.mjs
+
+
+> seikotsuin-management-saas@0.1.0-pilot test
+> node scripts/run-jest.mjs --ci --config .next/jest-pd.config.cjs --runTestsByPath src/__tests__/lib/reservation-notifications.test.ts src/__tests__/lib/reservation-notification-durability.test.ts src/__tests__/lib/reservation-reminders.test.ts src/__tests__/api/email-reservation-enqueue.test.ts src/__tests__/api/email-processor.test.ts src/__tests__/api/email-resend-provider.test.ts src/__tests__/api/reservations-email-enqueue-route.test.ts src/__tests__/api/reservations-route.test.ts src/__tests__/api/mobile-uiux-reservations.test.ts src/__tests__/api/process-email-outbox-route.test.ts src/__tests__/api/email-enqueue.test.ts src/__tests__/security/post-core100-notification-migration.test.ts src/__tests__/api/reservations-commit-boundary.test.ts src/__tests__/api/reservations-schema.test.ts src/__tests__/mobile-uiux/bridge-contract.test.ts src/__tests__/hooks/useAppointments.reservations.test.tsx src/__tests__/components/reservations/AppointmentForm.test.tsx
+
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\seekf\Desktop\seikotsuin_management_saas\package-lock.json as the root directory.
+ To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+ Detected additional lockfiles:
+   * C:\Users\seekf\Desktop\seikotsuin_management_saas\.w\pd\package-lock.json
+
+PASS server src/__tests__/mobile-uiux/bridge-contract.test.ts
+PASS client src/__tests__/components/reservations/AppointmentForm.test.tsx
+PASS client src/__tests__/hooks/useAppointments.reservations.test.tsx
+PASS server src/__tests__/api/reservations-commit-boundary.test.ts
+PASS server src/__tests__/api/reservations-schema.test.ts
+PASS server src/__tests__/api/mobile-uiux-reservations.test.ts
+PASS server src/__tests__/api/reservations-email-enqueue-route.test.ts
+PASS server src/__tests__/api/process-email-outbox-route.test.ts
+PASS server src/__tests__/api/reservations-route.test.ts
+PASS server src/__tests__/api/email-resend-provider.test.ts
+PASS server src/__tests__/api/email-processor.test.ts
+  ● Console
+
+    console.error
+      Failed to persist sent state for email_outbox { jobId: 'job-1', error: 'unknown error' }
+
+      429 |       return;
+      430 |     }
+    > 431 |     originalError.call(console, ...args);
+          |                   ^
+      432 |   };
+      433 | });
+      434 |
+
+      at console.call [as error] (jest.setup.after.js:431:19)
+      at error (src/lib/notifications/email/processor.ts:328:19)
+      at Object.<anonymous> (src/__tests__/api/email-processor.test.ts:321:20)
+
+PASS server src/__tests__/api/email-reservation-enqueue.test.ts
+PASS server src/__tests__/lib/reservation-notification-durability.test.ts
+PASS server src/__tests__/security/post-core100-notification-migration.test.ts
+PASS server src/__tests__/lib/reservation-notifications.test.ts
+PASS server src/__tests__/api/email-enqueue.test.ts
+PASS server src/__tests__/lib/reservation-reminders.test.ts
+
+Test Suites: 17 passed, 17 total
+Tests:       229 passed, 229 total
+Snapshots:   0 total
+Time:        22.702 s
+Ran all test suites within paths "src/__tests__/lib/reservation-notifications.test.ts", "src/__tests__/lib/reservation-notification-durability.test.ts", "src/__tests__/lib/reservation-reminders.test.ts", "src/__tests__/api/email-reservation-enqueue.test.ts", "src/__tests__/api/email-processor.test.ts", "src/__tests__/api/email-resend-provider.test.ts", "src/__tests__/api/reservations-email-enqueue-route.test.ts", "src/__tests__/api/reservations-route.test.ts", "src/__tests__/api/mobile-uiux-reservations.test.ts", "src/__tests__/api/process-email-outbox-route.test.ts", "src/__tests__/api/email-enqueue.test.ts", "src/__tests__/security/post-core100-notification-migration.test.ts", "src/__tests__/api/reservations-commit-boundary.test.ts", "src/__tests__/api/reservations-schema.test.ts", "src/__tests__/mobile-uiux/bridge-contract.test.ts", "src/__tests__/hooks/useAppointments.reservations.test.tsx", "src/__tests__/components/reservations/AppointmentForm.test.tsx" in 2 projects.

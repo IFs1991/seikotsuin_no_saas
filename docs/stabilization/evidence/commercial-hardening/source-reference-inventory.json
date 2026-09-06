@@ -7,7 +7,7 @@
     "clientModule records an explicit use-client directive, not the full import graph."
   ],
   "summary": {
-    "scannedSourceFiles": 657,
+    "scannedSourceFiles": 659,
     "catalogTables": 86,
     "catalogTablesWithLiteralReferences": 68,
     "literalRpcNames": 37
@@ -395,7 +395,7 @@
         },
         {
           "path": "src/lib/notifications/reservation-notifications.ts",
-          "line": 472,
+          "line": 451,
           "clientModule": false
         }
       ]
@@ -446,7 +446,7 @@
         },
         {
           "path": "src/lib/notifications/reservation-notifications.ts",
-          "line": 502,
+          "line": 481,
           "clientModule": false
         },
         {
@@ -482,12 +482,12 @@
         },
         {
           "path": "src/lib/notifications/reservation-notifications.ts",
-          "line": 427,
+          "line": 406,
           "clientModule": false
         },
         {
           "path": "src/lib/notifications/reservation-notifications.ts",
-          "line": 450,
+          "line": 429,
           "clientModule": false
         },
         {
@@ -703,7 +703,7 @@
         },
         {
           "path": "src/lib/notifications/email/reservation-enqueue.ts",
-          "line": 348,
+          "line": 380,
           "clientModule": false
         },
         {
@@ -871,12 +871,12 @@
         },
         {
           "path": "src/app/api/mobile-uiux/reservations/route.ts",
-          "line": 232,
+          "line": 238,
           "clientModule": false
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 289,
+          "line": 292,
           "clientModule": false
         },
         {
@@ -886,17 +886,17 @@
         },
         {
           "path": "src/lib/notifications/email/reservation-enqueue.ts",
-          "line": 310,
+          "line": 342,
           "clientModule": false
         },
         {
           "path": "src/lib/notifications/reservation-notifications.ts",
-          "line": 495,
+          "line": 474,
           "clientModule": false
         },
         {
           "path": "src/lib/notifications/reservation-notifications.ts",
-          "line": 605,
+          "line": 584,
           "clientModule": false
         },
         {
@@ -1221,12 +1221,12 @@
       "calls": [
         {
           "path": "src/lib/notifications/email/processor.ts",
-          "line": 121,
+          "line": 141,
           "clientModule": false
         },
         {
           "path": "src/lib/notifications/email/reservation-enqueue.ts",
-          "line": 105,
+          "line": 115,
           "clientModule": false
         },
         {
@@ -1252,12 +1252,17 @@
         },
         {
           "path": "src/lib/notifications/email/processor.ts",
-          "line": 99,
+          "line": 106,
           "clientModule": false
         },
         {
           "path": "src/lib/notifications/email/processor.ts",
-          "line": 162,
+          "line": 175,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/email/processor.ts",
+          "line": 223,
           "clientModule": false
         },
         {
@@ -1372,7 +1377,7 @@
       "calls": [
         {
           "path": "src/lib/notifications/line-outbox.ts",
-          "line": 68,
+          "line": 69,
           "clientModule": false
         },
         {
@@ -1573,7 +1578,7 @@
         },
         {
           "path": "src/app/api/mobile-uiux/reservations/route.ts",
-          "line": 240,
+          "line": 246,
           "clientModule": false
         },
         {
@@ -1593,17 +1598,17 @@
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 324,
+          "line": 327,
           "clientModule": false
         },
         {
           "path": "src/lib/notifications/email/reservation-enqueue.ts",
-          "line": 360,
+          "line": 392,
           "clientModule": false
         },
         {
           "path": "src/lib/notifications/reservation-notifications.ts",
-          "line": 581,
+          "line": 560,
           "clientModule": false
         },
         {
@@ -1970,7 +1975,7 @@
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 479,
+          "line": 482,
           "clientModule": false
         },
         {
@@ -2032,12 +2037,17 @@
         },
         {
           "path": "src/lib/notifications/reservation-notifications.ts",
-          "line": 126,
+          "line": 123,
           "clientModule": false
         },
         {
           "path": "src/lib/notifications/reservation-notifications.ts",
           "line": 154,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/reservation-notifications.ts",
+          "line": 174,
           "clientModule": false
         }
       ]
@@ -2078,32 +2088,32 @@
         },
         {
           "path": "src/app/api/mobile-uiux/reservations/route.ts",
-          "line": 573,
+          "line": 581,
           "clientModule": false
         },
         {
           "path": "src/app/api/mobile-uiux/reservations/route.ts",
-          "line": 683,
+          "line": 684,
           "clientModule": false
         },
         {
           "path": "src/app/api/mobile-uiux/reservations/route.ts",
-          "line": 781,
+          "line": 791,
           "clientModule": false
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 728,
+          "line": 731,
           "clientModule": false
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 837,
+          "line": 814,
           "clientModule": false
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 927,
+          "line": 908,
           "clientModule": false
         },
         {
@@ -2349,7 +2359,7 @@
         },
         {
           "path": "src/app/api/mobile-uiux/reservations/route.ts",
-          "line": 247,
+          "line": 253,
           "clientModule": false
         },
         {
@@ -2364,22 +2374,22 @@
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 355,
+          "line": 358,
           "clientModule": false
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 425,
+          "line": 428,
           "clientModule": false
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 496,
+          "line": 499,
           "clientModule": false
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 524,
+          "line": 527,
           "clientModule": false
         },
         {
@@ -2413,8 +2423,13 @@
           "clientModule": false
         },
         {
+          "path": "src/lib/notifications/email/reservation-enqueue.ts",
+          "line": 385,
+          "clientModule": false
+        },
+        {
           "path": "src/lib/notifications/reservation-notifications.ts",
-          "line": 557,
+          "line": 536,
           "clientModule": false
         },
         {
@@ -2905,7 +2920,7 @@
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 449,
+          "line": 452,
           "clientModule": false
         },
         {
@@ -2921,11 +2936,6 @@
         {
           "path": "src/lib/daily-reports/write-model.ts",
           "line": 62,
-          "clientModule": false
-        },
-        {
-          "path": "src/lib/notifications/email/reservation-enqueue.ts",
-          "line": 353,
           "clientModule": false
         }
       ]
@@ -3450,7 +3460,7 @@
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 460,
+          "line": 463,
           "clientModule": false
         },
         {
@@ -4230,32 +4240,22 @@
         },
         {
           "path": "src/app/api/mobile-uiux/reservations/route.ts",
-          "line": 302,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/mobile-uiux/reservations/route.ts",
-          "line": 429,
+          "line": 437,
           "clientModule": false
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 586,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/reservations/route.ts",
-          "line": 748,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/reservations/route.ts",
-          "line": 987,
+          "line": 589,
           "clientModule": false
         },
         {
           "path": "src/lib/manager-dashboard-counts.ts",
           "line": 31,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/reservations/mutation-result.ts",
+          "line": 38,
           "clientModule": false
         }
       ]

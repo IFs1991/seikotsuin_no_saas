@@ -1,3 +1,8 @@
+import {
+  readCommittedReservation,
+  RESERVATION_MUTATION_RETURN_SELECT,
+  RESERVATION_CONCURRENT_UPDATE_MESSAGE,
+} from '@/lib/reservations/mutation-result';
 import { NextRequest } from 'next/server';
 
 import { processApiRequest } from '@/lib/api-helpers';
@@ -45,7 +50,6 @@ import {
   createReservationReadClient,
   mapReservationListViewRow,
   mapSelectedOptions,
-  type ReservationListApiRow,
   type ReservationListItem,
   RESERVATION_LIST_SELECT,
 } from '@/lib/reservations/read-model';
@@ -66,10 +70,8 @@ export const dynamic = 'force-dynamic';
 const JST_TIMEZONE = 'Asia/Tokyo' as const;
 const PATH = '/api/mobile-uiux/reservations';
 const MOBILE_UIUX_READ_ALLOWED_ROLES = ADMIN_USER_ROLE_VALUES;
-const RESERVATION_INSERT_RETURN_SELECT =
-  'id, clinic_id, customer_id, menu_id, status, start_time, end_time, staff_id, updated_at';
-const RESERVATION_UPDATE_RETURN_SELECT =
-  'id, clinic_id, customer_id, menu_id, status, start_time, end_time, staff_id, notes, selected_options, is_staff_requested, updated_at';
+const RESERVATION_INSERT_RETURN_SELECT = RESERVATION_MUTATION_RETURN_SELECT;
+const RESERVATION_UPDATE_RETURN_SELECT = RESERVATION_MUTATION_RETURN_SELECT;
 const MANAGER_RESERVATION_CREATE_DENIED_MESSAGE =
   'マネージャーは予約の作成はできません。';
 const MANAGER_RESERVATION_UPDATE_DENIED_MESSAGE =
@@ -295,25 +297,6 @@ async function getScopedReservationReferences(
     },
     staffResource: staffResult.data,
   };
-}
-
-async function fetchReservationListItem(
-  supabase: SupabaseServerClient,
-  clinicId: string,
-  reservationId: string
-): Promise<ReservationListItem | null> {
-  const { data, error } = await supabase
-    .from('reservation_list_view')
-    .select(RESERVATION_LIST_SELECT)
-    .eq('clinic_id', clinicId)
-    .eq('id', reservationId)
-    .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-
-  return data ? mapReservationListViewRow(data as ReservationListApiRow) : null;
 }
 
 function createNotificationClient(
@@ -616,25 +599,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const reservation = await fetchReservationListItem(
-      result.supabase,
-      dto.clinic_id,
-      data.id
-    );
-    if (!reservation) {
-      return buildMobileUiuxFailure(
-        500,
-        'INTERNAL',
-        '予約は作成されましたが、予約一覧への反映に失敗しました'
-      );
-    }
-
     const notificationClient = createNotificationClient(
       result.permissions,
       dto.clinic_id
     );
     if (notificationClient)
       await enqueueCreatedWithoutBlocking(notificationClient, data);
+    const reservation = await readCommittedReservation(result.supabase, data);
 
     const response: MobileUiuxReservationMutationResponse = {
       clinicId: dto.clinic_id,
@@ -712,7 +683,7 @@ export async function PATCH(request: NextRequest) {
     const { data: existing, error: existingError } = await result.supabase
       .from('reservations')
       .select(
-        'id, clinic_id, customer_id, menu_id, status, staff_id, start_time, end_time, notes, selected_options, is_staff_requested'
+        'id, clinic_id, customer_id, menu_id, status, staff_id, start_time, end_time, notes, selected_options, is_staff_requested, updated_at'
       )
       .eq('id', dto.id)
       .eq('clinic_id', dto.clinic_id)
@@ -744,7 +715,16 @@ export async function PATCH(request: NextRequest) {
       | 'notes'
       | 'selected_options'
       | 'is_staff_requested'
+      | 'updated_at'
     >;
+
+    if (!existingRow.updated_at) {
+      return buildMobileUiuxFailure(
+        503,
+        'INTERNAL',
+        '予約の更新状態を確認できません'
+      );
+    }
 
     let references: ScopedReferenceResult | null = null;
     if (
@@ -812,8 +792,18 @@ export async function PATCH(request: NextRequest) {
       .update(updatePayload)
       .eq('id', dto.id)
       .eq('clinic_id', dto.clinic_id)
+      // DBのマイクロ秒精度を保ったまま、読取後の更新を検知する。
+      .eq('updated_at', existingRow.updated_at)
       .select(RESERVATION_UPDATE_RETURN_SELECT)
       .single();
+
+    if (error?.code === 'PGRST116') {
+      return buildMobileUiuxFailure(
+        409,
+        'CONFLICT',
+        RESERVATION_CONCURRENT_UPDATE_MESSAGE
+      );
+    }
 
     if (error && isReservationNoOverlapError(error)) {
       return buildMobileUiuxFailure(
@@ -828,19 +818,6 @@ export async function PATCH(request: NextRequest) {
         500,
         'INTERNAL',
         '予約の更新に失敗しました'
-      );
-    }
-
-    const reservation = await fetchReservationListItem(
-      result.supabase,
-      dto.clinic_id,
-      dto.id
-    );
-    if (!reservation) {
-      return buildMobileUiuxFailure(
-        500,
-        'INTERNAL',
-        '予約は更新されましたが、予約一覧への反映に失敗しました'
       );
     }
 
@@ -877,6 +854,8 @@ export async function PATCH(request: NextRequest) {
         after,
         data.updated_at ?? new Date().toISOString()
       );
+
+    const reservation = await readCommittedReservation(result.supabase, data);
 
     const response: MobileUiuxReservationMutationResponse = {
       clinicId: dto.clinic_id,

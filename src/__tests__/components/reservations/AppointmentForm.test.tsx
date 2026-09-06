@@ -124,6 +124,25 @@ const fillRequiredFields = (values: {
 // 推奨順: 来店日 → 開始時間 → 担当・設備 → メニュー+オプション → 電話番号 → お名前 → カスタム属性
 // ─────────────────────────────────────────────────────────────
 describe('2-2: フォームフィールド順序', () => {
+  it('保存後の表示障害でも登録成功を通知し、再保存を促さない', async () => {
+    createReservation.mockResolvedValueOnce({
+      id: 'reservation-1',
+      status: 'unconfirmed',
+      projectionStatus: 'unavailable',
+    });
+    const onSuccess = jest.fn();
+    renderForm({ onSuccess });
+    fillRequiredFields({});
+    fireEvent.click(screen.getByRole('button', { name: '登録する' }));
+    await waitFor(() => {
+      expect(onSuccess).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'reservation-1' }),
+        expect.stringContaining('再保存せず')
+      );
+    });
+    expect(createReservation).toHaveBeenCalledTimes(1);
+  });
+
   it('creates the selected JST time without a browser-local offset on a UTC device', async () => {
     renderForm({
       initialData: { date: '2026-03-01', startHour: 9, startMinute: 15 },

@@ -29,4 +29,14 @@ Galileo / Socratesによる実装者以外の独立read-onlyコード監査は�
 - 予約commitからhandoff開始までのprocess停止は残る。このPRは要求された最小のawait handoffを実装し、予約transactionそのものにoutboxを組み込む保証はしない。
 - Resendの24時間を超えた曖昧配送は自動再送しない。23時間超または受理痕跡ありのlease回収は手動配送照合へ送る。旧revisionなしLINE outboxも手動確認対象。
 
-PR-Cのprojection/CAS変更と統合するときは、保存成功後・projection取得前の通知位置を維持した上で、PR-Dのawaitとmobile scoped notification clientを組み合わせる。CAS競合では通知を呼ばない。
+## PR-Cとの統合回帰（2026-09-06）
+
+PR-D初回commit `8602f6e9` の [CI 34003707831](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34003707831) はsource-reference-inventoryの更新漏れでQuality Checks FAIL、後続7 jobsはSKIPPEDだった。DB・full Jest・buildの合格とは数えない。
+
+親の指示でPR-C `609c761827ebc47f65e90c67846330322ad8ac50` を通常mergeし、PR-DをPR-Cへ依存させた。mobile routeの競合は旧view helperを削除し、保存成功→通知専用scoped client→await handoff→`readCommittedReservation`の順序へ解消した。通常routeの自動mergeも同順序を確認した。PATCHのid / clinic / raw updated_at CASと、競合409時に通知しない契約を維持した。
+
+- `merge-c-focused.log`: **17 suites / 229 tests PASS**。CとDの既存回帰に、通常/mobile × POST/PATCHの4件を追加。通知pending中はprojectionもresponseも実行せず、通知失敗後も保存成功とdegraded表示を維持する。
+- `merge-c-type-check.log` / `merge-c-lint.log`: **PASS**。`npm run type-check` / `npm run lint`。
+- route manifestとsource reference inventoryを統合後のコードから再生成し、両方のcheck PASS。`security:verify-mutating-routes`（132 mutations / 9 GET例外）とmobile production assetsもcheck PASS。DB関連SQL、full Jest、production buildは更新commitのCIを引き続き必須とする。
+
+PR-Cの修正をPR-Dの独立成果へ読み替えない。stacked PRのbaseは親がPR-Cへ変更し、mainと他ブランチはこの作業では変更していない。予約commit→handoff開始の残るcrash windowや、配備先DB・providerの未検証は上記のまま。

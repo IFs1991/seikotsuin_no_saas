@@ -252,6 +252,7 @@ function buildPatchMutationClient(params?: {
   updateError?: PostgresTestError;
 }) {
   const existingRow = {
+      updated_at: '2026-04-14T08:00:00.123456+00:00',
     id: reservationId,
     clinic_id: clinicId,
     customer_id: customerId,
