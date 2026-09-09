@@ -1,6 +1,9 @@
 import type { Database } from '@/types/supabase';
 import type { SupabaseServerClient } from '@/lib/supabase';
-import { PublicReservationService } from '@/lib/services/public-reservation-service';
+import {
+  CustomerCreateError,
+  PublicReservationService,
+} from '@/lib/services/public-reservation-service';
 
 const { createClient } = jest.requireActual<
   typeof import('@supabase/supabase-js')
@@ -64,8 +67,24 @@ describe('AUDIT-V2 F11 anonymous identity with actual SDK query serialization', 
             const body: unknown =
               typeof init?.body === 'string' ? JSON.parse(init.body) : null;
             requestLog.push({ method, url, body });
-            if (method === 'POST')
+            if (method === 'POST') {
+              // The starting schema still has global UNIQUE(line_user_id),
+              // including deleted rows and rows belonging to other clinics.
+              if (
+                body !== null &&
+                typeof body === 'object' &&
+                'line_user_id' in body &&
+                patients.some(
+                  patient => patient.line_user_id === body.line_user_id
+                )
+              ) {
+                return response(
+                  { code: '23505', message: 'duplicate line_user_id' },
+                  409
+                );
+              }
               return response({ id: `new-${requestLog.length}` }, 201);
+            }
             if (method === 'PATCH') return new Response(null, { status: 204 });
             if (method !== 'GET')
               throw new Error(`Unexpected method ${method}`);
@@ -155,13 +174,14 @@ describe('AUDIT-V2 F11 anonymous identity with actual SDK query serialization', 
         clinic_id: reason === 'different clinic' ? clinicB : clinicA,
         is_deleted: reason === 'deleted patient',
       }));
-      const result = await service.findOrCreateCustomer(
-        '患者',
-        '09012345678',
-        'family@example.invalid',
-        { lineUserId: 'Uverified', displayName: null }
-      );
-      expect(result.created).toBe(true);
+      await expect(
+        service.findOrCreateCustomer(
+          '患者',
+          '09012345678',
+          'family@example.invalid',
+          { lineUserId: 'Uverified', displayName: null }
+        )
+      ).rejects.toThrow(CustomerCreateError);
       expect(requestLog.map(item => item.method)).toEqual(['GET', 'POST']);
     }
   );
