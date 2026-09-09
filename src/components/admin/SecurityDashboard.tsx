@@ -43,6 +43,7 @@ import {
   Search,
 } from 'lucide-react';
 import { logger } from '@/lib/logger';
+import { createCsv } from '@/lib/csv-export';
 
 interface SecurityMetrics {
   totalUsers: number;
@@ -221,13 +222,18 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
 
   // セキュリティレポートダウンロード
   const handleDownloadReport = () => {
-    const csvContent = [
-      'イベントタイプ,重要度,説明,IPアドレス,日時,ステータス,解決メモ',
-      ...securityEvents.map(
-        event =>
-          `${event.event_type},${event.severity_level},"${event.event_description}",${event.ip_address || ''},${new Date(event.created_at).toLocaleString()},${event.status},"${event.resolution_notes || ''}"`
-      ),
-    ].join('\n');
+    const csvContent = createCsv(securityEvents, [
+      { header: 'イベントタイプ', value: event => event.event_type },
+      { header: '重要度', value: event => event.severity_level },
+      { header: '説明', value: event => event.event_description },
+      { header: 'IPアドレス', value: event => event.ip_address },
+      {
+        header: '日時',
+        value: event => new Date(event.created_at).toLocaleString(),
+      },
+      { header: 'ステータス', value: event => event.status },
+      { header: '解決メモ', value: event => event.resolution_notes },
+    ]);
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
