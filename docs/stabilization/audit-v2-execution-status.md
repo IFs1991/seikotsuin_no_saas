@@ -33,10 +33,10 @@ ZIP: `docs/stabilization/tiramisu_os_codex_execution_v2_2026-09-06.zip`。原本
 | AUDIT-V2:F03 | OPEN | CODE_FIXED（ローカル） | U01 `90bdae969f4edc81d4b3b1a1de519afddeed6453`。object/旧文字列のschema復元、破損・SDK nullのfail-closed、escalation飽和。実RedisはENV-01 |
 | AUDIT-V2:F04 | OPEN | CODE_FIXED（ローカル） | U01。許可と拒否を判別型で分離、全limiterとCSP/cookie継続。src middleware入口の既存修正未取込・production E2E未実施 |
 | AUDIT-V2:F05 | CODE_FIXED | base未取込あり | revenue API/hook/UIが監査基準と異なる。既存Post-Core100修正を再実装しない。U02で影響範囲を記録 |
-| AUDIT-V2:F06 (R1) | OPEN | 未深掘り | U02、role/codeの期間合計API・実UI回帰 |
+| AUDIT-V2:F06 (R1) | OPEN | 取得済み行の集約CODE_FIXED、全件取得は前提未達 | U02 `49d4cdd`、API→実UI300/2、1001供給行を合算。F08未取込により実ページ境界/後続page失敗は未検証 |
 | AUDIT-V2:F07 | CODE_FIXED | base未取込あり | `daily-reports/read-model.ts` が監査基準と異なる。期間summary分離の既存変更は別途取り込み対象 / ENV-01 |
 | AUDIT-V2:F08 | CODE_FIXED | base未取込あり | revenue/予約API・UIに既存Post-Core100との差分。U02対象のページング前提を確認 / ENV-04 |
-| AUDIT-V2:F09 (R2) | OPEN | 未深掘り | U03、実hookの要求世代と全状態更新 |
+| AUDIT-V2:F09 (R2) | OPEN | CODE_FIXED、独立レビュー中 | U03 `3b76928`、実hook要求identityでdata/error/loading/inFlightを保護。関連65 tests PASS |
 | AUDIT-V2:F10 | OPEN | 未深掘り | U04、sanitize呼出元と出力文脈、round-trip |
 | AUDIT-V2:F11 | OPEN | 未深掘り | U05、web/確認済みLINE照合・仮患者方式 |
 | AUDIT-V2:F12 | PARTIAL | base未取込あり | 通知/予約APIが監査基準と異なる。既存await/claim/outbox変更の取り込みと、追加保証を区別。U07/ENV-03 |
@@ -87,8 +87,28 @@ base: 開始HEAD（入力・台帳commit `40899808`）。対象: AUDIT-V2:F03/F0
 
 ## 個別判定
 
+## PR-U02 実行記録
+
+- base `6b21f55`（U01結果文書まで）、branch `codex/audit-v2-u02`。commit `94abc03127e79a793ab0700a39222dcac2007408`、書式のみ `49d4cddce35631c089ec48f0472f4aa1f5fe2e59`。
+- `src/app/api/revenue/route.ts` の `buildRevenueContextSummary` / `buildRevenueBreakdownSummary` でcode/amountRole別の取得済み期間全行をMapに合算。既存カードの定義、認可、clinic/date filter、source errorの拒否を維持。DB/UI/dependency変更なし。
+- RED `audit-v2-u02-red.log`: 5失敗/28成功。実UIに200・1件だけが出て300・2件にならないことと、APIの複数行返却を再現。
+- GREEN `npm run test -- --ci --runTestsByPath src/__tests__/api/audit-v2-revenue-period.test.ts src/__tests__/api/revenue-api.test.ts src/__tests__/pages/revenue.test.tsx src/__tests__/hooks/useRevenue.test.tsx`: **4 suites/49 tests PASS、skip0**。以降はprettierのみ。U03統合回帰でも成功。
+- `npm run type-check` PASS。`lint:commercial` はMap型引数改行1errorを修正後PASS。新規fixture/API testの追加TypeScript診断0。
+- 独立reviewer2名がbase `6b21f55`→最終 `49d4cdd` を読取専用で確認。追加指摘なし。実テストは親が実行。
+- 1001行テストはfixtureから供給した全配列の集約で、PostgREST全ページ取得の証拠ではない。F05（未算出/前年実額）、F07/F08（期間全件取得）は開始HEAD未取込であり、再実装していない。実ページ境界/後続page失敗とproduction browserは未実行。F06全面受入は前提未達。
+
+## PR-U03 実行記録
+
+- base `49d4cdd`、branch `codex/audit-v2-u03-requests`。source commit `3b76928`。
+- `src/hooks/useRevenue.ts`: requestごとのSymbolでdata/error/loading/hasLoaded/inFlightを現在要求だけが更新。cleanup・無効化時に破棄し、古いfinallyが新要求の重複抑止を解除しない。同期throw後の完成済みPromiseの保持も防止。F05の未取込表示契約は変更なし。
+- 新規実React deferredテスト16件。最初のREDは12失敗/2成功のうち、11が古い応答による製品不具合、1がStrictModeをrootに置けていないfixture不備。fixtureをTesting Libraryの `reactStrictMode: true` に修正してeffect cleanup再実行も確認。
+- GREEN: `npm run test -- --ci --runTestsByPath src/__tests__/hooks/audit-v2-revenue-requests.test.tsx src/__tests__/hooks/useRevenue.test.tsx src/__tests__/pages/revenue.test.tsx src/__tests__/api/audit-v2-revenue-period.test.ts src/__tests__/api/revenue-api.test.ts` **5 suites/65 tests PASS、skip0**（`audit-v2-u03-final.log`）。source commitと同内容で実行。
+- `npm run type-check` PASS。`npm run lint:ci` error0/既存warning129、PASS。新規test明示追加のTypeScript診断0。独立2レビュー進行中。
+
+## 統合状態
+
 Code: 作業中 / Data correctness: 未完了 / Security: 作業中、実環境未検証 /
 Capacity: NOT_RUN / Recovery: NOT_RUN / Notifications: NOT_RUN /
 Production configuration: NOT_RUN / Operational readiness: NOT_RUN。
 
-次の最小作業: U02の期間集計APIと実UIのRED。F05/F08のbase未取込は独立記録し、その既存修正を再実装しない。
+次の最小作業: U03独立レビュー結果を反映。U04のsanitize呼出元・sink棚卸しと実APIの原文round-trip REDを追加。
