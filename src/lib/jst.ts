@@ -31,7 +31,15 @@ export function toJSTDateString(date: Date = new Date()): string {
 }
 
 export function isJSTDateString(value: string): boolean {
-  return DATE_ONLY_PATTERN.test(value);
+  if (!DATE_ONLY_PATTERN.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return (
+    year > 0 &&
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
 }
 
 export function parseJSTDateStart(value: string): Date {
@@ -39,8 +47,7 @@ export function parseJSTDateStart(value: string): Date {
     throw new Error('Expected YYYY-MM-DD date string');
   }
 
-  const [year, month, day] = value.split('-').map(Number);
-  return new Date(Date.UTC(year, month - 1, day) - JST_OFFSET_MS);
+  return new Date(`${value}T00:00:00+09:00`);
 }
 
 export function addJSTCalendarDays(value: string, days: number): string {
@@ -59,15 +66,15 @@ export function differenceInJSTCalendarDays(
 }
 
 export function getJSTWeekdayKey(dateString: string): JSTWeekdayKey {
-  const [year, month, day] = dateString.split('-').map(Number);
-  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  const date = parseJSTDateStart(dateString);
+  const weekday = new Date(date.getTime() + JST_OFFSET_MS).getUTCDay();
   return WEEKDAY_KEYS[weekday];
 }
 
 export function jstDateTimeToDate(dateString: string, time: string): Date {
-  const [year, month, day] = dateString.split('-').map(Number);
+  const start = parseJSTDateStart(dateString);
   const [hour, minute] = time.split(':').map(Number);
-  return new Date(Date.UTC(year, month - 1, day, hour, minute) - JST_OFFSET_MS);
+  return new Date(start.getTime() + (hour * 60 + minute) * 60 * 1000);
 }
 
 export function getJSTMinutesOfDay(date: Date): number {
