@@ -6,6 +6,7 @@
  */
 
 import { z } from 'zod';
+import { isJSTDateString } from '@/lib/jst';
 
 // ================================================================
 // Common Validation
@@ -41,7 +42,7 @@ export type ResourcesQueryDTO = z.infer<typeof resourcesQuerySchema>;
 
 const dateOnlySchema = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD');
+  .refine(isJSTDateString, 'date must be a valid YYYY-MM-DD calendar date');
 
 export const availabilityQuerySchema = z.object({
   clinic_id: clinicIdSchema,
