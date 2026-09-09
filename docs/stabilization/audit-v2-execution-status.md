@@ -30,8 +30,8 @@ ZIP: `docs/stabilization/tiramisu_os_codex_execution_v2_2026-09-06.zip`。原本
 | --- | --- | --- | --- |
 | AUDIT-V2:F01 | PARTIAL | base未取込あり | `src/middleware.ts` とproduction CSP試験がHEADにない。rootのnonce request伝播も監査基準との差分あり。既存修正の取り込みは別途。ENV-02未実施 |
 | AUDIT-V2:F02 | CODE_FIXED | 対象ルーティング維持 | `getPathRateLimit` はlogin画面GET/HEADを除外。実認証Luaを変更しない。U01関連回帰 / ENV-01 |
-| AUDIT-V2:F03 | OPEN | 原因残存、U01着手 | `RateLimiter.checkRateLimit/handleEscalation/getRateLimitStats` にobjectへのJSON.parse。SDK object/旧文字列/破損状態のREDを追加 |
-| AUDIT-V2:F04 | OPEN | 原因残存、U01着手 | `applyRateLimits` とroot middlewareが許可NextResponseで早期return。許可＋headers/拒否を分離 |
+| AUDIT-V2:F03 | OPEN | CODE_FIXED（ローカル） | U01 `90bdae969f4edc81d4b3b1a1de519afddeed6453`。object/旧文字列のschema復元、破損・SDK nullのfail-closed、escalation飽和。実RedisはENV-01 |
+| AUDIT-V2:F04 | OPEN | CODE_FIXED（ローカル） | U01。許可と拒否を判別型で分離、全limiterとCSP/cookie継続。src middleware入口の既存修正未取込・production E2E未実施 |
 | AUDIT-V2:F05 | CODE_FIXED | base未取込あり | revenue API/hook/UIが監査基準と異なる。既存Post-Core100修正を再実装しない。U02で影響範囲を記録 |
 | AUDIT-V2:F06 (R1) | OPEN | 未深掘り | U02、role/codeの期間合計API・実UI回帰 |
 | AUDIT-V2:F07 | CODE_FIXED | base未取込あり | `daily-reports/read-model.ts` が監査基準と異なる。期間summary分離の既存変更は別途取り込み対象 / ENV-01 |
@@ -71,10 +71,19 @@ ZIP: `docs/stabilization/tiramisu_os_codex_execution_v2_2026-09-06.zip`。原本
 - U01のJestはRedis/認証/監視の通信境界をmockし、実効設定は合成値・外部送信遮断で実行する。mockの成功を実Redis/DB/RLS/配備先受入へ読み替えない。
 - DoD対応: DOD-11 (Jest)、DOD-10 (型/lint/build)、DOD-06/07 (production browser、未実施は明記)、DOD-08/09 (scope/認証保護を維持)。現在の変更完了判定は `docs/quality/change-dod-v1.0.md`。出荷判定とは分離。
 
-## PR-U01 実行記録（更新中）
+## PR-U01 実行記録
 
-base: 開始HEAD。対象: AUDIT-V2:F03/F04。DB/migration/依存変更なし。
-RED/GREEN・関連回帰・独立レビュー・commitは実行後にここへ追記する。現時点で完了判定なし。
+base: 開始HEAD（入力・台帳commit `40899808`）。対象: AUDIT-V2:F03/F04。DB/migration/依存変更なし。
+
+- 修正commit: `3de7919c2f5ec03913e0370fe869d3ab166bc251`、レビュー修正 `90bdae969f4edc81d4b3b1a1de519afddeed6453`。
+- `rate-limiter.ts`: object/旧JSON文字列をZodで検証。SDKが文字列nullを欠損同様に復元する場合はEXISTSで区別し、破損をproduction 503へ。escalationを再読込可能な上限で飽和。欠損時のEXISTS追加の実Redis遅延は未計測。
+- `rate-limiting/middleware.ts` とroot `middleware.ts`: 許可+headers/拒否responseを分離し、後続limiter・CSP・auth cookieを継続。既存の認証Lua・ルーティングは維持。
+- RED: 初回F03はSDK autopipeline fixture不備であり製品REDと扱わない。fixture修正後、開始版rate-limiterだけを一時読込して復元する比較で11失敗/17成功を確認（`audit-v2-u01-state-red.log`）。F04は初回の本体合成テストで失敗を確認。レビュー反例の実SDK null復元は2失敗（name filterによる29非選択、`audit-v2-u01-sdk-null-red.log`）。
+- GREEN: 最終source SHA `90bdae96` と同じ内容で `npm run test -- --ci --runTestsByPath src/__tests__/lib/rate-limiting/audit-v2-state.test.ts src/__tests__/lib/rate-limiting/audit-v2-composition.test.ts src/__tests__/lib/rate-limiting/middleware.test.ts src/__tests__/auth/middleware-auth.test.ts src/__tests__/middleware.test.ts src/__tests__/public-app-boundary/middleware-boundary.test.ts` を実行。**6 suites / 113 tests PASS、失敗0、skip0**（`audit-v2-u01-final-focused.log`）。新規2 test fileの追加TypeScript診断0。
+- 品質gate: レビュー前に `npm run type-check` / `type-check:commercial` / `lint:commercial` / `lint:ci` PASS。lint:ciは既存警告129・error0。`npm run build` PASSだがレビュー修正前に起動した検証であり最終SHAのbuildとは扱わない。
+- 全体Jest: `npm run test -- --ci --testPathIgnorePatterns e2e red-contracts` は途中から約15分出力が進まず、自身のprocessを中断（exit 1）。最終件数なし、原因未特定、**NOT_COMPLETED**（`audit-v2-u01-full-jest.log`）。除外範囲を広げてPASSにしていない。
+- 独立レビュー1（要求適合）/2（反例・障害）: 同一base `40899808` → SHA `90bdae96` の読取専用reviewer 2名。null復元と最大level反例を修正後、再レビューで残存指摘なし。reviewer自身のテスト実行はなし。
+- コード修正・対象回帰は完了。実Redis/proxy、production browser、DB/RLS、配備先CIは未実行。全体gate未完了のためrelease readyとは判定しない。
 
 ## 個別判定
 
@@ -82,4 +91,4 @@ Code: 作業中 / Data correctness: 未完了 / Security: 作業中、実環境�
 Capacity: NOT_RUN / Recovery: NOT_RUN / Notifications: NOT_RUN /
 Production configuration: NOT_RUN / Operational readiness: NOT_RUN。
 
-次の最小作業: U01の本体回帰RED→最小修正→GREEN→関連品質gate→独立2段階レビュー。その後U02へ進む。
+次の最小作業: U02の期間集計APIと実UIのRED。F05/F08のbase未取込は独立記録し、その既存修正を再実装しない。
