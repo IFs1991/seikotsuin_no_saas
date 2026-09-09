@@ -1,3 +1,4 @@
+import { escapeEmailHtml } from '../html';
 import type { PublicReservationReceivedPayload } from '../types';
 
 export function renderPublicReservationReceivedEmail(
@@ -39,7 +40,8 @@ export function renderPublicReservationReceivedEmail(
 
   const answerRows = answerLines
     .map(
-      line => `<li style="margin-bottom:4px">${line.replace(/^- /, '')}</li>`
+      line =>
+        `<li style="margin-bottom:4px">${escapeEmailHtml(line.replace(/^- /, ''))}</li>`
     )
     .join('');
 
@@ -52,15 +54,15 @@ export function renderPublicReservationReceivedEmail(
   <p>公開予約フォームから新しい予約を受け付けました。</p>
   <table style="border-collapse:collapse;width:100%;margin:16px 0">
     <tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:bold">患者名</td>
-        <td style="padding:8px;border:1px solid #e5e7eb">${customerName}</td></tr>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeEmailHtml(customerName)}</td></tr>
     <tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:bold">日時</td>
-        <td style="padding:8px;border:1px solid #e5e7eb">${startTime} ～ ${endTime}</td></tr>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeEmailHtml(startTime)} ～ ${escapeEmailHtml(endTime)}</td></tr>
     <tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:bold">メニュー</td>
-        <td style="padding:8px;border:1px solid #e5e7eb">${menuName}</td></tr>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeEmailHtml(menuName)}</td></tr>
     <tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:bold">担当</td>
-        <td style="padding:8px;border:1px solid #e5e7eb">${staffName || '未設定'}</td></tr>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeEmailHtml(staffName || '未設定')}</td></tr>
     <tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:bold">チャネル</td>
-        <td style="padding:8px;border:1px solid #e5e7eb">${channel}</td></tr>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeEmailHtml(channel)}</td></tr>
   </table>
   <h3>質問回答</h3>
   <ul>${answerRows}</ul>

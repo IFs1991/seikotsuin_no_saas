@@ -1,3 +1,4 @@
+import { escapeEmailHtml } from '../html';
 import type { BillingEmailPayload, BillingEmailTemplateType } from '../types';
 import type { Json } from '@/types/supabase';
 
@@ -92,7 +93,9 @@ export function renderBillingLifecycleEmail(
 
   const message = messages[templateType];
   const text = message.body.join('\n\n');
-  const paragraphs = message.body.map(line => `<p>${line}</p>`).join('\n  ');
+  const paragraphs = message.body
+    .map(line => `<p>${escapeEmailHtml(line)}</p>`)
+    .join('\n  ');
 
   const html = `
 <!DOCTYPE html>

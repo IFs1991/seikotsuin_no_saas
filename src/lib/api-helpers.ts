@@ -122,22 +122,10 @@ export async function verifyAdminAuth(
 const DANGEROUS_KEYS = ['__proto__', 'constructor', 'prototype'];
 
 /**
- * 入力データのサニタイゼーション
- * XSS攻撃とプロトタイプ汚染攻撃を防ぐため、すべての文字列値をサニタイズし、危険なキーをフィルタリング
+ * 危険なキーを除外し、入力の原文を保持する。
+ * HTML・属性・CSVのエンコードは各出力先の責務。保存前には行わない。
  */
-const escapeHtml = (value: string): string =>
-  value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-
 export function sanitizeInput(value: unknown): unknown {
-  if (typeof value === 'string') {
-    return escapeHtml(value);
-  }
-
   if (Array.isArray(value)) {
     return value.map(sanitizeInput);
   }
