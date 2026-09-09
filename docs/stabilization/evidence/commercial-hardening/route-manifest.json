@@ -4458,11 +4458,11 @@
         ],
         "clinicScope": [
           "@/lib/billing/business-write#ensureScopedBusinessWriteAccess",
-          "@/lib/supabase#resolveScopedClinicIds"
+          "@/lib/supabase/guards#ensureClinicAccess"
         ],
         "clinicScopeCoverage": [
           "@/lib/billing/business-write#ensureScopedBusinessWriteAccess",
-          "@/lib/supabase#resolveScopedClinicIds"
+          "@/lib/supabase/guards#ensureClinicAccess"
         ],
         "billing": [
           "@/lib/billing/business-write#ensureScopedBusinessWriteAccess"
@@ -9023,7 +9023,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/revenue/route.ts",
-        "line": 578,
+        "line": 601,
         "exportKind": "function"
       },
       "executionPath": {

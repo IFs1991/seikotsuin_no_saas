@@ -189,24 +189,20 @@ export async function DELETE(request: NextRequest) {
       }
     );
 
-    const clinicId = resolveScopedClinicIds(permissions)?.[0] ?? null;
-    if (!clinicId) {
+    const clinicScopeIds = resolveScopedClinicIds(permissions) ?? [];
+    if (clinicScopeIds.length === 0) {
       return NextResponse.json(
         { error: 'clinic_id is required' },
         { status: 400 }
       );
     }
 
-    await ensureScopedBusinessWriteAccess({
-      permissions,
-      targetClinicId: clinicId,
-    });
-
-    // DOD-09: 削除対象の日報がこのクリニックに属しているか確認
+    // Return the same not-found result for missing and out-of-scope reports.
     const { data: report, error: fetchError } = await supabase
       .from('daily_reports')
       .select('id, clinic_id')
       .eq('id', reportId)
+      .in('clinic_id', clinicScopeIds)
       .single();
 
     if (fetchError || !report) {
@@ -214,14 +210,23 @@ export async function DELETE(request: NextRequest) {
     }
 
     // テナント境界チェック
-    if (report.clinic_id !== clinicId) {
-      return NextResponse.json(
-        { error: 'Access denied: This report belongs to another clinic' },
-        { status: 403 }
-      );
+    if (!clinicScopeIds.includes(report.clinic_id)) {
+      return NextResponse.json({ error: 'Report not found' }, { status: 404 });
     }
 
-    const { error } = await supabase
+    // Revalidate the actual report clinic before billing and the final write.
+    const clinicId = report.clinic_id;
+    const { supabase: targetSupabase, permissions: targetPermissions } =
+      await ensureClinicAccess(request, PATH, clinicId, {
+        allowedRoles: Array.from(DAILY_REPORT_DELETE_ROLES),
+        requireClinicMatch: true,
+      });
+    await ensureScopedBusinessWriteAccess({
+      permissions: targetPermissions,
+      targetClinicId: clinicId,
+    });
+
+    const { error } = await targetSupabase
       .from('daily_reports')
       .delete()
       .eq('id', reportId)

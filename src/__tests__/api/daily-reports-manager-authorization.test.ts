@@ -387,6 +387,7 @@ describe('Daily Reports manager mutation authorization', () => {
   it('admin DELETE binds the daily report mutation to the guarded clinic', async () => {
     const selectQuery = {
       eq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
       single: jest.fn().mockResolvedValue({
         data: { id: reportId, clinic_id: clinicId },
         error: null,
