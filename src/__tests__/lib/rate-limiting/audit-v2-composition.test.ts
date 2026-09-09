@@ -5,7 +5,14 @@ import {
   createRateLimitMiddleware,
 } from '@/lib/rate-limiting/middleware';
 import { rateLimiter } from '@/lib/rate-limiting/rate-limiter';
+import * as rateLimitMiddleware from '@/lib/rate-limiting/middleware';
 import { middleware } from '../../../../middleware';
+
+jest.mock('@/lib/rate-limiting/middleware', () => {
+  const actual: typeof import('@/lib/rate-limiting/middleware') =
+    jest.requireActual('@/lib/rate-limiting/middleware');
+  return { ...actual, getPathRateLimit: jest.fn(actual.getPathRateLimit) };
+});
 
 jest.mock('@/lib/monitoring/sentry', () => ({
   captureOperationalError: jest.fn(),
@@ -143,6 +150,22 @@ describe('AUDIT-V2:F04 limiter composition and root middleware', () => {
     expect(response.headers.get('x-middleware-next')).toBe('1');
   });
 
+  it.each([
+    '/register',
+    '/forgot-password',
+    '/api/reservations',
+    '/api/admin/users',
+  ])('continues with CSP and rate headers on allowed POST %s', async path => {
+    const response = await middleware(
+      new NextRequest(`https://app.example.test${path}`, { method: 'POST' })
+    );
+    expect(rateLimiter.checkRateLimit).toHaveBeenCalledTimes(1);
+    expect(response.headers.get('X-RateLimit-Remaining')).toBe('99');
+    expect(response.headers.get('Content-Security-Policy')).toContain(
+      'script-src'
+    );
+  });
+
   it('preserves 429 and Retry-After on the public API root path', async () => {
     jest.mocked(rateLimiter.checkRateLimit).mockResolvedValue({
       ...allowed,
@@ -156,6 +179,14 @@ describe('AUDIT-V2:F04 limiter composition and root middleware', () => {
   });
 
   it('does not replace refreshed authentication cookies on protected routes', async () => {
+    // Exercise the root handoff with a protected route as well as actual path routing above.
+    const limiter = createRateLimitMiddleware({
+      type: 'api_calls',
+      keyGenerator: () => 'actor',
+    });
+    jest
+      .mocked(rateLimitMiddleware.getPathRateLimit)
+      .mockReturnValueOnce([limiter]);
     const getUser = jest.fn(async () => ({
       data: { user: { id: 'actor' } },
       error: null,
@@ -180,6 +211,8 @@ describe('AUDIT-V2:F04 limiter composition and root middleware', () => {
       })
     );
     expect(getUser).toHaveBeenCalledTimes(1);
+    expect(rateLimiter.checkRateLimit).toHaveBeenCalledTimes(1);
+    expect(response.headers.get('X-RateLimit-Remaining')).toBe('99');
     expect(response.cookies.get('sb-test-auth-token')?.value).toBe('refreshed');
     expect(response.headers.get('Content-Security-Policy')).toContain(
       'script-src'
