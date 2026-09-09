@@ -35,7 +35,7 @@ describe('AUDIT-V2:F03 stored Redis state', () => {
       UPSTASH_REDIS_REST_URL: 'https://redis.example.test',
       UPSTASH_REDIS_REST_TOKEN: 'test',
     };
-    jest.useFakeTimers().setSystemTime(now * 1000);
+    jest.spyOn(Date, 'now').mockReturnValue(now * 1000);
     values = new Map();
     count = 1;
     jest.mocked(getOrCreateRedis).mockReturnValue(redis);
@@ -53,7 +53,9 @@ describe('AUDIT-V2:F03 stored Redis state', () => {
       for (const key of keys) values.delete(key);
       return keys.length;
     });
-    jest.spyOn(redis, 'exists').mockResolvedValue(0);
+    jest
+      .spyOn(redis, 'exists')
+      .mockImplementation(async key => (values.has(key) ? 1 : 0));
     jest.spyOn(redis, 'zcount').mockResolvedValue(2);
     // Execute the SDK's real pipeline decoder against a local transport stub.
     jest
@@ -69,7 +71,6 @@ describe('AUDIT-V2:F03 stored Redis state', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
-    jest.useRealTimers();
     process.env = originalEnv;
   });
 
@@ -125,10 +126,42 @@ describe('AUDIT-V2:F03 stored Redis state', () => {
     if (next.allowed !== false) throw new Error('Expected rejection');
     expect(next.response.status).toBe(429);
     expect(next.response.headers.get('Retry-After')).toBe('300');
-    jest.setSystemTime((now + 301) * 1000);
+    jest.mocked(Date.now).mockReturnValue((now + 301) * 1000);
     count = 1;
     expect(await middleware(request)).toMatchObject({ allowed: true });
     expect(values.has('rate_limit:api_calls:actor:block')).toBe(false);
+  });
+
+  it('keeps the largest accepted escalation level readable after repeated blocks', async () => {
+    const level = Number.MAX_SAFE_INTEGER - 1;
+    values.set('rate_limit:login_attempts:actor:escalation', {
+      level,
+      lastEscalation: now,
+    });
+    count = 4;
+    const limiter = new RateLimiter();
+    expect(
+      await limiter.checkRateLimit('login_attempts', 'actor')
+    ).toMatchObject({
+      allowed: false,
+      backendAvailable: true,
+      blockLevel: level,
+    });
+    expect(
+      await limiter.checkRateLimit('login_attempts', 'actor')
+    ).toMatchObject({
+      allowed: false,
+      backendAvailable: true,
+      blockLevel: level,
+    });
+    jest.mocked(Date.now).mockReturnValue((now + 86401) * 1000);
+    expect(
+      await limiter.checkRateLimit('login_attempts', 'actor')
+    ).toMatchObject({
+      allowed: false,
+      backendAvailable: true,
+      blockLevel: level,
+    });
   });
 
   it.each([
@@ -203,4 +236,43 @@ describe('AUDIT-V2:F03 stored Redis state', () => {
       blockLevel: 0,
     });
   });
+
+  it.each(['block', 'escalation'])(
+    'rejects a stored JSON null decoded by the real SDK (%s)',
+    async suffix => {
+      const key = `rate_limit:api_calls:actor:${suffix}`;
+      values.set(key, null);
+      jest.mocked(redis.get).mockRestore();
+      const storedNull = () =>
+        new Response(
+          JSON.stringify({ result: Buffer.from('null').toString('base64') })
+        );
+      if (suffix === 'block') {
+        jest
+          .mocked(global.fetch)
+          .mockResolvedValueOnce(storedNull())
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify([0, 1, 1, 1].map(result => ({ result })))
+            )
+          );
+      } else {
+        jest
+          .mocked(global.fetch)
+          .mockResolvedValueOnce(new Response(JSON.stringify({ result: null })))
+          .mockResolvedValueOnce(
+            new Response(
+              JSON.stringify([0, 1, 101, 1].map(result => ({ result })))
+            )
+          )
+          .mockResolvedValueOnce(storedNull());
+      }
+      expect(
+        (await new RateLimiter().checkRateLimit('api_calls', 'actor'))
+          .backendAvailable
+      ).toBe(false);
+      if (suffix === 'block') expect(redis.pipeline).not.toHaveBeenCalled();
+      expect(redis.setex).not.toHaveBeenCalled();
+    }
+  );
 });

@@ -49,6 +49,22 @@ function restoreState<T>(value: unknown, schema: z.ZodType<T>): T {
   return result.data;
 }
 
+async function readState<T>(
+  redis: Redis,
+  key: string,
+  schema: z.ZodType<T>
+): Promise<T | null> {
+  const value = await redis.get<unknown>(key);
+  if (value !== null) return restoreState(value, schema);
+
+  // The SDK also decodes a stored JSON "null" to null. Only a missing key
+  // permits an empty state. A concurrent write here fails closed for this request.
+  if ((await redis.exists(key)) !== 0) {
+    throw new Error('Invalid stored rate-limit state');
+  }
+  return null;
+}
+
 // レート制限設定
 export const RATE_LIMIT_CONFIG = {
   // ログイン試行制限
@@ -179,9 +195,8 @@ export class RateLimiter {
       const windowStart = now - window;
 
       // ブロック状態チェック
-      const blockInfo = await redis.get<unknown>(blockKey);
-      if (blockInfo !== null) {
-        const blockData = restoreState(blockInfo, blockStateSchema);
+      const blockData = await readState(redis, blockKey, blockStateSchema);
+      if (blockData !== null) {
         const unblockTime = blockData.unblockTime;
 
         if (now < unblockTime) {
@@ -287,12 +302,15 @@ export class RateLimiter {
     }
 
     // 現在のエスカレーションレベル取得
-    const escalationData = await redis.get<unknown>(escalationKey);
+    const escalationData = await readState(
+      redis,
+      escalationKey,
+      escalationStateSchema
+    );
     let level = 0;
 
     if (escalationData !== null) {
-      const data = restoreState(escalationData, escalationStateSchema);
-      level = data.level + 1;
+      level = Math.min(escalationData.level + 1, Number.MAX_SAFE_INTEGER - 1);
     }
 
     // ブロック期間の決定
@@ -474,12 +492,11 @@ export class RateLimiter {
       const currentCount = await redis.zcount(key, windowStart, now);
 
       // ブロック状態チェック
-      const blockInfo = await redis.get<unknown>(blockKey);
+      const blockData = await readState(redis, blockKey, blockStateSchema);
       let isBlocked = false;
       let blockLevel: number | undefined;
 
-      if (blockInfo !== null) {
-        const blockData = restoreState(blockInfo, blockStateSchema);
+      if (blockData !== null) {
         isBlocked = now < blockData.unblockTime;
         blockLevel = blockData.level;
       }
