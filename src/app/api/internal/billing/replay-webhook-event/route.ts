@@ -76,23 +76,57 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  await writeBillingAuditLog({
-    client,
-    audit: {
-      actorType: 'internal',
-      internalActor: auth.actor.internalActor,
-      eventType: 'billing.webhook_replayed',
-      beforeState: {
-        stripe_event_id: data.stripe_event_id,
-        processing_status: data.processing_status,
-      },
-      stripeEventId: data.stripe_event_id,
-      requestId: auth.actor.requestId,
-      metadata: { force_processed: parsed.data.force_processed === true },
-    },
-  });
+  // A stopped worker must be reconciled separately. Force replay is only an
+  // opt-in for completed events, never permission to steal an active worker.
+  if (
+    !['received', 'failed', 'ignored', 'processed'].includes(
+      data.processing_status
+    )
+  ) {
+    return NextResponse.json(
+      { success: false, error: 'Webhook event is not available for replay' },
+      { status: 409 }
+    );
+  }
+
+  const { data: claimed, error: claimError } = await client
+    .from('stripe_webhook_events')
+    .update({
+      processing_status: 'processing',
+      retryable: false,
+      processing_error: null,
+      processed_at: null,
+    })
+    .eq('stripe_event_id', data.stripe_event_id)
+    .eq('processing_status', data.processing_status)
+    .select('stripe_event_id')
+    .maybeSingle();
+
+  if (claimError) throw claimError;
+  if (!claimed) {
+    return NextResponse.json(
+      { success: false, error: 'Webhook event is not available for replay' },
+      { status: 409 }
+    );
+  }
 
   try {
+    await writeBillingAuditLog({
+      client,
+      audit: {
+        actorType: 'internal',
+        internalActor: auth.actor.internalActor,
+        eventType: 'billing.webhook_replayed',
+        beforeState: {
+          stripe_event_id: data.stripe_event_id,
+          processing_status: data.processing_status,
+        },
+        stripeEventId: data.stripe_event_id,
+        requestId: auth.actor.requestId,
+        metadata: { force_processed: parsed.data.force_processed === true },
+      },
+    });
+
     const status = await processStripeEvent({
       client,
       event: data.payload,
