@@ -24,6 +24,7 @@
 | メールHTML | `src/lib/notifications/email/templates/` 9 files | 生の氏名・院名・メニュー・担当・日時・変更前後・質問回答・billing文言のHTML挿入をescapeEmailHtmlへ。subject/textは原文。全9 rendererをDOM parseしてタグ混入なしを検証 |
 | メールリンク | reminder-day-before/same-day | http/httpsだけをlink化し、hrefとlink textを出力エンコード。引用符・&を含むURL、javascript/dataを検証。plain text版URLの内容は変更なし |
 | CSV | `src/lib/csv-export.ts::escapeCsvCell/createCsv` | 既存の全cell引用符/二重引用符/CRLF/数式prefix保護を維持。文字列と数値の負値を区別する既存回帰も実行 |
+| セキュリティCSV | `src/components/admin/SecurityDashboard.tsx::handleDownloadReport` | 独立レビューで説明/解決メモの手書きCSV生成を発見。既存createCsvへ接続し、実componentのdownload Blobで埋込引用符/改行/式prefixのRED→GREENを確認。`memo",=1+1,"tail` を一つのcellに保持 |
 
 ## 受入制限
 
