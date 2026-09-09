@@ -1,7 +1,15 @@
 /** @jest-environment jsdom */
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import { NextRequest } from 'next/server';
+import { GET } from '@/app/api/revenue/route';
+import {
+  auditRevenueUrl,
+  periodRevenueSources,
+  revenuePeriodResponse,
+  revenueQueryClient,
+} from '../fixtures/audit-v2-revenue';
 import '@testing-library/jest-dom';
 import RevenuePage from '@/app/(app)/revenue/page';
 import { useManagerRevenueAnalysis } from '@/hooks/useManagerRevenueAnalysis';
@@ -16,6 +24,12 @@ jest.mock('@/hooks/useRevenue');
 jest.mock('@/hooks/useRevenueEstimateDetails');
 jest.mock('@/hooks/useUserProfile');
 jest.mock('@/hooks/useManagerRevenueAnalysis');
+jest.mock('@/lib/supabase/guards', () => ({
+  ensureClinicAccess: () =>
+    Promise.resolve({
+      supabase: revenueQueryClient(periodRevenueSources()),
+    }),
+}));
 
 const mockUseRevenue = useRevenue as jest.MockedFunction<typeof useRevenue>;
 const mockUseRevenueEstimateDetails =
@@ -318,6 +332,20 @@ const mockManagerRevenueAnalysisData: ManagerRevenueAnalysisResponse = {
 };
 
 describe('RevenuePage', () => {
+  it('renders the real period API result as 300 and 2 in the actual breakdown UI (F06)', async () => {
+    const response = await GET(new NextRequest(auditRevenueUrl));
+    expect(response.status).toBe(200);
+    const { data } = revenuePeriodResponse.parse(await response.json());
+    mockUseRevenue.mockReturnValue({ ...mockRevenueData, ...data });
+    render(<RevenuePage />);
+    const table = screen.getByRole('table', { name: '売上見込み内訳' });
+    const row = within(table).getByRole('row', { name: /自費売上/ });
+    expect(within(row).getByRole('cell', { name: '300' })).toBeInTheDocument();
+    expect(within(row).getByRole('cell', { name: '2件' })).toBeInTheDocument();
+    const contextRow = screen.getByRole('row', { name: /^自費 2 300 1 1$/ });
+    expect(contextRow).toBeInTheDocument();
+  });
+
   beforeEach(() => {
     mockUseUserProfile.mockReturnValue(mockUserProfile);
     mockUseRevenue.mockReturnValue(mockRevenueData);

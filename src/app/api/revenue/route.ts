@@ -304,7 +304,7 @@ function normalizeRevenueContextCode(
 function buildRevenueContextSummary(
   rows: RevenueContextSummaryRow[]
 ): RevenueContextSummary[] {
-  const summary: RevenueContextSummary[] = [];
+  const summary = new Map<SelectableRevenueContextCode, RevenueContextSummary>();
 
   for (const row of rows) {
     const code = normalizeRevenueContextCode(row.revenue_context_code);
@@ -312,7 +312,16 @@ function buildRevenueContextSummary(
       continue;
     }
 
-    summary.push({
+    const existing = summary.get(code);
+    if (existing) {
+      existing.totalRevenue += Number(row.total_revenue ?? 0);
+      existing.itemCount += Number(row.item_count ?? 0);
+      existing.needsReviewCount += Number(row.needs_review_count ?? 0);
+      existing.blockedCount += Number(row.blocked_count ?? 0);
+      continue;
+    }
+
+    summary.set(code, {
       code,
       name: row.revenue_context_name ?? code,
       rollupCategory: row.rollup_category ?? 'other',
@@ -323,7 +332,7 @@ function buildRevenueContextSummary(
     });
   }
 
-  return summary;
+  return Array.from(summary.values());
 }
 
 function sumContextRevenueByCode(
@@ -373,13 +382,24 @@ function buildRevenueEstimateSummary(rows: RevenueEstimateSummaryRow[]) {
 function buildRevenueBreakdownSummary(
   rows: RevenueBreakdownSummaryRow[]
 ): RevenueBreakdownSummary[] {
-  return rows
-    .filter(row => row.amount_role !== null)
-    .map(row => ({
-      amountRole: row.amount_role ?? '',
+  const summary = new Map<string, RevenueBreakdownSummary>();
+  for (const row of rows) {
+    if (row.amount_role === null) continue;
+
+    const existing = summary.get(row.amount_role);
+    if (existing) {
+      existing.lineCount += Number(row.line_count ?? 0);
+      existing.estimatedAmount += Number(row.estimated_amount ?? 0);
+      continue;
+    }
+
+    summary.set(row.amount_role, {
+      amountRole: row.amount_role,
       lineCount: Number(row.line_count ?? 0),
       estimatedAmount: Number(row.estimated_amount ?? 0),
-    }));
+    });
+  }
+  return Array.from(summary.values());
 }
 
 function sumBreakdownByRole(
