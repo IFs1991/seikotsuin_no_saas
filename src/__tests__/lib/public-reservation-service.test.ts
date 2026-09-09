@@ -434,7 +434,7 @@ describe('PublicReservationService', () => {
   });
 
   describe('findOrCreateCustomer', () => {
-    it('既存顧客が見つかった場合はそのIDを返す', async () => {
+    it('匿名webは連絡先が一致しても新規顧客を作る', async () => {
       const client = buildClient({
         customers_find: () => ({
           select: jest
@@ -450,10 +450,10 @@ describe('PublicReservationService', () => {
         '09012345678',
         'patient@example.com'
       );
-      expect(result).toEqual({ customerId: CUSTOMER_ID, created: false });
+      expect(result).toEqual({ customerId: CUSTOMER_ID, created: true });
     });
 
-    it('電話番号はnormalized_phoneで既存顧客を検索する', async () => {
+    it('匿名webはnormalized_phoneを本人確認として検索しない', async () => {
       const customerFindQuery = mockChain({
         data: { id: CUSTOMER_ID },
         error: null,
@@ -471,11 +471,8 @@ describe('PublicReservationService', () => {
         undefined
       );
 
-      expect(result).toEqual({ customerId: CUSTOMER_ID, created: false });
-      expect(customerFindQuery.eq).toHaveBeenCalledWith(
-        'normalized_phone',
-        '09012345678'
-      );
+      expect(result).toEqual({ customerId: CUSTOMER_ID, created: true });
+      expect(customerFindQuery.eq).not.toHaveBeenCalled();
     });
 
     it('LINE ID一致を電話番号一致より優先する', async () => {

@@ -1146,17 +1146,6 @@ describe('POST /api/public/reservations', () => {
 
   it('DB排他制約違反の場合は 409 を返す', async () => {
     const supabase = buildMockSupabase({
-      customers: {
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnThis(),
-          limit: jest.fn().mockReturnThis(),
-          maybeSingle: jest.fn().mockResolvedValue({
-            data: { id: VALID_CUSTOMER_ID },
-            error: null,
-          }),
-        }),
-        insert: jest.fn(),
-      },
       reservations_insert: {
         select: jest.fn().mockReturnValue({
           single: jest.fn().mockResolvedValue({
