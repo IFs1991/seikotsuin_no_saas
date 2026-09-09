@@ -304,7 +304,10 @@ function normalizeRevenueContextCode(
 function buildRevenueContextSummary(
   rows: RevenueContextSummaryRow[]
 ): RevenueContextSummary[] {
-  const summary = new Map<SelectableRevenueContextCode, RevenueContextSummary>();
+  const summary = new Map<
+    SelectableRevenueContextCode,
+    RevenueContextSummary
+  >();
 
   for (const row of rows) {
     const code = normalizeRevenueContextCode(row.revenue_context_code);
