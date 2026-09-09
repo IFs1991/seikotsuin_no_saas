@@ -141,12 +141,14 @@ export const useRevenue = (
   const isMountedRef = useRef(true);
   const hasLoadedDataRef = useRef(false);
   const inFlightFetchRef = useRef<Promise<void> | null>(null);
+  const activeRequestRef = useRef<symbol | null>(null);
   const lastClinicIdRef = useRef<string | null>(null);
   const enabled = options.enabled ?? true;
 
   const fetchData = useCallback(
     (options: FetchOptions = {}) => {
       if (!enabled) {
+        activeRequestRef.current = null;
         setLoading(false);
         setError(null);
         setData(INITIAL_DATA);
@@ -157,6 +159,8 @@ export const useRevenue = (
       }
 
       if (!clinicId) {
+        activeRequestRef.current = null;
+        inFlightFetchRef.current = null;
         setLoading(false);
         setError('clinic_idは必須です');
         setData(INITIAL_DATA);
@@ -177,6 +181,10 @@ export const useRevenue = (
       }
 
       const shouldBlockPage = !options.background || !hasLoadedDataRef.current;
+      const identity = Symbol('revenue request');
+      activeRequestRef.current = identity;
+      const isCurrentRequest = () =>
+        isMountedRef.current && activeRequestRef.current === identity;
       const request = (async () => {
         try {
           if (shouldBlockPage) {
@@ -186,7 +194,7 @@ export const useRevenue = (
 
           const res = await api.revenue.getAnalysis(clinicId);
 
-          if (!isMountedRef.current) return;
+          if (!isCurrentRequest()) return;
 
           if (res && isSuccessResponse(res)) {
             const revenueData = res.data;
@@ -254,7 +262,7 @@ export const useRevenue = (
             }
           }
         } catch {
-          if (isMountedRef.current) {
+          if (isCurrentRequest()) {
             if (shouldBlockPage || !hasLoadedDataRef.current) {
               setError('収益データの取得に失敗しました');
             }
@@ -263,14 +271,18 @@ export const useRevenue = (
             }
           }
         } finally {
-          if (isMountedRef.current && shouldBlockPage) {
-            setLoading(false);
+          if (isCurrentRequest()) {
+            if (shouldBlockPage) setLoading(false);
+            inFlightFetchRef.current = null;
+            activeRequestRef.current = null;
           }
-          inFlightFetchRef.current = null;
         }
       })();
 
-      inFlightFetchRef.current = request;
+      // A synchronously thrown transport error can finish before assignment.
+      if (activeRequestRef.current === identity) {
+        inFlightFetchRef.current = request;
+      }
       return request;
     },
     [clinicId, enabled]
@@ -281,6 +293,8 @@ export const useRevenue = (
     void fetchData();
     return () => {
       isMountedRef.current = false;
+      activeRequestRef.current = null;
+      inFlightFetchRef.current = null;
     };
   }, [fetchData]);
 
