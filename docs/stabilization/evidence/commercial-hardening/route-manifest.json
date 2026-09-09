@@ -5182,11 +5182,11 @@
         ],
         "clinicScope": [
           "@/lib/billing/business-write#ensureScopedBusinessWriteAccess",
-          "@/lib/supabase#resolveScopedClinicIds"
+          "@/lib/supabase/guards#ensureClinicAccess"
         ],
         "clinicScopeCoverage": [
           "@/lib/billing/business-write#ensureScopedBusinessWriteAccess",
-          "@/lib/supabase#resolveScopedClinicIds"
+          "@/lib/supabase/guards#ensureClinicAccess"
         ],
         "billing": [
           "@/lib/billing/business-write#ensureScopedBusinessWriteAccess"
