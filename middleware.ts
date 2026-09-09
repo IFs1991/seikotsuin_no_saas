@@ -126,17 +126,22 @@ export async function middleware(request: NextRequest) {
   const isPilotMode = process.env.NEXT_PUBLIC_PILOT_MODE === 'true';
 
   const rateLimitMiddlewares = getPathRateLimit(pathname, request.method);
+  const rateLimitHeaders = new Headers();
   if (rateLimitMiddlewares.length > 0) {
-    const rateLimitResponse = await applyRateLimits(
+    const rateLimitDecision = await applyRateLimits(
       request,
       rateLimitMiddlewares
     );
-    if (rateLimitResponse) {
-      return rateLimitResponse;
+    if (rateLimitDecision.allowed === false) {
+      return rateLimitDecision.response;
     }
+    rateLimitDecision.headers.forEach((value, name) =>
+      rateLimitHeaders.set(name, value)
+    );
   }
 
   const response = createNextResponse(request, pathname);
+  rateLimitHeaders.forEach((value, name) => response.headers.set(name, value));
 
   const nonce = CSPConfig.generateNonce();
   response.headers.set('x-nonce', nonce);
