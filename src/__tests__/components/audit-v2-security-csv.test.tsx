@@ -1,5 +1,6 @@
 /** @jest-environment jsdom */
 import React from 'react';
+import '@testing-library/jest-dom';
 import { Blob as NodeBlob } from 'node:buffer';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SecurityDashboard } from '@/components/admin/SecurityDashboard';
