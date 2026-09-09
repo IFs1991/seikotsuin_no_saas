@@ -472,9 +472,9 @@ export class PublicReservationService {
   }
 
   /**
-   * Find an existing customer by LINE user ID, normalized phone, email, or create a new one.
-   * Verified LINE profiles must not be linked to phone/email matches without
-   * extra proof, otherwise an attacker can bind their LINE account to a victim.
+   * Reuse only a verified LINE identity; otherwise create a new customer.
+   * Anonymous contact details are not proof of an existing patient's identity,
+   * including shared family contacts and matching names.
    * @throws CustomerLookupError
    * @throws CustomerCreateError
    */
@@ -493,15 +493,7 @@ export class PublicReservationService {
           lineProfile.lineUserId,
           lineProfile.credentialGenerationId
         )
-      : ((normalizedPhone
-          ? await this.findCustomerIdByColumn(
-              'normalized_phone',
-              normalizedPhone
-            )
-          : null) ??
-        (normalizedEmail
-          ? await this.findCustomerIdByColumn('email', normalizedEmail)
-          : null));
+      : null;
 
     if (existingCustomerId) {
       await this.updateCustomerLineProfile(existingCustomerId, lineProfile);
@@ -536,7 +528,7 @@ export class PublicReservationService {
   }
 
   private async findCustomerIdByColumn(
-    column: 'line_user_id' | 'normalized_phone' | 'email',
+    column: 'line_user_id',
     value: string,
     credentialGenerationId?: string
   ): Promise<string | null> {
