@@ -30,6 +30,16 @@ interface RateLimitConfig {
   ) => NextResponse;
 }
 
+export type RateLimitDecision =
+  | { allowed: true; headers: Headers }
+  | { allowed: false; response: NextResponse };
+
+type RateLimitMiddleware = (request: NextRequest) => Promise<RateLimitDecision>;
+
+function allowRequest(): RateLimitDecision {
+  return { allowed: true, headers: new Headers() };
+}
+
 function hasRateLimitBackend(): boolean {
   return Boolean(
     process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
@@ -57,19 +67,19 @@ function createUnavailableResponse(): NextResponse {
  * レート制限ミドルウェア生成関数
  */
 export function createRateLimitMiddleware(config: RateLimitConfig) {
-  return async (request: NextRequest): Promise<NextResponse | null> => {
+  return async (request: NextRequest): Promise<RateLimitDecision> => {
     try {
       if (!hasRateLimitBackend()) {
         if (process.env.NODE_ENV === 'production') {
           logger.error('Rate limiter backend is missing in production');
-          return createUnavailableResponse();
+          return { allowed: false, response: createUnavailableResponse() };
         }
-        return null;
+        return allowRequest();
       }
 
       // スキップ条件チェック
       if (config.skipIf && config.skipIf(request)) {
-        return null; // スキップ
+        return allowRequest(); // スキップ
       }
 
       const identifier = await config.keyGenerator(request);
@@ -80,7 +90,7 @@ export function createRateLimitMiddleware(config: RateLimitConfig) {
         identifier
       );
       if (isWhitelisted) {
-        return null; // ホワイトリストは制限しない
+        return allowRequest(); // ホワイトリストは制限しない
       }
 
       // レート制限チェック
@@ -95,19 +105,22 @@ export function createRateLimitMiddleware(config: RateLimitConfig) {
       if (result.backendAvailable === false) {
         logger.error('Rate limiter backend check failed');
         if (process.env.NODE_ENV === 'production') {
-          return createUnavailableResponse();
+          return { allowed: false, response: createUnavailableResponse() };
         }
-        return null;
+        return allowRequest();
       }
 
       if (!result.allowed) {
         // カスタムハンドラーがある場合は使用
         if (config.onLimitExceeded) {
-          return config.onLimitExceeded(request, result);
+          return {
+            allowed: false,
+            response: config.onLimitExceeded(request, result),
+          };
         }
 
         // デフォルトのレート制限レスポンス
-        return new NextResponse(
+        const response = new NextResponse(
           JSON.stringify({
             error: 'Rate limit exceeded',
             message: getRateLimitMessage(config.type),
@@ -125,16 +138,18 @@ export function createRateLimitMiddleware(config: RateLimitConfig) {
             },
           }
         );
+        return { allowed: false, response };
       }
 
       // レスポンスにレート制限ヘッダーを追加
-      return NextResponse.next({
-        headers: {
+      return {
+        allowed: true,
+        headers: new Headers({
           'X-RateLimit-Limit': result.limit.toString(),
           'X-RateLimit-Remaining': result.remaining.toString(),
           'X-RateLimit-Reset': result.resetTime.toString(),
-        },
-      });
+        }),
+      };
     } catch (error) {
       logger.error('レート制限ミドルウェアエラー:', error);
       await captureOperationalError(error, {
@@ -143,9 +158,9 @@ export function createRateLimitMiddleware(config: RateLimitConfig) {
         reason: 'middleware_error',
       });
       if (process.env.NODE_ENV === 'production') {
-        return createUnavailableResponse();
+        return { allowed: false, response: createUnavailableResponse() };
       }
-      return null;
+      return allowRequest();
     }
   };
 }
@@ -388,15 +403,18 @@ export const mfaRateLimit = createRateLimitMiddleware({
  */
 export async function applyRateLimits(
   request: NextRequest,
-  middlewares: Array<(request: NextRequest) => Promise<NextResponse | null>>
-): Promise<NextResponse | null> {
+  middlewares: RateLimitMiddleware[]
+): Promise<RateLimitDecision> {
+  const headers = new Headers();
   for (const middleware of middlewares) {
     const result = await middleware(request);
-    if (result) {
+    if (result.allowed === false) {
       return result; // 制限に引っかかった場合は即座に返す
     }
+    // A later limiter owns overlapping rate headers; unrelated headers survive.
+    result.headers.forEach((value, name) => headers.set(name, value));
   }
-  return null; // すべて通過
+  return { allowed: true, headers };
 }
 
 /**
@@ -405,10 +423,8 @@ export async function applyRateLimits(
 export function getPathRateLimit(
   pathname: string,
   method = 'GET'
-): Array<(request: NextRequest) => Promise<NextResponse | null>> {
-  const middlewares: Array<
-    (request: NextRequest) => Promise<NextResponse | null>
-  > = [];
+): RateLimitMiddleware[] {
+  const middlewares: RateLimitMiddleware[] = [];
 
   // 公開APIのみ共通制限を適用
   if (isPublicApiPath(pathname)) {

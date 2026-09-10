@@ -6,11 +6,64 @@ import 'server-only';
  */
 
 import { Redis } from '@upstash/redis';
+import { z } from 'zod';
 import { createLogger } from '@/lib/logger';
 import { captureOperationalError } from '@/lib/monitoring/sentry';
 import { getOrCreateRedis } from '@/lib/rate-limiting/redis-client';
 
 const log = createLogger('RateLimiter');
+
+const stateLevel = z
+  .number()
+  .int()
+  .min(0)
+  .max(Number.MAX_SAFE_INTEGER - 1);
+const stateTimestamp = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+const blockStateSchema = z
+  .object({
+    level: stateLevel,
+    blockTime: stateTimestamp,
+    unblockTime: stateTimestamp,
+  })
+  .refine(state => state.unblockTime > state.blockTime);
+const escalationStateSchema = z.object({
+  level: stateLevel,
+  lastEscalation: stateTimestamp,
+});
+
+// Upstash deserializes JSON by default. Older clients may return a string.
+// Invalid state must reach the existing backend-unavailable path, not be ignored.
+function restoreState<T>(value: unknown, schema: z.ZodType<T>): T {
+  let decoded: unknown = value;
+  if (typeof value === 'string') {
+    try {
+      decoded = JSON.parse(value);
+    } catch {
+      throw new Error('Invalid stored rate-limit state');
+    }
+  }
+  const result = schema.safeParse(decoded);
+  if (!result.success) {
+    throw new Error('Invalid stored rate-limit state');
+  }
+  return result.data;
+}
+
+async function readState<T>(
+  redis: Redis,
+  key: string,
+  schema: z.ZodType<T>
+): Promise<T | null> {
+  const value = await redis.get<unknown>(key);
+  if (value !== null) return restoreState(value, schema);
+
+  // The SDK also decodes a stored JSON "null" to null. Only a missing key
+  // permits an empty state. A concurrent write here fails closed for this request.
+  if ((await redis.exists(key)) !== 0) {
+    throw new Error('Invalid stored rate-limit state');
+  }
+  return null;
+}
 
 // レート制限設定
 export const RATE_LIMIT_CONFIG = {
@@ -142,9 +195,8 @@ export class RateLimiter {
       const windowStart = now - window;
 
       // ブロック状態チェック
-      const blockInfo = await redis.get(blockKey);
-      if (blockInfo) {
-        const blockData = JSON.parse(blockInfo as string);
+      const blockData = await readState(redis, blockKey, blockStateSchema);
+      if (blockData !== null) {
         const unblockTime = blockData.unblockTime;
 
         if (now < unblockTime) {
@@ -250,12 +302,15 @@ export class RateLimiter {
     }
 
     // 現在のエスカレーションレベル取得
-    const escalationData = await redis.get(escalationKey);
+    const escalationData = await readState(
+      redis,
+      escalationKey,
+      escalationStateSchema
+    );
     let level = 0;
 
-    if (escalationData) {
-      const data = JSON.parse(escalationData as string);
-      level = data.level + 1;
+    if (escalationData !== null) {
+      level = Math.min(escalationData.level + 1, Number.MAX_SAFE_INTEGER - 1);
     }
 
     // ブロック期間の決定
@@ -437,12 +492,11 @@ export class RateLimiter {
       const currentCount = await redis.zcount(key, windowStart, now);
 
       // ブロック状態チェック
-      const blockInfo = await redis.get(blockKey);
+      const blockData = await readState(redis, blockKey, blockStateSchema);
       let isBlocked = false;
       let blockLevel: number | undefined;
 
-      if (blockInfo) {
-        const blockData = JSON.parse(blockInfo as string);
+      if (blockData !== null) {
         isBlocked = now < blockData.unblockTime;
         blockLevel = blockData.level;
       }

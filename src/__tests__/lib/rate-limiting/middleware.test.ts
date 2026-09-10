@@ -199,8 +199,10 @@ describe('getPathRateLimit', () => {
       'mobile_uiux_read',
       'ip:203.0.113.10'
     );
-    expect(response?.status).toBe(429);
-    expect(response?.headers.get('Retry-After')).toBe('42');
+    expect(response.allowed).toBe(false);
+    if (response.allowed) throw new Error('Expected rate-limit rejection');
+    expect(response.response.status).toBe(429);
+    expect(response.response.headers.get('Retry-After')).toBe('42');
   });
 
   it('returns 429 with Retry-After when mobile UIUX write limit is exceeded', async () => {
@@ -232,8 +234,10 @@ describe('getPathRateLimit', () => {
       'mobile_uiux_write',
       'ip:203.0.113.20'
     );
-    expect(response?.status).toBe(429);
-    expect(response?.headers.get('Retry-After')).toBe('30');
+    expect(response.allowed).toBe(false);
+    if (response.allowed) throw new Error('Expected rate-limit rejection');
+    expect(response.response.status).toBe(429);
+    expect(response.response.headers.get('Retry-After')).toBe('30');
   });
 
   it('uses user and clinic identifiers for admin security rate-limit keys when available', async () => {
@@ -271,7 +275,9 @@ describe('getPathRateLimit', () => {
         limit: 30,
       }
     );
-    expect(response?.headers.get('X-RateLimit-Remaining')).toBe('29');
+    expect(response.allowed).toBe(true);
+    if (!response.allowed) throw new Error('Expected rate-limit allowance');
+    expect(response.headers.get('X-RateLimit-Remaining')).toBe('29');
   });
 
   it('fails closed in production when the rate limit backend is missing', async () => {
@@ -285,7 +291,9 @@ describe('getPathRateLimit', () => {
       })
     );
 
-    expect(response?.status).toBe(503);
+    expect(response.allowed).toBe(false);
+    if (response.allowed) throw new Error('Expected backend rejection');
+    expect(response.response.status).toBe(503);
   });
 
   it('fails closed in production when Redis is configured but unavailable', async () => {
@@ -308,6 +316,8 @@ describe('getPathRateLimit', () => {
       })
     );
 
-    expect(response?.status).toBe(503);
+    expect(response.allowed).toBe(false);
+    if (response.allowed) throw new Error('Expected backend rejection');
+    expect(response.response.status).toBe(503);
   });
 });

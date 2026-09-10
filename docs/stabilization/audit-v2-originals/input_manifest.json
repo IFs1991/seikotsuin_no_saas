@@ -1,0 +1,22 @@
+{
+  "purpose": "Input identity only. Not application verification or release approval.",
+  "created_date_jst": "2026-09-06",
+  "repository": "IFs1991/seikotsuin_no_saas",
+  "audit_baseline_sha": "4f7794402400790afffb0c41db5538c9f97884a3",
+  "inputs": [
+    {
+      "file": "tiramisu_os_technical_audit_2026-09-06_v2.md",
+      "document_id": "TIRAMISU-OS-AUDIT-V2-4f77944",
+      "sha256": "50e24ab5790851f6b3ddbc92e43b5e1553d51f56aaf46a3ddfe462d494801cfe",
+      "bytes": 85948,
+      "lines": 905
+    },
+    {
+      "file": "remediation_backlog.md",
+      "document_id": "TIRAMISU-OS-BACKLOG-V2-4f77944",
+      "sha256": "fb7146befa1f21da72a305774d718388a7717f3cbf944a0a5c51e55c17dacd4d",
+      "bytes": 28770,
+      "lines": 439
+    }
+  ]
+}
