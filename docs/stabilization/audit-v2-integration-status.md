@@ -37,3 +37,18 @@
 U01の最終checks確認後にmerge。続いてU02の期間収益集約を統合し、main既存の全ページ取得、未算出表示、前年実額を保持する。後続U03〜U06・VERIFYの独立修正を単位別に統合する。
 
 環境待ち（ENV-01〜05）、通知の永続的な欠落復旧保証、古い編集画面のexpected version契約、LINEチャット提供範囲、課金イベント順序/停止復旧、価格snapshot等の仕様判断はコード統合やCI成功と分離して記録する。全監査完了・本番受入済み・100院容量合格とは判定しない。
+
+### PR-U03 / AUDIT-V2:F09 (R2)
+
+- 依存base: U02最終head `7e8a8693ceb79cd0cacc3d4ea8285cfd04a8117f`。コード検証対象: `6a33d69800ef84a37af16cf1a5c3c00349c64f00`。
+- 実hook `src/hooks/useRevenue.ts` の要求identityで成功/失敗/finallyのdata・error・loading・inFlight更新を保護する。disable/unmountでも失効し、古いfinallyが新要求の重複抑止を消さない。mainの前年実額・未算出処理を保持した。
+- 実hookのdeferred PromiseでA→B、A→B→A、同一院background、古い成功/失敗、B待機中、disable/logout、unmount、StrictMode、同期throwを16件追加。
+- 最終コードで `npm run test -- --ci --runTestsByPath src/__tests__/hooks/audit-v2-revenue-requests.test.tsx src/__tests__/api/audit-v2-revenue-period.test.ts src/__tests__/api/revenue-api.test.ts src/__tests__/pages/revenue.test.tsx src/__tests__/hooks/useRevenue.test.tsx`: 5 suites / 71 tests PASS、0 skipped、56.735秒。
+- 独立レビューでmainの必須field `lastYearRevenue` がfixtureから欠ける指摘を修正。tsconfigのアプリ対象にaudit-v2新規test/fixture 5ファイルを明示追加したTypeScript programで診断0。通常tsconfigのtest除外を成功証拠に使わない。
+- API/DB/依存/デザイン変更なし。DOD-10/11、要求順序とUI契約の回帰。rollbackは当該PRの通常revert。実環境の認証後全導線はENV-02に残る。
+
+### リモート結果
+
+- U01 [PR #123](https://github.com/IFs1991/seikotsuin_no_saas/pull/123): 最終head `535ff20ee9ba41e6354310d50e7b33b9d976ce9c` の [CI 34427863933](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34427863933) 8ゲートSUCCESS、独立レビュー2件確認後にmerge。merge commit `d39cd0b4c02f1135e8d68e4868375ebf1506eea3`、2026-09-10T02:15:58Z。
+- U02 [PR #124](https://github.com/IFs1991/seikotsuin_no_saas/pull/124): head `7e8a8693ceb79cd0cacc3d4ea8285cfd04a8117f`。レビューで指摘されたmanifestのPOST revenue行位置を既存generatorで更新、`commercial:inventory:routes` / `commercial:inventory:routes:check` exit 0。CI実行中。
+- 次の最小作業はU02の最終CI確認とmerge、続いてU03以降を単位別にPR/検証/mergeすること。上の着手時の次作業は履歴として保持する。
