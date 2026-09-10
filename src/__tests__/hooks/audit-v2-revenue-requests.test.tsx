@@ -40,6 +40,7 @@ function success(amount: number): Response {
       menuRanking: [],
       hourlyRevenue: [],
       revenueForecast: 0,
+      lastYearRevenue: null,
       growthRate: '0%',
       revenueTrends: [],
       costAnalysis: '',
