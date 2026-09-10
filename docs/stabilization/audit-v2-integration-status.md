@@ -88,3 +88,17 @@ U01の最終checks確認後にmerge。続いてU02の期間収益集約を統合
 - U03 [PR #125](https://github.com/IFs1991/seikotsuin_no_saas/pull/125) はhead `8c3dc35eac3c1a52d6cf5fcd42cdccf555a2156b`の[CI 34430139033](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430139033)を実行中。U03 runtimeは型修正後6a33d698と同じで、以後は文書と依存生成物のみ。
 
 head `7e8a8693` の [CI 34428819592](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34428819592) はQuality Checksの `commercial:inventory:source:check` でFAIL。収益routeの6箇所の参照行位置だけを既存generatorで更新し、write/check成功、head `c6084ff7dcd42cb5ab4b9270c54e016a26727b92`へpushした。修正後 [CI 34429309219](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34429309219) は記録時点でQuality/Build/Types/DB/Fixture/Full Jest/Security成功、App E2E待ち。ゲートの削除や除外追加はしていない。この生成物修正をU03/U04以降にも通常mergeした。
+
+### VERIFY-05 / AUDIT-V2:V05
+
+- 依存base: U06 `adc1b75df58f93cb99e02eb0d2b7ad37083a08a6`。コード対象: `42bee5cff1d7885740c213ab4659b183537ee065`。Next 15.5.21→15.5.24、@next/envとSWC8種を揃え、root pinのみ更新。新規依存/無関係な更新なし。
+- 2026-09-10に公式 [画像最適化AVIF勧告](https://github.com/vercel/next.js/security/advisories/GHSA-2xp9-vwfh-vxw4) と [Windows勧告](https://github.com/vercel/next.js/security/advisories/GHSA-p293-qw3h-jr36) を再確認し、修正版15.5.24と一致。画像形式の設定を攻撃入力の到達証明とせず、本番OS/実到達性/全依存脆弱性ゼロを主張しない。
+- `npm ci --ignore-scripts --no-audit --no-fund`: exit 0、1038 packages。インストール後runtime version 15.5.24、追跡差分なし。独立read-onlyレビュー2件でNext関連のみの更新・全OSのSWC整合に指摘なし。
+- `npm run test -- --ci --runTestsByPath` にaudit-v2新規10 test filesと既存 `api/revenue-api.test.ts`、`auth/middleware-auth.test.ts`、`lib/public-reservation-service.test.ts`、`api/public-reservations-route.test.ts`、`api/daily-reports-api.test.ts`（`src/__tests__/`基準）を指定: 15 suites / 233 tests PASS、0 skipped、142.771秒。
+- build・production CSP・App E2Eを含む最終headの8CIゲートは該当PRで確認する。実exploit、実DB/通知/設定変更は実施せず。DoD: DOD-10/11、既存認証/患者/日報回帰。rollbackは通常revertだが、脆弱版へ戻す場合は影響判断が必要。
+
+### リモート続行結果
+
+- U03 [PR #125](https://github.com/IFs1991/seikotsuin_no_saas/pull/125): head `8c3dc35eac3c1a52d6cf5fcd42cdccf555a2156b`、CI 34430139033全8ゲート成功後にmerge。merge commit `8841c25cf7c8251d631cd1ace73f6825ed5e16e1`、2026-09-10T02:48:00Z。
+- U04 [PR #126](https://github.com/IFs1991/seikotsuin_no_saas/pull/126): head `44e2dc54b2b147acebe1e15d8ca2f3833007a80e`、[CI 34430872045](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430872045)実行中。
+- U06の`commercial:inventory:routes:check`、`commercial:inventory:source:check`、`security:verify-mutating-routes`はexit 0。132 mutating / 9 side-effecting GET handlersを既存policyで分類。
