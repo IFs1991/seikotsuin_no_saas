@@ -24,6 +24,16 @@
 
 ## 残件と次の最小作業
 
+### PR-U02 / AUDIT-V2:F06 (R1)
+
+- 依存base: PR-U01最終head `535ff20ee9ba41e6354310d50e7b33b9d976ce9c`。コード検証対象: `f13fddc1b2c23fa8306c77e463c0fd5cd82d52f1`。
+- `src/app/api/revenue/route.ts` のrole/code別集約を期間内で合算し、1区分1行にする。main既存の全ページ取得、後続ページ障害時の拒否、未算出値、前年実額を保持した。
+- `audit-v2-revenue-period.test.ts` / 共有fixtureは実際のorder/range呼出しに対応。100+200=300/件数2をAPIと実UIで確認し、1001日の2ページ、context/breakdown第2ページ障害、0/調整/空集合/院・期間条件/認可エラーも検証した。
+- `npm run test -- --ci --runTestsByPath src/__tests__/api/audit-v2-revenue-period.test.ts src/__tests__/api/revenue-api.test.ts src/__tests__/pages/revenue.test.tsx src/__tests__/hooks/useRevenue.test.tsx`: 4 suites / 55 tests PASS、0 skipped、46.669秒。これはQuery境界の回帰であり実DB/RLS/負荷試験ではない。
+- 元のRED実装証跡は元branchの `94abc031` に先立つ実行記録を参照。統合時は修正済み実装を戻してREDを作らず、mainのページ取得に適合する回帰を追加した。
+- 独立レビューは同じbase→コードSHAで要求適合・失敗条件を確認する。最終CI・merge結果は該当PRの固定head/checksで閉じる。
+- DB/migration/依存/デザイン変更なし。API readの認可を維持。rollbackは当該PRの通常revert。DoD: DOD-10/11、既存のF05/F08契約と実UI回帰。ENV-04容量受入は未実施。
+
 U01の最終checks確認後にmerge。続いてU02の期間収益集約を統合し、main既存の全ページ取得、未算出表示、前年実額を保持する。後続U03〜U06・VERIFYの独立修正を単位別に統合する。
 
 環境待ち（ENV-01〜05）、通知の永続的な欠落復旧保証、古い編集画面のexpected version契約、LINEチャット提供範囲、課金イベント順序/停止復旧、価格snapshot等の仕様判断はコード統合やCI成功と分離して記録する。全監査完了・本番受入済み・100院容量合格とは判定しない。
