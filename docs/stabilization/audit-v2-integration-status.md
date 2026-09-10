@@ -102,3 +102,12 @@ head `7e8a8693` の [CI 34428819592](https://github.com/IFs1991/seikotsuin_no_sa
 - U03 [PR #125](https://github.com/IFs1991/seikotsuin_no_saas/pull/125): head `8c3dc35eac3c1a52d6cf5fcd42cdccf555a2156b`、CI 34430139033全8ゲート成功後にmerge。merge commit `8841c25cf7c8251d631cd1ace73f6825ed5e16e1`、2026-09-10T02:48:00Z。
 - U04 [PR #126](https://github.com/IFs1991/seikotsuin_no_saas/pull/126): head `44e2dc54b2b147acebe1e15d8ca2f3833007a80e`、[CI 34430872045](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430872045)実行中。
 - U06の`commercial:inventory:routes:check`、`commercial:inventory:source:check`、`security:verify-mutating-routes`はexit 0。132 mutating / 9 side-effecting GET handlersを既存policyで分類。
+
+### VERIFY-02 / AUDIT-V2:F18
+
+- 依存base: VERIFY-05 `51cc326ede77067a454c902d91cc7833c2a61873`。コード対象: `56495cee894e4a9ea7d284d361fa834b0f9220c9`。
+- internal replayはevent IDと読取statusのCASでprocessingを獲得した経路だけがaudit/process/markへ進む。processingはforceでも409、claim競合/DB障害時は処理しない。mainのinternal secretとbilling境界を維持する。
+- `npm run test -- --ci --runTestsByPath src/__tests__/api/audit-v2-billing-replay.test.ts src/__tests__/api/billing-internal-routes.test.ts src/__tests__/lib/billing-internal-auth.test.ts src/__tests__/lib/billing-stripe-webhook-claim.test.ts src/__tests__/lib/billing-stripe-mapper.test.ts src/__tests__/lib/billing-config.test.ts`: 6 suites / 41 tests PASS、0 skipped、38.244秒。合成環境のBILLING_ENABLED_PLANS=''で実行した。
+- billing-config fixtureは未設定テストから親環境3キーを除き、明示空値の別回帰を追加。製品の空値→[]契約は変えない。初期実装branchの全体Jestで失敗した環境依存を修正したもので、旧全体実行をPASSへ読み替えない。
+- 独立read-onlyレビュー2件に新規指摘なし。source inventoryは追加claimの参照1件だけを既存generatorで更新。route inventoryに差分なし。
+- F18はPARTIAL。同一eventのprocessing保護であり、停止workerの復旧、異なるevent/resyncの順序、terminal応答喪失時の所有者fencingは未保証。実Stripe/DB操作、schema/RPC/lease変更なし。DoD: DOD-10/11、課金internal認可と競合回帰。rollbackは当該PRの通常revert。

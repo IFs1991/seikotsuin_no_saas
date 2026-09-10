@@ -6,15 +6,20 @@ const ORIGINAL_ENV = process.env;
 
 async function loadBillingConfig(overrides: NodeJS.ProcessEnv = {}) {
   jest.resetModules();
-  process.env = {
+  const testEnv: NodeJS.ProcessEnv = {
     ...ORIGINAL_ENV,
     NODE_ENV: 'test',
     NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54321',
     NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test-anon-key',
     SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
     NEXT_PUBLIC_APP_URL: 'http://127.0.0.1:3000',
-    ...overrides,
   };
+  // Test defaults independently of the shell/.env, including an explicitly
+  // empty plan list. Individual tests still control all intentional overrides.
+  delete testEnv.ENABLE_BILLING;
+  delete testEnv.NEXT_PUBLIC_ENABLE_BILLING;
+  delete testEnv.BILLING_ENABLED_PLANS;
+  process.env = { ...testEnv, ...overrides };
 
   return await import('@/lib/billing/config');
 }
@@ -39,6 +44,11 @@ describe('billing config', () => {
     });
 
     expect(config.getEnabledBillingPlans()).toEqual(['group', 'single_clinic']);
+  });
+
+  test('keeps an explicitly empty plan list empty', async () => {
+    const config = await loadBillingConfig({ BILLING_ENABLED_PLANS: '' });
+    expect(config.getEnabledBillingPlans()).toEqual([]);
   });
 
   test('rejects unsupported plan codes', async () => {
