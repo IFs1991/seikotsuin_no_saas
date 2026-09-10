@@ -61,3 +61,16 @@ U01の最終checks確認後にmerge。続いてU02の期間収益集約を統合
 - U01 [PR #123](https://github.com/IFs1991/seikotsuin_no_saas/pull/123): 最終head `535ff20ee9ba41e6354310d50e7b33b9d976ce9c` の [CI 34427863933](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34427863933) 8ゲートSUCCESS、独立レビュー2件確認後にmerge。merge commit `d39cd0b4c02f1135e8d68e4868375ebf1506eea3`、2026-09-10T02:15:58Z。
 - U02 [PR #124](https://github.com/IFs1991/seikotsuin_no_saas/pull/124): head `7e8a8693ceb79cd0cacc3d4ea8285cfd04a8117f`。レビューで指摘されたmanifestのPOST revenue行位置を既存generatorで更新、`commercial:inventory:routes` / `commercial:inventory:routes:check` exit 0。CI実行中。
 - 次の最小作業はU02の最終CI確認とmerge、続いてU03以降を単位別にPR/検証/mergeすること。上の着手時の次作業は履歴として保持する。
+
+### PR-U05 / AUDIT-V2:F11,F20
+
+- 依存base: U04 `44e2dc54b2b147acebe1e15d8ca2f3833007a80e`。コード対象: `69902a1405ecf9fbb6a2ab559b641bb7111af7f3`。
+- `PublicReservationService.findOrCreateCustomer`で匿名contactから既存患者を再利用せず、新規患者とする。main既存のLINE本人確認・同clinic/active/credential世代の検索およびPATCH条件を維持した。氏名一致を本人確認として追加しない。
+- 旧実装時のglobal LINE unique前提はmainでは変更済み。`20260813012718_line_integration_security_foundation.sql`のclinic+LINE unique（削除済み/旧世代を含む）にfixtureを合わせ、他院で同じLINE IDは新規作成、同院の削除済み/旧世代/未確認legacyは再利用不可、空世代は照会前拒否を検証した。
+- `npm run test -- --ci --runTestsByPath src/__tests__/lib/audit-v2-public-customer.test.ts src/__tests__/lib/public-reservation-service.test.ts src/__tests__/api/public-reservations-route.test.ts src/__tests__/api/public-my-reservations-route.test.ts src/__tests__/lib/line-id-token.test.ts`: 5 suites / 78 tests PASS、0 skipped、24.106秒。既存LINE連絡先攻撃の回帰を維持。SDKのquery serializationを実行し、外部fetchはfixtureへ閉じている。
+- source inventoryを既存generatorで再生成・check成功。DB/schema/RLS/本人確認フロー/既存補償処理は変更なし。mainのLINE DB制約はCIの`20260813012718_line_integration_security_foundation_test.sql`等の対象。
+- F20の実DB並行参照と補償の通し試験は未実施。mockでDBの参照保護やRLS完了とは判定しない。実環境受入・専用対象はENV-01に分離。DoD: DOD-10/11、患者・public/clinic境界の回帰。rollbackは当該PRの通常revert。
+
+### U02 CI修正の記録
+
+head `7e8a8693` の [CI 34428819592](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34428819592) はQuality Checksの `commercial:inventory:source:check` でFAIL。収益routeの6箇所の参照行位置だけを既存generatorで更新し、write/check成功、head `c6084ff7dcd42cb5ab4b9270c54e016a26727b92`へpushした。修正後 [CI 34429309219](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34429309219) は記録時点でQuality/Build/Types/DB/Fixture/Full Jest/Security成功、App E2E待ち。ゲートの削除や除外追加はしていない。この生成物修正をU03/U04以降にも通常mergeした。
