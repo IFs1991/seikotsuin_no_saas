@@ -73,4 +73,18 @@ U01の最終checks確認後にmerge。続いてU02の期間収益集約を統合
 
 ### U02 CI修正の記録
 
+### PR-U06 / AUDIT-V2:F15
+
+- 依存base: U05 `dc2c450d6e4045acdd17c7ebdbff736f11c6663b`。コード・生成物対象: `91e7dfd5cb2ef4ae384267cd8e7962d4de015509`。
+- `DELETE /api/daily-reports`はscope先頭を課金/削除院とせず、scope内lookupで得た実日報clinicに再認可し、その最新permissions/clientでbillingと`id + clinic_id`付きDELETEを行う。admin/clinic_adminのみ、managerへ権限を増やさない。
+- scope順不変、対象Bのbilling lock、権限剥奪、他院/不存在、manager拒否、DB lookup障害のpositive/negativeを追加。`npm run test -- --ci --runTestsByPath src/__tests__/api/audit-v2-daily-report-delete.test.ts src/__tests__/api/daily-reports-manager-authorization.test.ts src/__tests__/api/daily-reports-api.test.ts src/__tests__/lib/billing-business-write.test.ts`: 4 suites / 35 tests PASS、0 skipped、13.977秒。
+- アプリ＋audit-v2新規test/fixture 11ファイルのTypeScript診断0（U05追加fixtureも対象）。独立レビュー2件でmainのfresh subject/DB権限再読取、billing、最終述語、manager拒否を確認し追加指摘なし。
+- 生成manifest競合は現在コードから既存generatorで再生成して解消し、mainのrouteを保持。source inventoryも再生成。DB/RLS/migration変更なし。実DBでの削除直前並行変更・実環境受入は未検証としてENV-01へ残す。
+- DoD: DOD-10/11、DOD-08/09の実clinicとロール境界。rollbackは当該PRの通常revert。
+
+### 続行状況（2026-09-10）
+
+- U02 [PR #124](https://github.com/IFs1991/seikotsuin_no_saas/pull/124) はhead `c6084ff7dcd42cb5ab4b9270c54e016a26727b92`のCI 34429309219全8ゲート成功後にmerge。merge commit `237e73fd04ca05b373986cadac2363d466bfe46b`、2026-09-10T02:36:21Z。
+- U03 [PR #125](https://github.com/IFs1991/seikotsuin_no_saas/pull/125) はhead `8c3dc35eac3c1a52d6cf5fcd42cdccf555a2156b`の[CI 34430139033](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430139033)を実行中。U03 runtimeは型修正後6a33d698と同じで、以後は文書と依存生成物のみ。
+
 head `7e8a8693` の [CI 34428819592](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34428819592) はQuality Checksの `commercial:inventory:source:check` でFAIL。収益routeの6箇所の参照行位置だけを既存generatorで更新し、write/check成功、head `c6084ff7dcd42cb5ab4b9270c54e016a26727b92`へpushした。修正後 [CI 34429309219](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34429309219) は記録時点でQuality/Build/Types/DB/Fixture/Full Jest/Security成功、App E2E待ち。ゲートの削除や除外追加はしていない。この生成物修正をU03/U04以降にも通常mergeした。
