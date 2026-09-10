@@ -1,0 +1,3146 @@
+{
+  "schemaVersion": 1,
+  "recordedOn": "2026-09-10",
+  "repo": "IFs1991/seikotsuin_no_saas",
+  "startSha": "2f1434e0ffa410e97672ea8956e65231843ff250",
+  "preservedOriginalHead": "f0587f37c6754ba518f25d09ff18f77e04753f42",
+  "integrationStartMain": "4f7794402400790afffb0c41db5538c9f97884a3",
+  "finalApplicationCodeSha": "74b54a6a3748c908ec891c1a027b6943b9dc76d1",
+  "finalCodePrHead": "a7320ecd0f0b2b152be976356bc80df10bc00148",
+  "finalCodeMergeSha": "e9e3b10e4aff5800bd06b1c813c6bbe4dc2b3538",
+  "localEnvironment": {
+    "os": "Windows",
+    "shell": "PowerShell",
+    "node": "24",
+    "npm": true,
+    "workingDirectory": "C:/Users/seekf/Desktop/seikotsuin_management_saas/auditv2pr",
+    "syntheticTestEnvironment": true,
+    "externalFetchFixtures": true,
+    "productionEnvironmentCopied": false
+  },
+  "finalLocalTypeCheck": {
+    "sourceSha": "74b54a6a3748c908ec891c1a027b6943b9dc76d1",
+    "auditTestAndFixtureFiles": 13,
+    "diagnostics": 0,
+    "command": "@'\nconst ts = require('typescript');\nconst fs = require('node:fs');\nconst path = require('node:path');\nconst root = process.cwd();\nconst config = ts.readConfigFile(path.join(root, 'tsconfig.json'), ts.sys.readFile);\nif (config.error) throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, '\\n'));\nconst parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root);\nconst files = [];\nfunction collect(dir) {\n  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {\n    const filename = path.join(dir, entry.name);\n    if (entry.isDirectory()) collect(filename);\n    else if (/^audit-v2.*\\.(ts|tsx)$/.test(entry.name)) files.push(filename);\n  }\n}\ncollect(path.join(root, 'src', '__tests__'));\nconst program = ts.createProgram([...new Set([...parsed.fileNames, ...files])], { ...parsed.options, noEmit: true, incremental: false });\nconst diagnostics = ts.getPreEmitDiagnostics(program);\nfor (const item of diagnostics) {\n  const location = item.file && item.start !== undefined ? item.file.getLineAndCharacterOfPosition(item.start) : null;\n  console.log((item.file ? path.relative(root, item.file.fileName) : '') + (location ? ':' + (location.line + 1) : '') + ' TS' + item.code + ' ' + ts.flattenDiagnosticMessageText(item.messageText, '\\n'));\n}\nconsole.log('App plus audit-v2 test/fixture files:', files.length, 'diagnostics:', diagnostics.length);\nprocess.exitCode = diagnostics.length ? 1 : 0;\n'@ | node\n"
+  },
+  "finalLocalInventoryChecks": {
+    "sourceSha": "74b54a6a3748c908ec891c1a027b6943b9dc76d1",
+    "commands": [
+      "npm run commercial:inventory:source:check",
+      "npm run commercial:inventory:routes:check",
+      "npm run security:verify-mutating-routes",
+      "git diff --check"
+    ],
+    "exitCode": 0,
+    "mutatingHandlers": 132,
+    "sideEffectingGetHandlers": 9
+  },
+  "units": [
+    {
+      "unit": "U01",
+      "branch": "codex/audit-v2-pr-u01-main",
+      "head": "535ff20ee9ba41e6354310d50e7b33b9d976ce9c",
+      "pr": 123,
+      "run": 34427863933,
+      "merge": "d39cd0b4c02f1135e8d68e4868375ebf1506eea3",
+      "mergedAt": "2026-09-10T02:15:58Z",
+      "local": {
+        "suites": 6,
+        "passed": 114,
+        "skipped": 0,
+        "seconds": 27.742,
+        "command": "npm run test -- --ci --runTestsByPath src/__tests__/lib/rate-limiting/audit-v2-state.test.ts src/__tests__/lib/rate-limiting/audit-v2-composition.test.ts src/__tests__/lib/rate-limiting/middleware.test.ts src/__tests__/auth/middleware-auth.test.ts src/__tests__/middleware.test.ts src/__tests__/public-app-boundary/middleware-boundary.test.ts",
+        "failed": 0
+      },
+      "ci": {
+        "suites": 450,
+        "passed": 3842,
+        "skipped": 2,
+        "csp": 1,
+        "appE2E": 11,
+        "security": 463
+      },
+      "codeSha": "c9914b41e5fd040fe80c36dfe9a97d9943f144a8",
+      "review": {
+        "independent": true,
+        "reviewers": [
+          "u01_requirements_review",
+          "u01_failure_review"
+        ],
+        "codeSha": "c9914b41e5fd040fe80c36dfe9a97d9943f144a8",
+        "remainingActionableFindings": 0,
+        "executionByReviewers": false
+      },
+      "ciRunReceipt": {
+        "run": 34427863933,
+        "headSha": "535ff20ee9ba41e6354310d50e7b33b9d976ce9c",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34427863933",
+        "jobs": [
+          {
+            "id": 102716828037,
+            "name": "Quality Checks",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:02:33Z",
+            "completedAt": "2026-09-10T02:04:31Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34427863933/job/102716828037",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Lint",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "Type check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 7,
+                "name": "Commercial boundary type check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Commercial boundary lint",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Offline release tooling tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "Verify mutating route policy",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Verify mutating route manifest drift",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Verify commercial source inventory drift",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Mobile UIUX production asset drift check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Secret scan",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102717226841,
+            "name": "Build",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:04:33Z",
+            "completedAt": "2026-09-10T02:07:09Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34427863933/job/102717226841",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Next.js build",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "CSP検証用のChromiumを準備",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 7,
+                "name": "本番ビルドのCSPと画面遷移を検証",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102717226842,
+            "name": "Database Contract",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:04:34Z",
+            "completedAt": "2026-09-10T02:08:45Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34427863933/job/102717226842",
+            "steps": [
+              {
+                "number": 7,
+                "name": "Verify pinned Supabase CLI",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Verify applied migration history is immutable",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Start local Supabase",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "Replay all migrations and seed from zero",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Run database contract tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Verify deferred PR-11 production migration path",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Verify atomic staff invite concurrency",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Verify GoTrue claims and stale JWT revocation on disposable local database",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 15,
+                "name": "Verify generated Supabase types are current",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102717226873,
+            "name": "Security Tests",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:04:33Z",
+            "completedAt": "2026-09-10T02:09:35Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34427863933/job/102717226873",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Run security tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "Security test summary",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102717226894,
+            "name": "Fixture Preflight (Static)",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:04:33Z",
+            "completedAt": "2026-09-10T02:05:05Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34427863933/job/102717226894",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Validate E2E fixtures (static only)",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102717226898,
+            "name": "Supabase Types Contract",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:04:33Z",
+            "completedAt": "2026-09-10T02:04:44Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34427863933/job/102717226898",
+            "steps": [
+              {
+                "number": 3,
+                "name": "Validate supabase.ts header",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102717226964,
+            "name": "Full Jest Regression",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:04:33Z",
+            "completedAt": "2026-09-10T02:09:41Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34427863933/job/102717226964",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Run full non-E2E regression suite",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102718065874,
+            "name": "App E2E (Local Supabase + Chromium)",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:08:47Z",
+            "completedAt": "2026-09-10T02:12:57Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34427863933/job/102718065874",
+            "steps": [
+              {
+                "number": 7,
+                "name": "Verify pinned Supabase CLI",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Start local Supabase",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Export local test environment",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "ローカルE2E用のPostgREST集計を有効化",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Validate database fixtures",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Install Chromium",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Run application smoke flows",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Upload Playwright report",
+                "conclusion": "skipped",
+                "status": "completed"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "unit": "U02",
+      "branch": "codex/audit-v2-pr-u02-main",
+      "head": "c6084ff7dcd42cb5ab4b9270c54e016a26727b92",
+      "pr": 124,
+      "run": 34429309219,
+      "merge": "237e73fd04ca05b373986cadac2363d466bfe46b",
+      "mergedAt": "2026-09-10T02:36:21Z",
+      "local": {
+        "suites": 4,
+        "passed": 55,
+        "skipped": 0,
+        "seconds": 46.669,
+        "command": "npm run test -- --ci --runTestsByPath src/__tests__/api/audit-v2-revenue-period.test.ts src/__tests__/api/revenue-api.test.ts src/__tests__/pages/revenue.test.tsx src/__tests__/hooks/useRevenue.test.tsx",
+        "failed": 0
+      },
+      "ci": {
+        "suites": 451,
+        "passed": 3853,
+        "skipped": 2,
+        "csp": 1,
+        "appE2E": 11,
+        "security": 463
+      },
+      "failedRun": 34428819592,
+      "codeSha": "f13fddc1b2c23fa8306c77e463c0fd5cd82d52f1",
+      "review": {
+        "independent": true,
+        "reviewers": [
+          "u01_requirements_review",
+          "u01_failure_review"
+        ],
+        "codeSha": "f13fddc1b2c23fa8306c77e463c0fd5cd82d52f1",
+        "remainingActionableFindings": 0,
+        "executionByReviewers": false
+      },
+      "ciRunReceipt": {
+        "run": 34429309219,
+        "headSha": "c6084ff7dcd42cb5ab4b9270c54e016a26727b92",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34429309219",
+        "jobs": [
+          {
+            "id": 102721203296,
+            "name": "Quality Checks",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:24:19Z",
+            "completedAt": "2026-09-10T02:26:28Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34429309219/job/102721203296",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Lint",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "Type check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 7,
+                "name": "Commercial boundary type check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Commercial boundary lint",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Offline release tooling tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "Verify mutating route policy",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Verify mutating route manifest drift",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Verify commercial source inventory drift",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Mobile UIUX production asset drift check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Secret scan",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102721644552,
+            "name": "Supabase Types Contract",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:26:31Z",
+            "completedAt": "2026-09-10T02:26:38Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34429309219/job/102721644552",
+            "steps": [
+              {
+                "number": 3,
+                "name": "Validate supabase.ts header",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102721644571,
+            "name": "Build",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:26:31Z",
+            "completedAt": "2026-09-10T02:29:18Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34429309219/job/102721644571",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Next.js build",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "CSP検証用のChromiumを準備",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 7,
+                "name": "本番ビルドのCSPと画面遷移を検証",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102721644578,
+            "name": "Security Tests",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:26:31Z",
+            "completedAt": "2026-09-10T02:31:00Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34429309219/job/102721644578",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Run security tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "Security test summary",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102721644590,
+            "name": "Fixture Preflight (Static)",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:26:31Z",
+            "completedAt": "2026-09-10T02:26:59Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34429309219/job/102721644590",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Validate E2E fixtures (static only)",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102721644610,
+            "name": "Full Jest Regression",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:26:31Z",
+            "completedAt": "2026-09-10T02:30:46Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34429309219/job/102721644610",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Run full non-E2E regression suite",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102721644640,
+            "name": "Database Contract",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:26:31Z",
+            "completedAt": "2026-09-10T02:30:29Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34429309219/job/102721644640",
+            "steps": [
+              {
+                "number": 7,
+                "name": "Verify pinned Supabase CLI",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Verify applied migration history is immutable",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Start local Supabase",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "Replay all migrations and seed from zero",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Run database contract tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Verify deferred PR-11 production migration path",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Verify atomic staff invite concurrency",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Verify GoTrue claims and stale JWT revocation on disposable local database",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 15,
+                "name": "Verify generated Supabase types are current",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102722433272,
+            "name": "App E2E (Local Supabase + Chromium)",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:30:31Z",
+            "completedAt": "2026-09-10T02:34:56Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34429309219/job/102722433272",
+            "steps": [
+              {
+                "number": 7,
+                "name": "Verify pinned Supabase CLI",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Start local Supabase",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Export local test environment",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "ローカルE2E用のPostgREST集計を有効化",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Validate database fixtures",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Install Chromium",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Run application smoke flows",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Upload Playwright report",
+                "conclusion": "skipped",
+                "status": "completed"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "unit": "U03",
+      "branch": "codex/audit-v2-pr-u03-main",
+      "head": "8c3dc35eac3c1a52d6cf5fcd42cdccf555a2156b",
+      "pr": 125,
+      "run": 34430139033,
+      "merge": "8841c25cf7c8251d631cd1ace73f6825ed5e16e1",
+      "mergedAt": "2026-09-10T02:48:00Z",
+      "local": {
+        "suites": 5,
+        "passed": 71,
+        "skipped": 0,
+        "seconds": 56.735,
+        "command": "npm run test -- --ci --runTestsByPath src/__tests__/hooks/audit-v2-revenue-requests.test.tsx src/__tests__/api/audit-v2-revenue-period.test.ts src/__tests__/api/revenue-api.test.ts src/__tests__/pages/revenue.test.tsx src/__tests__/hooks/useRevenue.test.tsx",
+        "failed": 0
+      },
+      "ci": {
+        "suites": 452,
+        "passed": 3869,
+        "skipped": 2,
+        "seconds": 294.938
+      },
+      "codeSha": "6a33d69800ef84a37af16cf1a5c3c00349c64f00",
+      "review": {
+        "independent": true,
+        "reviewers": [
+          "u01_requirements_review",
+          "u01_failure_review"
+        ],
+        "codeSha": "6a33d69800ef84a37af16cf1a5c3c00349c64f00",
+        "remainingActionableFindings": 0,
+        "executionByReviewers": false
+      },
+      "ciRunReceipt": {
+        "run": 34430139033,
+        "headSha": "8c3dc35eac3c1a52d6cf5fcd42cdccf555a2156b",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430139033",
+        "jobs": [
+          {
+            "id": 102723740989,
+            "name": "Quality Checks",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:36:58Z",
+            "completedAt": "2026-09-10T02:38:39Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430139033/job/102723740989",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Lint",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "Type check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 7,
+                "name": "Commercial boundary type check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Commercial boundary lint",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Offline release tooling tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "Verify mutating route policy",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Verify mutating route manifest drift",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Verify commercial source inventory drift",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Mobile UIUX production asset drift check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Secret scan",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102724076046,
+            "name": "Database Contract",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:38:42Z",
+            "completedAt": "2026-09-10T02:42:57Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430139033/job/102724076046",
+            "steps": [
+              {
+                "number": 7,
+                "name": "Verify pinned Supabase CLI",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Verify applied migration history is immutable",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Start local Supabase",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "Replay all migrations and seed from zero",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Run database contract tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Verify deferred PR-11 production migration path",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Verify atomic staff invite concurrency",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Verify GoTrue claims and stale JWT revocation on disposable local database",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 15,
+                "name": "Verify generated Supabase types are current",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102724076060,
+            "name": "Full Jest Regression",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:38:42Z",
+            "completedAt": "2026-09-10T02:44:08Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430139033/job/102724076060",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Run full non-E2E regression suite",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102724076070,
+            "name": "Supabase Types Contract",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:38:42Z",
+            "completedAt": "2026-09-10T02:38:50Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430139033/job/102724076070",
+            "steps": [
+              {
+                "number": 3,
+                "name": "Validate supabase.ts header",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102724076071,
+            "name": "Fixture Preflight (Static)",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:38:42Z",
+            "completedAt": "2026-09-10T02:39:19Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430139033/job/102724076071",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Validate E2E fixtures (static only)",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102724076072,
+            "name": "Build",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:38:42Z",
+            "completedAt": "2026-09-10T02:41:33Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430139033/job/102724076072",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Next.js build",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "CSP検証用のChromiumを準備",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 7,
+                "name": "本番ビルドのCSPと画面遷移を検証",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102724076076,
+            "name": "Security Tests",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:38:53Z",
+            "completedAt": "2026-09-10T02:43:57Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430139033/job/102724076076",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Run security tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "Security test summary",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102724889827,
+            "name": "App E2E (Local Supabase + Chromium)",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:42:59Z",
+            "completedAt": "2026-09-10T02:47:27Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430139033/job/102724889827",
+            "steps": [
+              {
+                "number": 7,
+                "name": "Verify pinned Supabase CLI",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Start local Supabase",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Export local test environment",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "ローカルE2E用のPostgREST集計を有効化",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Validate database fixtures",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Install Chromium",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Run application smoke flows",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Upload Playwright report",
+                "conclusion": "skipped",
+                "status": "completed"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "unit": "U04",
+      "branch": "codex/audit-v2-pr-u04-main",
+      "head": "44e2dc54b2b147acebe1e15d8ca2f3833007a80e",
+      "pr": 126,
+      "local": {
+        "suites": 11,
+        "passed": 113,
+        "skipped": 0,
+        "seconds": 26.747,
+        "command": "npm run test -- --ci --runTestsByPath src/__tests__/api/audit-v2-text-roundtrip.test.ts src/__tests__/api/audit-v2-email-output.test.ts src/__tests__/components/audit-v2-text-output.test.tsx src/__tests__/components/audit-v2-security-csv.test.tsx src/__tests__/pages/security-dashboard-page.test.tsx src/__tests__/api/email-templates.test.ts src/__tests__/lib/csv-export.test.ts src/__tests__/api/customers-route.test.ts src/__tests__/api/customers-schema.test.ts src/__tests__/lib/api-helpers-security.test.ts src/__tests__/lib/api-helpers-auth.test.ts",
+        "failed": 0
+      },
+      "run": 34430872045,
+      "merge": "4d203725ef63bc16e4eb98dd40f4c6ef42fdca5e",
+      "mergedAt": "2026-09-10T03:03:07Z",
+      "ci": {
+        "suites": 456,
+        "passed": 3909,
+        "skipped": 2,
+        "seconds": 295.074
+      },
+      "codeSha": "d6d21eb73fa1fea7b627b69565ad32818b4a7bb4",
+      "review": {
+        "independent": true,
+        "reviewers": [
+          "u01_requirements_review",
+          "u01_failure_review"
+        ],
+        "codeSha": "d6d21eb73fa1fea7b627b69565ad32818b4a7bb4",
+        "remainingActionableFindings": 0,
+        "executionByReviewers": false
+      },
+      "ciRunReceipt": {
+        "run": 34430872045,
+        "headSha": "44e2dc54b2b147acebe1e15d8ca2f3833007a80e",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430872045",
+        "jobs": [
+          {
+            "id": 102725923818,
+            "name": "Quality Checks",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:48:26Z",
+            "completedAt": "2026-09-10T02:50:38Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430872045/job/102725923818",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Lint",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "Type check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 7,
+                "name": "Commercial boundary type check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Commercial boundary lint",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Offline release tooling tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "Verify mutating route policy",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Verify mutating route manifest drift",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Verify commercial source inventory drift",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Mobile UIUX production asset drift check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Secret scan",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102726357162,
+            "name": "Supabase Types Contract",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:50:41Z",
+            "completedAt": "2026-09-10T02:50:49Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430872045/job/102726357162",
+            "steps": [
+              {
+                "number": 3,
+                "name": "Validate supabase.ts header",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102726357193,
+            "name": "Full Jest Regression",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:50:41Z",
+            "completedAt": "2026-09-10T02:56:09Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430872045/job/102726357193",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Run full non-E2E regression suite",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102726357196,
+            "name": "Build",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:50:41Z",
+            "completedAt": "2026-09-10T02:53:32Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430872045/job/102726357196",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Next.js build",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "CSP検証用のChromiumを準備",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 7,
+                "name": "本番ビルドのCSPと画面遷移を検証",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102726357216,
+            "name": "Fixture Preflight (Static)",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:50:41Z",
+            "completedAt": "2026-09-10T02:51:13Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430872045/job/102726357216",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Validate E2E fixtures (static only)",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102726357217,
+            "name": "Security Tests",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:50:41Z",
+            "completedAt": "2026-09-10T02:54:34Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430872045/job/102726357217",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Run security tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "Security test summary",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102726357273,
+            "name": "Database Contract",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:50:46Z",
+            "completedAt": "2026-09-10T02:55:12Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430872045/job/102726357273",
+            "steps": [
+              {
+                "number": 7,
+                "name": "Verify pinned Supabase CLI",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Verify applied migration history is immutable",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Start local Supabase",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "Replay all migrations and seed from zero",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Run database contract tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Verify deferred PR-11 production migration path",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Verify atomic staff invite concurrency",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Verify GoTrue claims and stale JWT revocation on disposable local database",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 15,
+                "name": "Verify generated Supabase types are current",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102727209815,
+            "name": "App E2E (Local Supabase + Chromium)",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T02:55:14Z",
+            "completedAt": "2026-09-10T02:59:43Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34430872045/job/102727209815",
+            "steps": [
+              {
+                "number": 7,
+                "name": "Verify pinned Supabase CLI",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Start local Supabase",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Export local test environment",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "ローカルE2E用のPostgREST集計を有効化",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Validate database fixtures",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Install Chromium",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Run application smoke flows",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Upload Playwright report",
+                "conclusion": "skipped",
+                "status": "completed"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "unit": "U05",
+      "branch": "codex/audit-v2-pr-u05-main",
+      "head": "dc2c450d6e4045acdd17c7ebdbff736f11c6663b",
+      "local": {
+        "suites": 5,
+        "passed": 78,
+        "skipped": 0,
+        "seconds": 24.106,
+        "command": "npm run test -- --ci --runTestsByPath src/__tests__/lib/audit-v2-public-customer.test.ts src/__tests__/lib/public-reservation-service.test.ts src/__tests__/api/public-reservations-route.test.ts src/__tests__/api/public-my-reservations-route.test.ts src/__tests__/lib/line-id-token.test.ts",
+        "failed": 0
+      },
+      "pr": 127,
+      "run": 34431851592,
+      "codeSha": "69902a1405ecf9fbb6a2ab559b641bb7111af7f3",
+      "review": {
+        "independent": true,
+        "reviewers": [
+          "u01_requirements_review",
+          "u01_failure_review"
+        ],
+        "codeSha": "69902a1405ecf9fbb6a2ab559b641bb7111af7f3",
+        "remainingActionableFindings": 0,
+        "executionByReviewers": false
+      },
+      "merge": "c67814856ae24ba55790065d14899a5d7d73ada6",
+      "mergedAt": "2026-09-10T03:17:41Z",
+      "ci": {
+        "suites": 457,
+        "passed": 3921,
+        "skipped": 2,
+        "failed": 0,
+        "seconds": 293.463
+      },
+      "ciRunReceipt": {
+        "run": 34431851592,
+        "headSha": "dc2c450d6e4045acdd17c7ebdbff736f11c6663b",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431851592",
+        "jobs": [
+          {
+            "id": 102728833871,
+            "name": "Quality Checks",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:03:39Z",
+            "completedAt": "2026-09-10T03:05:44Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431851592/job/102728833871",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Lint",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "Type check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 7,
+                "name": "Commercial boundary type check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Commercial boundary lint",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Offline release tooling tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "Verify mutating route policy",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Verify mutating route manifest drift",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Verify commercial source inventory drift",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Mobile UIUX production asset drift check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Secret scan",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729254862,
+            "name": "Fixture Preflight (Static)",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:05:46Z",
+            "completedAt": "2026-09-10T03:06:15Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431851592/job/102729254862",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Validate E2E fixtures (static only)",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729254883,
+            "name": "Security Tests",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:05:46Z",
+            "completedAt": "2026-09-10T03:10:48Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431851592/job/102729254883",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Run security tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "Security test summary",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729254892,
+            "name": "Supabase Types Contract",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:05:46Z",
+            "completedAt": "2026-09-10T03:05:50Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431851592/job/102729254892",
+            "steps": [
+              {
+                "number": 3,
+                "name": "Validate supabase.ts header",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729254903,
+            "name": "Database Contract",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:06:22Z",
+            "completedAt": "2026-09-10T03:10:18Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431851592/job/102729254903",
+            "steps": [
+              {
+                "number": 7,
+                "name": "Verify pinned Supabase CLI",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Verify applied migration history is immutable",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Start local Supabase",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "Replay all migrations and seed from zero",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Run database contract tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Verify deferred PR-11 production migration path",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Verify atomic staff invite concurrency",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Verify GoTrue claims and stale JWT revocation on disposable local database",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 15,
+                "name": "Verify generated Supabase types are current",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729254906,
+            "name": "Full Jest Regression",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:05:46Z",
+            "completedAt": "2026-09-10T03:11:15Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431851592/job/102729254906",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Run full non-E2E regression suite",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729254999,
+            "name": "Build",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:05:46Z",
+            "completedAt": "2026-09-10T03:08:08Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431851592/job/102729254999",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Next.js build",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "CSP検証用のChromiumを準備",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 7,
+                "name": "本番ビルドのCSPと画面遷移を検証",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102730150381,
+            "name": "App E2E (Local Supabase + Chromium)",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:10:21Z",
+            "completedAt": "2026-09-10T03:14:47Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431851592/job/102730150381",
+            "steps": [
+              {
+                "number": 7,
+                "name": "Verify pinned Supabase CLI",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Start local Supabase",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Export local test environment",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "ローカルE2E用のPostgREST集計を有効化",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Validate database fixtures",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Install Chromium",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Run application smoke flows",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Upload Playwright report",
+                "conclusion": "skipped",
+                "status": "completed"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "unit": "U06",
+      "branch": "codex/audit-v2-pr-u06-main",
+      "head": "adc1b75df58f93cb99e02eb0d2b7ad37083a08a6",
+      "local": {
+        "suites": 4,
+        "passed": 35,
+        "skipped": 0,
+        "seconds": 13.977,
+        "command": "npm run test -- --ci --runTestsByPath src/__tests__/api/audit-v2-daily-report-delete.test.ts src/__tests__/api/daily-reports-manager-authorization.test.ts src/__tests__/api/daily-reports-api.test.ts src/__tests__/lib/billing-business-write.test.ts",
+        "failed": 0
+      },
+      "pr": 128,
+      "run": 34431912368,
+      "codeSha": "91e7dfd5cb2ef4ae384267cd8e7962d4de015509",
+      "review": {
+        "independent": true,
+        "reviewers": [
+          "u01_requirements_review",
+          "u01_failure_review"
+        ],
+        "codeSha": "91e7dfd5cb2ef4ae384267cd8e7962d4de015509",
+        "remainingActionableFindings": 0,
+        "executionByReviewers": false
+      },
+      "ci": {
+        "suites": 458,
+        "passed": 3930,
+        "skipped": 2,
+        "failed": 0,
+        "seconds": 294.181
+      },
+      "merge": "c86d3b3c116f9cdec98184ca0abcc3c030da4216",
+      "mergedAt": "2026-09-10T03:19:39Z",
+      "ciRunReceipt": {
+        "run": 34431912368,
+        "headSha": "adc1b75df58f93cb99e02eb0d2b7ad37083a08a6",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431912368",
+        "jobs": [
+          {
+            "id": 102729011905,
+            "name": "Quality Checks",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:04:34Z",
+            "completedAt": "2026-09-10T03:06:40Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431912368/job/102729011905",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Lint",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "Type check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 7,
+                "name": "Commercial boundary type check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Commercial boundary lint",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Offline release tooling tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "Verify mutating route policy",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Verify mutating route manifest drift",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Verify commercial source inventory drift",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Mobile UIUX production asset drift check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Secret scan",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729438578,
+            "name": "Full Jest Regression",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:06:43Z",
+            "completedAt": "2026-09-10T03:12:11Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431912368/job/102729438578",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Run full non-E2E regression suite",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729438592,
+            "name": "Database Contract",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:06:43Z",
+            "completedAt": "2026-09-10T03:10:44Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431912368/job/102729438592",
+            "steps": [
+              {
+                "number": 7,
+                "name": "Verify pinned Supabase CLI",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Verify applied migration history is immutable",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Start local Supabase",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "Replay all migrations and seed from zero",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Run database contract tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Verify deferred PR-11 production migration path",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Verify atomic staff invite concurrency",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Verify GoTrue claims and stale JWT revocation on disposable local database",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 15,
+                "name": "Verify generated Supabase types are current",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729438595,
+            "name": "Build",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:06:44Z",
+            "completedAt": "2026-09-10T03:09:41Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431912368/job/102729438595",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Next.js build",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "CSP検証用のChromiumを準備",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 7,
+                "name": "本番ビルドのCSPと画面遷移を検証",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729438596,
+            "name": "Supabase Types Contract",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:06:43Z",
+            "completedAt": "2026-09-10T03:06:50Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431912368/job/102729438596",
+            "steps": [
+              {
+                "number": 3,
+                "name": "Validate supabase.ts header",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729438599,
+            "name": "Security Tests",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:06:43Z",
+            "completedAt": "2026-09-10T03:11:22Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431912368/job/102729438599",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Run security tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "Security test summary",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729438669,
+            "name": "Fixture Preflight (Static)",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:06:43Z",
+            "completedAt": "2026-09-10T03:07:11Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431912368/job/102729438669",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Validate E2E fixtures (static only)",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102730231728,
+            "name": "App E2E (Local Supabase + Chromium)",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:10:46Z",
+            "completedAt": "2026-09-10T03:15:07Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431912368/job/102730231728",
+            "steps": [
+              {
+                "number": 7,
+                "name": "Verify pinned Supabase CLI",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Start local Supabase",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Export local test environment",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "ローカルE2E用のPostgREST集計を有効化",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Validate database fixtures",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Install Chromium",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Run application smoke flows",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Upload Playwright report",
+                "conclusion": "skipped",
+                "status": "completed"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "unit": "VERIFY05",
+      "branch": "codex/audit-v2-pr-verify05-main",
+      "head": "51cc326ede77067a454c902d91cc7833c2a61873",
+      "local": {
+        "suites": 15,
+        "passed": 233,
+        "skipped": 0,
+        "seconds": 142.771,
+        "failed": 0,
+        "command": "npm run test -- --ci --runTestsByPath src/__tests__/lib/rate-limiting/audit-v2-state.test.ts src/__tests__/lib/rate-limiting/audit-v2-composition.test.ts src/__tests__/api/audit-v2-revenue-period.test.ts src/__tests__/hooks/audit-v2-revenue-requests.test.tsx src/__tests__/api/audit-v2-text-roundtrip.test.ts src/__tests__/api/audit-v2-email-output.test.ts src/__tests__/components/audit-v2-text-output.test.tsx src/__tests__/components/audit-v2-security-csv.test.tsx src/__tests__/lib/audit-v2-public-customer.test.ts src/__tests__/api/audit-v2-daily-report-delete.test.ts src/__tests__/api/revenue-api.test.ts src/__tests__/auth/middleware-auth.test.ts src/__tests__/lib/public-reservation-service.test.ts src/__tests__/api/public-reservations-route.test.ts src/__tests__/api/daily-reports-api.test.ts"
+      },
+      "pr": 129,
+      "run": 34431915305,
+      "codeSha": "42bee5cff1d7885740c213ab4659b183537ee065",
+      "review": {
+        "independent": true,
+        "reviewers": [
+          "u01_requirements_review",
+          "u01_failure_review"
+        ],
+        "codeSha": "42bee5cff1d7885740c213ab4659b183537ee065",
+        "remainingActionableFindings": 0,
+        "executionByReviewers": false
+      },
+      "ci": {
+        "suites": 458,
+        "passed": 3930,
+        "skipped": 2,
+        "failed": 0,
+        "seconds": 282.84
+      },
+      "merge": "d7d00f90d028af184514d8a36e74363f8eacac34",
+      "mergedAt": "2026-09-10T03:22:24Z",
+      "ciRunReceipt": {
+        "run": 34431915305,
+        "headSha": "51cc326ede77067a454c902d91cc7833c2a61873",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431915305",
+        "jobs": [
+          {
+            "id": 102729020353,
+            "name": "Quality Checks",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:04:36Z",
+            "completedAt": "2026-09-10T03:06:41Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431915305/job/102729020353",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Lint",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "Type check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 7,
+                "name": "Commercial boundary type check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Commercial boundary lint",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Offline release tooling tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "Verify mutating route policy",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Verify mutating route manifest drift",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Verify commercial source inventory drift",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Mobile UIUX production asset drift check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Secret scan",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729438996,
+            "name": "Fixture Preflight (Static)",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:06:43Z",
+            "completedAt": "2026-09-10T03:07:15Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431915305/job/102729438996",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Validate E2E fixtures (static only)",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729439017,
+            "name": "Database Contract",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:06:43Z",
+            "completedAt": "2026-09-10T03:10:40Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431915305/job/102729439017",
+            "steps": [
+              {
+                "number": 7,
+                "name": "Verify pinned Supabase CLI",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Verify applied migration history is immutable",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Start local Supabase",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "Replay all migrations and seed from zero",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Run database contract tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Verify deferred PR-11 production migration path",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Verify atomic staff invite concurrency",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Verify GoTrue claims and stale JWT revocation on disposable local database",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 15,
+                "name": "Verify generated Supabase types are current",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729439019,
+            "name": "Full Jest Regression",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:06:43Z",
+            "completedAt": "2026-09-10T03:11:51Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431915305/job/102729439019",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Run full non-E2E regression suite",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729439020,
+            "name": "Build",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:06:43Z",
+            "completedAt": "2026-09-10T03:09:26Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431915305/job/102729439020",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Next.js build",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "CSP検証用のChromiumを準備",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 7,
+                "name": "本番ビルドのCSPと画面遷移を検証",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729439038,
+            "name": "Supabase Types Contract",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:06:43Z",
+            "completedAt": "2026-09-10T03:06:51Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431915305/job/102729439038",
+            "steps": [
+              {
+                "number": 3,
+                "name": "Validate supabase.ts header",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729439042,
+            "name": "Security Tests",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:06:43Z",
+            "completedAt": "2026-09-10T03:11:42Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431915305/job/102729439042",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Run security tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "Security test summary",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102730220125,
+            "name": "App E2E (Local Supabase + Chromium)",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:10:43Z",
+            "completedAt": "2026-09-10T03:15:02Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34431915305/job/102730220125",
+            "steps": [
+              {
+                "number": 7,
+                "name": "Verify pinned Supabase CLI",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Start local Supabase",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Export local test environment",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "ローカルE2E用のPostgREST集計を有効化",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Validate database fixtures",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Install Chromium",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Run application smoke flows",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Upload Playwright report",
+                "conclusion": "skipped",
+                "status": "completed"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "unit": "VERIFY02",
+      "branch": "codex/audit-v2-pr-verify02-main",
+      "head": "22e94453d5d7caf3d26e8ed606592136c81af23c",
+      "pr": 130,
+      "local": {
+        "suites": 6,
+        "passed": 41,
+        "skipped": 0,
+        "seconds": 38.244,
+        "command": "npm run test -- --ci --runTestsByPath src/__tests__/api/audit-v2-billing-replay.test.ts src/__tests__/api/billing-internal-routes.test.ts src/__tests__/lib/billing-internal-auth.test.ts src/__tests__/lib/billing-stripe-webhook-claim.test.ts src/__tests__/lib/billing-stripe-mapper.test.ts src/__tests__/lib/billing-config.test.ts",
+        "failed": 0
+      },
+      "run": 34432069688,
+      "codeSha": "56495cee894e4a9ea7d284d361fa834b0f9220c9",
+      "review": {
+        "independent": true,
+        "reviewers": [
+          "u01_requirements_review",
+          "u01_failure_review"
+        ],
+        "codeSha": "56495cee894e4a9ea7d284d361fa834b0f9220c9",
+        "remainingActionableFindings": 0,
+        "executionByReviewers": false
+      },
+      "ci": {
+        "suites": 459,
+        "passed": 3946,
+        "skipped": 2,
+        "failed": 0,
+        "seconds": 298.574
+      },
+      "merge": "3041bdfdfd439c3be3c5f28df06d529a443f38ce",
+      "mergedAt": "2026-09-10T03:23:39Z",
+      "ciRunReceipt": {
+        "run": 34432069688,
+        "headSha": "22e94453d5d7caf3d26e8ed606592136c81af23c",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34432069688",
+        "jobs": [
+          {
+            "id": 102729466718,
+            "name": "Quality Checks",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:06:53Z",
+            "completedAt": "2026-09-10T03:09:03Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34432069688/job/102729466718",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Lint",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "Type check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 7,
+                "name": "Commercial boundary type check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Commercial boundary lint",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Offline release tooling tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "Verify mutating route policy",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Verify mutating route manifest drift",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Verify commercial source inventory drift",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Mobile UIUX production asset drift check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Secret scan",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729907149,
+            "name": "Fixture Preflight (Static)",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:09:06Z",
+            "completedAt": "2026-09-10T03:09:30Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34432069688/job/102729907149",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Validate E2E fixtures (static only)",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729907165,
+            "name": "Security Tests",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:09:06Z",
+            "completedAt": "2026-09-10T03:13:52Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34432069688/job/102729907165",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Run security tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "Security test summary",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729907167,
+            "name": "Build",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:09:06Z",
+            "completedAt": "2026-09-10T03:12:09Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34432069688/job/102729907167",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Next.js build",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "CSP検証用のChromiumを準備",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 7,
+                "name": "本番ビルドのCSPと画面遷移を検証",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729907197,
+            "name": "Full Jest Regression",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:09:42Z",
+            "completedAt": "2026-09-10T03:15:10Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34432069688/job/102729907197",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Run full non-E2E regression suite",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729907232,
+            "name": "Supabase Types Contract",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:09:06Z",
+            "completedAt": "2026-09-10T03:09:11Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34432069688/job/102729907232",
+            "steps": [
+              {
+                "number": 3,
+                "name": "Validate supabase.ts header",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102729907254,
+            "name": "Database Contract",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:09:06Z",
+            "completedAt": "2026-09-10T03:13:03Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34432069688/job/102729907254",
+            "steps": [
+              {
+                "number": 7,
+                "name": "Verify pinned Supabase CLI",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Verify applied migration history is immutable",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Start local Supabase",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "Replay all migrations and seed from zero",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Run database contract tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Verify deferred PR-11 production migration path",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Verify atomic staff invite concurrency",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Verify GoTrue claims and stale JWT revocation on disposable local database",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 15,
+                "name": "Verify generated Supabase types are current",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102730678152,
+            "name": "App E2E (Local Supabase + Chromium)",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:13:06Z",
+            "completedAt": "2026-09-10T03:17:28Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34432069688/job/102730678152",
+            "steps": [
+              {
+                "number": 7,
+                "name": "Verify pinned Supabase CLI",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Start local Supabase",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Export local test environment",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "ローカルE2E用のPostgREST集計を有効化",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Validate database fixtures",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Install Chromium",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Run application smoke flows",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Upload Playwright report",
+                "conclusion": "skipped",
+                "status": "completed"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "unit": "VERIFY01",
+      "branch": "codex/audit-v2-pr-verify01-main",
+      "head": "a7320ecd0f0b2b152be976356bc80df10bc00148",
+      "pr": 131,
+      "local": {
+        "suites": 9,
+        "passed": 88,
+        "skipped": 0,
+        "seconds": 40.674,
+        "command": "npm run test -- --ci --runTestsByPath src/__tests__/api/audit-v2-calendar-date.test.ts src/__tests__/api/public-availability-route.test.ts src/__tests__/lib/public-reservation-service.test.ts src/__tests__/components/public-booking-wizard.test.tsx src/__tests__/api/daily-report-items-route.test.ts src/__tests__/api/daily-report-items-migration.test.ts src/__tests__/api/phase4a-menu-billing-patient-coverage-snapshot-migration.test.ts src/__tests__/api/daily-reports-api.test.ts src/__tests__/api/reservations-schema.test.ts",
+        "failed": 0
+      },
+      "codeSha": "74b54a6a3748c908ec891c1a027b6943b9dc76d1",
+      "review": {
+        "independent": true,
+        "reviewers": [
+          "u01_requirements_review",
+          "u01_failure_review"
+        ],
+        "codeSha": "74b54a6a3748c908ec891c1a027b6943b9dc76d1",
+        "remainingActionableFindings": 0,
+        "executionByReviewers": false
+      },
+      "run": 34432414736,
+      "ci": {
+        "suites": 460,
+        "passed": 3961,
+        "failed": 0,
+        "skipped": 2,
+        "seconds": 255.74,
+        "securitySuites": 38,
+        "security": 464,
+        "csp": 1,
+        "appE2E": 12
+      },
+      "merge": "e9e3b10e4aff5800bd06b1c813c6bbe4dc2b3538",
+      "mergedAt": "2026-09-10T03:25:13Z",
+      "ciRunReceipt": {
+        "run": 34432414736,
+        "headSha": "a7320ecd0f0b2b152be976356bc80df10bc00148",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34432414736",
+        "jobs": [
+          {
+            "id": 102730503716,
+            "name": "Quality Checks",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:12:12Z",
+            "completedAt": "2026-09-10T03:14:27Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34432414736/job/102730503716",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Lint",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "Type check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 7,
+                "name": "Commercial boundary type check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Commercial boundary lint",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Offline release tooling tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "Verify mutating route policy",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Verify mutating route manifest drift",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Verify commercial source inventory drift",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Mobile UIUX production asset drift check",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Secret scan",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102730945082,
+            "name": "Fixture Preflight (Static)",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:14:30Z",
+            "completedAt": "2026-09-10T03:15:01Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34432414736/job/102730945082",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Validate E2E fixtures (static only)",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102730945099,
+            "name": "Security Tests",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:14:30Z",
+            "completedAt": "2026-09-10T03:18:19Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34432414736/job/102730945099",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Run security tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "Security test summary",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102730945123,
+            "name": "Full Jest Regression",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:14:29Z",
+            "completedAt": "2026-09-10T03:19:10Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34432414736/job/102730945123",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Run full non-E2E regression suite",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102730945148,
+            "name": "Supabase Types Contract",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:14:29Z",
+            "completedAt": "2026-09-10T03:14:36Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34432414736/job/102730945148",
+            "steps": [
+              {
+                "number": 3,
+                "name": "Validate supabase.ts header",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102730945155,
+            "name": "Database Contract",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:14:30Z",
+            "completedAt": "2026-09-10T03:18:29Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34432414736/job/102730945155",
+            "steps": [
+              {
+                "number": 7,
+                "name": "Verify pinned Supabase CLI",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Verify applied migration history is immutable",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Start local Supabase",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "Replay all migrations and seed from zero",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Run database contract tests",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Verify deferred PR-11 production migration path",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Verify atomic staff invite concurrency",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Verify GoTrue claims and stale JWT revocation on disposable local database",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 15,
+                "name": "Verify generated Supabase types are current",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102730945253,
+            "name": "Build",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:14:30Z",
+            "completedAt": "2026-09-10T03:17:05Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34432414736/job/102730945253",
+            "steps": [
+              {
+                "number": 5,
+                "name": "Next.js build",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 6,
+                "name": "CSP検証用のChromiumを準備",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 7,
+                "name": "本番ビルドのCSPと画面遷移を検証",
+                "conclusion": "success",
+                "status": "completed"
+              }
+            ]
+          },
+          {
+            "id": 102731720562,
+            "name": "App E2E (Local Supabase + Chromium)",
+            "conclusion": "success",
+            "status": "completed",
+            "startedAt": "2026-09-10T03:18:37Z",
+            "completedAt": "2026-09-10T03:22:40Z",
+            "url": "https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34432414736/job/102731720562",
+            "steps": [
+              {
+                "number": 7,
+                "name": "Verify pinned Supabase CLI",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 8,
+                "name": "Start local Supabase",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 9,
+                "name": "Export local test environment",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 10,
+                "name": "ローカルE2E用のPostgREST集計を有効化",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 11,
+                "name": "Validate database fixtures",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 12,
+                "name": "Install Chromium",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 13,
+                "name": "Run application smoke flows",
+                "conclusion": "success",
+                "status": "completed"
+              },
+              {
+                "number": 14,
+                "name": "Upload Playwright report",
+                "conclusion": "skipped",
+                "status": "completed"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "existingSkippedTests": [
+    "src/__tests__/lib/api-client.test.ts::should handle timeout",
+    "src/__tests__/pages/reservations.test.tsx::ReservationsPageがエラーなくレンダリングされる"
+  ],
+  "flakyAssessment": "NOT_RUN (no repeated-flakiness qualification)",
+  "environmentGates": {
+    "ENV01": "NOT_RUN",
+    "ENV02": "NOT_RUN",
+    "ENV03": "NOT_RUN",
+    "ENV04": "NOT_RUN",
+    "ENV05": "PARTIAL_READ_ONLY_BRANCH_SETTINGS; restore and operations NOT_RUN"
+  },
+  "documentationClosure": "Use the final result PR's immutable head/checks/merge; this file does not self-update after its own merge."
+}
