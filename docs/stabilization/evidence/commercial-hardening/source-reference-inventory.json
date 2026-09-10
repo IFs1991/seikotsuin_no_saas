@@ -7,7 +7,7 @@
     "clientModule records an explicit use-client directive, not the full import graph."
   ],
   "summary": {
-    "scannedSourceFiles": 660,
+    "scannedSourceFiles": 661,
     "catalogTables": 86,
     "catalogTablesWithLiteralReferences": 68,
     "literalRpcNames": 37

@@ -1,3 +1,4 @@
+import { escapeEmailHtml } from '../html';
 import type { PublicReservationCancelledPayload } from '../types';
 
 export function renderPublicReservationCancelledEmail(
@@ -37,15 +38,15 @@ export function renderPublicReservationCancelledEmail(
   <p>LIFFマイページから公開予約がキャンセルされました。</p>
   <table style="border-collapse:collapse;width:100%;margin:16px 0">
     <tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:bold">患者名</td>
-        <td style="padding:8px;border:1px solid #e5e7eb">${customerName}</td></tr>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeEmailHtml(customerName)}</td></tr>
     <tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:bold">日時</td>
-        <td style="padding:8px;border:1px solid #e5e7eb">${startTime} ～ ${endTime}</td></tr>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeEmailHtml(startTime)} ～ ${escapeEmailHtml(endTime)}</td></tr>
     <tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:bold">メニュー</td>
-        <td style="padding:8px;border:1px solid #e5e7eb">${menuName}</td></tr>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeEmailHtml(menuName)}</td></tr>
     <tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:bold">担当</td>
-        <td style="padding:8px;border:1px solid #e5e7eb">${staffName || '未設定'}</td></tr>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeEmailHtml(staffName || '未設定')}</td></tr>
     <tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:bold">チャネル</td>
-        <td style="padding:8px;border:1px solid #e5e7eb">${channel}</td></tr>
+        <td style="padding:8px;border:1px solid #e5e7eb">${escapeEmailHtml(channel)}</td></tr>
   </table>
 </body>
 </html>`.trim();
