@@ -111,3 +111,11 @@ head `7e8a8693` の [CI 34428819592](https://github.com/IFs1991/seikotsuin_no_sa
 - billing-config fixtureは未設定テストから親環境3キーを除き、明示空値の別回帰を追加。製品の空値→[]契約は変えない。初期実装branchの全体Jestで失敗した環境依存を修正したもので、旧全体実行をPASSへ読み替えない。
 - 独立read-onlyレビュー2件に新規指摘なし。source inventoryは追加claimの参照1件だけを既存generatorで更新。route inventoryに差分なし。
 - F18はPARTIAL。同一eventのprocessing保護であり、停止workerの復旧、異なるevent/resyncの順序、terminal応答喪失時の所有者fencingは未保証。実Stripe/DB操作、schema/RPC/lease変更なし。DoD: DOD-10/11、課金internal認可と競合回帰。rollbackは当該PRの通常revert。
+
+### VERIFY-01 / AUDIT-V2:V06
+
+- 依存base: VERIFY-02 `22e94453d5d7caf3d26e8ed606592136c81af23c`。コード対象: `74b54a6a3748c908ec891c1a027b6943b9dc76d1`。
+- 共通JST helperで実在する暦日・year > 0を検証し、ISO +09:00 parseで0099年が1999年になる補正を防ぐ。availabilityはDB context作成前に不正年月日を400とする。既存24時以降の繰越を保持した。
+- `npm run test -- --ci --runTestsByPath src/__tests__/api/audit-v2-calendar-date.test.ts src/__tests__/api/public-availability-route.test.ts src/__tests__/lib/public-reservation-service.test.ts src/__tests__/components/public-booking-wizard.test.tsx src/__tests__/api/daily-report-items-route.test.ts src/__tests__/api/daily-report-items-migration.test.ts src/__tests__/api/phase4a-menu-billing-patient-coverage-snapshot-migration.test.ts src/__tests__/api/daily-reports-api.test.ts src/__tests__/api/reservations-schema.test.ts`: 9 suites / 88 tests PASS、0 skipped、40.674秒。
+- アプリ＋audit-v2新規test/fixture全13ファイルのTypeScript診断0。独立read-onlyレビュー2件は最新mainの呼出しも確認し追加指摘なし。実装/回帰は元79d433f6と同じ。
+- V01/V02/V03の業務契約・実DB履歴競合、V06の全金額丸め/日時DTO/CAS精度は完了ではない。DB/RLS/schema/価格snapshot変更なし。DoD: DOD-10/11、公開API入力の拒否回帰。rollbackは当該PRの通常revert。
