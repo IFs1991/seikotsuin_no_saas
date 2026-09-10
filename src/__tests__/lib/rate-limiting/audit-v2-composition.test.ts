@@ -6,7 +6,7 @@ import {
 } from '@/lib/rate-limiting/middleware';
 import { rateLimiter } from '@/lib/rate-limiting/rate-limiter';
 import * as rateLimitMiddleware from '@/lib/rate-limiting/middleware';
-import { middleware } from '../../../../middleware';
+import { middleware } from '@/middleware';
 
 jest.mock('@/lib/rate-limiting/middleware', () => {
   const actual: typeof import('@/lib/rate-limiting/middleware') =
@@ -22,7 +22,7 @@ jest.mock('@/lib/logger', () => ({
   logger: { error: jest.fn(), warn: jest.fn() },
 }));
 
-describe('AUDIT-V2:F04 limiter composition and root middleware', () => {
+describe('AUDIT-V2:F04 limiter composition and Next.js middleware entry', () => {
   const originalEnv = process.env;
   const allowed = {
     allowed: true,
@@ -140,13 +140,19 @@ describe('AUDIT-V2:F04 limiter composition and root middleware', () => {
     }
   );
 
-  it('preserves rate headers and CSP after allowance through the root entry', async () => {
+  it('preserves rate headers and request CSP after allowance through the Next.js entry', async () => {
     const response = await middleware(request);
     expect(response.headers.get('X-RateLimit-Remaining')).toBe('99');
     expect(response.headers.get('Content-Security-Policy')).toContain(
       'script-src'
     );
     expect(response.headers.get('x-nonce')).toBeTruthy();
+    expect(response.headers.get('x-middleware-request-x-nonce')).toBe(
+      response.headers.get('x-nonce')
+    );
+    expect(
+      response.headers.get('x-middleware-request-content-security-policy')
+    ).toBe(response.headers.get('Content-Security-Policy'));
     expect(response.headers.get('x-middleware-next')).toBe('1');
   });
 
