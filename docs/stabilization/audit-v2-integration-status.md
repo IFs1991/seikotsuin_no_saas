@@ -49,6 +49,15 @@ U01の最終checks確認後にmerge。続いてU02の期間収益集約を統合
 
 ### リモート結果
 
+### PR-U04 / AUDIT-V2:F10
+
+- 依存base: U03 `7a22693c71b857c6fc6583c5a9a8a53d835ab483`。コード対象: `d6d21eb73fa1fea7b627b69565ad32818b4a7bb4`。
+- `sanitizeInput`は危険キー除去を維持し、原文を保存する。HTML/属性は9メールrendererの出力側でencode、安全URLはhttp/httpsのみ、SecurityDashboardのCSVは既存`createCsv`を使う。
+- main N01の顧客PATCH省略保持/明示削除、auth/origin/clinic/billing、メールworkerの既存保証を保持。原文→保存→取得→再保存、React、HTML、CSVを別々に確認した。
+- `npm run test -- --ci --runTestsByPath` に `api/audit-v2-text-roundtrip.test.ts`、`api/audit-v2-email-output.test.ts`、`components/audit-v2-text-output.test.tsx`、`components/audit-v2-security-csv.test.tsx`、`pages/security-dashboard-page.test.tsx`、`api/email-templates.test.ts`、`lib/csv-export.test.ts`、`api/customers-route.test.ts`、`api/customers-schema.test.ts`、`lib/api-helpers-security.test.ts`、`lib/api-helpers-auth.test.ts`（全て`src/__tests__/`基準）を指定: 11 suites / 113 tests PASS、0 skipped、26.747秒。
+- アプリ対象とaudit-v2新規test/fixture 9ファイルを同じTypeScript programで検査し診断0。独立read-onlyレビュー2件は要求適合/反例とも追加指摘なし。旧文書には開始時の履歴とmain統合後のN01維持を区別する注記を追加した。
+- DBの過去データdecode・通知実送信・設定変更なし。UIモードEXTEND、デザイン/導線変更なし。DoD: DOD-10/11、入力/出力と既存認可回帰。rollbackは当該PRの通常revert。過去保存データ補正と実通知受入は別途。
+
 - U01 [PR #123](https://github.com/IFs1991/seikotsuin_no_saas/pull/123): 最終head `535ff20ee9ba41e6354310d50e7b33b9d976ce9c` の [CI 34427863933](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/34427863933) 8ゲートSUCCESS、独立レビュー2件確認後にmerge。merge commit `d39cd0b4c02f1135e8d68e4868375ebf1506eea3`、2026-09-10T02:15:58Z。
 - U02 [PR #124](https://github.com/IFs1991/seikotsuin_no_saas/pull/124): head `7e8a8693ceb79cd0cacc3d4ea8285cfd04a8117f`。レビューで指摘されたmanifestのPOST revenue行位置を既存generatorで更新、`commercial:inventory:routes` / `commercial:inventory:routes:check` exit 0。CI実行中。
 - 次の最小作業はU02の最終CI確認とmerge、続いてU03以降を単位別にPR/検証/mergeすること。上の着手時の次作業は履歴として保持する。

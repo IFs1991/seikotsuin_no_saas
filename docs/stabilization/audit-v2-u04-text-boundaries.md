@@ -1,5 +1,7 @@
 # PR-U04 原文と出力境界
 
+> 以下の開始base・N01未取込・RED/GREEN件数は2026-09-09の実装時点の履歴。2026-09-10のmain統合ではN01の省略値保持/明示削除を既存実装のまま維持し、customers route/schema回帰を含む11 suites / 113 tests（0 skipped）が成功した。統合コード対象は `d6d21eb73fa1fea7b627b69565ad32818b4a7bb4`。詳細と最終CIは `audit-v2-integration-status.md` と該当PRに記録する。
+
 開始base: `af3a455`。AUDIT-V2:F10、N01は未取込前提として分離。DB、依存、UIデザイン、通知送信、課金処理を変更しない。
 
 ## 入力の呼出元
