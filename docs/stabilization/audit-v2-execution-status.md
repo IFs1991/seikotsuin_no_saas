@@ -1,5 +1,7 @@
 # Audit v2 実行台帳
 
+> この台帳の「開始HEAD」「全IDの対応」「実行環境・承認境界」以下は、2026-09-09の着手時点を記録した履歴です。現在のmain統合状態や承認状態を示すものではありません。2026-09-10以降のPR・検証・マージ結果は [audit-v2-integration-status.md](audit-v2-integration-status.md) を参照してください。
+
 更新日: 2026-09-09 (JST)。対象: `IFs1991/seikotsuin_no_saas`。
 
 ## 固定した開始点・入力
