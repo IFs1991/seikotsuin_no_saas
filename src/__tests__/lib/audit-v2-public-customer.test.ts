@@ -2,6 +2,7 @@ import type { Database } from '@/types/supabase';
 import type { SupabaseServerClient } from '@/lib/supabase';
 import {
   CustomerCreateError,
+  CustomerLookupError,
   PublicReservationService,
 } from '@/lib/services/public-reservation-service';
 
@@ -11,6 +12,8 @@ const { createClient } = jest.requireActual<
 const clinicA = '00000000-0000-0000-0000-000000000101';
 const clinicB = '00000000-0000-0000-0000-000000000102';
 const existingId = '00000000-0000-0000-0000-000000000401';
+const generation = '00000000-0000-0000-0000-000000000501';
+const oldGeneration = '00000000-0000-0000-0000-000000000502';
 type Patient = {
   id: string;
   clinic_id: string;
@@ -18,6 +21,7 @@ type Patient = {
   phone: string;
   email: string;
   line_user_id: string | null;
+  line_credential_generation_id: string | null;
   is_deleted: boolean;
 };
 let patients: Patient[];
@@ -41,6 +45,7 @@ describe('AUDIT-V2 F11 anonymous identity with actual SDK query serialization', 
         phone: '09012345678',
         email: 'family@example.invalid',
         line_user_id: 'Uverified',
+        line_credential_generation_id: generation,
         is_deleted: false,
       },
     ];
@@ -68,14 +73,17 @@ describe('AUDIT-V2 F11 anonymous identity with actual SDK query serialization', 
               typeof init?.body === 'string' ? JSON.parse(init.body) : null;
             requestLog.push({ method, url, body });
             if (method === 'POST') {
-              // The starting schema still has global UNIQUE(line_user_id),
-              // including deleted rows and rows belonging to other clinics.
+              // Current main: customers_clinic_line_user_id_unique includes
+              // deleted/old-generation rows, but permits other clinics.
               if (
                 body !== null &&
                 typeof body === 'object' &&
                 'line_user_id' in body &&
+                'clinic_id' in body &&
                 patients.some(
-                  patient => patient.line_user_id === body.line_user_id
+                  patient =>
+                    patient.clinic_id === body.clinic_id &&
+                    patient.line_user_id === body.line_user_id
                 )
               ) {
                 return response(
@@ -94,8 +102,10 @@ describe('AUDIT-V2 F11 anonymous identity with actual SDK query serialization', 
                   `eq.${patient.clinic_id}` &&
                 url.searchParams.get('is_deleted') === 'eq.false' &&
                 !patient.is_deleted &&
-                (url.searchParams.get('line_user_id') ===
-                  `eq.${patient.line_user_id}` ||
+                ((url.searchParams.get('line_user_id') ===
+                  `eq.${patient.line_user_id}` &&
+                  url.searchParams.get('line_credential_generation_id') ===
+                    `eq.${patient.line_credential_generation_id}`) ||
                   url.searchParams.get('normalized_phone') ===
                     `eq.${patient.phone}` ||
                   url.searchParams.get('email') === `eq.${patient.email}`)
@@ -152,7 +162,11 @@ describe('AUDIT-V2 F11 anonymous identity with actual SDK query serialization', 
       '新しい表記',
       '08011111111',
       'new@example.invalid',
-      { lineUserId: 'Uverified', displayName: '新しい表示' }
+      {
+        credentialGenerationId: generation,
+        lineUserId: 'Uverified',
+        displayName: '新しい表示',
+      }
     );
     expect(result).toEqual({ customerId: existingId, created: false });
     expect(requestLog.map(item => item.method)).toEqual(['GET', 'PATCH']);
@@ -163,26 +177,74 @@ describe('AUDIT-V2 F11 anonymous identity with actual SDK query serialization', 
       'eq.Uverified'
     );
     expect(requestLog[0]?.url.searchParams.has('normalized_phone')).toBe(false);
+    for (const request of requestLog) {
+      expect(
+        request.url.searchParams.get('line_credential_generation_id')
+      ).toBe(`eq.${generation}`);
+      expect(request.url.searchParams.get('clinic_id')).toBe(`eq.${clinicA}`);
+      expect(request.url.searchParams.get('is_deleted')).toBe('eq.false');
+    }
     expect(requestLog[1]?.body).not.toHaveProperty('phone');
   });
 
-  it.each(['different clinic', 'deleted patient'])(
+  it('the same LINE ID in another clinic does not block a new local patient', async () => {
+    patients = patients.map(patient => ({ ...patient, clinic_id: clinicB }));
+    const result = await service.findOrCreateCustomer(
+      '患者',
+      '09012345678',
+      'family@example.invalid',
+      {
+        credentialGenerationId: generation,
+        lineUserId: 'Uverified',
+        displayName: null,
+      }
+    );
+    expect(result.created).toBe(true);
+    expect(result.customerId).not.toBe(existingId);
+    expect(requestLog.map(item => item.method)).toEqual(['GET', 'POST']);
+    expect(requestLog[1]?.body).toMatchObject({
+      clinic_id: clinicA,
+      line_credential_generation_id: generation,
+    });
+  });
+
+  it.each(['deleted patient', 'old generation', 'unverified legacy patient'])(
     'verified LINE cannot reuse a %s',
     async reason => {
       patients = patients.map(patient => ({
         ...patient,
-        clinic_id: reason === 'different clinic' ? clinicB : clinicA,
         is_deleted: reason === 'deleted patient',
+        line_credential_generation_id:
+          reason === 'old generation'
+            ? oldGeneration
+            : reason === 'unverified legacy patient'
+              ? null
+              : generation,
       }));
       await expect(
         service.findOrCreateCustomer(
           '患者',
           '09012345678',
           'family@example.invalid',
-          { lineUserId: 'Uverified', displayName: null }
+          {
+            credentialGenerationId: generation,
+            lineUserId: 'Uverified',
+            displayName: null,
+          }
         )
       ).rejects.toThrow(CustomerCreateError);
       expect(requestLog.map(item => item.method)).toEqual(['GET', 'POST']);
     }
   );
+
+  it('rejects a missing verified generation before querying or mutating patients', async () => {
+    await expect(
+      service.findOrCreateCustomer('患者', undefined, undefined, {
+        credentialGenerationId: '',
+        lineUserId: 'Uverified',
+        displayName: null,
+      })
+    ).rejects.toThrow(CustomerLookupError);
+    expect(requestLog).toEqual([]);
+  });
 });
