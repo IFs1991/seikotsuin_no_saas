@@ -17,8 +17,8 @@ jest.mock('@/lib/supabase/guards', () => ({
   },
 }));
 
-async function getPeriod() {
-  const response = await GET(new NextRequest(auditRevenueUrl));
+async function getPeriod(url = auditRevenueUrl) {
+  const response = await GET(new NextRequest(url));
   expect(response.status).toBe(200);
   return revenuePeriodResponse.parse(await response.json()).data;
 }
@@ -150,15 +150,31 @@ describe('AUDIT-V2 F06 period totals in the real revenue route', () => {
     expect(data.revenueContextSummary[0]?.totalRevenue).toBe(300);
   });
 
-  it('aggregates all 1001 supplied rows (not a transport pagination assertion)', async () => {
+  function pagedPeriod() {
     const sources = periodRevenueSources();
     for (const [table, rows] of Object.entries(sources)) {
       const first = rows[0];
       if (!first) throw new Error('fixture missing');
-      sources[table] = Array.from({ length: 1001 }, () => ({ ...first }));
+      sources[table] = Array.from({ length: 1001 }, (_, index) => ({
+        ...first,
+        report_date: new Date(Date.UTC(2024, 0, 1 + index))
+          .toISOString()
+          .slice(0, 10),
+      }));
     }
+    const url = new URL(auditRevenueUrl);
+    url.searchParams.set('start_date', '2024-01-01');
+    url.searchParams.set(
+      'end_date',
+      new Date(Date.UTC(2024, 0, 1001)).toISOString().slice(0, 10)
+    );
+    return { sources, url: url.toString() };
+  }
+
+  it('aggregates all 1001 daily rows across both query pages', async () => {
+    const { sources, url } = pagedPeriod();
     mockClient = revenueQueryClient(sources);
-    const data = await getPeriod();
+    const data = await getPeriod(url);
     expect(data.revenueBreakdownSummary).toEqual([
       {
         amountRole: 'private_revenue_estimated',
@@ -170,6 +186,30 @@ describe('AUDIT-V2 F06 period totals in the real revenue route', () => {
       totalRevenue: 100100,
       itemCount: 1001,
       blockedCount: 1001,
+    });
+    for (const table of Object.keys(sources)) {
+      expect(
+        mockClient.rangeRequests.filter(row => row.table === table)
+      ).toEqual([
+        { table, from: 0, to: 999 },
+        { table, from: 1000, to: 1999 },
+      ]);
+    }
+  });
+
+  it.each([
+    'daily_report_revenue_context_summary',
+    'daily_report_revenue_breakdown_summary',
+  ])('rejects partial totals when the second page of %s fails', async table => {
+    const { sources, url } = pagedPeriod();
+    mockClient = revenueQueryClient(sources, table, 1000);
+    const response = await GET(new NextRequest(url));
+    expect(response.status).toBe(500);
+    expect(await response.json()).not.toHaveProperty('data');
+    expect(mockClient.rangeRequests).toContainEqual({
+      table,
+      from: 1000,
+      to: 1999,
     });
   });
 

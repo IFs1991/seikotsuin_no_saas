@@ -30,15 +30,19 @@ export function periodRevenueSources(): RevenueSources {
 }
 
 // Query-boundary fixture: actually applies the requested clinic/date predicates.
-// This is not evidence of PostgreSQL RLS or transport pagination.
+// Also models order/range boundaries. This is not evidence of PostgreSQL RLS.
 export function revenueQueryClient(
   sources: RevenueSources,
-  failedTable?: string
+  failedTable?: string,
+  failedPageFrom = 0
 ) {
+  const rangeRequests: { table: string; from: number; to: number }[] = [];
   return {
+    rangeRequests,
     from: jest.fn((table: string) => ({
       select: jest.fn(() => {
         let rows = sources[table] ?? [];
+        const orderColumns: string[] = [];
         const query = {
           eq: jest.fn((column: string, value: string) => {
             rows = rows.filter(row => row[column] === value);
@@ -52,17 +56,27 @@ export function revenueQueryClient(
             rows = rows.filter(row => String(row[column]) <= value);
             return query;
           }),
-          then(
-            resolve: (value: {
-              data: SourceRow[] | null;
-              error: Error | null;
-            }) => void
-          ) {
-            resolve({
-              data: table === failedTable ? null : rows,
-              error: table === failedTable ? new Error('read failed') : null,
+          order: jest.fn((column: string) => {
+            orderColumns.push(column);
+            return query;
+          }),
+          range: jest.fn(async (from: number, to: number) => {
+            rangeRequests.push({ table, from, to });
+            const failed = table === failedTable && from >= failedPageFrom;
+            const ordered = [...rows].sort((left, right) => {
+              for (const column of orderColumns) {
+                const result = String(left[column]).localeCompare(
+                  String(right[column])
+                );
+                if (result !== 0) return result;
+              }
+              return 0;
             });
-          },
+            return {
+              data: failed ? null : ordered.slice(from, to + 1),
+              error: failed ? new Error('read failed') : null,
+            };
+          }),
         };
         return query;
       }),
