@@ -1,0 +1,106 @@
+{
+  "sourceSha": "79d433f61fd868d7fea36296f3e58f3c5ee6f194",
+  "startSha": "2f1434e0ffa410e97672ea8956e65231843ff250",
+  "branch": "codex/audit-v2-verify01",
+  "node": "v24.19.0",
+  "next": "15.5.24",
+  "focused": {
+    "command": "npm run test -- --ci --runTestsByPath src/__tests__/lib/rate-limiting/audit-v2-state.test.ts src/__tests__/lib/rate-limiting/audit-v2-composition.test.ts src/__tests__/lib/rate-limiting/middleware.test.ts src/__tests__/auth/middleware-auth.test.ts src/__tests__/middleware.test.ts src/__tests__/public-app-boundary/middleware-boundary.test.ts src/__tests__/api/audit-v2-revenue-period.test.ts src/__tests__/api/revenue-api.test.ts src/__tests__/pages/revenue.test.tsx src/__tests__/hooks/useRevenue.test.tsx src/__tests__/hooks/audit-v2-revenue-requests.test.tsx src/__tests__/api/audit-v2-text-roundtrip.test.ts src/__tests__/api/audit-v2-email-output.test.ts src/__tests__/components/audit-v2-text-output.test.tsx src/__tests__/components/audit-v2-security-csv.test.tsx src/__tests__/pages/security-dashboard-page.test.tsx src/__tests__/api/email-templates.test.ts src/__tests__/lib/csv-export.test.ts src/__tests__/api/customers-route.test.ts src/__tests__/api/customers-schema.test.ts src/__tests__/lib/api-helpers-security.test.ts src/__tests__/lib/api-helpers-auth.test.ts src/__tests__/lib/audit-v2-public-customer.test.ts src/__tests__/lib/public-reservation-service.test.ts src/__tests__/api/public-reservations-route.test.ts src/__tests__/api/public-my-reservations-route.test.ts src/__tests__/lib/line-id-token.test.ts src/__tests__/api/audit-v2-daily-report-delete.test.ts src/__tests__/api/daily-reports-manager-authorization.test.ts src/__tests__/api/daily-reports-api.test.ts src/__tests__/lib/billing-business-write.test.ts src/__tests__/api/audit-v2-billing-replay.test.ts src/__tests__/api/billing-internal-routes.test.ts src/__tests__/lib/billing-internal-auth.test.ts src/__tests__/lib/billing-stripe-webhook-claim.test.ts src/__tests__/lib/billing-stripe-mapper.test.ts src/__tests__/api/audit-v2-calendar-date.test.ts src/__tests__/api/public-availability-route.test.ts src/__tests__/components/public-booking-wizard.test.tsx src/__tests__/api/daily-report-items-route.test.ts src/__tests__/api/daily-report-items-migration.test.ts src/__tests__/api/phase4a-menu-billing-patient-coverage-snapshot-migration.test.ts src/__tests__/api/reservations-schema.test.ts",
+    "suites": 43,
+    "tests": 481,
+    "failed": 0,
+    "skipped": 0
+  },
+  "newTestTypeDiagnostics": {
+    "files": 13,
+    "diagnostics": 0
+  },
+  "logs": [
+    {
+      "path": "docs/stabilization/audit-v2-final-focused.log",
+      "sha256": "968608218cff92df23f92fdb3cb172ed2b48a5cc265378b9175c3238e3bcfdfd",
+      "exitCode": 0
+    },
+    {
+      "path": "docs/stabilization/audit-v2-final-build-retry.log",
+      "sha256": "23a7e3f300d82f93eb1557f62892df8b6cfa3532f970d6323a7e2bb5ad7aa61e",
+      "exitCode": 0
+    },
+    {
+      "path": "docs/stabilization/audit-v2-verify01-type.log",
+      "sha256": "1b5fbba9d95ad935021de6c5453077604737f72449f3b883a0f87fe009d0e4b2",
+      "exitCode": 0
+    },
+    {
+      "path": "docs/stabilization/audit-v2-final-type-commercial-latest.log",
+      "sha256": "94dd0c613f061978112a65ef67ec430480502fc74b895c705f7bd13d75303c20",
+      "exitCode": 0
+    },
+    {
+      "path": "docs/stabilization/audit-v2-final-lint-ci-latest.log",
+      "sha256": "815dfe8509ac1436faba5138f09f8e28d4c8fa6b5bb6f32fcf29bd548e8d780f",
+      "exitCode": 0
+    },
+    {
+      "path": "docs/stabilization/audit-v2-verify01-lint.log",
+      "sha256": "30d797eebef085f3da9f4fd4fbe8e98c36fa1aa4239ac7bab412bbaf3d68e4d2",
+      "exitCode": 0
+    },
+    {
+      "path": "docs/stabilization/audit-v2-final-inventory-latest.log",
+      "sha256": "3ab68513f2c11abc33d61cfb3dd68afd45f3cbb0dbc5c2dbe77de8a9afb4cf97",
+      "exitCode": 0
+    },
+    {
+      "path": "docs/stabilization/audit-v2-final-route-security-latest.log",
+      "sha256": "4c11798252d8affd1a2b0df590f2f78735807fc59a1c6d49a444cbbaf91035d0",
+      "exitCode": 0
+    },
+    {
+      "path": "docs/stabilization/audit-v2-final-new-test-types.log",
+      "sha256": "d5932c86fe91655f79e1caf84e7e0e6dcd1eebc5d569aaaf5c347f228849b357",
+      "exitCode": 0
+    }
+  ],
+  "fullJest": {
+    "status": "FAILED_ONE_ENV_DEPENDENT_FIXTURE",
+    "command": "npm run test -- --ci --testPathIgnorePatterns e2e red-contracts --reporters=default --reporters=./docs/stabilization/audit-v2-progress-reporter.cjs",
+    "exitCode": 1,
+    "suites": {
+      "passed": 428,
+      "failed": 1,
+      "total": 429
+    },
+    "tests": {
+      "passed": 3657,
+      "failed": 1,
+      "skipped": 2,
+      "total": 3660
+    },
+    "seconds": 925.39,
+    "log": "docs/stabilization/audit-v2-final-jest-diagnostic.log",
+    "sha256": "b3e431ff4fb13811ecf52b0d3624c21133a55777dd7c8ea28ce73c37f06d8a7b",
+    "repair": {
+      "sha": "f725343c364fe33bae4fe803b9658c78b2cdddf1",
+      "command": "npm run test -- --ci --runTestsByPath src/__tests__/lib/billing-config.test.ts",
+      "exitCode": 0,
+      "suites": 1,
+      "tests": 7,
+      "failed": 0,
+      "skipped": 0,
+      "log": "docs/stabilization/audit-v2-final-billing-config-retry.log",
+      "sha256": "bbd348267cd1d0f5b265eb9f9e14f7d367d78e4379311a03056ad09e2c953972",
+      "fullSuiteRerun": false
+    },
+    "flakyRepetition": "NOT_RUN"
+  },
+  "notRun": [
+    "production App E2E",
+    "real DB/RLS/Redis/proxy",
+    "remote CI",
+    "external notifications",
+    "Stripe operations",
+    "load/restore/deploy"
+  ],
+  "testFixtureSha": "f725343c364fe33bae4fe803b9658c78b2cdddf1"
+}
