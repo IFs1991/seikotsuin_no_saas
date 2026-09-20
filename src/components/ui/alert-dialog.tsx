@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { cn } from '@/lib/utils';
+import { cnApp } from './app-theme';
 
 interface AlertDialogContextValue {
   open: boolean;
@@ -54,16 +54,22 @@ const AlertDialogTrigger = React.forwardRef<
     throw new Error('AlertDialogTrigger must be used within AlertDialog');
   }
 
-  if (asChild && React.isValidElement(children)) {
-    const child = children as React.ReactElement<any>;
+  if (
+    asChild &&
+    React.isValidElement<
+      React.ButtonHTMLAttributes<HTMLButtonElement> &
+        React.RefAttributes<HTMLButtonElement>
+    >(children)
+  ) {
+    const child = children;
     return React.cloneElement(child, {
-      ...(props as any),
-      ref: ref as any,
-      onClick: (e: React.MouseEvent) => {
+      ...props,
+      ref,
+      onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
         context.setOpen(true);
         child.props?.onClick?.(e);
       },
-    } as any);
+    });
   }
 
   return (
@@ -106,9 +112,9 @@ const AlertDialogContent = React.forwardRef<
       {/* Content */}
       <div
         ref={ref}
-        className={cn(
-          'relative z-50 w-full max-w-lg rounded-lg bg-white p-6 shadow-lg',
-          className
+        className={cnApp(
+          className,
+          'relative z-50 w-full max-w-lg rounded-lg bg-white p-6 shadow-lg app:bg-popover app:text-popover-foreground app:border app:border-border app:shadow-dialog app:max-h-[calc(100dvh-2rem)] app:overflow-y-auto'
         )}
         {...props}
       />
@@ -121,7 +127,7 @@ const AlertDialogHeader = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn('mb-4', className)} {...props} />
+  <div ref={ref} className={cnApp(className, 'mb-4')} {...props} />
 ));
 AlertDialogHeader.displayName = 'AlertDialogHeader';
 
@@ -131,7 +137,7 @@ const AlertDialogFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('flex justify-end space-x-2 pt-4', className)}
+    className={cnApp(className, 'flex justify-end space-x-2 pt-4')}
     {...props}
   />
 ));
@@ -145,7 +151,10 @@ const AlertDialogTitle = React.forwardRef<
     ref={ref}
     role='heading'
     aria-level={2}
-    className={cn('text-lg font-semibold text-gray-900', className)}
+    className={cnApp(
+      className,
+      'text-lg font-semibold text-gray-900 app:text-foreground'
+    )}
     {...props}
   />
 ));
@@ -155,7 +164,14 @@ const AlertDialogDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <p ref={ref} className={cn('text-sm text-gray-600', className)} {...props} />
+  <p
+    ref={ref}
+    className={cnApp(
+      className,
+      'text-sm text-gray-600 app:text-muted-foreground'
+    )}
+    {...props}
+  />
 ));
 AlertDialogDescription.displayName = 'AlertDialogDescription';
 
@@ -169,9 +185,9 @@ const AlertDialogAction = React.forwardRef<
     <button
       ref={ref}
       type='button'
-      className={cn(
-        'inline-flex items-center justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2',
-        className
+      className={cnApp(
+        className,
+        'inline-flex items-center justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 app:bg-destructive app:text-destructive-foreground app:hover:bg-destructive/90 app:focus:ring-ring focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2'
       )}
       onClick={e => {
         props.onClick?.(e);
@@ -193,9 +209,9 @@ const AlertDialogCancel = React.forwardRef<
     <button
       ref={ref}
       type='button'
-      className={cn(
-        'inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
-        className
+      className={cnApp(
+        className,
+        'inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 app:bg-secondary app:text-secondary-foreground app:border-input app:hover:bg-surface-muted app:focus:ring-ring focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
       )}
       onClick={e => {
         props.onClick?.(e);

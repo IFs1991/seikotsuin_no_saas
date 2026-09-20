@@ -239,22 +239,22 @@ describe('Admin navigation alignment', () => {
   it('MobileBottomNav は manager の管理導線を /manager に向ける', () => {
     render(<MobileBottomNav isAdmin profileLoading={false} role='manager' />);
 
-    const adminLink = screen.getByRole('tab', { name: /管理/ });
+    const adminLink = screen.getByRole('link', { name: /管理/ });
     expect(adminLink).toHaveAttribute('href', '/manager');
   });
 
   it('MobileBottomNav は therapist に予約、日報、シフトだけを表示する', () => {
     render(<MobileBottomNav profileLoading={false} role='therapist' />);
 
-    expect(screen.getByRole('tab', { name: /予約/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /予約/ })).toHaveAttribute(
       'href',
       '/reservations'
     );
-    expect(screen.getByRole('tab', { name: /日報/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /日報/ })).toHaveAttribute(
       'href',
       '/daily-reports'
     );
-    expect(screen.getByRole('tab', { name: /シフト/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /シフト/ })).toHaveAttribute(
       'href',
       '/staff/shift-requests'
     );
