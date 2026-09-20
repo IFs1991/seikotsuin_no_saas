@@ -200,7 +200,7 @@ export function MobileBottomNav({
     <nav
       className={cn(
         'md:hidden fixed bottom-0 left-0 right-0 z-50',
-        'bg-white border-t border-gray-200 shadow-lg',
+        'bg-card border-t border-border shadow-surface',
         'pb-safe-area-bottom'
       )}
     >
@@ -217,17 +217,16 @@ export function MobileBottomNav({
                 'flex flex-col items-center justify-center',
                 'touch-target-comfortable',
                 'transition-colors duration-200',
-                'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
                 'focus-no-obscure',
                 active
-                  ? 'text-primary-600 bg-primary-50'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  ? 'text-selected-foreground bg-selected border-t-4 border-primary font-semibold'
+                  : 'text-muted-foreground border-t-4 border-transparent hover:text-foreground hover:bg-surface-soft'
               )}
-              role='tab'
-              aria-selected={active}
+              aria-current={active ? 'page' : undefined}
               tabIndex={0}
             >
-              <Icon className='w-5 h-5 mb-1' />
+              <Icon className='w-5 h-5 mb-1' aria-hidden='true' />
               <span className='text-xs font-medium leading-none'>
                 {item.label}
               </span>
@@ -251,7 +250,12 @@ export function MobileAwarePage({
   role?: string | null;
 }) {
   return (
-    <div className={cn('min-h-screen', 'md:pb-0 pb-20')}>
+    <div
+      className={cn(
+        'min-h-screen',
+        'md:pb-0 pb-[calc(5rem+env(safe-area-inset-bottom))]'
+      )}
+    >
       {children}
       <MobileBottomNav
         isAdmin={isAdmin}
