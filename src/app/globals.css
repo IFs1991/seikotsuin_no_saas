@@ -82,6 +82,123 @@
     --border-color: #4b5563;
   }
 
+  /*
+   * AppShell presence scopes the refresh without changing routing or auth.
+   * Applying tokens at :root also covers body portals and server-rendered HTML.
+   * Public pages keep the legacy :root/.dark palette above.
+   */
+  :root:has([data-app-theme]) {
+    --background: 33.3333 36% 95.098%; /* #F7F3EE */
+    --background-elevated: 34.2857 41.1765% 96.6667%; /* #FAF7F3 */
+    --card: 20 100% 99.4118%; /* #FFFDFC */
+    --popover: 0 0% 100%; /* #FFFFFF */
+    --surface-raised: 0 0% 100%; /* #FFFFFF */
+    --surface-soft: 32 38.4615% 92.3529%; /* #F3ECE4 */
+    --surface-muted: 30 34.4828% 88.6275%; /* #ECE2D8 */
+    --foreground: 22.8571 29.5775% 13.9216%; /* #2E2119 */
+    --ink-soft: 23.6364 21.2903% 30.3922%; /* #5E4A3D */
+    --muted: 32 38.4615% 92.3529%; /* #F3ECE4 */
+    --muted-foreground: 25.3846 12.5% 40.7843%; /* #75665B */
+    --text-disabled: 26 14.1509% 58.4314%; /* #A49386 */
+    --border: 30 26.087% 81.9608%; /* #DDD1C5 */
+    --border-strong: 27.2727 21.1538% 59.2157%; /* #AD9581 */
+    --input: 26.6667 18.8285% 46.8627%; /* #8E7561 */
+    --secondary: 32 38.4615% 92.3529%; /* #F3ECE4 */
+    --primary: 20.9709 69.1275% 29.2157%; /* #7E3B17 */
+    --primary-foreground: 0 0% 100%; /* #FFFFFF */
+    --primary-hover: 20 72.4138% 22.7451%; /* #642C10 */
+    --primary-strong: 20.8696 69.697% 12.9412%; /* #381A0A */
+    --accent: 31.9149 64.3836% 85.6863%; /* #F2DCC3 */
+    --accent-foreground: 20.8696 69.697% 12.9412%; /* #381A0A */
+    --brand-softer: 31.1111 65.8537% 91.9608%; /* #F8EBDD */
+    --ring: 20.9709 69.1275% 29.2157%; /* #7E3B17 */
+    --success: 158.1818 68.75% 25.098%; /* #146C4C */
+    --success-soft: 153.75 50% 93.7255%; /* #E7F7F0 */
+    --warning: 33.8931 91.6084% 28.0392%; /* #895006 */
+    --warning-soft: 39.375 100% 93.7255%; /* #FFF4DF */
+    --destructive: 352.1538 58.0357% 43.9216%; /* #B12F40 */
+    --destructive-soft: 351 100% 96.0784%; /* #FFEBEE */
+    --info: 214.0299 65.0485% 40.3922%; /* #245EAA */
+    --info-soft: 217.1429 100% 95.8824%; /* #EAF2FF */
+    --overlay: 20.8696 69.697% 12.9412%; /* #381A0A */
+    --card-foreground: var(--foreground);
+    --popover-foreground: var(--foreground);
+    --secondary-foreground: var(--foreground);
+    --success-foreground: var(--primary-foreground);
+    --warning-foreground: var(--primary-foreground);
+    --destructive-foreground: var(--primary-foreground);
+    --info-foreground: var(--primary-foreground);
+    --disabled: var(--surface-muted);
+    --selected: var(--accent);
+    --selected-foreground: var(--accent-foreground);
+    --radius: 0.75rem;
+    --shadow-surface: 0 1px 2px rgb(56 26 10 / 0.04);
+    --shadow-popover: 0 12px 30px rgb(56 26 10 / 0.1);
+    --shadow-dialog: 0 24px 64px rgb(56 26 10 / 0.16);
+    color-scheme: light;
+  }
+
+  :root.dark:has([data-app-theme]) {
+    --background: 30 21.0526% 7.451%; /* #17130F */
+    --background-elevated: 25 22.2222% 10.5882%; /* #211A15 */
+    --card: 25 22.2222% 10.5882%; /* #211A15 */
+    --popover: 25.2632 24.6753% 15.098%; /* #30251D */
+    --surface-raised: 25.2632 24.6753% 15.098%; /* #30251D */
+    --surface-soft: 24.7059 24.6377% 13.5294%; /* #2B211A */
+    --surface-muted: 25.2632 24.6753% 15.098%; /* #30251D */
+    --foreground: 32 48.3871% 93.9216%; /* #F7F0E8 */
+    --ink-soft: 27.0968 30.6931% 80.1961%; /* #DCCBBD */
+    --muted: 24.7059 24.6377% 13.5294%; /* #2B211A */
+    --muted-foreground: 25.7143 18.7166% 63.3333%; /* #B39F90 */
+    --text-disabled: 26 14.1509% 58.4314%; /* #A49386 */
+    --border: 24.8276 24.3697% 23.3333%; /* #4A392D */
+    --border-strong: 25.7143 26.776% 35.8824%; /* #745843 */
+    --input: 26 14.1509% 58.4314%; /* #A49386 */
+    --secondary: 24.7059 24.6377% 13.5294%; /* #2B211A */
+    --primary: 24.2424 54.0984% 64.1176%; /* #D59A72 */
+    --primary-foreground: 30 21.0526% 7.451%; /* #17130F */
+    --primary-hover: 25.2273 60.274% 71.3725%; /* #E2AF8A */
+    --primary-strong: 32 48.3871% 93.9216%; /* #F7F0E8 */
+    --accent: 19.3548 36.4706% 16.6667%; /* #3A251B */
+    --accent-foreground: 32 48.3871% 93.9216%; /* #F7F0E8 */
+    --brand-softer: 20.8696 32.3944% 13.9216%; /* #2F2018 */
+    --ring: 24.2424 54.0984% 64.1176%; /* #D59A72 */
+    --success: 153.6735 40.8333% 52.9412%; /* #56B88D */
+    --success-soft: 156.7742 39.2405% 15.4902%; /* #18372B */
+    --warning: 37.2 71.4286% 58.8235%; /* #E1A84B */
+    --warning-soft: 37.7143 43.2099% 15.8824%; /* #3A2D17 */
+    --destructive: 352.3636 64.7059% 66.6667%; /* #E17381 */
+    --destructive-soft: 346 31.9149% 18.4314%; /* #3E2027 */
+    --info: 213.2727 68.75% 68.6275%; /* #78A9E6 */
+    --info-soft: 215 39.1304% 18.0392%; /* #1C2B40 */
+    --overlay: 0 0% 0%; /* #000000 */
+    --shadow-surface: 0 1px 2px rgb(0 0 0 / 0.16);
+    --shadow-popover: 0 12px 30px rgb(0 0 0 / 0.24);
+    --shadow-dialog: 0 24px 64px rgb(0 0 0 / 0.32);
+    color-scheme: dark;
+  }
+
+  :root:has([data-app-theme]) body {
+    font-family: Inter, 'Noto Sans JP', 'Hiragino Sans', system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+
+  :root:has([data-app-theme]) {
+    scroll-padding-top: 5rem;
+    scroll-padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root:has([data-app-theme]) *,
+    :root:has([data-app-theme]) *::before,
+    :root:has([data-app-theme]) *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
   * {
     @apply border-border;
   }

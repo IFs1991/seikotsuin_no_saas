@@ -1,5 +1,5 @@
 import React from 'react';
-import { cn } from '@/lib/utils';
+import { cnApp } from './app-theme';
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   interactive?: boolean;
@@ -7,26 +7,38 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const cardVariants = {
   interactive: {
-    true: 'cursor-pointer hover:scale-[1.01] hover:shadow-medical-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-offset-2',
+    true: 'cursor-pointer hover:scale-[1.01] hover:shadow-medical-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-offset-2 app:hover:scale-100 app:hover:shadow-surface app:hover:border-input app:hover:bg-surface-soft app:focus:ring-ring app:ring-offset-background app:transition-colors',
     false: '',
   },
 };
 
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, interactive = false, ...props }, ref) => (
+  ({ className, interactive = false, onKeyDown, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn(
-        'rounded-lg border bg-card text-card-foreground shadow-sm',
+      className={cnApp(
+        className,
+        'rounded-lg border bg-card text-card-foreground shadow-sm app:shadow-surface',
         cardVariants.interactive[
           interactive.toString() as keyof typeof cardVariants.interactive
-        ],
-        className
+        ]
       )}
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
       data-interactive={interactive}
       {...props}
+      onKeyDown={event => {
+        onKeyDown?.(event);
+        if (
+          interactive &&
+          !event.defaultPrevented &&
+          event.target === event.currentTarget &&
+          (event.key === 'Enter' || event.key === ' ')
+        ) {
+          event.preventDefault();
+          event.currentTarget.click();
+        }
+      }}
     />
   )
 );
@@ -38,7 +50,7 @@ export const CardHeader = React.forwardRef<HTMLDivElement, CardHeaderProps>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('flex flex-col space-y-1.5 p-6', className)}
+      className={cnApp(className, 'flex flex-col space-y-1.5 p-6')}
       {...props}
     />
   )
@@ -51,9 +63,9 @@ export const CardTitle = React.forwardRef<HTMLParagraphElement, CardTitleProps>(
   ({ className, children, ...props }, ref) => (
     <h3
       ref={ref}
-      className={cn(
-        'text-2xl font-semibold leading-none tracking-tight',
-        className
+      className={cnApp(
+        className,
+        'text-2xl font-semibold leading-none tracking-tight app:text-base app:leading-snug app:tracking-normal'
       )}
       {...props}
     >
@@ -71,7 +83,7 @@ export const CardDescription = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn('text-sm text-muted-foreground', className)}
+    className={cnApp(className, 'text-sm text-muted-foreground')}
     {...props}
   >
     {children}
@@ -83,7 +95,7 @@ export type CardContentProps = React.HTMLAttributes<HTMLDivElement>;
 
 export const CardContent = React.forwardRef<HTMLDivElement, CardContentProps>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('p-6 pt-0', className)} {...props} />
+    <div ref={ref} className={cnApp(className, 'p-6 pt-0')} {...props} />
   )
 );
 CardContent.displayName = 'CardContent';
@@ -94,7 +106,7 @@ export const CardFooter = React.forwardRef<HTMLDivElement, CardFooterProps>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('flex items-center p-6 pt-0', className)}
+      className={cnApp(className, 'flex items-center p-6 pt-0')}
       {...props}
     />
   )

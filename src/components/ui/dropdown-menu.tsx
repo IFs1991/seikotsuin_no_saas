@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { cn } from '@/lib/utils';
+import { cnApp } from './app-theme';
 
 interface DropdownMenuContextValue {
   open: boolean;
@@ -53,25 +53,32 @@ const DropdownMenuTrigger = React.forwardRef<
     throw new Error('DropdownMenuTrigger must be used within DropdownMenu');
   }
 
-  if (asChild && React.isValidElement(children)) {
-    const child = children as React.ReactElement<any>;
+  if (
+    asChild &&
+    React.isValidElement<
+      React.ButtonHTMLAttributes<HTMLButtonElement> &
+        React.RefAttributes<HTMLButtonElement>
+    >(children)
+  ) {
+    const child = children;
     return React.cloneElement(child, {
-      ...(props as any),
-      ref: ref as any,
-      onClick: (e: React.MouseEvent) => {
+      ...props,
+      ref,
+      onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
         context.setOpen(!context.open);
         child.props?.onClick?.(e);
       },
-    } as any);
+    });
   }
 
   return (
     <button
       ref={ref}
       type='button'
-      className={cn(
+      className={cnApp(
+        className,
         'inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
-        className
+        'app:border-input app:bg-surface-raised app:text-foreground app:hover:bg-surface-muted app:focus:ring-ring app:shadow-surface'
       )}
       onClick={() => context.setOpen(!context.open)}
       {...props}
@@ -102,11 +109,12 @@ const DropdownMenuContent = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn(
+      className={cnApp(
+        className,
         'absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none',
+        'app:bg-popover app:text-popover-foreground app:border app:border-border app:ring-0 app:shadow-popover',
         align === 'start' && 'left-0 right-auto',
-        align === 'center' && 'left-1/2 -translate-x-1/2',
-        className
+        align === 'center' && 'left-1/2 -translate-x-1/2'
       )}
       style={{ marginTop: sideOffset }}
       {...props}
@@ -121,10 +129,11 @@ const DropdownMenuItem = React.forwardRef<
 >(({ className, disabled = false, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn(
+    className={cnApp(
+      className,
       'block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 cursor-pointer',
-      disabled && 'opacity-50 pointer-events-none cursor-not-allowed',
-      className
+      'app:text-foreground app:hover:bg-selected app:hover:text-selected-foreground app:focus-visible:outline-none app:focus-visible:ring-2 app:focus-visible:ring-inset app:focus-visible:ring-ring',
+      disabled && 'opacity-50 pointer-events-none cursor-not-allowed'
     )}
     {...props}
   />
@@ -137,7 +146,7 @@ const DropdownMenuSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('my-1 h-px bg-gray-200', className)}
+    className={cnApp(className, 'my-1 h-px bg-gray-200 app:bg-border')}
     {...props}
   />
 ));
@@ -149,7 +158,10 @@ const DropdownMenuLabel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('px-4 py-2 text-sm font-semibold text-gray-900', className)}
+    className={cnApp(
+      className,
+      'px-4 py-2 text-sm font-semibold text-gray-900 app:text-foreground'
+    )}
     {...props}
   />
 ));

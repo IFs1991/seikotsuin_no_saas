@@ -2,6 +2,7 @@ import type { Config } from 'tailwindcss';
 import forms from '@tailwindcss/forms';
 import typography from '@tailwindcss/typography';
 import aspectRatio from '@tailwindcss/aspect-ratio';
+import plugin from 'tailwindcss/plugin';
 
 const config: Config = {
   content: [
@@ -37,14 +38,47 @@ const config: Config = {
     },
     extend: {
       colors: {
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
+        surface: {
+          DEFAULT: 'hsl(var(--card) / <alpha-value>)',
+          raised: 'hsl(var(--surface-raised) / <alpha-value>)',
+          soft: 'hsl(var(--surface-soft) / <alpha-value>)',
+          muted: 'hsl(var(--surface-muted) / <alpha-value>)',
+        },
+        'ink-soft': 'hsl(var(--ink-soft) / <alpha-value>)',
+        'border-strong': 'hsl(var(--border-strong) / <alpha-value>)',
+        'text-disabled': 'hsl(var(--text-disabled) / <alpha-value>)',
+        disabled: 'hsl(var(--disabled) / <alpha-value>)',
+        overlay: 'hsl(var(--overlay) / <alpha-value>)',
+        selected: {
+          DEFAULT: 'hsl(var(--selected) / <alpha-value>)',
+          foreground: 'hsl(var(--selected-foreground) / <alpha-value>)',
+        },
+        success: {
+          DEFAULT: 'hsl(var(--success) / <alpha-value>)',
+          foreground: 'hsl(var(--success-foreground) / <alpha-value>)',
+          soft: 'hsl(var(--success-soft) / <alpha-value>)',
+        },
+        warning: {
+          DEFAULT: 'hsl(var(--warning) / <alpha-value>)',
+          foreground: 'hsl(var(--warning-foreground) / <alpha-value>)',
+          soft: 'hsl(var(--warning-soft) / <alpha-value>)',
+        },
+        info: {
+          DEFAULT: 'hsl(var(--info) / <alpha-value>)',
+          foreground: 'hsl(var(--info-foreground) / <alpha-value>)',
+          soft: 'hsl(var(--info-soft) / <alpha-value>)',
+        },
+        border: 'hsl(var(--border) / <alpha-value>)',
+        input: 'hsl(var(--input) / <alpha-value>)',
+        ring: 'hsl(var(--ring) / <alpha-value>)',
+        background: 'hsl(var(--background) / <alpha-value>)',
+        foreground: 'hsl(var(--foreground) / <alpha-value>)',
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          foreground: 'hsl(var(--primary-foreground))',
+          hover: 'hsl(var(--primary-hover) / <alpha-value>)',
+          strong: 'hsl(var(--primary-strong) / <alpha-value>)',
+          // Numeric shades remain legacy compatibility colors for unmigrated pages.
+          DEFAULT: 'hsl(var(--primary) / <alpha-value>)',
+          foreground: 'hsl(var(--primary-foreground) / <alpha-value>)',
           50: '#eff6ff',
           100: '#dbeafe',
           200: '#bfdbfe',
@@ -58,20 +92,21 @@ const config: Config = {
           950: '#172554',
         },
         secondary: {
-          DEFAULT: 'hsl(var(--secondary))',
-          foreground: 'hsl(var(--secondary-foreground))',
+          DEFAULT: 'hsl(var(--secondary) / <alpha-value>)',
+          foreground: 'hsl(var(--secondary-foreground) / <alpha-value>)',
         },
         destructive: {
-          DEFAULT: 'hsl(var(--destructive))',
-          foreground: 'hsl(var(--destructive-foreground))',
+          soft: 'hsl(var(--destructive-soft) / <alpha-value>)',
+          DEFAULT: 'hsl(var(--destructive) / <alpha-value>)',
+          foreground: 'hsl(var(--destructive-foreground) / <alpha-value>)',
         },
         muted: {
-          DEFAULT: 'hsl(var(--muted))',
-          foreground: 'hsl(var(--muted-foreground))',
+          DEFAULT: 'hsl(var(--muted) / <alpha-value>)',
+          foreground: 'hsl(var(--muted-foreground) / <alpha-value>)',
         },
         accent: {
-          DEFAULT: 'hsl(var(--accent))',
-          foreground: 'hsl(var(--accent-foreground))',
+          DEFAULT: 'hsl(var(--accent) / <alpha-value>)',
+          foreground: 'hsl(var(--accent-foreground) / <alpha-value>)',
           50: '#f0fdf4',
           100: '#dcfce7',
           200: '#bbf7d0',
@@ -85,12 +120,12 @@ const config: Config = {
           950: '#021c14',
         },
         popover: {
-          DEFAULT: 'hsl(var(--popover))',
-          foreground: 'hsl(var(--popover-foreground))',
+          DEFAULT: 'hsl(var(--popover) / <alpha-value>)',
+          foreground: 'hsl(var(--popover-foreground) / <alpha-value>)',
         },
         card: {
-          DEFAULT: 'hsl(var(--card))',
-          foreground: 'hsl(var(--card-foreground))',
+          DEFAULT: 'hsl(var(--card) / <alpha-value>)',
+          foreground: 'hsl(var(--card-foreground) / <alpha-value>)',
         },
         admin: {
           50: '#faf5ff',
@@ -171,6 +206,9 @@ const config: Config = {
         },
       },
       boxShadow: {
+        surface: 'var(--shadow-surface)',
+        popover: 'var(--shadow-popover)',
+        dialog: 'var(--shadow-dialog)',
         medical:
           '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
         'medical-lg':
@@ -184,7 +222,15 @@ const config: Config = {
       },
     },
   },
-  plugins: [forms, typography, aspectRatio],
+  plugins: [
+    forms,
+    typography,
+    aspectRatio,
+    plugin(({ addVariant }) => {
+      // Zero-specificity scope preserves caller utilities and reaches body portals.
+      addVariant('app', ':where(html:has([data-app-theme])) &');
+    }),
+  ],
 };
 
 export default config;

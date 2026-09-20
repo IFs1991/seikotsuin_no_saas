@@ -24,7 +24,7 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button, buttonClassName } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import {
@@ -48,15 +48,16 @@ interface SidebarProps {
 interface SidebarItemButtonProps {
   item: NavigationItem;
   isActive: boolean;
+  expanded?: boolean;
   className: string;
-  onClick: React.MouseEventHandler<HTMLButtonElement>;
+  onClick: React.MouseEventHandler<HTMLAnchorElement>;
   children: React.ReactNode;
 }
 
 const ACTIVE_MENU_CLASS =
-  'bg-primary-800 border-l-4 border-white/70 font-semibold';
+  'bg-selected text-selected-foreground border-l-4 border-primary font-semibold';
 const INACTIVE_MENU_CLASS =
-  'border-l-4 border-transparent hover:bg-primary-800';
+  'border-l-4 border-transparent text-ink-soft hover:bg-surface-muted';
 
 // メニューIDごとの視覚手がかり。折りたたみ時はアイコンのみで判別できるようにする
 const NAVIGATION_ICONS: Record<string, LucideIcon> = {
@@ -92,23 +93,28 @@ function getNavigationIcon(itemId: string): LucideIcon {
 function SidebarItemButton({
   item,
   isActive,
+  expanded,
   className,
   onClick,
   children,
 }: SidebarItemButtonProps) {
   return (
-    <Link href={item.href} className='w-full'>
-      <Button
-        variant='ghost'
-        className={cn(
+    <Link
+      href={item.href}
+      className={buttonClassName({
+        variant: 'ghost',
+        className: cn(
           className,
           isActive ? ACTIVE_MENU_CLASS : INACTIVE_MENU_CLASS
-        )}
-        onClick={onClick}
-        title={item.label}
-      >
-        {children}
-      </Button>
+        ),
+      })}
+      onClick={onClick}
+      title={item.label}
+      aria-label={item.label}
+      aria-current={isActive ? 'page' : undefined}
+      aria-expanded={expanded}
+    >
+      {children}
     </Link>
   );
 }
@@ -177,7 +183,7 @@ export const Sidebar = React.memo(function Sidebar({
   }, []);
 
   const handleCloseMenu = useCallback<
-    React.MouseEventHandler<HTMLButtonElement>
+    React.MouseEventHandler<HTMLAnchorElement>
   >(() => {
     onClose();
   }, [onClose]);
@@ -187,7 +193,7 @@ export const Sidebar = React.memo(function Sidebar({
       const hasSubItems = Boolean(item.subItems?.length);
       const isSubMenuOpen = openSubMenuIds.has(item.id);
       const Icon = getNavigationIcon(item.id);
-      const handleClick: React.MouseEventHandler<HTMLButtonElement> = event => {
+      const handleClick: React.MouseEventHandler<HTMLAnchorElement> = event => {
         if (hasSubItems && isExpanded) {
           event.preventDefault();
           toggleSubMenu(item.id);
@@ -202,6 +208,7 @@ export const Sidebar = React.memo(function Sidebar({
           key={item.id}
           item={item}
           isActive={currentMenuId === item.id}
+          expanded={hasSubItems && isExpanded ? isSubMenuOpen : undefined}
           className={cn(
             'w-full mb-2 min-h-11',
             isExpanded ? 'justify-start' : 'justify-center px-0'
@@ -229,15 +236,18 @@ export const Sidebar = React.memo(function Sidebar({
   );
 
   return (
-    <div
+    <nav
+      aria-label='メインナビゲーション'
       className={cn(
-        'fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] overflow-hidden bg-primary-600 text-white shadow-xl transition-all duration-300',
-        isOpen ? 'translate-x-0' : '-translate-x-full',
+        'fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] overflow-hidden border-r border-border bg-surface-soft text-foreground shadow-popover transition-transform duration-200',
+        isOpen
+          ? 'translate-x-0 visible'
+          : '-translate-x-full invisible md:visible',
         'md:sticky md:translate-x-0 md:flex-shrink-0 md:shadow-none',
         isExpanded ? 'w-64' : 'w-20'
       )}
     >
-      <div className='p-4 flex justify-between items-center border-b border-primary-800'>
+      <div className='p-4 flex justify-between items-center border-b border-border'>
         <h1
           className={cn(
             'font-bold text-sm tracking-wide',
@@ -250,7 +260,7 @@ export const Sidebar = React.memo(function Sidebar({
           onClick={handleToggleExpanded}
           variant='ghost'
           className={cn(
-            'text-white hover:bg-primary-800',
+            'text-ink-soft hover:bg-surface-muted',
             !isExpanded && 'mx-auto'
           )}
           aria-label={isExpanded ? 'メニューを折りたたむ' : 'メニューを広げる'}
@@ -264,11 +274,11 @@ export const Sidebar = React.memo(function Sidebar({
         </Button>
       </div>
 
-      <div className='p-4 overflow-y-auto h-[calc(100%-64px)] space-y-6'>
+      <div className='p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-4 overflow-y-auto h-[calc(100%-64px)] space-y-6'>
         <div>
           <p
             className={cn(
-              'text-xs text-blue-100 uppercase tracking-[0.2em]',
+              'text-xs text-muted-foreground uppercase tracking-[0.2em]',
               !isExpanded && 'hidden'
             )}
           >
@@ -276,7 +286,7 @@ export const Sidebar = React.memo(function Sidebar({
           </p>
           <div className='mt-2'>
             {profileLoading ? (
-              <div className='text-xs text-blue-100'>
+              <div className='text-xs text-muted-foreground'>
                 ロール情報を取得しています…
               </div>
             ) : (
@@ -309,10 +319,10 @@ export const Sidebar = React.memo(function Sidebar({
 
         {navigationMode.showAdminMenus && !navigationMode.isHqAdmin && (
           <div>
-            <Separator className='my-4 bg-primary-800' />
+            <Separator className='my-4 bg-border' />
             <div className={cn('space-y-2', !isExpanded && 'space-y-0')}>
               {isExpanded && (
-                <h2 className='text-sm font-bold mb-1 text-blue-100'>
+                <h2 className='text-sm font-bold mb-1 text-muted-foreground'>
                   管理セクション
                 </h2>
               )}
@@ -346,6 +356,6 @@ export const Sidebar = React.memo(function Sidebar({
           </div>
         )}
       </div>
-    </div>
+    </nav>
   );
 });

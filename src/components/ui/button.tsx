@@ -1,5 +1,5 @@
 import React from 'react';
-import { cn } from '@/lib/utils';
+import { cnApp } from './app-theme';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?:
@@ -19,7 +19,8 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const buttonVariants = {
   variant: {
-    default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+    default:
+      'bg-primary text-primary-foreground hover:bg-primary/90 app:hover:bg-primary-hover',
     destructive:
       'bg-destructive text-destructive-foreground hover:bg-destructive/90',
     outline:
@@ -30,19 +31,19 @@ const buttonVariants = {
 
     // 医療系専用バリアント (WCAG 2.2対応 + Atlassian Design準拠)
     'medical-primary':
-      'bg-medical-blue-600 hover:bg-medical-blue-700 text-white border-0 shadow-medical',
+      'bg-medical-blue-600 hover:bg-medical-blue-700 text-white border-0 shadow-medical app:bg-primary app:text-primary-foreground app:hover:bg-primary-hover',
     'medical-urgent':
-      'bg-red-600 hover:bg-red-700 text-white border-0 font-semibold shadow-medical animate-pulse-soft',
+      'bg-red-600 hover:bg-red-700 text-white border-0 font-semibold shadow-medical animate-pulse-soft app:bg-destructive app:text-destructive-foreground app:hover:bg-destructive/90 app:animate-none',
 
     // 管理者専用バリアント
     'admin-primary':
-      'bg-admin-600 hover:bg-admin-700 text-white border-0 shadow-medical',
+      'bg-admin-600 hover:bg-admin-700 text-white border-0 shadow-medical app:bg-primary app:text-primary-foreground app:hover:bg-primary-hover',
     'admin-secondary':
-      'bg-admin-100 hover:bg-admin-200 text-admin-800 border border-admin-300 shadow-medical',
+      'bg-admin-100 hover:bg-admin-200 text-admin-800 border border-admin-300 shadow-medical app:bg-secondary app:text-secondary-foreground app:border-input app:hover:bg-surface-muted',
 
     // 患者向けバリアント（温かみのある色調）
     'patient-primary':
-      'bg-blue-500 hover:bg-blue-600 text-white border-0 shadow-medical',
+      'bg-blue-500 hover:bg-blue-600 text-white border-0 shadow-medical app:bg-primary app:text-primary-foreground app:hover:bg-primary-hover',
   },
   size: {
     default: 'h-10 px-4 py-2',
@@ -60,7 +61,8 @@ export function buttonClassName({
   variant = 'default',
   size = 'default',
 }: Pick<ButtonProps, 'className' | 'variant' | 'size'> = {}) {
-  return cn(
+  return cnApp(
+    className,
     // 基本スタイル + WCAG 2.2対応 + Atlassian Design準拠
     'inline-flex items-center justify-center whitespace-nowrap rounded-medical text-sm font-medium ring-offset-background',
     // アニメーション・トランジション (Atlassian Motion準拠)
@@ -75,9 +77,10 @@ export function buttonClassName({
     'hover:shadow-medical-lg hover:transform hover:scale-[1.02]',
     // アクティブ状態
     'active:transform active:scale-[0.98]',
+    // App-only polish keeps public booking/login variants visually compatible.
+    'app:transition-colors app:duration-150 app:focus-visible:ring-ring app:hover:scale-100 app:hover:shadow-none app:active:scale-100 app:active:brightness-95 app:disabled:opacity-100 app:disabled:bg-disabled app:disabled:text-text-disabled app:disabled:shadow-none app:aria-[busy=true]:cursor-wait',
     buttonVariants.variant[variant],
-    buttonVariants.size[size],
-    className
+    buttonVariants.size[size]
   );
 }
 

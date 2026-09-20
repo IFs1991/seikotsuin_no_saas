@@ -1,5 +1,5 @@
 import React from 'react';
-import { cn } from '@/lib/utils';
+import { cnApp } from './app-theme';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   variant?:
@@ -67,7 +67,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <input
         type={type}
-        className={cn(
+        className={cnApp(
+          className,
           // 基本スタイル + Atlassian Design準拠
           'flex w-full rounded-medical ring-offset-background',
           // アニメーション・トランジション (医療現場配慮)
@@ -93,7 +94,11 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           inputVariants.state[state],
           // 医療特化スタイル
           medical && 'border-2 focus:ring-2',
-          className
+          'app:border app:border-input app:bg-surface-raised app:text-foreground app:text-base app:md:text-sm app:min-h-11 app:md:min-h-10 app:transition-colors app:hover:border-ring app:focus:border-ring app:focus:ring-2 app:focus:ring-ring app:focus:ring-offset-2 app:focus:ring-offset-background app:read-only:bg-surface-soft app:read-only:text-foreground app:disabled:bg-disabled app:disabled:text-text-disabled app:disabled:opacity-100 app:disabled:shadow-none app:aria-[invalid=true]:border-destructive app:aria-[invalid=true]:focus:ring-destructive',
+          state === 'success' &&
+            'app:border-success app:focus:border-success app:focus:ring-success',
+          state === 'warning' &&
+            'app:border-warning app:focus:border-warning app:focus:ring-warning'
         )}
         ref={ref}
         // アクセシビリティ属性 (医療従事者支援)

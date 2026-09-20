@@ -147,7 +147,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           clinicsLoading={clinicsLoading}
           clinicsError={clinicsError}
         >
-          <div className='min-h-screen bg-background'>
+          <div data-app-theme className='min-h-screen bg-background'>
             <Header
               onToggleSidebar={toggleSidebar}
               onToggleDarkMode={toggleDarkMode}
@@ -165,7 +165,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className='flex pt-16'>
               {isSidebarOpen && (
                 <div
-                  className='fixed inset-0 top-16 z-30 bg-black/40 md:hidden'
+                  className='fixed inset-0 top-16 z-30 bg-overlay/40 md:hidden'
                   onClick={closeSidebar}
                   aria-hidden='true'
                 />
@@ -179,8 +179,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 role={profileRole}
               />
 
-              <main className='min-h-[calc(100vh-4rem)] min-w-0 flex-1 bg-background transition-colors duration-300'>
-                <div className='p-6 lg:p-8'>
+              <main className='min-h-[calc(100vh-4rem)] min-w-0 flex-1 bg-background pb-[calc(5rem+env(safe-area-inset-bottom))] transition-colors duration-200 md:pb-0'>
+                <div className='p-4 md:p-6 lg:p-8'>
                   <div className='mx-auto max-w-7xl text-foreground'>
                     {children}
                   </div>
