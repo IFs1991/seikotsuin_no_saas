@@ -176,5 +176,6 @@
 
 - ユーザーの後続依頼でマージまで許可された。元ブランチとmainの履歴が分岐していたため、main `75d84dbdf0320e796715b244130b7ecdef5e509a` から `codex/design-refresh-merge-20260920` を作成し、デザインコミット `6751af05687c47eaecf9f1c0db6fb585060a42e5` だけを適用した。
 - AppShellの競合はmainのSSR初期データ・QueryProvider構造を保持し、theme markerと表示classだけを適用して解消。HeaderではmainのCSP対応を維持。Dialogの既存 `closeLabel` APIも保持した。
-- 統合後の変更対象は引き続き23ファイルで、Auth・scope・Provider・hook・API・DB・依存ファイルに追加の差分はない。元のローカル作業ツリー・既存資料は保持。
+- 統合後のUI・テスト・報告の変更対象は23ファイルで、Auth・scope・Provider・hook・API・DB・依存ファイルに追加の差分はない。元のローカル作業ツリー・既存資料は保持。
 - Windowsの隠しディレクトリを含むworktreeパスでJestのファイル検出が失敗したため、ローカル実行のtestMatchだけを相対globに指定。製品コード・共通Jest設定・テストの除外条件は変更していない。統合後のCI・マージの最終結果は対応するPRとGit履歴で確認する。
+- 統合後の型・lintと関連14スイート122テストはPASS。PR #133の初回CIではsource inventoryの件数driftが検出されたため、既存の `npm run commercial:inventory:source` で生成し直した。追加差分は `source-reference-inventory.json` の `scannedSourceFiles: 661 → 662` の1行だけで、テーブル・RPC参照は不変。再生成後の `npm run commercial:inventory:source:check` はPASS。PR全体はこの生成記録を含め24ファイル。
