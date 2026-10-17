@@ -1,30 +1,29 @@
-# Phase 2 — 旧資産・未使用コード・互換レイヤーの証拠付き削減
+# Phase 2 — 証明できる不要資産だけ削る
 
-- Tracker: [#137](https://github.com/IFs1991/seikotsuin_no_saas/issues/137)
-- Status: **PLANNED**
-- Entry: P0の`REMOVE_CANDIDATE`とP1の回帰契約が揃う。
+v1.1 / tracker #137。着手には当該候補の参照証拠と[P1契約](phase-1-contracts.md)が必要。P0/P1の全件完了や本部負荷試験は前提にしない。
 
-## 既存PRを再利用
-2026-07の[PR #59](https://github.com/IFs1991/seikotsuin_no_saas/pull/59)はSQL三重管理、ドキュメント重複、`src/legacy/Reservation/`、重複script/依存関係の調査計画を含む。**当時のファイル構成を現行だと仮定しない**。差分対照表を先に作り、重複Issueを閉じるか統合する。PR #59を無条件でmergeしない。
+## 候補別に安全な順序を選ぶ
 
-## サブタスク候補（P0で証明後に個別起票）
-1. 責務のない`ReservationService` / `BlockService`等の利用者検証と安全な削除（参照があれば保留）。
-2. `resources` routeの旧staff/permissions fallbackの発動条件・本番依存確認。必要なら段階的除去、互換保証。
-3. 重複SQL・legacy assetsの正本マップ作成。**実DBスキーマ変更と混同しない**。
-4. docs/old specの整理。参照リンク・ADR/監査証跡・唯一情報源を保護する。
-5. npm依存や重複scriptのうち影響がないものだけ除去。lockfileの不必要な再生成禁止。
+| 候補 | 前提証拠 | 最小変更と停止条件 |
+| --- | --- | --- |
+| 未使用サービス | 静的/動的/ルート/スクリプト入口と利用者の確認 | 1責務を削除。利用者不明なら保留 |
+| 重複文書・参照SQL | 正本・差分・参照リンク・唯一情報源の確認 | 重複だけ整理。履歴/運用手順は保持 |
+| resourcesの旧fallback | 発動条件とデータ互換性が判明 | まず観測/分離。依存データが不明なら撤去しない |
+| 未使用依存 | runtime/build/test/scriptsで非使用を確認 | 依存変更だけのPR。無関係な更新を混ぜない |
 
-## 各チケットの削除証明
-- import/require/dynamic import/codegen/scripts/npm/CI/Next routing/DB function caller の依存を確認
-- `git grep`/検索ゼロだけで「本番未使用」と断定しない。CLI/外部利用、データ有無も調査する
-- before/afterでAPI契約、build、typecheck、focused tests、運用runbookを比較
-- rollback（revert）が実際に可能な単位まで分け、明確な不可逆migrationは別承認
-- 行数減少は参考指標。利用者事故や監査欠落がある削除は不採用
+[旧PR #59](https://github.com/IFs1991/seikotsuin_no_saas/pull/59)の提案は最新版ではない可能性がある。既にmainで整理済みならKEEP/NO_CHANGEで終了し、古いbranchを機械的にmergeしない。
 
-## Gate
-- [ ] PR #59と最新mainの差分が列挙され重複タスクを作っていない
-- [ ] 削除候補ごとに参照不在または明示的な利用者移行が証明済み
-- [ ] DB/migration・RLS/GRANT、docリンク・CI/型/回帰に退行がない
-- [ ] 意味のない互換コードを減らし、復旧手順が記録されている
+## 撤去の条件
 
-禁止: bulk `git rm -r`、実DBリセット、migration変更・適用、手当たり次第のテスト削除。
+1. #141の候補IDと到達性の証拠を指定する。import検索0件のみで削除しない。
+2. 残すAPI/DB契約と業務テストを明記する。死蔵実装専用のテストを除く場合は、守るべき契約の移管先または廃止理由を示す。
+3. fallbackは「旧形式が残らない」「必要な利用経路を移行済み」「失敗時の扱い」を確認する。実DB確認・backfillが必要なら個別承認の別作業へ切り出す。
+4. 削除・依存更新・DB変更を同時にしない。小PRで回帰し、revert先と影響範囲を記録する。
+
+テーブル・列・RPCのdropは通常cleanupの対象外。migration履歴、RLS、GRANT、DB排他制約は維持する。参照SQLの整理と実DBの変更を混同しない。再帰削除は既存規約の事前承認対象。
+
+## 完了条件
+
+対象の利用者が壊れていないこと、変更理由、変更後の依存/契約の所在、適用テスト、rollbackが確認できること。減った行数は補助指標。性能改善は測定した場合だけ主張する。
+
+撤去できないことを調査で証明した場合もKEEPとして調査を閉じられる。未証明のものを大量に消すより、1件を確実に終える。

@@ -1,59 +1,62 @@
-# Tiramisu OS — Refactoring Program v1.0
+# Tiramisu OS — Refactoring Program v1.1
 
-- 作成日: 2026-10-17 JST
-- 初期監査基準: `8e7ab4c139d749eadf883eecb6f475bed00dc147` (main)
-- Status: **PROPOSED / DOCS-ONLY** (コード修正・DB適用・実機/CI測定なし)
-- 管理: [Epic #134](https://github.com/IFs1991/seikotsuin_no_saas/issues/134)
-- 所有者/期限: 未割当 / 固定納期なし。**Tiramisu Worksの営業・導入が常に優先**。
+- 改訂日: 2026-10-17 JST。v1.0を同じ8ファイルで置換する計画改訂。
+- 初期ソース基準: `8e7ab4c139d749eadf883eecb6f475bed00dc147`。改訂前の計画head: `d866930288f04df66a2899d745922f3ca7eaa514`。
+- 計画レビュー: [PR #144](https://github.com/IFs1991/seikotsuin_no_saas/pull/144)。進捗: [Epic #134](https://github.com/IFs1991/seikotsuin_no_saas/issues/134)。計画の承認・mergeは実装開始や本番操作の承認ではない。
 
-## ゴールと非ゴール
-ゴールは、重複処理・未使用資産・変更箇所数・無駄なクエリを、既存の振る舞いとテナント境界を維持して減らすこと。綺麗な抽象化やLOC削減は単独では成功ではない。
+## 1. 成功の定義と範囲
 
-対象: 既存Tiramisu OS。非対象: 全面リライト、`Tiramisu2`への強制移行、テナントモデルの全面再設計、ルールのないSQL/認証の削除、新機能の便乗実装、期限に合わせた大規模一括PR。
+Worksを優先し、OSの次の変更を小さく・安全にできる状態にする。期限を急がないことと、無期限に調査することは別。全面リライト、汎用Availability Engine、全テーブル刷新、全API統合を前提にしない。
 
-## 参照の正本 / 重複させない
-1. 現行ルール: [AGENTS.md](../../../AGENTS.md)、[Change DoD v1.0](../../quality/change-dod-v1.0.md)、[Design.md](../../../Design.md)
-2. 既存完了履歴: [Closed MVP Refactoring Plan](../../stabilization/plan-closed-mvp-refactoring-priority-v0.1.md) (2026-04、PR-01〜08完了記録)。再起票しない。
-3. 旧監査: [2026-09 Audit v2](../../stabilization/audit-v2-originals/tiramisu_os_technical_audit_2026-09-06_v2.md)、[Remediation backlog](../../stabilization/audit-v2-originals/remediation_backlog.md)、[Integration status](../../stabilization/audit-v2-integration-status.md)。**基準SHAが異なるため現mainとの差分照合が必須**。
-4. 未マージの旧整理計画: [PR #59](https://github.com/IFs1991/seikotsuin_no_saas/pull/59) (2026-07)。重複する削除計画を起こさず、最新mainの参照確認後に採否を決める。
-5. 運用・出荷判定は[Release governance](../../releases/README.md)。本ProgramのDoD達成を商用リリースのPASSに読み替えない。
+初回Waveは**予約タイムライン・予約API・resources・staff_shifts・blocksとその直接依存**。本部集計は計測候補1経路に限定する。他領域の問題は発見記録に留め、勝手に修正範囲を広げない。削除行数・ファイル分割数・チケット完了数だけでは成功としない。
 
-## フェーズと依存関係
+## 2. 正本を分け、進捗を重複管理しない
 
-| Gate | Issue | 文書 | 作業 | 着手条件 |
-| --- | --- | --- | --- | --- |
-| P0 | [#135](https://github.com/IFs1991/seikotsuin_no_saas/issues/135) | [phase-0-baseline.md](phase-0-baseline.md) | 棚卸し・baseline | 即時にread-onlyで実施可能 |
-| P1 | [#136](https://github.com/IFs1991/seikotsuin_no_saas/issues/136) | [phase-1-contracts.md](phase-1-contracts.md) | 認可/業務契約ガード | P0の差分・リスク分類 |
-| P2 | [#137](https://github.com/IFs1991/seikotsuin_no_saas/issues/137) | [phase-2-cleanup.md](phase-2-cleanup.md) | 旧資産・重複撤去 | P0証明+P1回帰契約 |
-| P3 | [#138](https://github.com/IFs1991/seikotsuin_no_saas/issues/138) | [phase-3-availability-domain.md](phase-3-availability-domain.md) | 予約/勤務/空き判定の整理 | P1。P2完了は必須にしない |
-| P4 | [#139](https://github.com/IFs1991/seikotsuin_no_saas/issues/139) | [phase-4-performance.md](phase-4-performance.md) | 実測パフォーマンス改善 | P0 baselineとP1安全ゲート |
-| P5 | [#140](https://github.com/IFs1991/seikotsuin_no_saas/issues/140) | [phase-5-ui-and-feature-gate.md](phase-5-ui-and-feature-gate.md) | UI簡素化・他院照会の独立判断 | 対象UIはP1完了。照会はP3 read modelの成立後 |
+| 情報 | 正本 | 更新する時 |
+| --- | --- | --- |
+| 不変条件・品質基準 | [AGENTS.md](../../../AGENTS.md)、[Change DoD](../../quality/change-dod-v1.0.md)、Design.md | 別の規約変更として扱う |
+| 目的・依存関係・完了条件 | 本READMEとフェーズ文書 | 計画を変更するPRだけ |
+| 担当・作業状態・依存Issue | GitHub Issue #134〜#143 | 着手・停止・レビュー・終了時 |
+| 実行結果・差分・承認 | 各PRの証跡とreview | 対象commit・環境ごと |
+| 出荷可否 | 既存のrelease gate | 本Programとは別判定 |
 
-P0→P1が順序必須。P2/P3/P4は検証済みの独立PRとして部分並走できる。P5の新機能は別のfeat Issue/PRで実施。各Phase Issueは**追跡用Epic**であり、実装にはならない。
+文書に実装進捗のコピーを増やさない。Phase Issueは追跡用であり実装PRではない。未担当を自動でREADYにしない。Issue間の依存は本文の`Depends on`を正本とし、native dependency設定済みとは扱わない。
 
-## チケット運用
-- **1つの実装Issue = 1つの焦点を持ったPR**。Phase Issue/Epicは進捗集約のみ。
-- 1つのPRにセキュリティの仕様変更、削除、最適化、UI、新機能を混在させない。
-- Phase 0で課題を検証するまで、Phase 1以降の細目Issueを大量起票しない。
-- OS runtime変更は**同時進行1 PRまで**、docs/read-onlyは別に1件まで。Worksの顧客・納品作業があればOSの着手を見送る。
-- Issueには[チケット雛形](ticket-template.md)に従い、`current SHA / problem proof / scope / risk / tests / rollback / before-after`を記録。
-- 状態: `BACKLOG` → `READY` (検証済み・着手可能) → `IN_PROGRESS` → `REVIEW` → `DONE`。不確実なものは`VERIFY_FIRST`、blockedは`BLOCKED`。
-- 完了証拠は当該コミットと環境にひも付ける。未測定`NOT_RUN`を`PASS`としない。
+既存の4月計画、9月監査、[9月のmain統合結果](../../stabilization/audit-v2-integration-status.md)、[旧PR #59](https://github.com/IFs1991/seikotsuin_no_saas/pull/59)を突合する。古いOPENを新しい未修正バグと読み替えない。統合済み修正の再実装も、履歴PASSの現headへの転用もしない。
 
-## リスク順 / 停止条件
-1. **法務・患者情報/tenant漏洩、予約二重作成、課金/通知誤処理**: 安全性・業務正確性。異常があれば他のリファクタリングを止めて優先。
-2. **技術**: staff identityの不一致、予約/シフト/blocksの境界、DB/RLS緩和、データ欠損。
-3. **運用**: 既存施設のUI/手順への影響、rollback不能。
-4. **市場/資金・機会費用**: Worksの販売/PoCが遅れる場合、OS作業は止める。
+## 3. フェーズは実行分類。巨大な直列プロジェクトにしない
 
-本Programは「機能を増やすプロジェクト」ではなく、将来の変更費用を下げる投資。数値的な便益とリスクの証拠が乏しければ中断・保留を選択する。
+| Phase / tracker | 目的・文書 | 当該作業の着手条件 | 終了の証拠 |
+| --- | --- | --- | --- |
+| P0 / #135 | [対象限定の棚卸し](phase-0-baseline.md) | source SHA・変更禁止範囲を固定 | 3成果物と次の1作業、未知を明記 |
+| P1 / #136 | [変更対象の契約固定](phase-1-contracts.md) | 当該候補のP0証拠 | 既存挙動と必要な負のテスト、変更分類 |
+| P2 / #137 | [証明済み資産の整理](phase-2-cleanup.md) | 当該候補の参照確認＋P1契約 | 利用者非退行・削除根拠・revert |
+| P3 / #138 | [予約判定の限定共通化](phase-3-availability-domain.md) | consumer別契約とID対応が判明 | 採用consumerで同値、方針差を保持 |
+| P4 / #139 | [測定済み経路の最適化](phase-4-performance.md) | 実測baseline＋当該P1契約 | 同条件の比較と安全性非退行 |
+| P5 / #140 | [UI整理と別機能の判断](phase-5-ui-and-feature-gate.md) | UI契約。新機能には別仕様承認 | UI非退行／新機能GO・DEFER判断 |
 
-## 判定指標（未測定の数値はゼロにしない）
-- 自院と他院のscope越境0件（negative test / 実DB）
-- 予約競合/キャンセル/ブロック/勤務時間の契約回帰0件
-- 対象変更の編集ファイル数・依存箇所数（before→after）
-- API/DB round tripsと`p50/p95`の同条件実測（必要ならサンプルサイズ付記）
-- cleanup候補の参照証拠と、削除後に残るデータ/仕様の所在
-- PRごとのリスクと承認者/rollback記録
+初動順: **#143（旧計画突合）→ #141（依存調査）→ #142（計測仕様）**。予備の読取調査は並行可能だが、共有ファイルの同時編集は禁止。
 
-初回のP0チケット: [T01 #141](https://github.com/IFs1991/seikotsuin_no_saas/issues/141) / [T02 #142](https://github.com/IFs1991/seikotsuin_no_saas/issues/142) / [T03 #143](https://github.com/IFs1991/seikotsuin_no_saas/issues/143)。**現時点ですべて未完了**。
+P0/P1をリポジトリ全体で終えるまで低リスク変更を止めない。対象ごとの証拠が揃った作業だけ先行できる。ただし当該変更の必須テスト・安全性ゲートは省略不可。無関係な実Redis・全院容量・出荷試験の未完了は、docs整理や独立した純粋関数整理の一律ブロッカーにしない。
+
+P2→P3→P4の全件順次実行は不要。依存が独立していても、**OSのruntime実装は同時1 PRまで**。docs/read-only作業も別に1件まで。各Phaseは初回Waveに採用したチケットを閉じ、非採用候補のKEEP/DEFER理由を記録すれば区切れる。全候補の実装を義務にしない。
+
+## 4. 着手・中断・採否
+
+各実装チケットは[テンプレート](ticket-template.md)で、担当、reviewer、source SHA、変更許可パス、依存、実装・レビュー・検証の工数見込み、停止上限、rollbackを埋めてREADYにする。最初に具体化するのは次の1〜3作業まで。
+
+提案する初回調査予算は人間の確認・判断で合計4時間。これは予測納期でも承認済み予算でもない。着手時にownerが採否を記録し、上限到達時はUNKNOWNを残して次の判断を返す。延長を黙って繰り返さない。
+
+優先順位は、①実害・重大リスク、②頻繁な変更での手戻り、③計測済み遅延・コスト、④見た目だけの整理。概算回収式は`実装＋レビュー＋検証時間 / 1変更あたり削減時間`。削減見込みが不明なら保守性の仮説として扱い、ROI実証とは書かない。
+
+Worksの営業・納品と衝突したらOSは停止。再開用にIssueへ`作業branch/head、変更ファイル、実行済み検証、未解決1点、次の1コマンドまたは作業`だけ記録する。長期branchへ全フェーズを積まない。
+
+## 5. 安全境界と終了
+
+REFACTORは契約維持、FIXは不具合修正、FEATUREは新規仕様、PERFORMANCEは意味を変えない測定改善。混在が必要なら依存PRへ分割する。DB/RLS/auth/billing/患者データに触れる変更は既存High-risk基準を適用する。
+
+既存migrationの編集・削除・squash、認可緩和、テスト削除によるgreen化、本番DB/Auth変更、実通知・課金、無断merge/deployは禁止。DB変更はappend-onlyの別チケットで仕様・rollback SQLと必要な承認を用意する。
+
+比較対象はsource SHA、実装head、検証SHA、統合後SHAを区別する。PASS/FAIL/NOT_RUN等はChange DoDをそのまま使う。未実行・環境待ち・flaky・skipは成功に足さない。必須証拠または独立reviewがなければ完了にしない。
+
+本改訂は計画整備だけ。実装、DB検証、性能改善、出荷判定を完了させたものではない。

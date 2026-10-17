@@ -1,38 +1,39 @@
-# Phase 0 — 現行HEAD棚卸し・baseline（read-only）
+# Phase 0 — 対象を限定した棚卸しと計測仕様
 
-- Tracker: [#135](https://github.com/IFs1991/seikotsuin_no_saas/issues/135)
-- Status: **NOT_STARTED / NOT_RUN**。この文書は計画であって棚卸しの実施結果ではない。
-- Entry: main SHAを最新で確定。初期候補は`8e7ab4c`。
-- Exit: 下記の成果物がrepoファイルと行・実行コマンド/日付でトレースできる。
+v1.1 / tracker #135。共通運用は[README](README.md)。初期指摘は調査候補であり、未使用・遅延・不具合の確定証拠ではない。
 
-## 分担チケット
-- [T01 #141](https://github.com/IFs1991/seikotsuin_no_saas/issues/141): service/route/legacyの入口→依存関係と候補整理
-- [T02 #142](https://github.com/IFs1991/seikotsuin_no_saas/issues/142): 予約UI/本部集計のベースライン計測仕様
-- [T03 #143](https://github.com/IFs1991/seikotsuin_no_saas/issues/143): 既存監査とPR #59の最新HEAD差分
+## 作業と成果物を固定する
 
-## インベントリー（調査結果を上書きしない。候補である）
-| 候補 | 現在わかること | 調査で証明すること |
-| --- | --- | --- |
-| `src/lib/services/reservation-service.ts` | 約739行、静的検索で主にテストからの参照を確認 | dynamic imports、scripts、実行時参照、利用者がゼロか |
-| `src/lib/services/block-service.ts` | 約307行、同上 | REST/APIとの関係、外部entrypoints |
-| `src/app/api/resources/route.ts` | legacy staff・permissions fallback取得 | 本番データの依存、後方互換維持要否 |
-| `src/app/(app)/reservations/page.tsx` | シフト情報をstaff ID Setに集約 | 時刻単位の勤務判定・休憩・未登録/他院ヘルプの表示影響 |
-| `src/lib/services/public-availability-service.ts` | 予約・blocksを照合 | 内部予約/shift/scopeとの差分 |
-| `src/app/api/manager/rosters/route.ts` | staff_shiftsをclinicごと取得 | 多店舗データの一括取得/本人同一性 |
-| [PR #59](https://github.com/IFs1991/seikotsuin_no_saas/pull/59) | SQL/legacy/docs整理計画がOPEN | 古い記述と現行mainに不一致がないか |
+| 順序 / Issue | 作業 | この作業だけが作成する成果物 | 非対象 |
+| --- | --- | --- | --- |
+| 1 / #143 | 既存監査・統合PR・旧PR #59の対応整理 | `evidence/audit-map.md` | 全24項目の再実装・全面再監査 |
+| 2 / #141 | 予約周辺の到達経路と未使用候補調査 | `evidence/candidates.md` | 削除・型/依存更新・実DB調査 |
+| 3 / #142 | 代表操作の測定手順と合否条件案 | `evidence/measurement-protocol.md` | 負荷試験実行・計測コード追加 |
 
-## 成果物
-1. **source graph**: UI→hook→route→service→tables/columns→RLS→tests。各辺の証拠（import/URL/function）と利用頻度を記録。
-2. **candidate register**: `ID / kind / source path / caller count / runtime reachability / risk / recommended action / evidence / verdict`。Verdict: `KEEP` / `REMOVE_CANDIDATE` / `REFACTOR_CANDIDATE` / `VERIFY_FIRST`。
-3. **audit reconciliation**: 2026-04完了8PRと2026-09 Audit v2のF01-F24、PR #59の粒度を重複排除。過去版PASSを最新の証拠に変換しない。
-4. **measurement protocol**: シナリオ（閲覧/切替/他院/管理集計）、データ件数、cold/warm cache、環境、samples、DBクエリ、ネットワーク往復、p50/p95と誤表示率。数値がないなら`NOT_RUN`。
+上記のパスは本ディレクトリ配下の将来成果物。空の結果ファイルを先に量産しない。1調査Issue＝1つのdocs-only PR。証拠の追記先を分け、同じ台帳を同時編集しない。計画本体は参照リンクが必要な場合のみ変更する。
 
-## 完了判定
-- [ ] 現行mainのSHA・対象コードpath・検証日時が揃う
-- [ ] static only / runtime proven / unknown の3分類で未使用判定
-- [ ] P1の守るべき契約、P2〜P4の候補と優先順位を根拠付きで提示
-- [ ] deletion / auth変更 / migration / external callsは実施していない
-- [ ] すべての未実施項目を`NOT_RUN`として記録
+## #143: 古い指摘を現在の問題と混同しない
 
-## 中止
-調査中に患者情報、tenant越境、予約重複等の重大バグを再現した場合、修正をP1の独立high-risk issueに切り出し、P2以降の削除判断を保留する。
+4月の完了記録、9月の監査原本とintegration-status、PR #59を順に読む。各旧IDは`旧状態 / 修正PR・SHA / 現sourceとの関係 / 今回の対象か / 次の作業`へ対応させる。原本にOPENとあっても後続統合記録を優先して確認する。
+
+全IDの所在は整理するが、深い再検証は初回Waveに関係するコードに限定する。対象外はDEFER、証拠不足はVERIFY_FIRST。CODE_FIXEDという過去記録、現sourceの静的確認、現環境での検証済みを別列にする。
+
+## #141: 削除前の到達性
+
+起点は`reservation-service.ts`、`block-service.ts`、`api/reservations`、`api/resources`、`api/blocks`、`(app)/reservations/page.tsx`。直接依存の公開予約・mobile-uiux予約・ロスターも追跡する。別領域へ広がったら理由を記録して保留する。
+
+import/require、barrel export、dynamic import、Nextのファイルルーティング、npm scripts、CI、codegen、テスト、SQL/RPC・外部入口を調べる。importが0でもrouteやscriptは入口になり得る。旧テストしか利用していないことはランタイム非使用の候補証拠にすぎない。
+
+各候補は`ID / source SHA / path・symbol / callers・入口 / 関係table・policy / 動的利用の不明点 / 現行テスト / 変更影響 / KEEP・REMOVE_CANDIDATE・REFACTOR_CANDIDATE・VERIFY_FIRST / 理由`を記録する。依存図は表または短いテキストで十分。専用分析ツール導入を前提にしない。
+
+## #142: 計測仕様と実測を分離する
+
+代表操作は予約初期表示、日付/院切替、公開空き照会、本部集計の各1経路。変更対象に不要な操作は理由付きで対象外にする。操作→API→DBアクセスを対応させ、ブラウザHTTP数、サーバーからDB/APIへの往復、SQL実行数、認証検証回数を区別する。
+
+source SHA、fixture規模、権限、cold/warm、環境・リージョン、サンプル数、並列度、計測点、error rate、p50/p95、実行承認を決める。未取得の値はNOT_RUN。ベースライン未測定でも**仕様書作成のIssueは完了可能**だが、P4の最適化着手条件は満たさない。
+
+## 調査完了と停止
+
+成果物の所在、出典、未確認事項、次の1作業とその根拠が揃えば、この調査を閉じる。「全部わかった」を条件にしない。source変更時は関連差分だけ再調査し、過去の結果を上書きしない。
+
+重大な患者情報漏洩・予約競合等を発見したら、対象・根拠・影響を報告し、別FIX Issueへ振り分ける。調査権限を実装修正・本番確認の許可と読み替えない。

@@ -1,36 +1,41 @@
-# Phase 1 — 安全性・業務契約ゲート
+# Phase 1 — 変更対象の契約を固定する
 
-- Tracker: [#136](https://github.com/IFs1991/seikotsuin_no_saas/issues/136)
-- Status: **PLANNED**（実装・試験未実施）
-- Entry: P0の依存関係/旧監査差分・高リスク一覧が存在する。
+v1.1 / tracker #136。着手条件は当該候補のP0証拠。全repoの再テストを初手に要求しない。共通ゲートは[Change DoD](../../quality/change-dod-v1.0.md)。
 
-## 守るべき不変条件
-- A院とB院および別組織間の読み書きを、権限のない利用者に許さない（RLS・API・実DB negative tests）。
-- 権限/ロール/clinic scopeを認証contextからサーバー側で導出する。`admin` / `manager` / `clinic_admin` 等の差分を曖昧にしない。
-- 個人情報・患者履歴は、他院「空き」照会でAPI出力しない。公開予約の顧客識別と通知を含めプライバシー契約を保つ。
-- 書込時はDBの競合制約と再検証を維持。読み取った空き枠を予約確定と扱わない。
-- キャンセル/No-show、LINE/メールの送信冪等、課金/監査ログ、復旧可能性を検証対象から落とさない。
-- 認可やシフト読取が不明/失敗の場合は、成功をでっち上げず閉じる（fail-closed）。
+## 最初に変更分類を決める
 
-## 既存監査の取り扱い
-- [2026-09 Audit v2](../../stabilization/audit-v2-originals/tiramisu_os_technical_audit_2026-09-06_v2.md) のF03/04, F06, F09, F10/11/12, F14, F16, F18/20, F23などは**古いHEADの診断**。
-- [audit-v2 integration status](../../stabilization/audit-v2-integration-status.md) の実装履歴・PRを確認し、現行mainのコードと突合。`CODE_FIXED`でも環境側の`ENV_PENDING`を消さない。
-- security/billing/data correctnessは「軽量化のために削る」対象にしない。
+| 分類 | 必須の比較 | やってはいけないこと |
+| --- | --- | --- |
+| REFACTOR | 対象の現行契約を固定して変更前green→変更後green | 理想の業務ルールへ黙って変更 |
+| FIX | 承認済みの正しい契約に対するRED→GREEN | 壊れた実装に期待値を合わせる |
+| FEATURE | 新しい振る舞い・権限・受入条件を別仕様で決定 | リファクタリングへ便乗 |
+| PERFORMANCE | 同じ出力・拒否条件を保ち同条件測定 | 認可や整合性検証を飛ばす |
 
-## 最小テスト行列
-| ケース | Expected |
+既存の失敗は実装/fixture/環境/期待値に分類し、別Issue・証拠へ記録する。無関係な失敗を隠さず、必須ゲートが失敗したままmergeしない。不明な業務条件はDECISION_REQUIREDとして、その条件に依存する実装だけ止める。
+
+## consumer別の契約表
+
+予約画面、内部予約API、mobile-uiux API、公開予約、ロスターの入口ごとに、入力/出力、権限、日付境界、許可status、勤務時間、blocks、価格snapshot、通知、失敗時の契約を並べる。仕様書・現在のコード・現在のテストの不一致は別列にする。
+
+「シフト未登録なら常に予約不可」「休憩を必ず新テーブルで管理」等は未決定の業務仕様。現行内部運用が許す例外をREFACTORで禁止しない。ただし認可の不明・失敗は従来どおりfail-closedを維持する。
+
+## 境界を壊さない最小テスト
+
+| 観点 | 必要な確認 |
 | --- | --- |
-| 異組織A→Bの予約/シフト参照 | HTTP 403またはRLSで拒否 |
-| 権限剥奪・無効スタッフ/店舗・失効認証 | 拒否、キャッシュから漏洩しない |
-| 予約の境界/重複/同時更新 | 重複登録不可。取消状態は現行契約どおり |
-| 休憩・ブロック・シフト外 | 利用可能と誤判定しない |
-| 通知失敗/リトライ/重複 | 二重送信・欠落の保証レベルを明示 |
-| 変更前後の予約API/UI/料金 | 実装が守るべき数値/挙動で比較 |
+| 正常な複数院アクセス | 有効scope内は許可。所属院以外を一律拒否しない |
+| scope外・別組織・失効 | 拒否、件数・スタッフ・患者情報も返さない |
+| scopeの縮小・院切替 | 古いレスポンス/キャッシュで別actorや旧権限の内容を表示しない |
+| 予約区間とstatus | 境界一致・途中重複・取消/No-show・削除の現契約 |
+| 書込競合 | 読取直後の競合、DB排他、編集versionの現契約 |
+| 通知/課金/患者識別 | 対象経路の署名・scope・冪等・保存/失敗契約を維持 |
 
-## Gate
-- [ ] 変更対象ごとにpositive+negative testと期待契約がある
-- [ ] High riskには独立review・実DB試験・rollback/forward-fixがある
-- [ ] 不足項目は他フェーズPRと混ぜず別issueにする
-- [ ] 全証拠をcommit / 環境 / 日時にひも付け、未実施は`NOT_RUN`
+権限/DB境界変更はmockだけで完了にせず実DBのnegative testを要求する。DB/RLS/auth/billing変更では既存規約の独立read-onlyレビュー2件を確保し、実装者の再読を独立レビューと数えない。利用できなければBLOCKED。
 
-禁止: migration履歴の再squash/編集、service-roleでscope検証を飛ばす、テストを通すための権限緩和。
+## 変更ごとのゲート
+
+docs-onlyはリンク・構文・差分・正本確認。runtimeは対象lint/type-check/focused test/buildと適用される既存CI。UI変更はDesign.mdのEXTEND、キーボード、mobile、loading/error/empty/recoveryを含む。DB変更はappend-only、仕様・rollback SQL、生成型・replay・実DB試験を別承認範囲で実施する。
+
+GitHub Actionsが利用できない場合は、既存コマンドの承認済みローカル実行証拠を残す。CIの成功と称さず、必須checkや保護設定を迂回しない。利用可能性を推測で固定しない。
+
+完了は当該変更の契約・必要な検証・reviewが揃った状態。Program全体や本番出荷のPASSではない。

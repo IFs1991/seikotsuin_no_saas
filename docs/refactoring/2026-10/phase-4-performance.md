@@ -1,32 +1,27 @@
-# Phase 4 — 測定に基づくDB/API最適化
+# Phase 4 — baselineを取ってから小さく最適化する
 
-- Tracker: [#139](https://github.com/IFs1991/seikotsuin_no_saas/issues/139)
-- Status: **PLANNED / baseline NOT_RUN**
-- Entry: P0計測プロトコルとP1の安全性契約。
+v1.1 / tracker #139。#142は計測仕様であって実測ではない。最適化コードの前に、承認済み環境で対象経路のbaselineを取得する。未計測なら当該PERFORMANCE作業だけBLOCKED。
 
-## Hot path候補（遅いと断定しない）
-- 予約画面: `useReservationFormData`はmenus/resourcesなどを並行取得し、`useAppointments`はclinic+dateで30秒キャッシュを保持。追加のシフトAPI取得を含めたcritical pathを測る。
-- `resources` API: 必要時、`resources`→`staff`→`user_permissions`→`profiles`のfallback呼出。起動条件と実使用を測る。
-- 管理集計: 旧監査で50院×4件のexact count計200リクエスト構造を指摘。**実行時のp95は未検証**。
-- 認可: 監査F16でauth context再解決の重複が指摘されたが、scope freshness/fail-closed維持が優先。
+## 1. 測定を再現可能にする
 
-## 計測仕様
-| Metric | 条件 | 判定 |
-| --- | --- | --- |
-| API calls / DB round trips | cold/warm、院数（1/10/50）、予約数・同時ユーザー固定 | 適用前後で同条件・サンプル記録 |
-| p50/p95 latency | 実行環境・リージョン・負荷・ブラウザ別 | 統計的に比較可能な測定がある場合のみ |
-| data consistency | キャンセル・変更・他院権限変更・キャッシュ鮮度 | 回帰0を維持 |
-| cost | DB/compute/provider料金の測定値 | 円換算推測は不採用 |
+対象は予約初期表示・日付/院切替・公開空き照会・本部集計から一度に1経路。fixture規模、source SHA、環境/リージョン、actorのrole/scope、負荷/並列度、cold/warm条件、取得件数、キャッシュ状態を固定する。
 
-## 判断原則
-- 顧客に影響するp95/DB負荷/コストが目標未達のときのみ最適化する。目標はP0で利用シナリオと共に定義。
-- N+1があっても実計測が許容範囲なら維持してよい。
-- 大規模SQL/RPC最適化の前にクエリ集約・index・データ取得範囲を小PRで検証。
-- 30秒キャッシュを短縮/廃止する前に、予約・scope変更時のinvalidationsの整合性を確認。
-- service_role認可、RLS、課金/監査ログの省略による「高速化」は禁止。
+ブラウザHTTP数、サーバーからSupabase等へのHTTP往復、DB内部SQL数、認証検証回数を別の列にする。RPC 1回をSQL 1回と呼ばない。並行呼出の件数減少をそのまま待ち時間短縮へ換算しない。p50/p95に加えerror rate・返却結果・取得完全性を記録する。
 
-## Gate
-- [ ] before/afterの同条件計測とrollback planがある
-- [ ] データ正確性/セキュリティ回帰0、High-risk変更は独立review
-- [ ] 改善がないものは`NO_CHANGE`として閉じられる
-- [ ] 過去CIや静的推定値を今回の実測成果としない
+探索測定の提案値は同条件30サンプル以上×3回。これはSLAでも統計的有意性の保証でもない。実行費用・負荷を事前に限定し、採否の閾値（例: 対象p95、往復数、許容回帰）を変更前にownerと決める。小標本やノイズが大きければ結論を保留する。
+
+## 2. 介入の順序
+
+不要な取得列/範囲 → 重複取得の集約 → 必要な問い合わせのbatch化 → 必要なindex/RPC、の順に実測で選ぶ。全APIの統合や新DB層を前提にしない。既存キャッシュや並行取得を消した際の悪化も測る。
+
+認証は同一リクエストで既に検証済みのcontextを安全に渡せるか検証する。別リクエスト/別ユーザーへの使い回し、失効・scope縮小の検査省略は禁止。キャッシュkeyに必要なtenant/actor/scopeと失効契約を定義し、キャンセル、院切替、logout、権限変更のnegative testを用意する。
+
+旧監査の50院×4件という構造やresources fallbackは、現sourceでの候補再確認から始める。N+1構造があるだけで顧客影響が大きいと断定しない。
+
+## 3. 採否と中止
+
+変更前後の同条件比較、結果同値性、安全性非退行、rollbackをPRに添付する。安全性は改善幅と交換しない。目標未達/改善なしなら実装案を不採用にできる。保守性改善として残すなら別の根拠と変更分類で判断する。
+
+SQL/index/RPC変更はHigh-riskの個別PRで、append-only・仕様・rollback SQL・実DB検証と適用承認を必要とする。POST/通知/課金を含む負荷、共有DBのseed/reset、実顧客データの持出しを無断実行しない。
+
+計測ログは患者情報・トークンを含めず、synthetic fixtureの再現条件を保存する。速度/コストの改善値は実測した範囲だけ報告する。
