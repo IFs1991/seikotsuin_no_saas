@@ -3,6 +3,9 @@
 --   (blocked by design; forward-fix only, see spec §9)
 begin;
 
+set local lock_timeout = '5s';
+set local statement_timeout = '60s';
+
 -- 1. Explicit, persisted aggregate authority boundary.
 --    manual: legacy hand-entered totals. items: totals derived from detail rows.
 alter table public.daily_reports
@@ -26,7 +29,11 @@ where exists (
   where item.daily_report_id = report.id
 );
 
--- 3. Guard for every write path (API RPC, PostgREST, service role, triggers).
+-- 3. Guards for every write path (API RPC, PostgREST, service role, triggers).
+--    BEFORE ROW triggers run before RLS WITH CHECK, so this SECURITY DEFINER
+--    guard never reads rows the caller has not already been admitted to:
+--    INSERT reads nothing, UPDATE only reads detail rows of OLD (which passed
+--    the UPDATE USING policy) and the report id cannot change.
 create function app_private.enforce_daily_report_aggregate_authority()
 returns trigger
 language plpgsql
@@ -39,25 +46,22 @@ declare
   v_insurance_revenue numeric(10,2);
   v_private_revenue numeric(10,2);
 begin
-  if tg_op = 'UPDATE'
-     and old.aggregate_source = 'items'
-     and new.aggregate_source is distinct from 'items' then
-    raise exception 'DAILY_REPORT_AGGREGATE_SOURCE_IMMUTABLE' using errcode = '23514';
+  if tg_op = 'INSERT' then
+    -- A new report cannot own detail rows yet (non-deferrable composite FK),
+    -- so it always starts manual; attaching a detail row itemizes it.
+    if new.aggregate_source is distinct from 'manual' then
+      raise exception 'DAILY_REPORT_AGGREGATE_SOURCE_REQUIRES_ITEMS' using errcode = '23514';
+    end if;
+    return new;
   end if;
 
-  if new.staff_id is not null
-     and (
-       tg_op = 'INSERT'
-       or new.staff_id is distinct from old.staff_id
-       or new.clinic_id is distinct from old.clinic_id
-     )
-     and not exists (
-       select 1
-       from public.staff staff_member
-       where staff_member.id = new.staff_id
-         and staff_member.clinic_id = new.clinic_id
-     ) then
-    raise exception 'DAILY_REPORT_STAFF_CLINIC_MISMATCH' using errcode = '23514';
+  if new.id is distinct from old.id then
+    raise exception 'DAILY_REPORT_ID_IMMUTABLE' using errcode = '23514';
+  end if;
+
+  if old.aggregate_source = 'items'
+     and new.aggregate_source is distinct from 'items' then
+    raise exception 'DAILY_REPORT_AGGREGATE_SOURCE_IMMUTABLE' using errcode = '23514';
   end if;
 
   if new.aggregate_source = 'items' then
@@ -73,7 +77,13 @@ begin
       v_insurance_revenue,
       v_private_revenue
     from public.daily_report_items item
-    where item.daily_report_id = new.id;
+    where item.daily_report_id = old.id;
+
+    -- manual -> items only when a detail row is attached, never by a client
+    -- write that would discard hand-entered totals.
+    if old.aggregate_source = 'manual' and v_total_patients = 0 then
+      raise exception 'DAILY_REPORT_AGGREGATE_SOURCE_REQUIRES_ITEMS' using errcode = '23514';
+    end if;
 
     new.total_patients := v_total_patients;
     new.total_revenue := v_total_revenue;
@@ -82,7 +92,7 @@ begin
 
     -- Item writes may leave new_patients above the derived total (spec §5.1);
     -- only a write that sets new_patients is validated here.
-    if (tg_op = 'INSERT' or new.new_patients is distinct from old.new_patients)
+    if new.new_patients is distinct from old.new_patients
        and coalesce(new.new_patients, 0) > v_total_patients then
       raise exception 'DAILY_REPORT_NEW_PATIENTS_EXCEEDS_DERIVED_TOTAL'
         using errcode = '23514', detail = v_total_patients::text;
@@ -97,11 +107,52 @@ revoke all on function app_private.enforce_daily_report_aggregate_authority()
   from public, anon, authenticated, service_role;
 
 comment on function app_private.enforce_daily_report_aggregate_authority() is
-  'OS-F2: derives itemized daily report totals, keeps aggregate_source one-way and rejects cross-clinic staff on every write path.';
+  'OS-F2: derives itemized daily report totals and keeps aggregate_source client-unwritable and one-way. Reads only rows already admitted by RLS.';
 
 create trigger daily_reports_aggregate_authority
 before insert or update on public.daily_reports
 for each row execute function app_private.enforce_daily_report_aggregate_authority();
+
+-- AFTER ROW: runs only once RLS WITH CHECK has admitted the row, so the
+-- staff lookup cannot be used as a cross-clinic membership oracle.
+create function app_private.enforce_daily_report_staff_clinic()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.staff_id is null
+     or (
+       tg_op = 'UPDATE'
+       and new.staff_id is not distinct from old.staff_id
+       and new.clinic_id is not distinct from old.clinic_id
+     ) then
+    return null;
+  end if;
+
+  if not exists (
+    select 1
+    from public.staff staff_member
+    where staff_member.id = new.staff_id
+      and staff_member.clinic_id = new.clinic_id
+  ) then
+    raise exception 'DAILY_REPORT_STAFF_CLINIC_MISMATCH' using errcode = '23514';
+  end if;
+
+  return null;
+end;
+$$;
+
+revoke all on function app_private.enforce_daily_report_staff_clinic()
+  from public, anon, authenticated, service_role;
+
+comment on function app_private.enforce_daily_report_staff_clinic() is
+  'OS-F2: rejects a daily report staff_id from another clinic on every write path, after RLS admitted the row.';
+
+create trigger daily_reports_staff_clinic_check
+after insert or update of staff_id, clinic_id on public.daily_reports
+for each row execute function app_private.enforce_daily_report_staff_clinic();
 
 -- 4. Detail-row writes mark the parent itemized; the guard derives the totals.
 create or replace function public.recalculate_daily_report_totals(p_daily_report_id uuid)
@@ -115,11 +166,22 @@ begin
     return;
   end if;
 
-  update public.daily_reports
+  -- Itemize only when a detail row exists (the guard rejects manual -> items
+  -- otherwise); an itemized report with no rows is re-derived to zero.
+  update public.daily_reports report
   set
-    aggregate_source = 'items',
+    aggregate_source = case
+      when report.aggregate_source = 'items'
+        or exists (
+          select 1
+          from public.daily_report_items item
+          where item.daily_report_id = report.id
+        )
+      then 'items'
+      else report.aggregate_source
+    end,
     updated_at = now()
-  where id = p_daily_report_id;
+  where report.id = p_daily_report_id;
 end;
 $$;
 
@@ -129,7 +191,7 @@ grant execute on function public.recalculate_daily_report_totals(uuid)
   to service_role;
 
 comment on function public.recalculate_daily_report_totals(uuid) is
-  'OS-F2: marks the report itemized; daily_reports_aggregate_authority derives the totals under the row lock.';
+  'OS-F2: marks a report that owns detail rows itemized; daily_reports_aggregate_authority derives the totals under the row lock.';
 
 -- 5. Atomic body save used by the PC and mobile APIs.
 create function public.save_daily_report(

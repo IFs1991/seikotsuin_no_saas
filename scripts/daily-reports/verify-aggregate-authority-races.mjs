@@ -41,9 +41,10 @@ function parseArgs(argv) {
 
 function assertLoopback(dbUrl) {
   const parsed = new URL(dbUrl);
-  if (!LOOPBACK_HOSTS.has(parsed.hostname)) {
+  // libpq honours host/hostaddr/service in the query string over the URL host.
+  if (parsed.search !== '' || !LOOPBACK_HOSTS.has(parsed.hostname)) {
     throw new Error(
-      `Refusing non-loopback database host "${parsed.hostname}". This verifier writes fixtures and must only target a disposable local database.`
+      `Refusing database URL "${parsed.hostname}${parsed.search}": only a loopback host without query parameters is accepted. This verifier writes fixtures and must only target a disposable local database.`
     );
   }
 }
@@ -349,8 +350,8 @@ const RACES = [
     waiter: `${SERVICE}
 do $ensure$
 begin
-  insert into public.daily_reports (clinic_id, report_date, total_patients, new_patients, total_revenue, insurance_revenue, private_revenue, report_text, aggregate_source)
-  values ('${CLINIC}', '2096-02-06', 0, 0, 0, 0, 0, '明細行から自動作成', 'items');
+  insert into public.daily_reports (clinic_id, report_date, total_patients, new_patients, total_revenue, insurance_revenue, private_revenue, report_text)
+  values ('${CLINIC}', '2096-02-06', 0, 0, 0, 0, 0, '明細行から自動作成');
   raise notice 'ENSURE inserted';
 exception when unique_violation then
   raise notice 'ENSURE conflict';

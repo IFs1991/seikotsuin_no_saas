@@ -314,4 +314,47 @@ describe('DailyReportInputPage Phase 4A-5 pricing UI', () => {
       expect(body).toMatchObject({ clinic_id: selectedClinicId });
     });
   });
+
+  it('shows the saved DB totals and reloads stale items after saving', async () => {
+    const fetchMock = setupFetch();
+    const baseImplementation = fetchMock.getMockImplementation();
+    fetchMock.mockImplementation((input, init) => {
+      if (
+        urlFromFetchInput(input) === '/api/daily-reports' &&
+        init?.method === 'POST'
+      ) {
+        // Another tab added a detail row: the DB-derived totals differ from
+        // the two rows this page still shows.
+        return jsonResponse({
+          success: true,
+          data: {
+            id: '123e4567-e89b-12d3-a456-426614174020',
+            total_patients: 3,
+            total_revenue: 15000,
+            aggregate_source: 'items',
+          },
+        });
+      }
+      return baseImplementation!(input, init);
+    });
+    const user = userEvent.setup();
+
+    renderPage();
+
+    await screen.findByText('患者設定: 3割');
+    const itemLoadsBeforeSave = fetchMock.mock.calls.filter(([input]) =>
+      urlFromFetchInput(input).startsWith('/api/daily-reports/items?')
+    ).length;
+    await user.click(screen.getByRole('button', { name: '保存' }));
+
+    expect(
+      await screen.findByText(/患者数 3名 ・ 合計売上 ¥15,000/)
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      const itemLoads = fetchMock.mock.calls.filter(([input]) =>
+        urlFromFetchInput(input).startsWith('/api/daily-reports/items?')
+      ).length;
+      expect(itemLoads).toBeGreaterThan(itemLoadsBeforeSave);
+    });
+  });
 });

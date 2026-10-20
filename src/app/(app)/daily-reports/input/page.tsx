@@ -1143,7 +1143,12 @@ export default function DailyReportInputPage() {
         patients: savedTotals?.patients ?? totalPatients,
         revenue: savedTotals?.revenue ?? totalRevenue,
       });
-      if (savedTotals && savedTotals.patients !== totalPatients) {
+      if (
+        savedTotals &&
+        (savedTotals.patients !== totalPatients ||
+          savedTotals.revenue !== totalRevenue)
+      ) {
+        // 別タブで明細が変わっていた場合は一覧もDBに合わせて再取得する
         await loadItems({ includePaymentMethods: false, showSpinner: false });
       }
     } catch (error) {

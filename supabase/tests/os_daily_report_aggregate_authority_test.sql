@@ -7,7 +7,7 @@ begin;
 
 set local search_path = pg_catalog, extensions, public, auth;
 
-select plan(56);
+select plan(75);
 
 -- ---------------------------------------------------------------- fixtures
 insert into public.clinics (id, name)
@@ -251,6 +251,15 @@ select is(
      and t.tgenabled = 'O'),
   'CREATE TRIGGER daily_reports_aggregate_authority BEFORE INSERT OR UPDATE ON public.daily_reports FOR EACH ROW EXECUTE FUNCTION app_private.enforce_daily_report_aggregate_authority()',
   'B13: aggregate guard trigger is enabled for every insert and update'
+);
+select is(
+  (select pg_get_triggerdef(t.oid)
+   from pg_trigger t
+   where t.tgrelid = 'public.daily_reports'::regclass
+     and t.tgname = 'daily_reports_staff_clinic_check'
+     and t.tgenabled = 'O'),
+  'CREATE TRIGGER daily_reports_staff_clinic_check AFTER INSERT OR UPDATE OF staff_id, clinic_id ON public.daily_reports FOR EACH ROW EXECUTE FUNCTION app_private.enforce_daily_report_staff_clinic()',
+  'B13b: the staff clinic check runs AFTER the row (after RLS WITH CHECK admitted it)'
 );
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.daily_reports'::regclass)
@@ -498,6 +507,114 @@ select throws_ok(
 );
 reset role;
 
+-- Cross-clinic oracles: errors before RLS must not depend on other clinics' data.
+select set_config('request.jwt.claims', (select claims from os_f2_jwt where user_key = 'a'), true);
+set local role authenticated;
+select throws_ok(
+  $$insert into public.daily_reports (id, clinic_id, report_date, aggregate_source, new_patients)
+    values ('f1460000-0000-4000-8000-000000000103', 'f1460000-0000-4000-8000-000000000002', '2095-02-09', 'items', 7)$$,
+  '23514', 'DAILY_REPORT_AGGREGATE_SOURCE_REQUIRES_ITEMS',
+  'O1: an insert reusing a clinic B report id gets a data-independent error (new_patients 7)'
+);
+select throws_ok(
+  $$insert into public.daily_reports (id, clinic_id, report_date, aggregate_source, new_patients)
+    values ('f1460000-0000-4000-8000-000000000103', 'f1460000-0000-4000-8000-000000000002', '2095-02-09', 'items', 8)$$,
+  '23514', 'DAILY_REPORT_AGGREGATE_SOURCE_REQUIRES_ITEMS',
+  'O2: the same error for new_patients 8, so the clinic B patient count is not observable'
+);
+select throws_ok(
+  $$insert into public.daily_reports (id, clinic_id, report_date, new_patients)
+    values ('f1460000-0000-4000-8000-000000000103', 'f1460000-0000-4000-8000-000000000002', '2095-02-09', 1000000)$$,
+  '42501', null,
+  'O3: a manual insert into clinic B is stopped by RLS'
+);
+select throws_ok(
+  $$update public.daily_reports set id = 'f1460000-0000-4000-8000-000000000103', new_patients = 1000000
+    where id = 'f1460000-0000-4000-8000-000000000101'$$,
+  '23514', 'DAILY_REPORT_ID_IMMUTABLE',
+  'O4: re-pointing an own report at a clinic B report id is rejected before any read'
+);
+select throws_ok(
+  $$insert into public.daily_reports (clinic_id, report_date, staff_id)
+    values ('f1460000-0000-4000-8000-000000000002', '2095-02-10', 'f1460000-0000-4000-8000-000000000012')$$,
+  '42501', null,
+  'O5: clinic B staff in a clinic B insert gets the RLS error'
+);
+select throws_ok(
+  $$insert into public.daily_reports (clinic_id, report_date, staff_id)
+    values ('f1460000-0000-4000-8000-000000000002', '2095-02-10', 'f1460000-0000-4000-8000-000000000011')$$,
+  '42501', null,
+  'O6: a non-member staff id gets the same RLS error (no staff membership oracle)'
+);
+reset role;
+
+select set_config('request.jwt.claims', jsonb_build_object(
+  'sub', 'f1460000-0000-4000-8000-000000000099', 'role', 'authenticated'
+)::text, true);
+set local role authenticated;
+select throws_ok(
+  $$insert into public.daily_reports (id, clinic_id, report_date, aggregate_source, new_patients)
+    values ('f1460000-0000-4000-8000-000000000103', 'f1460000-0000-4000-8000-000000000002', '2095-02-09', 'items', 1000000)$$,
+  '23514', 'DAILY_REPORT_AGGREGATE_SOURCE_REQUIRES_ITEMS',
+  'O7: a user without any profile or permission gets the same data-independent error'
+);
+select throws_ok(
+  $$insert into public.daily_reports (clinic_id, report_date)
+    values ('f1460000-0000-4000-8000-000000000001', '2095-02-11')$$,
+  '42501', null,
+  'O8: a user without any profile or permission cannot create a report'
+);
+reset role;
+
+-- Stale JWT: the token's clinic scope no longer includes clinic A.
+select set_config('request.jwt.claims', jsonb_build_object(
+  'sub', 'f1460000-0000-4000-8000-000000000021', 'role', 'authenticated',
+  'app_metadata', jsonb_build_object('user_role', 'staff',
+    'clinic_scope_ids', jsonb_build_array('f1460000-0000-4000-8000-000000000002'))
+)::text, true);
+set local role authenticated;
+select throws_ok(
+  $$select public.save_daily_report(
+      p_clinic_id => 'f1460000-0000-4000-8000-000000000001', p_report_date => '2095-01-02',
+      p_total_patients => 1, p_new_patients => 0, p_total_revenue => 1,
+      p_insurance_revenue => 0, p_private_revenue => 1,
+      p_report_id => 'f1460000-0000-4000-8000-000000000102')$$,
+  '42501', null,
+  'O9: a JWT whose clinic scope excludes the report clinic cannot save it'
+);
+reset role;
+select is(
+  (select row(total_patients, new_patients, total_revenue)::text
+   from public.daily_reports where id = 'f1460000-0000-4000-8000-000000000102'),
+  '(12,2,60000.00)',
+  'O10: oracle and stale-JWT attempts leave clinic A data unchanged'
+);
+
+select ok(
+  not has_function_privilege('anon', 'public.recalculate_daily_report_totals(uuid)', 'EXECUTE')
+  and not has_function_privilege('authenticated', 'public.recalculate_daily_report_totals(uuid)', 'EXECUTE')
+  and has_function_privilege('service_role', 'public.recalculate_daily_report_totals(uuid)', 'EXECUTE'),
+  'P1: recalculate_daily_report_totals keeps its EXECUTE grants (service_role only)'
+);
+select ok(
+  (select p.prosecdef and p.proconfig = array['search_path=""']::text[]
+   from pg_proc p
+   where p.oid = 'app_private.enforce_daily_report_staff_clinic()'::regprocedure)
+  and not has_function_privilege('anon', 'app_private.enforce_daily_report_staff_clinic()', 'EXECUTE')
+  and not has_function_privilege('authenticated', 'app_private.enforce_daily_report_staff_clinic()', 'EXECUTE')
+  and not has_function_privilege('service_role', 'app_private.enforce_daily_report_staff_clinic()', 'EXECUTE'),
+  'P2: staff clinic guard is SECURITY DEFINER with an empty search_path and no API EXECUTE'
+);
+select is(
+  (select md5(string_agg(concat_ws('|', tablename, policyname, cmd, roles::text,
+                                   coalesce(qual, ''), coalesce(with_check, '')),
+                         ';' order by tablename, policyname))
+   from pg_policies
+   where schemaname = 'public' and tablename in ('daily_reports', 'daily_report_items', 'staff')),
+  '73ed99f1413965963bce7ed6ae47b6d4',
+  'P3: RLS policy definitions on daily_reports, daily_report_items and staff are unchanged from main'
+);
+
 -- Every write path: service role and arrived-reservation style inserts
 set local role service_role;
 select throws_ok(
@@ -516,19 +633,20 @@ select throws_ok(
 select throws_ok(
   $$insert into public.daily_reports (clinic_id, report_date, new_patients, total_patients, aggregate_source)
     values ('f1460000-0000-4000-8000-000000000001', '2095-01-10', 1, 5, 'items')$$,
-  '23514', 'DAILY_REPORT_NEW_PATIENTS_EXCEEDS_DERIVED_TOTAL',
-  'B43: an itemized report cannot be created with new_patients above its derived total'
+  '23514', 'DAILY_REPORT_AGGREGATE_SOURCE_REQUIRES_ITEMS',
+  'B43: a report cannot be created itemized; it starts manual until a detail row is attached'
 );
-select lives_ok(
-  $$insert into public.daily_reports (clinic_id, report_date, total_patients, total_revenue, aggregate_source)
-    values ('f1460000-0000-4000-8000-000000000001', '2095-01-11', 5, 9999, 'items')$$,
-  'B44: an itemized report shell can be created by the detail API'
+select throws_ok(
+  $$update public.daily_reports set aggregate_source = 'items'
+    where id = 'f1460000-0000-4000-8000-000000000102'$$,
+  '23514', 'DAILY_REPORT_AGGREGATE_SOURCE_REQUIRES_ITEMS',
+  'B44: a manual report without detail rows cannot be flipped to items (no silent loss of hand-entered totals)'
 );
 select is(
-  (select row(total_patients, total_revenue)::text from public.daily_reports
-   where clinic_id = 'f1460000-0000-4000-8000-000000000001' and report_date = '2095-01-11'),
-  '(0,0.00)',
-  'B45: an itemized shell ignores supplied totals and starts from the derived zero'
+  (select row(aggregate_source, total_patients, total_revenue)::text
+   from public.daily_reports where id = 'f1460000-0000-4000-8000-000000000102'),
+  '(manual,12,60000.00)',
+  'B45: rejected flips leave the hand-entered totals untouched'
 );
 reset role;
 
@@ -615,6 +733,51 @@ select throws_ok(
       p_report_id => 'f1460000-0000-4000-8000-000000000101')$$,
   '42501', null,
   'B52: clinic B user cannot save a clinic A report even with its exact id'
+);
+reset role;
+
+-- Arrived-reservation trigger paths (created manual -> itemized in one transaction)
+insert into public.customers (id, clinic_id, name, phone)
+values ('f1460000-0000-4000-8000-000000000301', 'f1460000-0000-4000-8000-000000000001', 'Synthetic customer', '0000000000');
+insert into public.menus (id, clinic_id, name, price, duration_minutes)
+values ('f1460000-0000-4000-8000-000000000302', 'f1460000-0000-4000-8000-000000000001', 'Synthetic menu', 4000, 30);
+insert into public.resources (id, clinic_id, name, type)
+values ('f1460000-0000-4000-8000-000000000303', 'f1460000-0000-4000-8000-000000000001', 'Synthetic resource', 'staff');
+insert into public.reservations (id, clinic_id, customer_id, menu_id, staff_id, start_time, end_time, status)
+values ('f1460000-0000-4000-8000-000000000304', 'f1460000-0000-4000-8000-000000000001',
+        'f1460000-0000-4000-8000-000000000301', 'f1460000-0000-4000-8000-000000000302',
+        'f1460000-0000-4000-8000-000000000303', '2095-01-20T01:00:00Z', '2095-01-20T01:30:00Z', 'arrived');
+select is(
+  (select row(aggregate_source, total_patients, total_revenue, report_text)::text
+   from public.daily_reports
+   where clinic_id = 'f1460000-0000-4000-8000-000000000001' and report_date = '2095-01-20'),
+  '(items,1,4000.00,"自動作成: 来院済み予約")',
+  'AR1: an arrived reservation creates the report and itemizes it in the same transaction'
+);
+update public.daily_reports set new_patients = 1
+where clinic_id = 'f1460000-0000-4000-8000-000000000001' and report_date = '2095-01-20';
+select lives_ok(
+  $$update public.reservations set notes = 'arrived again'
+    where id = 'f1460000-0000-4000-8000-000000000304'$$,
+  'AR2: re-syncing an arrived reservation (INSERT ... ON CONFLICT DO UPDATE on the itemized report) succeeds'
+);
+select lives_ok(
+  $$update public.reservations set status = 'completed'
+    where id = 'f1460000-0000-4000-8000-000000000304'$$,
+  'AR3: leaving arrived deletes the pending detail row without failing although new_patients > derived total'
+);
+select is(
+  (select row(aggregate_source, total_patients, total_revenue, new_patients)::text
+   from public.daily_reports
+   where clinic_id = 'f1460000-0000-4000-8000-000000000001' and report_date = '2095-01-20'),
+  '(items,0,0.00,1)',
+  'AR4: the report stays itemized at zero and new_patients is kept for re-entry'
+);
+set local role service_role;
+select lives_ok(
+  $$update public.daily_report_items set notes = 'no aggregate change'
+    where clinic_id = 'f1460000-0000-4000-8000-000000000001' and report_date = '2095-01-01'$$,
+  'AR5: detail updates that do not touch aggregate inputs still pass the guard'
 );
 reset role;
 
