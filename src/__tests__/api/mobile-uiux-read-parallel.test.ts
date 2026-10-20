@@ -225,40 +225,31 @@ describe('mobile-uiux read routes run access and entitlement checks concurrently
     expect(fetchDashboardReadModelMock).not.toHaveBeenCalled();
   });
 
-  it('validates write scope while the entitlement lookup is in flight (POST /daily-reports)', async () => {
+  it('runs the atomic scoped save only after the entitlement lookup, without extra pre-queries (POST /daily-reports)', async () => {
     process.env.MOBILE_UIUX_WRITE_ENABLED = 'true';
     process.env.MOBILE_UIUX_DAILY_REPORT_WRITE_ENABLED = 'true';
 
     const order: string[] = [];
 
-    const staffQuery: Record<string, jest.Mock> = {};
-    staffQuery.select = jest.fn(() => {
-      order.push('scope:staff-query');
-      return staffQuery;
+    // report_id/staff_id scope checks now run inside public.save_daily_report
+    // (one round trip after the entitlement gate), so the write is never
+    // issued before the entitlement decision and no separate scope pre-query
+    // adds a sequential round trip.
+    const rpc = jest.fn(async (fn: string) => {
+      order.push(`rpc:${fn}`);
+      return {
+        data: {
+          id: 'report-1',
+          clinic_id: clinicId,
+          report_date: '2026-06-12',
+        },
+        error: null,
+      };
     });
-    staffQuery.eq = jest.fn(() => staffQuery);
-    staffQuery.maybeSingle = jest.fn(async () => ({
-      data: { id: staffId },
-      error: null,
-    }));
-
-    const upsertBuilder: Record<string, jest.Mock> = {};
-    upsertBuilder.select = jest.fn(() => upsertBuilder);
-    upsertBuilder.single = jest.fn(async () => ({
-      data: {
-        id: 'report-1',
-        clinic_id: clinicId,
-        report_date: '2026-06-12',
-      },
-      error: null,
-    }));
 
     const mutationClient = {
+      rpc,
       from: jest.fn((table: string) => {
-        if (table === 'staff') return staffQuery;
-        if (table === 'daily_reports') {
-          return { upsert: jest.fn(() => upsertBuilder) };
-        }
         if (table === 'clinic_feature_flags') {
           return createEntitlementBuilder([buildEntitlementRow()], async () => {
             await new Promise(resolve => setTimeout(resolve, 25));
@@ -301,9 +292,9 @@ describe('mobile-uiux read routes run access and entitlement checks concurrently
     );
 
     expect(response.status).toBe(200);
-    const staffIndex = order.indexOf('scope:staff-query');
-    const entitlementResolvedIndex = order.indexOf('entitlement:resolved');
-    expect(staffIndex).toBeGreaterThan(-1);
-    expect(staffIndex).toBeLessThan(entitlementResolvedIndex);
+    expect(order).toEqual(['entitlement:resolved', 'rpc:save_daily_report']);
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(mutationClient.from).toHaveBeenCalledTimes(1);
+    expect(mutationClient.from).toHaveBeenCalledWith('clinic_feature_flags');
   });
 });
