@@ -28,6 +28,7 @@ interface DailyReportData {
   insuranceRevenue: number;
   privateRevenue: number;
   reportText: string | null;
+  aggregateSource?: 'manual' | 'items';
 }
 
 interface DailyReportApiResponse {
@@ -70,6 +71,8 @@ export default function DailyReportEditPage() {
   const [insuranceRevenue, setInsuranceRevenue] = useState(0);
   const [privateRevenue, setPrivateRevenue] = useState(0);
   const [reportText, setReportText] = useState('');
+  // 明細型の日報は合計をDBが明細から集計するため、画面では編集させない。
+  const [isItemized, setIsItemized] = useState(false);
 
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
@@ -107,6 +110,7 @@ export default function DailyReportEditPage() {
           setInsuranceRevenue(data.insuranceRevenue || 0);
           setPrivateRevenue(data.privateRevenue || 0);
           setReportText(data.reportText || '');
+          setIsItemized(data.aggregateSource === 'items');
         } else {
           throw new Error('日報データの取得に失敗しました');
         }
@@ -352,8 +356,10 @@ export default function DailyReportEditPage() {
         <Card>
           <CardHeader>
             <CardTitle>患者・売上情報</CardTitle>
-            <CardDescription>
-              日報の数値データを編集してください
+            <CardDescription id='aggregate-source-note'>
+              {isItemized
+                ? '総患者数と売上は日報明細から自動集計されるため、ここでは編集できません。明細は日報入力画面で修正してください。'
+                : '日報の数値データを編集してください'}
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
@@ -365,6 +371,10 @@ export default function DailyReportEditPage() {
                   type='number'
                   value={totalPatients}
                   onChange={e => setTotalPatients(Number(e.target.value))}
+                  disabled={isItemized}
+                  aria-describedby={
+                    isItemized ? 'aggregate-source-note' : undefined
+                  }
                 />
               </div>
               <div className='space-y-2'>
@@ -386,6 +396,10 @@ export default function DailyReportEditPage() {
                   type='number'
                   value={totalRevenue}
                   onChange={e => setTotalRevenue(Number(e.target.value))}
+                  disabled={isItemized}
+                  aria-describedby={
+                    isItemized ? 'aggregate-source-note' : undefined
+                  }
                 />
               </div>
               <div className='space-y-2'>
@@ -395,6 +409,10 @@ export default function DailyReportEditPage() {
                   type='number'
                   value={insuranceRevenue}
                   onChange={e => setInsuranceRevenue(Number(e.target.value))}
+                  disabled={isItemized}
+                  aria-describedby={
+                    isItemized ? 'aggregate-source-note' : undefined
+                  }
                 />
               </div>
               <div className='space-y-2'>
@@ -404,6 +422,10 @@ export default function DailyReportEditPage() {
                   type='number'
                   value={privateRevenue}
                   onChange={e => setPrivateRevenue(Number(e.target.value))}
+                  disabled={isItemized}
+                  aria-describedby={
+                    isItemized ? 'aggregate-source-note' : undefined
+                  }
                 />
               </div>
             </div>

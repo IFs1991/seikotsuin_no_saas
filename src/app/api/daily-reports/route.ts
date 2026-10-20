@@ -10,10 +10,7 @@ import {
   DAILY_REPORT_MUTATION_ROLES,
   dailyReportPayloadSchema,
 } from '@/lib/daily-reports/schema';
-import {
-  upsertDailyReport,
-  validateDailyReportWriteScope,
-} from '@/lib/daily-reports/write-model';
+import { saveDailyReport } from '@/lib/daily-reports/write-model';
 import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 import { createAuthorityUnavailableResponse } from '@/lib/api-helpers';
 import { resolveScopedClinicIds } from '@/lib/supabase';
@@ -135,18 +132,30 @@ export async function POST(request: NextRequest) {
       targetClinicId: payload.clinic_id,
     });
 
-    const scope = await validateDailyReportWriteScope(supabase, payload);
-    if (scope.ok === false) {
+    const saved = await saveDailyReport(supabase, payload);
+    if (saved.ok === false) {
+      if (saved.status === 400) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              message: '日報データのバリデーションに失敗しました',
+              fieldErrors: saved.fieldErrors,
+              formErrors: [],
+            },
+          },
+          { status: 400 }
+        );
+      }
       return NextResponse.json(
-        { success: false, error: scope.message },
-        { status: scope.status }
+        { success: false, error: saved.message },
+        { status: saved.status }
       );
     }
-    const data = await upsertDailyReport(supabase, payload);
 
     return NextResponse.json({
       success: true,
-      data,
+      data: saved.report,
     });
   } catch (error) {
     reportApiFailure(error instanceof AppError ? error.statusCode : 500);

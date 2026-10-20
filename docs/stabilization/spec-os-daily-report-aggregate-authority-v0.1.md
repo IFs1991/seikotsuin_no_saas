@@ -16,16 +16,16 @@
 
 ## 2. 保存経路の一覧（変更前）
 
-| 経路 | 呼出元 | 親への書込 | 送る `total_*` |
-|---|---|---|---|
-| PC 日報入力 `/daily-reports/input` | `handleSubmit` → `POST /api/daily-reports` | write-model `upsertDailyReport` | 画面上の明細から計算した値 |
-| PC 日報編集 `/daily-reports/edit/[id]` | `handleSubmit` → `POST /api/daily-reports` | 同上 | 入力欄の値（編集可能） |
-| `useDailyReports` hook（ページからの参照なし） | `createReport` / `updateReport` | 同上 | hook state の値 |
-| mobile `daily-reports.dc.html` | bridge `submitDailyReport` → `POST /api/mobile-uiux/daily-reports` | write-model `upsertDailyReport` | フォーム内の行から計算した値 |
-| 明細API `POST /api/daily-reports/items` | `ensureDailyReport` | 親が無ければ0合計でINSERT | なし |
-| 来院済み予約 trigger | `sync_arrived_reservation_daily_report_item` | 親が無ければ0合計でINSERT | なし |
-| 明細の追加/訂正/削除 | `sync_daily_report_item_totals` | 再計算UPDATE | DB集計 |
-| PostgREST直接書込 | authenticated の table grant + RLS | INSERT/UPDATE | 任意 |
+| 経路                                           | 呼出元                                                             | 親への書込                      | 送る `total_*`               |
+| ---------------------------------------------- | ------------------------------------------------------------------ | ------------------------------- | ---------------------------- |
+| PC 日報入力 `/daily-reports/input`             | `handleSubmit` → `POST /api/daily-reports`                         | write-model `upsertDailyReport` | 画面上の明細から計算した値   |
+| PC 日報編集 `/daily-reports/edit/[id]`         | `handleSubmit` → `POST /api/daily-reports`                         | 同上                            | 入力欄の値（編集可能）       |
+| `useDailyReports` hook（ページからの参照なし） | `createReport` / `updateReport`                                    | 同上                            | hook state の値              |
+| mobile `daily-reports.dc.html`                 | bridge `submitDailyReport` → `POST /api/mobile-uiux/daily-reports` | write-model `upsertDailyReport` | フォーム内の行から計算した値 |
+| 明細API `POST /api/daily-reports/items`        | `ensureDailyReport`                                                | 親が無ければ0合計でINSERT       | なし                         |
+| 来院済み予約 trigger                           | `sync_arrived_reservation_daily_report_item`                       | 親が無ければ0合計でINSERT       | なし                         |
+| 明細の追加/訂正/削除                           | `sync_daily_report_item_totals`                                    | 再計算UPDATE                    | DB集計                       |
+| PostgREST直接書込                              | authenticated の table grant + RLS                                 | INSERT/UPDATE                   | 任意                         |
 
 変更後、PC・mobile・hook はすべて共通write-modelの `saveDailyReport` → DB関数 `public.save_daily_report` だけを通る。旧 `upsertDailyReport` / `validateDailyReportWriteScope` は削除し、旧上書き経路を残さない。PostgREST直接書込と service role の書込はDB triggerが同じ規則を強制する。
 
@@ -33,10 +33,10 @@
 
 `daily_reports.aggregate_source text not null default 'manual'`、`check (aggregate_source in ('manual','items'))`。
 
-| 値 | 意味 | `total_*` の正本 |
-|---|---|---|
-| `manual` | 明細を持ったことがない手入力型（legacy含む） | 人が入力した値（従来どおり） |
-| `items` | 明細型 | `daily_report_items` のDB集計。リクエスト値は保存しない |
+| 値       | 意味                                         | `total_*` の正本                                        |
+| -------- | -------------------------------------------- | ------------------------------------------------------- |
+| `manual` | 明細を持ったことがない手入力型（legacy含む） | 人が入力した値（従来どおり）                            |
+| `items`  | 明細型                                       | `daily_report_items` のDB集計。リクエスト値は保存しない |
 
 - **判定は列の値だけで行う。**「現在の明細件数=0」を手入力型の判定に使わない。
 - 遷移は `manual → items` の一方向のみ。明細行がその日報へ付いた時（INSERT、または `daily_report_id` の付替え）に、明細triggerが親を `items` にする。変更前もこの時点で手入力合計は明細集計で置き換わっていたため、合計値の業務結果は変えない。
@@ -48,19 +48,20 @@
 
 - 明細を1件以上持つ日報 → `items`。
 - 明細0件の日報 → `manual`。変更前の実行時挙動（クライアント合計を受け付け、最初の明細で明細集計へ置換）と同一で、挙動が未定義になる行はない。
-- 分類時に `total_*` は再計算しない（一括データ補正をしない）。分類UPDATEはguard trigger作成前に行う。
+- 分類時に `total_*` と `updated_at` は変更しない（一括データ補正をしない）。分類UPDATEはguard trigger作成前に行う。
+- 既に親だけ古い合計へ戻っていた `items` 行は、migration後にその日報へ次の書込（明細の追加/訂正/削除、または本文保存）が行われた時点で、その1件だけ明細集計へ戻る。これは変更前から明細書込時に起きていた再計算と同じ規則で、一括補正ではない。
 - 既知の限界: migration前に最後の明細を削除済みだった明細型日報は区別できず `manual` になる。`report_text` が自動作成文言（`明細行から自動作成` / `自動作成: 来院済み予約`）のまま明細0件の行が候補だが、文言での推定分類は行わない。必要なら §9 の読取SQLで件数を確認し、別承認で扱う。
 
 ## 4. 編集責任
 
-| 列 | `manual` | `items` | 備考 |
-|---|---|---|---|
-| `total_patients` / `total_revenue` / `insurance_revenue` / `private_revenue` | 人（リクエスト値） | DB（明細集計）。リクエスト値は無視 | API互換のためリクエストの必須項目は維持 |
-| `new_patients` | 人 | 人。DB集計の `total_patients` 以下 | §5 |
-| `report_text` | 人 | 人 | 変更なし（入力画面は従来どおり「担当/入力件数」文言を送る） |
-| `staff_id` | 人。同じ院のstaffのみ | 同左 | 省略時は null（変更前の upsert と同じ挙動。担当の保持は本Issue対象外） |
-| `report_date` / `clinic_id` | 一意キー | 一意キー | 日付変更は「別日付の日報への保存」。元の日報は変わらない（変更前と同じ）。編集画面の日付欄は変更前から無効 |
-| `aggregate_source` | DB | DB | API/画面からは書かない |
+| 列                                                                           | `manual`              | `items`                            | 備考                                                                                                       |
+| ---------------------------------------------------------------------------- | --------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `total_patients` / `total_revenue` / `insurance_revenue` / `private_revenue` | 人（リクエスト値）    | DB（明細集計）。リクエスト値は無視 | API互換のためリクエストの必須項目は維持                                                                    |
+| `new_patients`                                                               | 人                    | 人。DB集計の `total_patients` 以下 | §5                                                                                                         |
+| `report_text`                                                                | 人                    | 人                                 | 変更なし（入力画面は従来どおり「担当/入力件数」文言を送る）                                                |
+| `staff_id`                                                                   | 人。同じ院のstaffのみ | 同左                               | 省略時は null（変更前の upsert と同じ挙動。担当の保持は本Issue対象外）                                     |
+| `report_date` / `clinic_id`                                                  | 一意キー              | 一意キー                           | 日付変更は「別日付の日報への保存」。元の日報は変わらない（変更前と同じ）。編集画面の日付欄は変更前から無効 |
+| `aggregate_source`                                                           | DB                    | DB                                 | API/画面からは書かない                                                                                     |
 
 ## 5. 検証規則（原子的書込境界）
 
@@ -71,7 +72,7 @@
 3. 未指定時は `(clinic_id, report_date)` の行を `FOR UPDATE` で取得。無ければ `manual` として `INSERT ... ON CONFLICT DO NOTHING`。競合で作られていれば再取得してロックする（最大3回、超過は40001）。
 4. ロック下の `aggregate_source` で分岐する。
    - `manual`: 従来どおり `new_patients <= total_patients`（`DAILY_REPORT_NEW_PATIENTS_EXCEEDS_TOTAL`）と `insurance + private <= total_revenue`（`DAILY_REPORT_REVENUE_BREAKDOWN_EXCEEDS_TOTAL`）を検証し、リクエスト値を保存する。
-   - `items`: リクエストの `total_*` を書かずに UPDATE し、guard trigger がロック下で明細から導出した `total_patients` に対して `new_patients` を検証する（`DAILY_REPORT_NEW_PATIENTS_EXCEEDS_DERIVED_TOTAL`、DETAILに導出総数）。
+   - `items`: リクエストの `total_*` を書かずに UPDATE する。guard trigger がロック下で明細から合計を導出し、関数は更新後の行で `new_patients <= total_patients` を検証する（`DAILY_REPORT_NEW_PATIENTS_EXCEEDS_DERIVED_TOTAL`、DETAILに導出総数。違反時は transaction ごと取り消す）。
 5. 保存後の行（DB集計を含む）を返す。
 
 guard trigger `daily_reports_aggregate_authority`（BEFORE INSERT OR UPDATE、`app_private.enforce_daily_report_aggregate_authority()`、SECURITY DEFINER・`search_path=''`・EXECUTE付与なし）は全書込経路で次を強制する。
@@ -96,14 +97,14 @@ guard trigger `daily_reports_aggregate_authority`（BEFORE INSERT OR UPDATE、`a
 
 ## 6. 競合（実DBで検証）
 
-| 競合 | 直列化点 | 期待結果 |
-|---|---|---|
-| 型判定後に最初の明細INSERT | 親行 `FOR UPDATE` と明細FKの `FOR KEY SHARE` が衝突し、どちらかが待つ | 先に保存: `manual` 保存後、明細で `items` 化し明細集計。先に明細: 保存は `items` を見てリクエスト合計を無視。どちらも最終合計=明細集計 |
-| 最後の明細DELETEと保存 | 明細triggerの親UPDATEが保存の行ロックを待つ／保存が明細triggerのロックを待つ | 最終合計=0、`items` 維持、`new_patients` は丸めない |
-| 同日の初回作成（保存×保存、保存×明細API） | `(clinic_id, report_date)` 一意制約 + `ON CONFLICT DO NOTHING` + 再ロック | 1行のみ。後続は既存行をロックして型に従う |
-| 明細INSERT×明細INSERT | guard trigger が親行ロック取得後に新snapshotで集計 | 最終合計=全明細（変更前の lost update も解消） |
+| 競合                                      | 直列化点                                                                     | 期待結果                                                                                                                               |
+| ----------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 型判定後に最初の明細INSERT                | 親行 `FOR UPDATE` と明細FKの `FOR KEY SHARE` が衝突し、どちらかが待つ        | 先に保存: `manual` 保存後、明細で `items` 化し明細集計。先に明細: 保存は `items` を見てリクエスト合計を無視。どちらも最終合計=明細集計 |
+| 最後の明細DELETEと保存                    | 明細triggerの親UPDATEが保存の行ロックを待つ／保存が明細triggerのロックを待つ | 最終合計=0、`items` 維持、`new_patients` は丸めない                                                                                    |
+| 同日の初回作成（保存×保存、保存×明細API） | `(clinic_id, report_date)` 一意制約 + `ON CONFLICT DO NOTHING` + 再ロック    | 1行のみ。後続は既存行をロックして型に従う                                                                                              |
+| 明細INSERT×明細INSERT                     | guard trigger が親行ロック取得後に新snapshotで集計                           | 最終合計=全明細（変更前の lost update も解消）                                                                                         |
 
-`scripts/daily-reports/verify-aggregate-authority-races.mjs` が2接続で順序を固定し、`pg_locks` で待機を確認してから先行側をcommitする。
+`scripts/daily-reports/verify-aggregate-authority-races.mjs`（`npm run daily-reports:verify:races:local`、CI Database Contract に追加）が2接続で順序を固定し、`pg_blocking_pids()` で後続側が先行側に待たされていることを確認してから先行側をcommitし、最終状態をDBで検証する。loopback以外の接続先は拒否する。
 
 ## 7. 権限・テナント境界
 

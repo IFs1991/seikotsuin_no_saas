@@ -2021,6 +2021,7 @@ export type Database = {
       };
       daily_reports: {
         Row: {
+          aggregate_source: string;
           clinic_id: string;
           created_at: string | null;
           id: string;
@@ -2035,6 +2036,7 @@ export type Database = {
           updated_at: string | null;
         };
         Insert: {
+          aggregate_source?: string;
           clinic_id: string;
           created_at?: string | null;
           id?: string;
@@ -2049,6 +2051,7 @@ export type Database = {
           updated_at?: string | null;
         };
         Update: {
+          aggregate_source?: string;
           clinic_id?: string;
           created_at?: string | null;
           id?: string;
@@ -8093,6 +8096,41 @@ export type Database = {
           deleted_webhook_events: number;
           skipped: boolean;
         }[];
+      };
+      save_daily_report: {
+        Args: {
+          p_clinic_id: string;
+          p_insurance_revenue: number;
+          p_new_patients: number;
+          p_private_revenue: number;
+          p_report_date: string;
+          p_report_id?: string;
+          p_report_text?: string;
+          p_staff_id?: string;
+          p_total_patients: number;
+          p_total_revenue: number;
+        };
+        Returns: {
+          aggregate_source: string;
+          clinic_id: string;
+          created_at: string | null;
+          id: string;
+          insurance_revenue: number | null;
+          new_patients: number | null;
+          private_revenue: number | null;
+          report_date: string;
+          report_text: string | null;
+          staff_id: string | null;
+          total_patients: number | null;
+          total_revenue: number | null;
+          updated_at: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'daily_reports';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
       };
       update_line_chat_settings: {
         Args: {

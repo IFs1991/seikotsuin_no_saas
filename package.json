@@ -81,6 +81,7 @@
     "commercial:red:types:remote": "node scripts/commercial-hardening/verify-generated-types.mjs --linked --write",
     "commercial:red:invite": "node scripts/commercial-hardening/run-red-invite-contract.mjs",
     "commercial:verify:invite:local": "node scripts/commercial-hardening/verify-atomic-staff-invite.mjs --local",
+    "daily-reports:verify:races:local": "node scripts/daily-reports/verify-aggregate-authority-races.mjs",
     "commercial:verify:pr09:auth:local": "node scripts/commercial-hardening/verify-pr09-auth-integration.mjs --local",
     "commercial:verify:pr09:rollback-guard:local": "node scripts/commercial-hardening/verify-pr09-rollback-guard-negative.mjs --local",
     "commercial:verify:pr11:deferred:local": "node scripts/commercial-hardening/verify-pr11-deferred-production-path.mjs"

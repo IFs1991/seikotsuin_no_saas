@@ -215,6 +215,9 @@ jobs:
       - name: Verify atomic staff invite concurrency
         run: npm run commercial:verify:invite:local
 
+      - name: Verify daily report aggregate races
+        run: npm run daily-reports:verify:races:local
+
       - name: Verify GoTrue claims and stale JWT revocation on disposable local database
         run: npm run commercial:verify:pr09:auth:local
 

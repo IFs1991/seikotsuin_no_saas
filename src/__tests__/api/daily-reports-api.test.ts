@@ -136,7 +136,11 @@ describe('POST /api/daily-reports', () => {
     });
 
     const response = await postHandler(
-      createRequest({ ...staleItemizedPayload, id: reportId, staff_id: staffId })
+      createRequest({
+        ...staleItemizedPayload,
+        id: reportId,
+        staff_id: staffId,
+      })
     );
 
     expect(response.status).toBe(200);

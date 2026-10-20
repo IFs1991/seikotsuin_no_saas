@@ -207,11 +207,10 @@ select throws_ok(
 );
 
 -- Function and trigger catalog
-select is(
-  (select row(p.prosecdef, coalesce(p.proconfig, array[]::text[]))::text
+select ok(
+  (select not p.prosecdef and p.proconfig = array['search_path=""']::text[]
    from pg_proc p
    where p.oid = 'public.save_daily_report(uuid,date,integer,integer,numeric,numeric,numeric,uuid,uuid,text)'::regprocedure),
-  '(f,"{search_path=\"\"}")',
   'B8: save_daily_report is SECURITY INVOKER with an empty search_path'
 );
 select ok(
@@ -232,11 +231,10 @@ select is(
   0::bigint,
   'B10: save_daily_report has no PUBLIC EXECUTE'
 );
-select is(
-  (select row(p.prosecdef, coalesce(p.proconfig, array[]::text[]))::text
+select ok(
+  (select p.prosecdef and p.proconfig = array['search_path=""']::text[]
    from pg_proc p
    where p.oid = 'app_private.enforce_daily_report_aggregate_authority()'::regprocedure),
-  '(t,"{search_path=\"\"}")',
   'B11: aggregate guard is SECURITY DEFINER with an empty search_path'
 );
 select ok(

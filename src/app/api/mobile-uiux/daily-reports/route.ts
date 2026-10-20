@@ -9,10 +9,7 @@ import {
   DAILY_REPORT_MUTATION_ROLES,
   dailyReportPayloadSchema,
 } from '@/lib/daily-reports/schema';
-import {
-  upsertDailyReport,
-  validateDailyReportWriteScope,
-} from '@/lib/daily-reports/write-model';
+import { saveDailyReport } from '@/lib/daily-reports/write-model';
 import { AppError } from '@/lib/error-handler';
 import type { MobileUiuxDailyReportsResponse } from '@/lib/mobile-uiux/contracts';
 import {
@@ -284,17 +281,11 @@ export async function POST(request: NextRequest) {
       return buildScopedBodyFailure(result.error.status);
     }
 
-    // Both checks are independent reads on the request-scoped client, so
-    // they run concurrently; the entitlement gate is still evaluated first
-    // and the upsert only happens after both pass (fail-closed).
-    const [entitlement, scope] = await Promise.all([
-      fetchMobileUiuxClinicEntitlement({
-        supabase: result.supabase,
-        flags,
-        clinicId: result.dto.clinic_id,
-      }),
-      validateDailyReportWriteScope(result.supabase, result.dto),
-    ]);
+    const entitlement = await fetchMobileUiuxClinicEntitlement({
+      supabase: result.supabase,
+      flags,
+      clinicId: result.dto.clinic_id,
+    });
     if (!areMobileUiuxWritesEnabled(flags, 'dailyReport', entitlement)) {
       logMobileUiuxWriteFlagDenied({
         flags,
@@ -304,22 +295,26 @@ export async function POST(request: NextRequest) {
       return buildWriteDisabledResponse();
     }
 
-    if (scope.ok === false) {
-      if (scope.status === 403) {
+    // report_id/staff_id scope, the manual/items decision and validation are
+    // resolved atomically by the shared write-model (fail-closed).
+    const saved = await saveDailyReport(result.supabase, result.dto);
+    if (saved.ok === false) {
+      if (saved.status === 403) {
         logMobileUiuxClinicScopeDenied({
           flags,
           writeTarget: 'daily-reports',
-          status: scope.status,
+          status: saved.status,
         });
+        return buildMobileUiuxFailure(
+          403,
+          'FORBIDDEN',
+          '日報を書き込む権限がありません'
+        );
       }
-      return buildMobileUiuxFailure(
-        scope.status,
-        'FORBIDDEN',
-        '日報を書き込む権限がありません'
-      );
+      return buildMobileUiuxFailure(400, 'BAD_REQUEST', saved.message);
     }
 
-    const report = await upsertDailyReport(result.supabase, result.dto);
+    const report = saved.report;
     const dailyReports = await fetchDailyReportsReadModel({
       supabase: result.supabase,
       clinicId: result.dto.clinic_id,

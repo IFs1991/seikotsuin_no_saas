@@ -160,11 +160,13 @@ function buildMutationClient(params?: {
   const entitlementBuilder = createEntitlementBuilder(
     params?.entitlementRows ?? []
   );
-  const rpc = jest.fn().mockResolvedValue(
-    params?.rpcError
-      ? { data: null, error: params.rpcError }
-      : { data: savedRow, error: null }
-  );
+  const rpc = jest
+    .fn()
+    .mockResolvedValue(
+      params?.rpcError
+        ? { data: null, error: params.rpcError }
+        : { data: savedRow, error: null }
+    );
   const client = {
     rpc,
     from: jest.fn().mockImplementation((table: string) => {

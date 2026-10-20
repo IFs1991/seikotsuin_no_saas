@@ -5,96 +5,137 @@ import type { Database } from '@/types/supabase';
 import type { DailyReportPayload } from './schema';
 
 type DailyReportRow = Database['public']['Tables']['daily_reports']['Row'];
-type DailyReportInsert =
-  Database['public']['Tables']['daily_reports']['Insert'];
+type SaveDailyReportArgs =
+  Database['public']['Functions']['save_daily_report']['Args'];
 
-export type DailyReportWriteScopeResult =
-  | { ok: true }
+type SaveDailyReportError = {
+  code?: string;
+  message?: string;
+  details?: string | null;
+};
+
+export type DailyReportSaveResult =
+  | { ok: true; report: DailyReportRow }
+  | {
+      ok: false;
+      status: 400;
+      message: string;
+      fieldErrors: Record<string, string[]>;
+    }
   | { ok: false; status: 403; message: string };
 
-function mapDailyReportPayloadToInsert(
+function mapDailyReportPayloadToSaveArgs(
   payload: DailyReportPayload
-): DailyReportInsert {
+): SaveDailyReportArgs {
   return {
-    clinic_id: payload.clinic_id,
-    staff_id: payload.staff_id ?? null,
-    report_date: payload.report_date,
-    total_patients: payload.total_patients,
-    new_patients: payload.new_patients,
-    total_revenue: payload.total_revenue,
-    insurance_revenue: payload.insurance_revenue,
-    private_revenue: payload.private_revenue,
-    report_text: payload.report_text ?? null,
+    p_clinic_id: payload.clinic_id,
+    p_report_date: payload.report_date,
+    p_report_id: payload.id,
+    p_staff_id: payload.staff_id ?? undefined,
+    // Ignored by the DB for itemized reports (aggregate_source = 'items').
+    p_total_patients: payload.total_patients,
+    p_new_patients: payload.new_patients,
+    p_total_revenue: payload.total_revenue,
+    p_insurance_revenue: payload.insurance_revenue,
+    p_private_revenue: payload.private_revenue,
+    p_report_text: payload.report_text ?? undefined,
   };
 }
 
-export async function validateDailyReportWriteScope(
-  supabase: SupabaseServerClient,
-  payload: DailyReportPayload
-): Promise<DailyReportWriteScopeResult> {
-  if (payload.id) {
-    const { data, error } = await supabase
-      .from('daily_reports')
-      .select('id')
-      .eq('id', payload.id)
-      .eq('clinic_id', payload.clinic_id)
-      .eq('report_date', payload.report_date)
-      .maybeSingle();
+function buildDerivedTotalMessage(details: string | null | undefined): string {
+  const derivedTotal =
+    typeof details === 'string' && /^\d+$/.test(details) ? details : null;
+  return derivedTotal === null
+    ? '新患数は明細から集計した総患者数以下で入力してください'
+    : `新患数は明細から集計した総患者数（${derivedTotal}名）以下で入力してください`;
+}
 
-    if (error) {
-      throw error;
-    }
-
-    if (!data) {
+function mapSaveDailyReportError(
+  error: SaveDailyReportError
+): DailyReportSaveResult | null {
+  if (error.code === '42501') {
+    if (error.message === 'DAILY_REPORT_NOT_ACCESSIBLE') {
       return {
         ok: false,
         status: 403,
         message: '日報へのアクセス権がありません',
       };
     }
+    if (error.message === 'DAILY_REPORT_STAFF_NOT_ACCESSIBLE') {
+      return {
+        ok: false,
+        status: 403,
+        message: '日報担当スタッフへのアクセス権がありません',
+      };
+    }
+    return null;
   }
 
-  if (!payload.staff_id) {
-    return { ok: true };
+  if (error.code !== '23514') {
+    return null;
   }
 
-  const { data, error } = await supabase
-    .from('staff')
-    .select('id')
-    .eq('clinic_id', payload.clinic_id)
-    .eq('id', payload.staff_id)
-    .maybeSingle();
+  switch (error.message) {
+    case 'DAILY_REPORT_NEW_PATIENTS_EXCEEDS_TOTAL': {
+      const message = 'new_patientsはtotal_patients以下で入力してください';
+      return {
+        ok: false,
+        status: 400,
+        message,
+        fieldErrors: { new_patients: [message] },
+      };
+    }
+    case 'DAILY_REPORT_NEW_PATIENTS_EXCEEDS_DERIVED_TOTAL': {
+      const message = buildDerivedTotalMessage(error.details);
+      return {
+        ok: false,
+        status: 400,
+        message,
+        fieldErrors: { new_patients: [message] },
+      };
+    }
+    case 'DAILY_REPORT_REVENUE_BREAKDOWN_EXCEEDS_TOTAL': {
+      const message =
+        'total_revenueは保険診療と自費診療の合計以上である必要があります';
+      return {
+        ok: false,
+        status: 400,
+        message,
+        fieldErrors: { total_revenue: [message] },
+      };
+    }
+    default:
+      return null;
+  }
+}
+
+/**
+ * Saves the human-edited body of a daily report through the single atomic DB
+ * boundary (public.save_daily_report). The report's clinic/date, report_id
+ * and staff_id scope, the manual/items type decision, the totals and the
+ * new_patients validation are all resolved under one row lock in the DB.
+ * See docs/stabilization/spec-os-daily-report-aggregate-authority-v0.1.md.
+ */
+export async function saveDailyReport(
+  supabase: SupabaseServerClient,
+  payload: DailyReportPayload
+): Promise<DailyReportSaveResult> {
+  const { data, error } = await supabase.rpc(
+    'save_daily_report',
+    mapDailyReportPayloadToSaveArgs(payload)
+  );
 
   if (error) {
+    const mapped = mapSaveDailyReportError(error);
+    if (mapped) {
+      return mapped;
+    }
     throw error;
   }
 
   if (!data) {
-    return {
-      ok: false,
-      status: 403,
-      message: '日報担当スタッフへのアクセス権がありません',
-    };
+    throw new Error('save_daily_report returned no row');
   }
 
-  return { ok: true };
-}
-
-export async function upsertDailyReport(
-  supabase: SupabaseServerClient,
-  payload: DailyReportPayload
-): Promise<DailyReportRow> {
-  const { data, error } = await supabase
-    .from('daily_reports')
-    .upsert(mapDailyReportPayloadToInsert(payload), {
-      onConflict: 'clinic_id,report_date',
-    })
-    .select()
-    .single();
-
-  if (error) {
-    throw error;
-  }
-
-  return data;
+  return { ok: true, report: data };
 }

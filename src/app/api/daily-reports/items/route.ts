@@ -672,6 +672,8 @@ async function ensureDailyReport(
     insurance_revenue: 0,
     private_revenue: 0,
     report_text: '明細行から自動作成',
+    // 明細の親として作る日報は最初から明細型（合計はDBが明細から集計する）
+    aggregate_source: 'items',
   };
 
   const { data, error } = await supabase

@@ -183,6 +183,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+function toFiniteNumber(value: unknown): number | null {
+  const parsed = typeof value === 'string' ? Number(value) : value;
+  return typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseSavedReportTotals(
+  payload: unknown
+): { patients: number; revenue: number } | null {
+  if (!isRecord(payload) || !isRecord(payload.data)) {
+    return null;
+  }
+  const patients = toFiniteNumber(payload.data.total_patients);
+  const revenue = toFiniteNumber(payload.data.total_revenue);
+  return patients === null || revenue === null ? null : { patients, revenue };
+}
+
 function isBillingType(value: unknown): value is BillingType {
   return value === 'insurance' || value === 'private';
 }
@@ -1120,11 +1136,16 @@ export default function DailyReportInputPage() {
       }
 
       // ピーク・エンド設計: 保存後は要約と次アクションを提示する（P11）
+      // 合計はDBが明細から集計した保存結果を表示する（画面の値は古い可能性がある）
+      const savedTotals = parseSavedReportTotals(payload);
       setSavedSummary({
         date,
-        patients: totalPatients,
-        revenue: totalRevenue,
+        patients: savedTotals?.patients ?? totalPatients,
+        revenue: savedTotals?.revenue ?? totalRevenue,
       });
+      if (savedTotals && savedTotals.patients !== totalPatients) {
+        await loadItems({ includePaymentMethods: false, showSpinner: false });
+      }
     } catch (error) {
       setFormError(
         error instanceof Error ? error.message : '日報の保存に失敗しました'
