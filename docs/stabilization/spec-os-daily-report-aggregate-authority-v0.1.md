@@ -159,7 +159,10 @@ from public.daily_reports r;
 ```
 
 - G1 は下限である。`arrived_auto`（予約triggerが明細と同時にだけ書く文言）と `input_page_save`（入力画面は明細1件以上のときだけ保存でき、毎回この文言で上書きする）は過去に明細を持っていたことがほぼ確定している。`items_api_shell` は明細INSERT失敗でも残るため不確定。文言を手で書き換えた明細0件の行はどの方法でも識別できない。
-- G1 が0件: 進める。0件以外: 停止。選択肢は (a) そのまま `manual`（変更前の挙動を維持、stale 合計の再上書きは起こり得る）、(b) `arrived_auto` / `input_page_save` 行を明細付与相当として扱う別 forward migration（その行に後から手入力した合計は次の書込で0になる）。どちらを選んだかと種類別件数を承認記録に残す。
+- G1 が0件: 進める。0件以外: 停止。選択肢は (a) そのまま `manual`（変更前の挙動を維持、stale 合計の再上書きは起こり得る）、(b) `arrived_auto` / `input_page_save` 行を `items` に分類する（その行に後から手入力した合計は次の書込で0になる）。どちらを選んだかと種類別件数を承認記録に残す。
+- (b) の実行方法: guard は明細0件の `manual → items` を全 role で拒否するため、通常の UPDATE では実行できない。
+  - 本 migration をまだどの永続環境にも適用していない場合: 本 migration の手順2（分類UPDATE。guard 作成前に動く）の条件へ owner が選んだ種類を追加し、再review・CI を通してから適用する。
+  - 適用済みの場合: 別の reviewed forward migration で、1 transaction 内に対象 id と変更前の合計を証跡へ記録し、`alter table public.daily_reports disable trigger daily_reports_aggregate_authority` → `aggregate_source` だけを更新 → `enable trigger` を行う（`ALTER TABLE` の lock を伴うため低負荷時間帯に実施）。trigger を無効のまま残す・削除する手順は禁止。
 - migration は `lock_timeout = 5s`、`statement_timeout = 60s` で動き、`daily_reports` に ACCESS EXCLUSIVE を取る（列追加・CHECK検証・分類UPDATE）。予約triggerからの書込も待つため、低負荷時間帯に適用する。
 - 適用前後の catalog snapshot を取り、`evidence/os-daily-report-aggregate-authority/` の差分（列+CHECK、trigger 2件、関数3件。RLS・policy・table grant は不変）と一致することを確認する。
 
