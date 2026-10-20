@@ -53,6 +53,7 @@
 - 既に親だけ古い合計へ戻っていた `items` 行は、migration後にその日報へ次の書込（明細の追加/訂正/削除、または本文保存）が行われた時点で、その1件だけ明細集計へ戻る。これは変更前から明細書込時に起きていた再計算と同じ規則で、一括補正ではない。
 - 既知の曖昧行: migration前に最後の明細を削除済みだった明細型日報は、明細0件のため `manual` に分類される。
   - `自動作成: 来院済み予約` は予約triggerが明細INSERTと同じ transaction でだけ書くため、この文言のまま明細0件の行は過去に明細を持っていたことが確定している。予約が来院済みから他の status（`completed` を含む）へ移ると pending 明細が削除されるため（`20260525000100` の `sync_arrived_reservation_daily_report_item`）、件数が多い可能性がある。
+  - 入力画面の保存は明細1件以上のときだけ可能で、`report_text` を `担当: …、入力件数: N` で上書きする。この文言のまま明細0件の行も過去に明細を持っていた可能性が高い。
   - `明細行から自動作成` の行は、明細API の明細INSERT失敗でも残るため確定できない。
   - いずれも文言から自動分類しない。本番適用前に §9 の **必須ゲート** で件数を確認し、0件でなければ適用を止めて owner が扱いを決める（`supabase/AGENTS.md`「backfill不明rowが1件でもあれば停止する」）。
 
@@ -136,10 +137,19 @@ staff の院一致は AFTER ROW trigger `daily_reports_staff_clinic_check`（`ap
 ### 9.1 適用前の必須ゲート（read-only、本番では別承認で実行）
 
 ```sql
--- G1: 分類の曖昧行。0件でなければ適用を止め、owner が扱いを決めて記録する。
-select r.report_text, count(*)
+-- G1: 分類の曖昧行（下限）。0件でなければ適用を止め、owner が扱いを決めて記録する。
+select
+  case
+    when r.report_text = '自動作成: 来院済み予約' then 'arrived_auto'
+    when r.report_text like '担当: %、入力件数: %' then 'input_page_save'
+    else 'items_api_shell'
+  end as kind,
+  count(*)
 from public.daily_reports r
-where r.report_text in ('明細行から自動作成', '自動作成: 来院済み予約')
+where (
+    r.report_text in ('明細行から自動作成', '自動作成: 来院済み予約')
+    or r.report_text like '担当: %、入力件数: %'
+  )
   and not exists (select 1 from public.daily_report_items i where i.daily_report_id = r.id)
 group by 1;
 -- G2: 規模の把握（lock 時間の見積り）
@@ -148,7 +158,8 @@ select count(*) as reports,
 from public.daily_reports r;
 ```
 
-- G1 が0件: 進める。0件以外: 停止。選択肢は (a) そのまま `manual`（変更前の挙動を維持、stale 合計の再上書きは起こり得る）、(b) 確定的な `自動作成: 来院済み予約` 行だけを明細付与相当として扱う別 forward migration（その行に後から手入力した合計は次の書込で0になる）。どちらを選んだかと件数を承認記録に残す。
+- G1 は下限である。`arrived_auto`（予約triggerが明細と同時にだけ書く文言）と `input_page_save`（入力画面は明細1件以上のときだけ保存でき、毎回この文言で上書きする）は過去に明細を持っていたことがほぼ確定している。`items_api_shell` は明細INSERT失敗でも残るため不確定。文言を手で書き換えた明細0件の行はどの方法でも識別できない。
+- G1 が0件: 進める。0件以外: 停止。選択肢は (a) そのまま `manual`（変更前の挙動を維持、stale 合計の再上書きは起こり得る）、(b) `arrived_auto` / `input_page_save` 行を明細付与相当として扱う別 forward migration（その行に後から手入力した合計は次の書込で0になる）。どちらを選んだかと種類別件数を承認記録に残す。
 - migration は `lock_timeout = 5s`、`statement_timeout = 60s` で動き、`daily_reports` に ACCESS EXCLUSIVE を取る（列追加・CHECK検証・分類UPDATE）。予約triggerからの書込も待つため、低負荷時間帯に適用する。
 - 適用前後の catalog snapshot を取り、`evidence/os-daily-report-aggregate-authority/` の差分（列+CHECK、trigger 2件、関数3件。RLS・policy・table grant は不変）と一致することを確認する。
 
