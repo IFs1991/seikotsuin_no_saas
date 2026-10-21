@@ -560,6 +560,116 @@ describe('DailyReportInputPage Phase 4A-5 pricing UI', () => {
     ).toHaveLength(0);
   });
 
+  it('does not append an item added for the previous date after a date switch', async () => {
+    let resolveAdd: (() => void) | null = null;
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation((input, init) => {
+        const url = new URL(urlFromFetchInput(input), 'http://localhost');
+        const method = init?.method ?? 'GET';
+        if (url.pathname === '/api/daily-reports/items' && method === 'GET') {
+          return jsonResponse({
+            success: true,
+            data: {
+              items: itemsFor(
+                url.searchParams.get('report_date') === dateB ? 'B' : 'A'
+              ),
+              paymentMethods: [],
+            },
+          });
+        }
+        if (url.pathname === '/api/daily-reports/items' && method === 'POST') {
+          return new Promise<Response>(resolve => {
+            resolveAdd = () =>
+              resolve(
+                new Response(
+                  JSON.stringify({
+                    success: true,
+                    data: {
+                      ...buildItem({
+                        id: '123e4567-e89b-12d3-a456-426614174013',
+                        patientName: '幽霊 太郎',
+                        treatmentName: '自費施術',
+                        fee: 7777,
+                        billingType: 'private',
+                        revenueContextCode: 'insurance',
+                      }),
+                      source: 'manual',
+                    },
+                  }),
+                  {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                  }
+                )
+              );
+          });
+        }
+        if (url.pathname === '/api/daily-reports' && method === 'POST') {
+          return jsonResponse({
+            success: true,
+            data: { total_patients: 1, total_revenue: 2000 },
+          });
+        }
+        return jsonResponse(
+          { success: false, error: `unexpected ${method} ${url}` },
+          { status: 500 }
+        );
+      });
+    const user = userEvent.setup();
+
+    renderPage();
+
+    await screen.findByRole('button', { name: '山田 太郎の金額を確定' });
+    const dateInput = screen.getByLabelText('日付') as HTMLInputElement;
+    const dateA = dateInput.value;
+    await user.type(screen.getByPlaceholderText('田中花子'), '幽霊 太郎');
+    await user.type(
+      screen.getByPlaceholderText('整体、マッサージ'),
+      '自費施術'
+    );
+    await user.click(screen.getByRole('button', { name: '追加' }));
+    await waitFor(() => expect(resolveAdd).not.toBeNull());
+
+    fireEvent.change(dateInput, { target: { value: dateB } });
+    await screen.findByRole('button', { name: '田中 次郎の金額を確定' });
+
+    await act(async () => {
+      resolveAdd?.();
+    });
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+
+    expect(dateInput.value).toBe(dateB);
+    // Patient names render as input values in the item list.
+    expect(screen.queryByDisplayValue('幽霊 太郎')).not.toBeInTheDocument();
+    // The user is told where the item went (its date), instead of a ghost row.
+    expect(
+      screen.getByText(new RegExp(`${dateA}の日報に明細を追加しました`))
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '保存' }));
+    await waitFor(() => {
+      const saveCall = fetchMock.mock.calls.find(
+        ([input, init]) =>
+          urlFromFetchInput(input) === '/api/daily-reports' &&
+          init?.method === 'POST'
+      );
+      expect(saveCall).toBeDefined();
+      const body =
+        typeof saveCall?.[1]?.body === 'string'
+          ? JSON.parse(saveCall[1].body)
+          : null;
+      // Only the switched-to date's own row is counted.
+      expect(body).toMatchObject({
+        report_date: dateB,
+        total_patients: 1,
+        total_revenue: 2000,
+      });
+    });
+  });
+
   it('shows the saved DB totals and reloads stale items after saving', async () => {
     const fetchMock = setupFetch();
     const baseImplementation = fetchMock.getMockImplementation();

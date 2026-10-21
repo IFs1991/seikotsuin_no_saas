@@ -876,6 +876,7 @@ export default function DailyReportInputPage() {
 
     setIsAddingItem(true);
     setFormError(null);
+    const addTarget = { clinicId, date };
 
     try {
       const response = await fetch('/api/daily-reports/items', {
@@ -906,6 +907,15 @@ export default function DailyReportInputPage() {
         isDailyReportItem(payload.data)
       ) {
         const createdItem = payload.data;
+        if (!isDisplayedTarget(addTarget)) {
+          // 追加中に院・日付が切り替わった: 明細は追加先の日報に保存済み。
+          // 表示中の一覧には加えない（次の保存で別の日の合計にしない）。
+          setNewItem(emptyNewItem);
+          setFormError(
+            `${addTarget.date}の日報に明細を追加しました。表示中の日付・院とは異なるため、この一覧には表示していません`
+          );
+          return;
+        }
         savedItemsRef.current.set(createdItem.id, createdItem);
         setItems(prev => [...prev, createdItem]);
         setNextReservationDrafts(prev => ({
