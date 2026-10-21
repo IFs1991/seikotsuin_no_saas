@@ -799,6 +799,15 @@ export default function DailyReportInputPage() {
         if (error instanceof Error && error.name === 'AbortError') {
           return;
         }
+        // 置き換えられた取得（更新・保存後の再取得は中断されない）の失敗で、
+        // 取得できた表示中の対象を失敗扱いにしない。
+        if (
+          signal?.aborted ||
+          requestId !== loadRequestIdRef.current ||
+          !isDisplayedTarget({ clinicId, date })
+        ) {
+          return;
+        }
         setLoadError(
           error instanceof Error
             ? error.message
@@ -1403,8 +1412,14 @@ export default function DailyReportInputPage() {
               </HelpHint>
             </CardTitle>
             <CardDescription>
-              本日の患者数: {totalPatients}名 | 合計売上: ¥
-              {totalRevenue.toLocaleString()}
+              {loadError && items.length === 0 ? (
+                '明細を読み込めなかったため、患者数・合計売上は不明です'
+              ) : (
+                <>
+                  本日の患者数: {totalPatients}名 | 合計売上: ¥
+                  {totalRevenue.toLocaleString()}
+                </>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
