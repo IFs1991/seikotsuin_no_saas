@@ -224,6 +224,7 @@ export function buildMobileUiuxBridgeScript(
     writeDisabled: "予約の書き込みは無効です",
     dailyReportWriteDisabled: "日報の書き込みは無効です",
     dailyReportSaved: "日報を保存しました",
+    dailyReportItemized: "明細から自動集計される日報のため、モバイルでは合計を保存できません。PCの日報入力画面で明細を修正してください",
     settingsWriteDisabled: "設定の書き込みは無効です",
     settingsSaved: "設定を保存しました",
     reservationSaved: "予約を保存しました",
@@ -1060,6 +1061,12 @@ export function buildMobileUiuxBridgeScript(
       showFallback("forbidden", STATUS_MESSAGES.forbidden);
       return false;
     }
+    // 日報の 409 は「明細から自動集計される日報」の意味だけを持つ。DBは何も
+    // 書き込んでいないため、入力を残したまま理由と明細の編集先を示す。
+    if (result.kind === "conflict" && options.mutationKey === "daily-reports") {
+      showMutationStatus("itemized", STATUS_MESSAGES.dailyReportItemized);
+      return "itemized";
+    }
     if (result.kind === "conflict") {
       showMutationStatus("conflict", STATUS_MESSAGES.reservationConflict);
       showFallback("conflict", STATUS_MESSAGES.reservationConflict);
@@ -1074,6 +1081,23 @@ export function buildMobileUiuxBridgeScript(
       showMutationStatus("failed", STATUS_MESSAGES.invalid);
       showFallback("invalid", STATUS_MESSAGES.invalid);
       return false;
+    }
+
+    // 日報は送った合計が保存された (manual) 場合だけ成功として読み込みを反映する。
+    // items は送信値が合計に使われていないので、入力を消さずに未反映として返す。
+    if (options.mutationKey === "daily-reports") {
+      const savedSource = isRecord(result.payload.data) && isRecord(result.payload.data.report)
+        ? result.payload.data.report.aggregateSource
+        : undefined;
+      if (savedSource === "items") {
+        showMutationStatus("itemized", STATUS_MESSAGES.dailyReportItemized);
+        return "itemized";
+      }
+      if (savedSource !== "manual") {
+        showMutationStatus("failed", STATUS_MESSAGES.invalid);
+        showFallback("invalid", STATUS_MESSAGES.invalid);
+        return false;
+      }
     }
 
     // 保存済みの予約は表示情報の障害で再送を促さない。
@@ -1177,6 +1201,10 @@ export function buildMobileUiuxBridgeScript(
     },
     submitDailyReport(payload) {
       return mutateDailyReport(payload);
+    },
+    notifyDailyReportItemized() {
+      showMutationStatus("itemized", STATUS_MESSAGES.dailyReportItemized);
+      return true;
     },
     updateSettings(payload) {
       return mutateSettings(payload);

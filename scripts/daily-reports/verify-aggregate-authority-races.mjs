@@ -172,6 +172,7 @@ function saveCall(label, args) {
     p_insurance_revenue: 0,
     p_private_revenue: args.totalRevenue,
     ...(args.reportId ? { p_report_id: `'${args.reportId}'` } : {}),
+    ...(args.requireManual ? { p_require_manual: 'true' } : {}),
   })
     .map(([key, value]) => `${key} => ${String(value)}`)
     .join(', ');
@@ -378,6 +379,26 @@ ${insertItem(id('000000000206'), '2096-02-06', 1200, `(select id from public.dai
       totalPatients: 2,
       totalRevenue: 3000,
       newPatients: 0,
+    },
+  },
+  {
+    // The mobile form saves hand-entered totals only (p_require_manual). If
+    // the day is itemized while it waits for the row lock, nothing is written.
+    name: 'R5 first detail row INSERT, then mobile manual-only save',
+    date: '2096-02-08',
+    setup:
+      insertReport(id('000000000108'), '2096-02-08') +
+      `update public.daily_reports set new_patients = 1 where id = '${id('000000000108')}';\n`,
+    holder: `${SERVICE}begin;\n${insertItem(id('000000000209'), '2096-02-08', 2500, `'${id('000000000108')}'`)}`,
+    waiter: `${AUTH}${saveCall('WAITER', { date: '2096-02-08', totalPatients: 3, newPatients: 0, totalRevenue: 9000, requireManual: true })}`,
+    expectNotices: [
+      /WAITER error sqlstate=55000 message=DAILY_REPORT_ITEMIZED/,
+    ],
+    expected: {
+      source: 'items',
+      totalPatients: 1,
+      totalRevenue: 2500,
+      newPatients: 1,
     },
   },
 ];

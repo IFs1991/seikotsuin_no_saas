@@ -1,5 +1,5 @@
--- OS-F2 catalog snapshot: database 'fix_iter2' on isolated PostgreSQL 17.6 + Supabase shim (not the Supabase image)
--- generated 2026-10-20T17:53:49Z from repo claude/hopeful-mayer-wfix4v working tree
+-- OS-F2 catalog snapshot: database 'p1_green' on isolated PostgreSQL 17.6 + Supabase shim (not the Supabase image)
+-- generated 2026-10-21T00:09:13Z from repo claude/hopeful-mayer-wfix4v working tree (manual-only save follow-up)
 ## daily_reports columns
 column_name | data_type | is_nullable | column_default
 id | uuid | NO | uuid_generate_v4()
@@ -64,7 +64,7 @@ sync_daily_report_item_totals() | t | search_path=public, auth, extensions | ser
 sync_arrived_reservation_daily_report_item() | t | search_path=public, auth, extensions | service_role
 app_private.enforce_daily_report_aggregate_authority() | t | search_path="" | 
 app_private.enforce_daily_report_staff_clinic() | t | search_path="" | 
-save_daily_report(uuid,date,integer,integer,numeric,numeric,numeric,uuid,uuid,text) | f | search_path="" | authenticated
+save_daily_report(uuid,date,integer,integer,numeric,numeric,numeric,uuid,uuid,text,boolean) | f | search_path="" | authenticated
 (6 rows)
 ## public/app_private function counts
 nspname | count

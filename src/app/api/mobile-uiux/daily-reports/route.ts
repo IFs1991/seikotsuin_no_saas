@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import { ADMIN_USER_ROLE_VALUES } from '@/lib/constants/roles';
 import {
   fetchDailyReportsReadModel,
+  type DailyReportAggregateSource,
   type DailyReportsReadModel,
 } from '@/lib/daily-reports/read-model';
 import {
@@ -52,6 +53,8 @@ type MobileUiuxDailyReportMutationResponse = {
   reportDate: string;
   report: {
     id: string;
+    // 'manual' means the submitted totals were saved as the report's totals.
+    aggregateSource: DailyReportAggregateSource;
   };
   dailyReports: DailyReportsReadModel;
 };
@@ -296,8 +299,12 @@ export async function POST(request: NextRequest) {
     }
 
     // report_id/staff_id scope, the manual/items decision and validation are
-    // resolved atomically by the shared write-model (fail-closed).
-    const saved = await saveDailyReport(result.supabase, result.dto);
+    // resolved atomically by the shared write-model (fail-closed). The mobile
+    // form only edits hand-entered totals, so an item-derived report is
+    // refused (409) without any write instead of being reported as saved.
+    const saved = await saveDailyReport(result.supabase, result.dto, {
+      requireManual: true,
+    });
     if (saved.ok === false) {
       if (saved.status === 403) {
         logMobileUiuxClinicScopeDenied({
@@ -310,6 +317,9 @@ export async function POST(request: NextRequest) {
           'FORBIDDEN',
           '日報を書き込む権限がありません'
         );
+      }
+      if (saved.status === 409) {
+        return buildMobileUiuxFailure(409, 'CONFLICT', saved.message);
       }
       return buildMobileUiuxFailure(400, 'BAD_REQUEST', saved.message);
     }
@@ -326,6 +336,8 @@ export async function POST(request: NextRequest) {
       reportDate: result.dto.report_date,
       report: {
         id: report.id,
+        aggregateSource:
+          report.aggregate_source === 'items' ? 'items' : 'manual',
       },
       dailyReports,
     };

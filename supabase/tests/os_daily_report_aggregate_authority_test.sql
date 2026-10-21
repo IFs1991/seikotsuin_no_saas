@@ -2,12 +2,13 @@
 -- Part A reproduces the stale-browser overwrite through the pre-fix upsert
 -- statement and must fail on a schema without the aggregate authority guard.
 -- Part B pins the new explicit manual/items contract, the atomic save RPC,
--- tenant/staff/inactive negatives and function privileges.
+-- tenant/staff/inactive negatives and function privileges. Part M pins the
+-- manual-only save used by the mobile form (p_require_manual).
 begin;
 
 set local search_path = pg_catalog, extensions, public, auth;
 
-select plan(75);
+select plan(81);
 
 -- ---------------------------------------------------------------- fixtures
 insert into public.clinics (id, name)
@@ -210,23 +211,23 @@ select throws_ok(
 select ok(
   (select not p.prosecdef and p.proconfig = array['search_path=""']::text[]
    from pg_proc p
-   where p.oid = 'public.save_daily_report(uuid,date,integer,integer,numeric,numeric,numeric,uuid,uuid,text)'::regprocedure),
+   where p.oid = 'public.save_daily_report(uuid,date,integer,integer,numeric,numeric,numeric,uuid,uuid,text,boolean)'::regprocedure),
   'B8: save_daily_report is SECURITY INVOKER with an empty search_path'
 );
 select ok(
   has_function_privilege('authenticated',
-    'public.save_daily_report(uuid,date,integer,integer,numeric,numeric,numeric,uuid,uuid,text)', 'EXECUTE')
+    'public.save_daily_report(uuid,date,integer,integer,numeric,numeric,numeric,uuid,uuid,text,boolean)', 'EXECUTE')
   and not has_function_privilege('anon',
-    'public.save_daily_report(uuid,date,integer,integer,numeric,numeric,numeric,uuid,uuid,text)', 'EXECUTE')
+    'public.save_daily_report(uuid,date,integer,integer,numeric,numeric,numeric,uuid,uuid,text,boolean)', 'EXECUTE')
   and not has_function_privilege('service_role',
-    'public.save_daily_report(uuid,date,integer,integer,numeric,numeric,numeric,uuid,uuid,text)', 'EXECUTE'),
+    'public.save_daily_report(uuid,date,integer,integer,numeric,numeric,numeric,uuid,uuid,text,boolean)', 'EXECUTE'),
   'B9: only authenticated can execute save_daily_report'
 );
 select is(
   (select count(*)
    from pg_proc p
    cross join lateral aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
-   where p.oid = 'public.save_daily_report(uuid,date,integer,integer,numeric,numeric,numeric,uuid,uuid,text)'::regprocedure
+   where p.oid = 'public.save_daily_report(uuid,date,integer,integer,numeric,numeric,numeric,uuid,uuid,text,boolean)'::regprocedure
      and acl.grantee = 0),
   0::bigint,
   'B10: save_daily_report has no PUBLIC EXECUTE'
@@ -778,6 +779,83 @@ select lives_ok(
   $$update public.daily_report_items set notes = 'no aggregate change'
     where clinic_id = 'f1460000-0000-4000-8000-000000000001' and report_date = '2095-01-01'$$,
   'AR5: detail updates that do not touch aggregate inputs still pass the guard'
+);
+reset role;
+
+-- ------------------------------------------- Part M: manual-only saves
+-- The mobile form edits hand-entered totals only. With p_require_manual the
+-- RPC refuses an item-derived report under the row lock, before any column
+-- (staff_id, new_patients, report_text) is written.
+create temp table os_f2_manual_only_before on commit drop as
+select row(staff_id, new_patients, report_text, total_patients, total_revenue,
+           insurance_revenue, private_revenue, aggregate_source, updated_at)::text as snapshot
+from public.daily_reports where id = 'f1460000-0000-4000-8000-000000000101';
+
+select set_config('request.jwt.claims', (select claims from os_f2_jwt where user_key = 'a'), true);
+set local role authenticated;
+select throws_ok(
+  $$select public.save_daily_report(
+      p_clinic_id => 'f1460000-0000-4000-8000-000000000001', p_report_date => '2095-01-01',
+      p_total_patients => 3, p_new_patients => 0, p_total_revenue => 9000,
+      p_insurance_revenue => 0, p_private_revenue => 9000,
+      p_require_manual => true)$$,
+  '55000', 'DAILY_REPORT_ITEMIZED',
+  'M1: a manual-only (mobile) save is refused on an item-derived report'
+);
+with saved as (
+  select * from public.save_daily_report(
+    p_clinic_id => 'f1460000-0000-4000-8000-000000000001', p_report_date => '2095-01-04',
+    p_total_patients => 3, p_new_patients => 0, p_total_revenue => 9000,
+    p_insurance_revenue => 0, p_private_revenue => 9000, p_require_manual => true)
+)
+select is(
+  (select row(report_date, total_patients, total_revenue, aggregate_source)::text from saved),
+  '(2095-01-04,3,9000.00,manual)',
+  'M4: a manual-only save creates the first report of the day as manual'
+);
+with saved as (
+  select * from public.save_daily_report(
+    p_clinic_id => 'f1460000-0000-4000-8000-000000000001', p_report_date => '2095-01-04',
+    p_total_patients => 4, p_new_patients => 1, p_total_revenue => 12000,
+    p_insurance_revenue => 0, p_private_revenue => 12000, p_require_manual => true)
+)
+select is(
+  (select row(total_patients, new_patients, total_revenue, aggregate_source)::text from saved),
+  '(4,1,12000.00,manual)',
+  'M3: a manual-only save keeps the hand-entered totals on an existing manual report'
+);
+select throws_ok(
+  $$select public.save_daily_report(
+      p_clinic_id => 'f1460000-0000-4000-8000-000000000001', p_report_date => '2095-01-04',
+      p_total_patients => 3, p_new_patients => 0, p_total_revenue => 9000,
+      p_insurance_revenue => 0, p_private_revenue => 9000,
+      p_require_manual => null)$$,
+  '22023', 'DAILY_REPORT_INVALID_ARGUMENT',
+  'M5: a null manual-only flag is rejected instead of being treated as false'
+);
+reset role;
+select is(
+  (select row(staff_id, new_patients, report_text, total_patients, total_revenue,
+              insurance_revenue, private_revenue, aggregate_source, updated_at)::text
+   from public.daily_reports where id = 'f1460000-0000-4000-8000-000000000101'),
+  (select snapshot from os_f2_manual_only_before),
+  'M2: the refused manual-only save left every column of the itemized report unchanged'
+);
+
+select set_config('request.jwt.claims', jsonb_build_object(
+  'sub', 'f1460000-0000-4000-8000-000000000022', 'role', 'authenticated',
+  'app_metadata', jsonb_build_object('user_role', 'staff',
+    'clinic_scope_ids', jsonb_build_array('f1460000-0000-4000-8000-000000000002'))
+)::text, true);
+set local role authenticated;
+select throws_ok(
+  $$select public.save_daily_report(
+      p_clinic_id => 'f1460000-0000-4000-8000-000000000001', p_report_date => '2095-01-01',
+      p_total_patients => 1, p_new_patients => 0, p_total_revenue => 1,
+      p_insurance_revenue => 0, p_private_revenue => 1,
+      p_report_id => 'f1460000-0000-4000-8000-000000000101', p_require_manual => true)$$,
+  '42501', 'DAILY_REPORT_NOT_ACCESSIBLE',
+  'M6: another clinic cannot learn that a report is itemized through the manual-only error'
 );
 reset role;
 

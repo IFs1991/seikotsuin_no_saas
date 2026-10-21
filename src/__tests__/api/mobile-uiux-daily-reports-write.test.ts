@@ -497,6 +497,7 @@ describe('POST /api/mobile-uiux/daily-reports write pilot', () => {
       p_insurance_revenue: 40000,
       p_private_revenue: 80000,
       p_report_text: '共有事項',
+      p_require_manual: true,
     });
     expect(fetchDailyReportsReadModelMock).toHaveBeenCalledWith({
       supabase: client,
@@ -511,39 +512,20 @@ describe('POST /api/mobile-uiux/daily-reports write pilot', () => {
         reportDate: '2026-06-30',
         report: {
           id: reportId,
+          aggregateSource: 'manual',
         },
         dailyReports: dailyReportsReadModel,
       },
     });
   });
 
-  it('returns the DB totals of an itemized report instead of the stale mobile form totals', async () => {
-    const itemizedReadModel = {
-      ...dailyReportsReadModel,
-      reports: [
-        {
-          ...dailyReportsReadModel.reports[0],
-          totalPatients: 2,
-          totalRevenue: 5000,
-          insuranceRevenue: 3000,
-          privateRevenue: 2000,
-          aggregateSource: 'items',
-        },
-      ],
-    };
-    fetchDailyReportsReadModelMock.mockResolvedValueOnce(itemizedReadModel);
+  it('refuses an item-derived report without writing and reports the input as not reflected', async () => {
+    // The mobile form only edits hand-entered totals. When the day's report is
+    // derived from detail rows (or becomes so while the form is open), the DB
+    // rejects the save under the row lock instead of overwriting new_patients,
+    // staff_id and report_text with the form's defaults.
     const { client, rpc } = buildMutationClient({
-      savedRow: {
-        id: reportId,
-        clinic_id: clinicId,
-        report_date: validDto.report_date,
-        total_patients: 2,
-        new_patients: 0,
-        total_revenue: 5000,
-        insurance_revenue: 3000,
-        private_revenue: 2000,
-        aggregate_source: 'items',
-      },
+      rpcError: { code: '55000', message: 'DAILY_REPORT_ITEMIZED' },
     });
     const staleDto = { ...validDto, new_patients: 0 };
     processClinicScopedBodyMock.mockResolvedValueOnce({
@@ -558,13 +540,17 @@ describe('POST /api/mobile-uiux/daily-reports write pilot', () => {
     const response = await POST(buildMutationRequest(staleDto));
     const payload = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(rpc).toHaveBeenCalledTimes(1);
-    expect(client.from).not.toHaveBeenCalledWith('daily_reports');
-    expect(payload.data.dailyReports.reports[0]).toMatchObject({
-      totalPatients: 2,
-      totalRevenue: 5000,
-      aggregateSource: 'items',
+    expect(response.status).toBe(409);
+    expect(payload).toMatchObject({
+      success: false,
+      error: { code: 'CONFLICT' },
     });
+    expect(payload.error.message).toContain('PCの日報入力画面');
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith(
+      'save_daily_report',
+      expect.objectContaining({ p_require_manual: true })
+    );
+    expect(fetchDailyReportsReadModelMock).not.toHaveBeenCalled();
   });
 });

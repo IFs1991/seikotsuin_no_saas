@@ -8106,6 +8106,7 @@ export type Database = {
           p_report_date: string;
           p_report_id?: string;
           p_report_text?: string;
+          p_require_manual?: boolean;
           p_staff_id?: string;
           p_total_patients: number;
           p_total_revenue: number;

@@ -193,7 +193,9 @@ grant execute on function public.recalculate_daily_report_totals(uuid)
 comment on function public.recalculate_daily_report_totals(uuid) is
   'OS-F2: marks a report that owns detail rows itemized; daily_reports_aggregate_authority derives the totals under the row lock.';
 
--- 5. Atomic body save used by the PC and mobile APIs.
+-- 5. Atomic body save used by the PC and mobile APIs. The mobile form edits
+-- hand-entered totals only and sets p_require_manual: an item-derived report
+-- is then refused under the row lock before any column is written.
 create function public.save_daily_report(
   p_clinic_id uuid,
   p_report_date date,
@@ -204,7 +206,8 @@ create function public.save_daily_report(
   p_private_revenue numeric,
   p_report_id uuid default null,
   p_staff_id uuid default null,
-  p_report_text text default null
+  p_report_text text default null,
+  p_require_manual boolean default false
 )
 returns public.daily_reports
 language plpgsql
@@ -218,7 +221,7 @@ begin
   if p_clinic_id is null or p_report_date is null
      or p_total_patients is null or p_new_patients is null
      or p_total_revenue is null or p_insurance_revenue is null
-     or p_private_revenue is null
+     or p_private_revenue is null or p_require_manual is null
      or p_total_patients < 0 or p_new_patients < 0
      or p_total_revenue < 0 or p_insurance_revenue < 0 or p_private_revenue < 0 then
     raise exception 'DAILY_REPORT_INVALID_ARGUMENT' using errcode = '22023';
@@ -302,6 +305,10 @@ begin
     end loop;
   end if;
 
+  if p_require_manual and v_report.aggregate_source = 'items' then
+    raise exception 'DAILY_REPORT_ITEMIZED' using errcode = '55000';
+  end if;
+
   if v_report.aggregate_source = 'items' then
     update public.daily_reports report
     set
@@ -345,15 +352,15 @@ end;
 $$;
 
 revoke all on function public.save_daily_report(
-  uuid, date, integer, integer, numeric, numeric, numeric, uuid, uuid, text
+  uuid, date, integer, integer, numeric, numeric, numeric, uuid, uuid, text, boolean
 ) from public, anon, authenticated, service_role;
 grant execute on function public.save_daily_report(
-  uuid, date, integer, integer, numeric, numeric, numeric, uuid, uuid, text
+  uuid, date, integer, integer, numeric, numeric, numeric, uuid, uuid, text, boolean
 ) to authenticated;
 
 comment on function public.save_daily_report(
-  uuid, date, integer, integer, numeric, numeric, numeric, uuid, uuid, text
+  uuid, date, integer, integer, numeric, numeric, numeric, uuid, uuid, text, boolean
 ) is
-  'OS-F2: atomic daily report body save. RLS applies (SECURITY INVOKER). Itemized reports ignore request totals and validate new_patients against the derived total under the row lock.';
+  'OS-F2: atomic daily report body save. RLS applies (SECURITY INVOKER). Itemized reports ignore request totals and validate new_patients against the derived total under the row lock; with p_require_manual they are refused (DAILY_REPORT_ITEMIZED) without any write.';
 
 commit;

@@ -22,10 +22,20 @@ export type DailyReportSaveResult =
       message: string;
       fieldErrors: Record<string, string[]>;
     }
-  | { ok: false; status: 403; message: string };
+  | { ok: false; status: 403; message: string }
+  | { ok: false; status: 409; message: string };
+
+export type DailyReportSaveOptions = {
+  /**
+   * Refuse (409) instead of saving when the report's totals are derived from
+   * detail rows. Used by forms that only edit hand-entered totals (mobile).
+   */
+  requireManual?: boolean;
+};
 
 function mapDailyReportPayloadToSaveArgs(
-  payload: DailyReportPayload
+  payload: DailyReportPayload,
+  options: DailyReportSaveOptions
 ): SaveDailyReportArgs {
   return {
     p_clinic_id: payload.clinic_id,
@@ -39,6 +49,7 @@ function mapDailyReportPayloadToSaveArgs(
     p_insurance_revenue: payload.insurance_revenue,
     p_private_revenue: payload.private_revenue,
     p_report_text: payload.report_text ?? undefined,
+    ...(options.requireManual ? { p_require_manual: true } : {}),
   };
 }
 
@@ -53,6 +64,15 @@ function buildDerivedTotalMessage(details: string | null | undefined): string {
 function mapSaveDailyReportError(
   error: SaveDailyReportError
 ): DailyReportSaveResult | null {
+  if (error.code === '55000' && error.message === 'DAILY_REPORT_ITEMIZED') {
+    return {
+      ok: false,
+      status: 409,
+      message:
+        'この日の日報は明細から自動集計されるため、合計を保存できません。PCの日報入力画面で明細を修正してください',
+    };
+  }
+
   if (error.code === '42501') {
     if (error.message === 'DAILY_REPORT_NOT_ACCESSIBLE') {
       return {
@@ -114,15 +134,18 @@ function mapSaveDailyReportError(
  * boundary (public.save_daily_report). The report's clinic/date, report_id
  * and staff_id scope, the manual/items type decision, the totals and the
  * new_patients validation are all resolved under one row lock in the DB.
+ * With options.requireManual an item-derived report is refused (409) there,
+ * before any column is written.
  * See docs/stabilization/spec-os-daily-report-aggregate-authority-v0.1.md.
  */
 export async function saveDailyReport(
   supabase: SupabaseServerClient,
-  payload: DailyReportPayload
+  payload: DailyReportPayload,
+  options: DailyReportSaveOptions = {}
 ): Promise<DailyReportSaveResult> {
   const { data, error } = await supabase.rpc(
     'save_daily_report',
-    mapDailyReportPayloadToSaveArgs(payload)
+    mapDailyReportPayloadToSaveArgs(payload, options)
   );
 
   if (error) {

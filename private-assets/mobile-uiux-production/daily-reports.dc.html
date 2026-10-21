@@ -632,6 +632,9 @@ class Component extends DCLogic {
       return null;
     }
     this.__mobileUiuxCurrentReportDateKey = reportDate;
+    for (const report of reports) {
+      this.__mobileUiuxSetItemizedReportDate(report.dateKey, report.aggregateSource === 'items');
+    }
 
     const todayReport = reports.length > 0 ? reports[0] : null;
     const todaySubmitted = todayReport !== null;
@@ -690,7 +693,37 @@ class Component extends DCLogic {
     }
   }
 
+  // 明細から自動集計される日報 (aggregateSource = items) は、このフォームの
+  // 合計では保存できない。編集できるように見せず、理由と明細の編集先を示す
+  __mobileUiuxSetItemizedReportDate(dateKey, itemized) {
+    if (typeof dateKey !== 'string' || dateKey.length === 0) return;
+    if (!this.__mobileUiuxItemizedReportDates || typeof this.__mobileUiuxItemizedReportDates !== 'object') {
+      this.__mobileUiuxItemizedReportDates = {};
+    }
+    this.__mobileUiuxItemizedReportDates[dateKey] = itemized === true;
+  }
+
+  __mobileUiuxIsItemizedReportDate(dateKey) {
+    return typeof dateKey === 'string' &&
+      Boolean(this.__mobileUiuxItemizedReportDates) &&
+      this.__mobileUiuxItemizedReportDates[dateKey] === true;
+  }
+
+  __mobileUiuxShowItemizedGuidance(toastMessage) {
+    this.__mobileUiuxShowWriteToast(toastMessage);
+    const bridge = typeof window !== 'undefined' && window.MobileUiuxBridge
+      ? window.MobileUiuxBridge
+      : null;
+    if (bridge && typeof bridge.notifyDailyReportItemized === 'function') {
+      bridge.notifyDailyReportItemized();
+    }
+  }
+
   __mobileUiuxOpenTodayReport = () => {
+    if (this.__mobileUiuxIsItemizedReportDate(this.__mobileUiuxCurrentReportDateKey)) {
+      this.__mobileUiuxShowItemizedGuidance('明細から自動集計される日報です');
+      return;
+    }
     const hydratedVals = this.__mobileUiuxHydratedVals && typeof this.__mobileUiuxHydratedVals === 'object'
       ? this.__mobileUiuxHydratedVals
       : {};
@@ -769,6 +802,10 @@ class Component extends DCLogic {
       this.__mobileUiuxShowWriteToast('日報を保存できません。入力内容を確認してください');
       return false;
     }
+    if (this.__mobileUiuxIsItemizedReportDate(payload.report_date)) {
+      this.__mobileUiuxShowItemizedGuidance('日報は保存されていません');
+      return false;
+    }
 
     this.__mobileUiuxDailyReportSaving = true;
     let ok = false;
@@ -788,6 +825,11 @@ class Component extends DCLogic {
       return true;
     }
 
+    // 'itemized': 保存中に明細から集計される日報へ変わっていた。DBは書き込んで
+    // いないので入力行とフォームはそのまま残し、成功表示もしない (理由は bridge が表示済み)
+    if (ok === 'itemized') {
+      this.__mobileUiuxSetItemizedReportDate(payload.report_date, true);
+    }
     this.__mobileUiuxShowWriteToast('日報は保存されていません');
     return false;
   }
@@ -902,6 +944,7 @@ class Component extends DCLogic {
       hoken: insuranceRevenue,
       jihi: privateRevenue,
       patients,
+      aggregateSource: report.aggregateSource === 'items' ? 'items' : 'manual',
       status: this.__mobileUiuxNormalizeDailyReportStatus(status)
     };
   }
