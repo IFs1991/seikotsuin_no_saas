@@ -1249,6 +1249,7 @@ export default function DailyReportInputPage() {
     if (!hasClinic || isLoading || errorMessage) return true;
     return (
       !hasLoadedItems ||
+      loadError !== null ||
       items.length === 0 ||
       savingItemId !== null ||
       confirmingPricingItemId !== null ||
@@ -1260,6 +1261,7 @@ export default function DailyReportInputPage() {
     isLoading,
     errorMessage,
     hasLoadedItems,
+    loadError,
     items.length,
     savingItemId,
     confirmingPricingItemId,

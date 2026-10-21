@@ -1329,6 +1329,72 @@ describe('DailyReportInputPage Phase 4A-5 pricing UI', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('does not allow saving while a reload of the loaded day has failed, and allows it after a successful reload', async () => {
+    let itemLoads = 0;
+    const saveBodies: unknown[] = [];
+    jest.spyOn(global, 'fetch').mockImplementation((input, init) => {
+      const url = new URL(urlFromFetchInput(input), 'http://localhost');
+      const method = init?.method ?? 'GET';
+      if (url.pathname === '/api/daily-reports/items' && method === 'GET') {
+        itemLoads += 1;
+        if (itemLoads === 2) {
+          return jsonResponse({ success: false }, { status: 500 });
+        }
+        return jsonResponse({
+          success: true,
+          data: { items: itemsFor('A'), paymentMethods: [] },
+        });
+      }
+      if (url.pathname === '/api/daily-reports' && method === 'POST') {
+        saveBodies.push(JSON.parse(String(init?.body)));
+        return jsonResponse({
+          success: true,
+          data: { total_patients: 1, total_revenue: 2000 },
+        });
+      }
+      return jsonResponse({ success: false }, { status: 500 });
+    });
+    const user = userEvent.setup();
+
+    renderPage();
+
+    await screen.findByRole('button', { name: '山田 太郎の金額を確定' });
+    expect(screen.getByRole('button', { name: '保存' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: '日報を保存する' })
+    ).toBeEnabled();
+
+    await user.click(screen.getByRole('button', { name: '更新' }));
+    expect(
+      await screen.findByText('日報明細の取得に失敗しました')
+    ).toBeInTheDocument();
+
+    // The loaded rows stay, but whether they are still the whole day is
+    // unknown, so neither save button may send them.
+    expect(
+      screen.getByRole('button', { name: '山田 太郎の金額を確定' })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '保存' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: '日報を保存する' })
+    ).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: '更新' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByText('日報明細の取得に失敗しました')
+      ).not.toBeInTheDocument()
+    );
+    expect(screen.getByRole('button', { name: '保存' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: '日報を保存する' })
+    ).toBeEnabled();
+
+    await user.click(screen.getByRole('button', { name: '日報を保存する' }));
+    await waitFor(() => expect(saveBodies).toHaveLength(1));
+    expect(saveBodies[0]).toMatchObject({ total_patients: 1 });
+  });
+
   it('does not offer add while the displayed items are being reloaded', async () => {
     let itemLoads = 0;
     let resolveReload: (() => void) | null = null;
