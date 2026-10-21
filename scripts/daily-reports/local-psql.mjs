@@ -29,11 +29,20 @@ const OWNED_ENV_KEYS = ['PGAPPNAME', 'PGCONNECT_TIMEOUT'];
 const DROPPED_ENV_KEYS = new Set([...LIBPQ_TARGET_ENV_KEYS, ...OWNED_ENV_KEYS]);
 
 export function assertLoopbackDatabaseUrl(dbUrl) {
+  // URL() treats '#' as a fragment (hiding "#?hostaddr=..." in .hash, and a
+  // bare trailing '#' leaves .hash empty), but libpq keeps parsing past it.
+  // Check the raw string before parsing; an encoded %23 stays allowed.
+  if (dbUrl.includes('#')) {
+    throw new Error(
+      `Refusing database URL: '#' is not accepted (libpq does not treat it as a fragment). Percent-encode it as %23 inside credentials.`
+    );
+  }
   const parsed = new URL(dbUrl);
   // libpq honours host/hostaddr/service in the query string over the URL host.
   if (parsed.search !== '' || !LOOPBACK_HOSTS.has(parsed.hostname)) {
     throw new Error(
-      `Refusing database URL "${parsed.hostname}${parsed.search}": only a loopback host without query parameters is accepted. This verifier writes fixtures and must only target a disposable local database.`
+      // The query is not echoed: it may carry password=... or another host.
+      `Refusing database URL "${parsed.hostname}"${parsed.search === '' ? '' : ' with query parameters'}: only a loopback host without query parameters is accepted. This verifier writes fixtures and must only target a disposable local database.`
     );
   }
 }

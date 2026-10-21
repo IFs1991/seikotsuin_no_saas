@@ -114,3 +114,29 @@ test('only loopback URLs without query parameters are accepted', () => {
     );
   }
 });
+
+test('a raw # is refused because libpq keeps parsing what follows it', () => {
+  for (const url of [
+    // URL() hides "?hostaddr=..." in .hash; libpq reads it as parameters.
+    'postgresql://postgres:postgres@127.0.0.1:54332/postgres#?hostaddr=203.0.113.7&dbname=postgres',
+    // A trailing empty fragment leaves .hash === '' in URL().
+    'postgresql://postgres:postgres@127.0.0.1:54332/postgres#',
+    'postgresql://postgres:pa#ss@127.0.0.1:54332/postgres',
+  ]) {
+    assert.throws(() => assertLoopbackDatabaseUrl(url), /Refusing/, url);
+    assert.throws(
+      () => buildPsqlInvocation(url, 'os_f2_test', '/tmp/1.sql', {}),
+      /Refusing/,
+      url
+    );
+  }
+});
+
+test('a percent-encoded %23 in the credentials is still accepted', () => {
+  const url = 'postgresql://postgres:pa%23ss@127.0.0.1:54332/postgres';
+  assert.doesNotThrow(() => assertLoopbackDatabaseUrl(url));
+  assert.equal(
+    buildPsqlInvocation(url, 'os_f2_test', '/tmp/1.sql', {}).args[1],
+    url
+  );
+});
