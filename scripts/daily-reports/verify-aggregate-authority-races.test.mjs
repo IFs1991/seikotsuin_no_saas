@@ -104,6 +104,8 @@ test('a refused URL never starts psql', { skip: STUB_SKIP }, () => {
   for (const url of [
     'postgresql://postgres:postgres@127.0.0.1:54332/postgres#?hostaddr=203.0.113.7&dbname=postgres',
     'postgresql://postgres:postgres@127.0.0.1:54332/postgres#',
+    'postgresql://127.0.0.1#@203.0.113.7:5432/postgres',
+    'postgresql://postgres@203.0.113.7:5432,x@127.0.0.1:54332/postgres',
     'postgresql://postgres@127.0.0.1:54332/postgres?hostaddr=203.0.113.7',
     'postgresql://postgres@10.0.0.5:5432/postgres',
   ]) {

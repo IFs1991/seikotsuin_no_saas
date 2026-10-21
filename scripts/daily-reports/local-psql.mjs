@@ -37,6 +37,16 @@ export function assertLoopbackDatabaseUrl(dbUrl) {
       `Refusing database URL: '#' is not accepted (libpq does not treat it as a fragment). Percent-encode it as %23 inside credentials.`
     );
   }
+  // URL() splits userinfo at the last '@' of the authority, libpq at the
+  // first: "user@203.0.113.7:5432,x@127.0.0.1/db" is 127.0.0.1 to URL() but
+  // a host list starting at 203.0.113.7 to libpq. Allow one raw '@' only
+  // (an '@' inside credentials must be percent-encoded as %40).
+  const authority = dbUrl.slice(dbUrl.indexOf('://') + 3).split('/')[0];
+  if (authority.split('@').length > 2) {
+    throw new Error(
+      `Refusing database URL: more than one '@' before the path is not accepted (libpq and URL() would read different hosts). Percent-encode '@' as %40 inside credentials.`
+    );
+  }
   const parsed = new URL(dbUrl);
   // libpq honours host/hostaddr/service in the query string over the URL host.
   if (parsed.search !== '' || !LOOPBACK_HOSTS.has(parsed.hostname)) {

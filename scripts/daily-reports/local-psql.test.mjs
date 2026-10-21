@@ -122,6 +122,8 @@ test('a raw # is refused because libpq keeps parsing what follows it', () => {
     // A trailing empty fragment leaves .hash === '' in URL().
     'postgresql://postgres:postgres@127.0.0.1:54332/postgres#',
     'postgresql://postgres:pa#ss@127.0.0.1:54332/postgres',
+    // URL() reads 127.0.0.1 here; libpq takes userinfo up to the first '@'.
+    'postgresql://127.0.0.1#@203.0.113.7:5432/postgres',
   ]) {
     assert.throws(() => assertLoopbackDatabaseUrl(url), /Refusing/, url);
     assert.throws(
@@ -139,4 +141,24 @@ test('a percent-encoded %23 in the credentials is still accepted', () => {
     buildPsqlInvocation(url, 'os_f2_test', '/tmp/1.sql', {}).args[1],
     url
   );
+});
+
+test('a second raw @ in the authority is refused (libpq splits at the first @)', () => {
+  for (const url of [
+    // URL() takes the last '@': host 127.0.0.1:1. libpq takes the first:
+    // host list "127.0.0.2:55432,x@127.0.0.1:1", i.e. it connects to 127.0.0.2.
+    'postgresql://postgres@127.0.0.2:55432,x@127.0.0.1:1/postgres',
+    'postgresql://postgres@203.0.113.7:5432,x@127.0.0.1:54332/postgres',
+    'postgresql://user:p@ss@127.0.0.1:54332/postgres',
+  ]) {
+    assert.throws(() => assertLoopbackDatabaseUrl(url), /Refusing/, url);
+  }
+  // One raw '@', or '@' percent-encoded in credentials, is still accepted.
+  for (const url of [
+    'postgresql://postgres:postgres@127.0.0.1:54332/postgres',
+    'postgresql://user:p%40ss@127.0.0.1:54332/postgres',
+    'postgresql://127.0.0.1:54332/postgres',
+  ]) {
+    assert.doesNotThrow(() => assertLoopbackDatabaseUrl(url), url);
+  }
 });
