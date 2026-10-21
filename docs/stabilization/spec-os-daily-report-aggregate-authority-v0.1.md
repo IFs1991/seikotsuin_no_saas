@@ -10,6 +10,7 @@
 - catalog 前後: `docs/stabilization/evidence/os-daily-report-aggregate-authority/`（隔離ローカルDB。Supabase image ではない）
 - 改訂: 2026-10-21 PR #163 review 対応（mobile の明細型保存、入力画面の日付・院切替競合、競合検証の接続先固定、本番適用条件の整理 §11）
 - 改訂: 2026-10-21 独立review 対応（予約履歴による G1b、競合検証URLの `#`・複数 `@` 拒否、明細追加の切替競合、mobile の明細型記録の解除）
+- 改訂: 2026-10-21 最終独立review 対応（G1b は同期時点で存在した日報だけを数える・`items_sync_since` は commit 時刻以降・確定できない行 (v)、入力画面の読込失敗時の合計表示と古い読込の失敗の無視）
 
 ## 1. 問題
 
@@ -60,7 +61,7 @@
   - mobile 保存は `report_text` を null にするため、明細を失った後に mobile で保存された行は文言が残らない。PC編集画面で文言を書き換えた行も同様。
   - 明細行そのものの削除履歴は残らない（`daily_report_items` に監査triggerは無く、`revenue_estimates` は明細と一緒に cascade 削除される）。
   - ただし来院済み予約由来の明細は、予約の変更が `public.reservation_history`（baseline の `reservation_updated_log` / `reservation_created_log` trigger が OLD/NEW を JSON で記録）に残る。来院済みから他の status へ移った日・論理削除された日・来院済みのまま日時を変えた元の日は、文言が消えていても §9.1 の G1b で検出できる（下限。限界は §9.1）。
-  - DB内の情報で確定できないのは、G1 の `items_api_shell`、明細APIで手入力した明細を後から削除し G1 の文言も残っていない行、同期対象の列を同じ値で上書きした更新だけで明細が作られた行、service_role / postgres が予約履歴を削除・変更した行である（§9.1）。
+  - DB内の情報で確定できないのは、G1 の `items_api_shell`、明細APIで手入力した明細を後から削除し G1 の文言も残っていない行、同期対象の列を同じ値で上書きした更新だけで明細が作られた行、service_role / postgres が予約履歴を削除・変更した行、`items_sync_since` を遅めにしたため数えない期間に明細が作られた行、`created_at` が同期より後・null・付け直された行である（§9.1 の (i)〜(v)）。
   - いずれも文言から自動分類しない。本番適用前に §9.1 の **必須ゲート**（G1・G1b）で件数を確認し、0件でなければ適用を止めて owner が扱いを決める（`supabase/AGENTS.md`「backfill不明rowが1件でもあれば停止する」）。G1・G1b が0件でも曖昧な行が無いことの証明にはならない（§9.1）。
 
 ## 4. 編集責任
@@ -174,13 +175,18 @@ group by 1;
 --      NEW が来院済みかつ未削除なら NEW.start_time の日の明細を作る/更新する（失敗すれば予約変更ごと失敗）。
 --      履歴の行が「作成」か、11列のどれかの値が変わった更新で、NEW が来院済み・未削除なら、
 --      そのとき同期が走りその日に明細があった。
---      items_sync_since は同期（20260507000100）を本番に適用した時刻を deploy 記録から指定する。
---      不明なら確実に適用後と言える遅めの時刻にする（早すぎると明細の無かった日を数える）。
+--      その日の最後の同期より後に作られた日報（削除して作り直した行など）は、その明細を
+--      持ったことが無いため数えない（r.created_at と履歴の created_at はどちらも transaction 開始時刻）。
+--      items_sync_since は同期（20260507000100）の migration が commit（完了）した時刻以降を
+--      deploy 記録から指定する。deploy の開始時刻は早すぎる（履歴の created_at は書込 transaction の
+--      開始時刻のため、trigger 作成前に書かれた明細の無い日を数える）。
+--      不明なら確実に完了後と言える遅めの時刻にする（遅すぎた分は数えない＝下限が下がる）。
 --      出力は件数のみ（患者・予約の内容は出さない）。
 \set items_sync_since 'YYYY-MM-DDTHH:MI:SSZ'
 with synced_days as (
-  select distinct h.clinic_id,
-         date((h.new_value ->> 'start_time')::timestamptz at time zone 'Asia/Tokyo') as report_date
+  select h.clinic_id,
+         date((h.new_value ->> 'start_time')::timestamptz at time zone 'Asia/Tokyo') as report_date,
+         max(h.created_at) as last_synced_at
   from public.reservation_history h
   where h.created_at >= :'items_sync_since'::timestamptz
     and h.new_value ->> 'status' = 'arrived'
@@ -194,11 +200,13 @@ with synced_days as (
         where h.old_value -> c.col is distinct from h.new_value -> c.col
       )
     )
+  group by 1, 2
 )
 select count(*) as reports
 from public.daily_reports r
 join synced_days d on d.clinic_id = r.clinic_id and d.report_date = r.report_date
-where not exists (select 1 from public.daily_report_items i where i.daily_report_id = r.id);
+where r.created_at <= d.last_synced_at
+  and not exists (select 1 from public.daily_report_items i where i.daily_report_id = r.id);
 -- G2: 規模の把握（lock 時間の見積り）
 select count(*) as reports,
        count(*) filter (where exists (select 1 from public.daily_report_items i where i.daily_report_id = r.id)) as itemized
@@ -206,9 +214,16 @@ from public.daily_reports r;
 ```
 
 - G1 は下限である。`arrived_auto`（予約triggerが明細と同時にだけ書く文言）と `input_page_save`（入力画面は明細1件以上のときだけ保存でき、毎回この文言で上書きする）は過去に明細を持っていたことがほぼ確定している。`items_api_shell` は明細INSERT失敗でも残るため不確定。
-- G1b は文言に依存せず、同期triggerが確実に明細を作った日（予約の作成、または同期対象11列の値が変わった更新で、NEW が来院済み・未削除）で、いま明細0件の日報を数える。明細を失った後に mobile で保存された行（`report_text` が null）や PC で文言を書き換えた行も、来院済み予約由来なら検出できる。G1 と G1b は重なり得る（承認記録では両方の件数を残す）。
-- G1b の限界: (1) 同期前から来院済みだった予約を同期後に支払状態など対象外の列だけ更新した行は数えない（この日は明細を持ったことが無い）。(2) 同期対象の列を同じ値で上書きした更新でも trigger は動くが、履歴では値の変化として見えないため数えない（漏れる）。(3) `reservation_history` は service_role / postgres が DELETE・UPDATE・TRUNCATE でき（authenticated には table 権限が無い）、消された履歴の日は漏れる。予約の物理削除は baseline の履歴 trigger と参照検証で失敗するため、履歴が消える経路にはならない。(4) `items_sync_since` が実際の適用時刻より早いと、明細の無かった日を数える。これらにより G1b は `items_sync_since` が正しいか遅めなら下限であり、(b) の対象にしてよいのは G1b の行だけである。
-- **G1・G1b が0件でも、曖昧な行が無いことは証明されない。** DB内の情報で確定できないのは、(i) G1 の `items_api_shell`（検出はできるが過去に明細を持っていたかは確定できない）、(ii) 明細APIで手入力した明細を後から削除し G1 の文言も残っていない行、(iii) 上の (2) の更新だけで明細が作られた行、(iv) 履歴が消された行である（§3.1）。確定には明細の削除前を含むバックアップとの突合が必要で、本PRでは行わない。
+- G1b は文言に依存せず、同期triggerが確実に明細を作った日（予約の作成、または同期対象11列の値が変わった更新で、NEW が来院済み・未削除）で、その同期の時点で既に存在し、いま明細0件の日報を数える。明細を失った後に mobile で保存された行（`report_text` が null）や PC で文言を書き換えた行も、来院済み予約由来なら検出できる。G1 と G1b は重なり得る（承認記録では両方の件数を残す）。
+- G1b の限界:
+  - (1) 同期前から来院済みだった予約を同期後に支払状態など対象外の列だけ更新した行は数えない（この日は明細を持ったことが無い）。
+  - (2) 同期対象の列を同じ値で上書きした更新でも trigger は動くが、履歴では値の変化として見えないため数えない（漏れる）。
+  - (3) `reservation_history` は service_role / postgres が DELETE・UPDATE・TRUNCATE でき（authenticated には table 権限が無い）、削除された履歴の日は漏れる。変更された履歴は漏れにも誤検出にもなり得る。予約の物理削除は baseline の履歴 trigger と参照検証で失敗するため、履歴が消える経路にはならない。
+  - (4) `items_sync_since` が migration の commit 時刻より早い（deploy の開始時刻など）と、明細の無かった日を数え得る。遅めにした場合は、その間に同期が明細を作った日を数えない（漏れる）。
+  - (5) 日報を削除して作り直した場合（明細は cascade 削除される）、作り直した行はその日の最後の同期より後に作られていれば数えない（正しく除外）。作り直した後に再び同期が走った日は数える（その行は明細を持った）。
+  - (6) 日報の `created_at` は既定で transaction 開始時刻が入り、アプリは設定しない。ただし authenticated は table 書込で `created_at` を設定・変更でき、null も入り得る。同期より後の時刻・null の行は数えず（漏れる）、作り直した行の `created_at` を過去へ書き換えた場合は誤って数え得る。データ移行等で `created_at` が付け直された行、同期より後に開始した transaction が先に親日報を作った稀な競合も数えない（漏れる）。
+  - したがって G1b は、`items_sync_since` が migration の commit 時刻以降で、`created_at` と予約履歴が直接書き換えられていなければ下限である。予約履歴に基づいて (b) の対象にしてよいのは G1b の行だけで、(i)〜(v) は対象にしない（G1 の `arrived_auto` / `input_page_save` の扱いは下の (b) のとおり）。
+- **G1・G1b が0件でも、曖昧な行が無いことは証明されない。** DB内の情報で確定できないのは、(i) G1 の `items_api_shell`（検出はできるが過去に明細を持っていたかは確定できない）、(ii) 明細APIで手入力した明細を後から削除し G1 の文言も残っていない行、(iii) 上の (2) の更新だけで明細が作られた行、(iv) 予約履歴が削除・変更された行、(v) `items_sync_since` を遅めにしたため数えない期間に同期が明細を作った行、および上の (6) で数えない行である（§3.1）。確定には明細の削除前を含むバックアップとの突合が必要で、本PRでは行わない。
 - 分類で保証できる範囲: 明細1件以上の行は確実に `items` になる。明細0件の行は `manual` になり、その行の挙動は変更前と同じ（手入力合計を受け付け、最初の明細で明細集計に置換）。どちらの分類でも `total_*` と `updated_at` は変わらない。保証できないのは「過去に明細を持っていた明細0件の行」に本PRの保護（古い合計で上書きされない）が及ぶことであり、そうした行は変更前と同じく手入力・古い合計で上書きされ得る。
 - G1・G1b のどちらかが0件以外: 停止。選択肢は (a) そのまま `manual`（変更前の挙動を維持、stale 合計の再上書きは起こり得る）、(b) `arrived_auto` / `input_page_save` / G1b の行を `items` に分類する（その行に後から手入力した合計は次の書込で0になる。G1b は `items_sync_since` を deploy 記録で確定してから使う。`items_api_shell` は確定できないため (b) の対象にしない）。どちらを選んだかと種類別件数を承認記録に残す。
 - G1・G1b が0件: 上の「確定できない残り」を owner が受け入れたことを承認記録に残してから進める（§11.1）。
@@ -244,8 +259,8 @@ migration → 検証（pgTAP・競合スクリプト・catalog確認）→ ア�
 
 - 事実: §3.1・§9.1 のとおり、明細0件の既存行は `manual` に分類される。G1 は文言で、G1b は予約履歴で、過去に明細を持っていた行の一部を数える。どちらも下限であり、0件は「判別不能な行が無い」ことを意味しない。
 - 保証できる範囲: 合計値・`updated_at` を変えない。明細0件行の挙動は変更前と同じで、悪化しない。
-- 保証できない範囲: G1・G1b で確定できない、過去に明細を持っていた明細0件行（§9.1 の (i)〜(iv)）には本PRの保護が及ばない。
-- 判断が必要な事項: (1) G1・G1b が0件以外の場合の (a)/(b)。(2) 検出できない残りを `manual` のまま受け入れるか（推奨: 受け入れる。挙動は変更前と同じで悪化せず、DB内に確定手段が無い）。(3) バックアップ突合など追加調査を行うか。(4) G1b の `items_sync_since`（来院済み予約→明細の同期を本番に適用した時刻）を deploy 記録で確定すること（不明なら遅めの時刻）。いずれも承認記録に残す。
+- 保証できない範囲: G1・G1b で確定できない、過去に明細を持っていた明細0件行（§9.1 の (i)〜(v)）には本PRの保護が及ばない。
+- 判断が必要な事項: (1) G1・G1b が0件以外の場合の (a)/(b)。(2) 検出できない残りを `manual` のまま受け入れるか（推奨: 受け入れる。挙動は変更前と同じで悪化せず、DB内に確定手段が無い）。(3) バックアップ突合など追加調査を行うか。(4) G1b の `items_sync_since`（来院済み予約→明細の同期 migration `20260507000100` が本番で commit した時刻以降。deploy の開始時刻は不可）を deploy 記録で確定すること（不明なら遅めの時刻。遅めにした期間は (v) として受け入れる）。いずれも承認記録に残す。
 
 ### 11.2 来院済み → 完了 等の後の扱い（owner 判断）
 
