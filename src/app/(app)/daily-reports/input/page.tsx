@@ -686,6 +686,13 @@ export default function DailyReportInputPage() {
     displayedTargetRef.current = { clinicId, date };
   }, [clinicId, date]);
 
+  // 一覧の明細がどの (院, 日付) のものか。別の対象の明細を新しい日付で
+  // 表示・保存しないよう、対象が変わった読込の開始時に一覧を空にする。
+  const itemsTargetRef = useRef<{
+    clinicId: string | null;
+    date: string;
+  } | null>(null);
+
   const isDisplayedTarget = useCallback(
     (target: { clinicId: string | null; date: string }) =>
       displayedTargetRef.current.clinicId === target.clinicId &&
@@ -717,6 +724,19 @@ export default function DailyReportInputPage() {
       }
       const requestId = loadRequestIdRef.current + 1;
       loadRequestIdRef.current = requestId;
+
+      const itemsTarget = itemsTargetRef.current;
+      if (
+        !itemsTarget ||
+        itemsTarget.clinicId !== clinicId ||
+        itemsTarget.date !== date
+      ) {
+        // 前の院・日付の明細は、読込に失敗しても新しい対象として残さない
+        setItems([]);
+        setNextReservationDrafts({});
+        replaceSavedItems([]);
+        itemsTargetRef.current = { clinicId, date };
+      }
 
       if (!clinicId) {
         setItems([]);
@@ -912,12 +932,17 @@ export default function DailyReportInputPage() {
           // 表示中の一覧には加えない（次の保存で別の日の合計にしない）。
           setNewItem(emptyNewItem);
           setFormError(
-            `${addTarget.date}の日報に明細を追加しました。表示中の日付・院とは異なるため、この一覧には表示していません`
+            `追加中に日付・院が切り替わったため、明細は${addTarget.date}の日報に追加しました`
           );
           return;
         }
         savedItemsRef.current.set(createdItem.id, createdItem);
-        setItems(prev => [...prev, createdItem]);
+        // 院・日付を往復した場合は再取得済みの一覧に同じ明細が入っている
+        setItems(prev =>
+          prev.some(item => item.id === createdItem.id)
+            ? prev
+            : [...prev, createdItem]
+        );
         setNextReservationDrafts(prev => ({
           ...prev,
           [createdItem.id]: '',

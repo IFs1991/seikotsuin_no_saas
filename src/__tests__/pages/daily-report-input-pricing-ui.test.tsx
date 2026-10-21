@@ -646,7 +646,7 @@ describe('DailyReportInputPage Phase 4A-5 pricing UI', () => {
     expect(screen.queryByDisplayValue('幽霊 太郎')).not.toBeInTheDocument();
     // The user is told where the item went (its date), instead of a ghost row.
     expect(
-      screen.getByText(new RegExp(`${dateA}の日報に明細を追加しました`))
+      screen.getByText(new RegExp(`明細は${dateA}の日報に追加しました`))
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '保存' }));
@@ -669,6 +669,62 @@ describe('DailyReportInputPage Phase 4A-5 pricing UI', () => {
       });
     });
   });
+
+  it.each([
+    [
+      'an error response',
+      () => jsonResponse({ success: false }, { status: 500 }),
+    ],
+    ['a network error', () => Promise.reject(new TypeError('network down'))],
+  ])(
+    'does not keep the previous date items savable when the new date load fails with %s',
+    async (_label, failLoad) => {
+      const fetchMock = jest
+        .spyOn(global, 'fetch')
+        .mockImplementation((input, init) => {
+          const url = new URL(urlFromFetchInput(input), 'http://localhost');
+          if (url.pathname === '/api/daily-reports/items') {
+            if (url.searchParams.get('report_date') === dateB) {
+              return failLoad() as Promise<Response>;
+            }
+            return jsonResponse({
+              success: true,
+              data: { items: itemsFor('A'), paymentMethods: [] },
+            });
+          }
+          return jsonResponse(
+            {
+              success: false,
+              error: `unexpected ${init?.method ?? 'GET'} ${url}`,
+            },
+            { status: 500 }
+          );
+        });
+
+      renderPage();
+
+      await screen.findByRole('button', { name: '山田 太郎の金額を確定' });
+      const dateInput = screen.getByLabelText('日付') as HTMLInputElement;
+      fireEvent.change(dateInput, { target: { value: dateB } });
+
+      await waitFor(() =>
+        expect(
+          fetchMock.mock.calls.some(([input]) =>
+            urlFromFetchInput(input).includes(`report_date=${dateB}`)
+          )
+        ).toBe(true)
+      );
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+
+      expect(dateInput.value).toBe(dateB);
+      expect(
+        screen.queryByRole('button', { name: '山田 太郎の金額を確定' })
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '保存' })).toBeDisabled();
+    }
+  );
 
   it('shows the saved DB totals and reloads stale items after saving', async () => {
     const fetchMock = setupFetch();
