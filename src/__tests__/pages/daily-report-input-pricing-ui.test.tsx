@@ -1,11 +1,20 @@
 /** @jest-environment jsdom */
 
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DailyReportInputPage from '@/app/(app)/daily-reports/input/page';
 import { UserProfileProvider } from '@/providers/user-profile-context';
-import { SelectedClinicProvider } from '@/providers/selected-clinic-context';
+import {
+  SelectedClinicProvider,
+  useSelectedClinic,
+} from '@/providers/selected-clinic-context';
 
 const mockPush = jest.fn();
 
@@ -194,6 +203,104 @@ function renderPage(activeClinicId?: string) {
   );
 }
 
+// A save started for one (clinic, date) must not reload that target's items
+// over another target the user switched to while the POST was in flight.
+const dateB = '2031-01-15';
+const otherItemId = '123e4567-e89b-12d3-a456-426614174012';
+
+function itemsFor(target: 'A' | 'B') {
+  return target === 'A'
+    ? [
+        buildItem({
+          id: insuranceItemId,
+          patientName: '山田 太郎',
+          treatmentName: '保険施術',
+          fee: 2000,
+          billingType: 'insurance',
+          revenueContextCode: 'insurance',
+        }),
+      ]
+    : [
+        buildItem({
+          id: otherItemId,
+          patientName: '田中 次郎',
+          treatmentName: '保険施術',
+          fee: 2000,
+          billingType: 'insurance',
+          revenueContextCode: 'insurance',
+        }),
+      ];
+}
+
+function setupDelayedSaveFetch(isTargetB: (url: URL) => boolean) {
+  let resolveSave: (() => void) | null = null;
+  const fetchMock = jest
+    .spyOn(global, 'fetch')
+    .mockImplementation((input, init) => {
+      const url = new URL(urlFromFetchInput(input), 'http://localhost');
+      if (url.pathname === '/api/daily-reports/items') {
+        return jsonResponse({
+          success: true,
+          data: {
+            items: itemsFor(isTargetB(url) ? 'B' : 'A'),
+            paymentMethods: [],
+          },
+        });
+      }
+      if (url.pathname === '/api/daily-reports' && init?.method === 'POST') {
+        // The DB totals differ from the screen, which triggers a reload of
+        // the saved target's items once the response arrives.
+        return new Promise<Response>(resolve => {
+          resolveSave = () =>
+            resolve(
+              new Response(
+                JSON.stringify({
+                  success: true,
+                  data: {
+                    id: '123e4567-e89b-12d3-a456-426614174020',
+                    total_patients: 3,
+                    total_revenue: 15000,
+                    aggregate_source: 'items',
+                  },
+                }),
+                {
+                  status: 200,
+                  headers: { 'Content-Type': 'application/json' },
+                }
+              )
+            );
+        });
+      }
+      return jsonResponse(
+        { success: false, error: `unexpected ${init?.method ?? 'GET'} ${url}` },
+        { status: 500 }
+      );
+    });
+  return {
+    fetchMock,
+    resolveSave: () => {
+      if (!resolveSave) throw new Error('save POST was not sent');
+      resolveSave();
+    },
+  };
+}
+
+function itemLoadsAfter(fetchMock: jest.SpyInstance, fromCall: number) {
+  return fetchMock.mock.calls
+    .slice(fromCall)
+    .map(call => new URL(urlFromFetchInput(call[0]), 'http://localhost'))
+    .filter(url => url.pathname === '/api/daily-reports/items');
+}
+
+function ClinicSwitcher() {
+  const { setSelectedClinicId } = useSelectedClinic();
+  return (
+    <button type='button' onClick={() => setSelectedClinicId(selectedClinicId)}>
+      分院に切り替え
+    </button>
+  );
+}
+
 describe('DailyReportInputPage Phase 4A-5 pricing UI', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -313,6 +420,144 @@ describe('DailyReportInputPage Phase 4A-5 pricing UI', () => {
           : null;
       expect(body).toMatchObject({ clinic_id: selectedClinicId });
     });
+  });
+
+  it('keeps the switched-to date items when a save for the previous date resolves late', async () => {
+    const { fetchMock, resolveSave } = setupDelayedSaveFetch(
+      url => url.searchParams.get('report_date') === dateB
+    );
+    const user = userEvent.setup();
+
+    renderPage();
+
+    await screen.findByRole('button', { name: '山田 太郎の金額を確定' });
+    const dateInput = screen.getByLabelText('日付') as HTMLInputElement;
+    const dateA = dateInput.value;
+    await user.click(screen.getByRole('button', { name: '保存' }));
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          ([input, init]) =>
+            urlFromFetchInput(input) === '/api/daily-reports' &&
+            init?.method === 'POST'
+        )
+      ).toBe(true)
+    );
+
+    fireEvent.change(dateInput, { target: { value: dateB } });
+    await screen.findByRole('button', { name: '田中 次郎の金額を確定' });
+    const callsAfterSwitch = fetchMock.mock.calls.length;
+
+    await act(async () => {
+      resolveSave();
+    });
+
+    // The late result of the previous date is still reported with its date.
+    expect(
+      await screen.findByText(`${dateA} ・ 患者数 3名 ・ 合計売上 ¥15,000`)
+    ).toBeInTheDocument();
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+    expect(dateInput.value).toBe(dateB);
+    // The saved-summary dialog is modal, so the list behind it is aria-hidden.
+    expect(
+      screen.getByRole('button', {
+        name: '田中 次郎の金額を確定',
+        hidden: true,
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', {
+        name: '山田 太郎の金額を確定',
+        hidden: true,
+      })
+    ).not.toBeInTheDocument();
+    expect(
+      itemLoadsAfter(fetchMock, callsAfterSwitch).filter(
+        url => url.searchParams.get('report_date') !== dateB
+      )
+    ).toHaveLength(0);
+  });
+
+  it('keeps the switched-to clinic items when a save for the previous clinic resolves late', async () => {
+    const { fetchMock, resolveSave } = setupDelayedSaveFetch(
+      url => url.searchParams.get('clinic_id') === selectedClinicId
+    );
+    const user = userEvent.setup();
+
+    render(
+      <UserProfileProvider
+        value={{
+          profile: {
+            id: 'user-1',
+            email: 'staff@example.com',
+            role: 'staff',
+            clinicId,
+            clinicName: 'テスト院',
+            isActive: true,
+            isAdmin: false,
+          },
+          loading: false,
+          error: null,
+        }}
+      >
+        <SelectedClinicProvider
+          initialClinicId={clinicId}
+          currentClinicId={clinicId}
+          clinics={[
+            { id: clinicId, name: 'テスト院' },
+            { id: selectedClinicId, name: '分院' },
+          ]}
+        >
+          <ClinicSwitcher />
+          <DailyReportInputPage />
+        </SelectedClinicProvider>
+      </UserProfileProvider>
+    );
+
+    await screen.findByRole('button', { name: '山田 太郎の金額を確定' });
+    await user.click(screen.getByRole('button', { name: '保存' }));
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          ([input, init]) =>
+            urlFromFetchInput(input) === '/api/daily-reports' &&
+            init?.method === 'POST'
+        )
+      ).toBe(true)
+    );
+
+    await user.click(screen.getByRole('button', { name: '分院に切り替え' }));
+    await screen.findByRole('button', { name: '田中 次郎の金額を確定' });
+    const callsAfterSwitch = fetchMock.mock.calls.length;
+
+    await act(async () => {
+      resolveSave();
+    });
+    await screen.findByText(/患者数 3名 ・ 合計売上 ¥15,000/);
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+
+    // The saved-summary dialog is modal, so the list behind it is aria-hidden.
+    expect(
+      screen.getByRole('button', {
+        name: '田中 次郎の金額を確定',
+        hidden: true,
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', {
+        name: '山田 太郎の金額を確定',
+        hidden: true,
+      })
+    ).not.toBeInTheDocument();
+    expect(
+      itemLoadsAfter(fetchMock, callsAfterSwitch).filter(
+        url => url.searchParams.get('clinic_id') !== selectedClinicId
+      )
+    ).toHaveLength(0);
   });
 
   it('shows the saved DB totals and reloads stale items after saving', async () => {

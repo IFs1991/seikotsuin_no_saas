@@ -678,6 +678,20 @@ export default function DailyReportInputPage() {
   } | null>(null);
   const savedItemsRef = useRef<Map<string, DailyReportItem>>(new Map());
   const loadRequestIdRef = useRef(0);
+  // 画面に表示中の (院, 日付)。切替前に始まった保存・再取得の結果で
+  // 切替後の明細を上書きしないよう、非同期処理の対象と照合する。
+  const displayedTargetRef = useRef({ clinicId, date });
+
+  useEffect(() => {
+    displayedTargetRef.current = { clinicId, date };
+  }, [clinicId, date]);
+
+  const isDisplayedTarget = useCallback(
+    (target: { clinicId: string | null; date: string }) =>
+      displayedTargetRef.current.clinicId === target.clinicId &&
+      displayedTargetRef.current.date === target.date,
+    []
+  );
 
   const hasClinic = Boolean(clinicId);
   const isLoading = profileLoading || activeClinicLoading || isLoadingItems;
@@ -696,6 +710,11 @@ export default function DailyReportInputPage() {
         includePaymentMethods = true,
         showSpinner = true,
       } = options;
+      // 別の院・日付を対象に始まった処理からの再取得は、表示中の明細を
+      // 置き換えず、表示中の対象の取得も無効化しない。
+      if (!isDisplayedTarget({ clinicId, date })) {
+        return;
+      }
       const requestId = loadRequestIdRef.current + 1;
       loadRequestIdRef.current = requestId;
 
@@ -728,7 +747,11 @@ export default function DailyReportInputPage() {
         });
         const payload = await readJson(response);
 
-        if (signal?.aborted || requestId !== loadRequestIdRef.current) {
+        if (
+          signal?.aborted ||
+          requestId !== loadRequestIdRef.current ||
+          !isDisplayedTarget({ clinicId, date })
+        ) {
           return;
         }
 
@@ -766,7 +789,7 @@ export default function DailyReportInputPage() {
         }
       }
     },
-    [clinicId, date, replaceSavedItems]
+    [clinicId, date, isDisplayedTarget, replaceSavedItems]
   );
 
   useEffect(() => {
@@ -1107,6 +1130,7 @@ export default function DailyReportInputPage() {
 
     setIsSavingReport(true);
     setFormError(null);
+    const saveTarget = { clinicId, date };
 
     try {
       const insuranceRevenue = items
@@ -1146,9 +1170,11 @@ export default function DailyReportInputPage() {
       if (
         savedTotals &&
         (savedTotals.patients !== totalPatients ||
-          savedTotals.revenue !== totalRevenue)
+          savedTotals.revenue !== totalRevenue) &&
+        isDisplayedTarget(saveTarget)
       ) {
-        // 別タブで明細が変わっていた場合は一覧もDBに合わせて再取得する
+        // 別タブで明細が変わっていた場合は一覧もDBに合わせて再取得する。
+        // 保存中に院・日付が切り替わっていたら、切替後の明細は置き換えない
         await loadItems({ includePaymentMethods: false, showSpinner: false });
       }
     } catch (error) {
