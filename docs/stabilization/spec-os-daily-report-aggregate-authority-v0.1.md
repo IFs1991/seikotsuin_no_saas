@@ -9,6 +9,7 @@
 - 競合検証: `scripts/daily-reports/verify-aggregate-authority-races.mjs`（接続先の固定: `scripts/daily-reports/local-psql.mjs`）
 - catalog 前後: `docs/stabilization/evidence/os-daily-report-aggregate-authority/`（隔離ローカルDB。Supabase image ではない）
 - 改訂: 2026-10-21 PR #163 review 対応（mobile の明細型保存、入力画面の日付・院切替競合、競合検証の接続先固定、本番適用条件の整理 §11）
+- 改訂: 2026-10-21 独立review 対応（予約履歴による G1b、競合検証URLの `#`・複数 `@` 拒否、明細追加の切替競合、mobile の明細型記録の解除）
 
 ## 1. 問題
 
@@ -57,8 +58,10 @@
   - 入力画面の保存は明細1件以上のときだけ可能で、`report_text` を `担当: …、入力件数: N` で上書きする。この文言のまま明細0件の行も過去に明細を持っていた可能性が高い。
   - `明細行から自動作成` の行は、明細API の明細INSERT失敗でも残るため確定できない。
   - mobile 保存は `report_text` を null にするため、明細を失った後に mobile で保存された行は文言が残らない。PC編集画面で文言を書き換えた行も同様。
-  - 明細の削除履歴はDBに残らない（`daily_report_items` に監査triggerは無く、`revenue_estimates` は明細と一緒に cascade 削除される）。過去に明細を持っていたことを全件確定する手段はDB内に無い。
-  - いずれも文言から自動分類しない。本番適用前に §9.1 の **必須ゲート** で件数を確認し、0件でなければ適用を止めて owner が扱いを決める（`supabase/AGENTS.md`「backfill不明rowが1件でもあれば停止する」）。G1 が0件でも曖昧な行が無いことの証明にはならない（§9.1）。
+  - 明細行そのものの削除履歴は残らない（`daily_report_items` に監査triggerは無く、`revenue_estimates` は明細と一緒に cascade 削除される）。
+  - ただし来院済み予約由来の明細は、予約の変更が `public.reservation_history`（baseline の `reservation_updated_log` / `reservation_created_log` trigger が OLD/NEW を JSON で記録）に残る。来院済みから他の status へ移った日・論理削除された日・来院済みのまま日時を変えた元の日は、文言が消えていても §9.1 の G1b で検出できる（下限: 予約の物理削除で履歴も消え、service_role は履歴を削除できる）。
+  - DB内の情報で確定できないのは、明細APIで手入力した明細を後から削除した日のうち `明細行から自動作成` の文言が残っていない行と、予約履歴が消えた行である。
+  - いずれも文言から自動分類しない。本番適用前に §9.1 の **必須ゲート**（G1・G1b）で件数を確認し、0件でなければ適用を止めて owner が扱いを決める（`supabase/AGENTS.md`「backfill不明rowが1件でもあれば停止する」）。G1・G1b が0件でも曖昧な行が無いことの証明にはならない（§9.1）。
 
 ## 4. 編集責任
 
@@ -108,6 +111,7 @@ staff の院一致は AFTER ROW trigger `daily_reports_staff_clinic_check`（`ap
 - `new_patients <= total_patients` と収入内訳の相関検証は、型が確定するDB境界へ移す。Zodは単項目の型/範囲のみ検証する。
 - エラー: 403（report/staff の院不一致）、400（新患数/収入内訳、`fieldErrors` 形式は従来と同じキー）、その他はこれまでどおり 500/503。
 - レスポンス `data` は保存後のDB行（DB集計を含む）。mobile は従来どおり保存後の read model を返し、加えて `report.aggregateSource`（`manual` = 送った合計が日報の合計として保存された）を返す。
+- 受容する残り: mobile の保存が `manual` として commit した直後、応答用の read model を取る前に明細が付いて `items` になった場合、bridge は保存成功として扱い、表示はその後のDB値（明細集計）になる。保存は実際に反映されてから明細で置き換わったもので、P1 の「反映されていない入力を消す」とは異なる（窓はミリ秒単位）。
 - mobile `POST /api/mobile-uiux/daily-reports` は明細型の日報に対して 409 `CONFLICT`（何も書かない）を返す。bridge はこの 409、または保存結果が `items` の場合に `'itemized'` を返して read model を反映せず、`aggregateSource` が無い成功応答は不正として扱う。PC API は従来どおり `requireManual` を使わない（明細型の本文保存を受け付ける）。
 - 認証済み利用者は `/rest/v1/rpc/save_daily_report` を API を経由せず直接呼べる。この場合 API の role 一覧・billing gate・mobile entitlement は通らないが、RLS と本関数の検査は適用される。変更前から同じ利用者が table を直接 INSERT/UPDATE できた範囲を超えない。
 - RLS による拒否（例: 権限のない院）はこれまでどおり 500 になり、`reportApiFailure` で監視へ送られる（挙動不変）。
@@ -140,7 +144,10 @@ staff の院一致は AFTER ROW trigger `daily_reports_staff_clinic_check`（`ap
   - read model の `aggregateSource` を日付ごとに保持する。明細型の日は「入力する/編集」で合計フォームを開かず、トースト「明細から自動集計される日報です」と bridge の状態表示「明細から自動集計される日報のため、モバイルでは合計を保存できません。PCの日報入力画面で明細を修正してください」を出す（明細の編集先は PC の `/daily-reports/input`）。
   - フォーム表示後・保存中に明細型へ変わった場合（409 / `'itemized'`）は、入力行とフォームを残し、成功表示をせず「日報は保存されていません」と理由を表示する。同じ日の再保存は送信しない。
   - 手入力型の日は従来どおり合計を保存し、成功時にフォームを閉じて「日報を保存しました」を表示する。
+  - 単日読みでその日の日報が無い場合（PC で削除された等）は明細型の記録を外し、新しい日報（手入力型）の入力を許す。
   - mobile 用の明細エディタは作らない。
+  - 既知の制限（本PR以前からの挙動。別Issue候補）: 起動時の読込は最新の日報の日付を「本日」の欄に出すため、本日分が未作成で前日が明細型だと「編集」で明細型の案内が出る。フォーム表示中に読込データが反映されると入力行が空になる（日付選択はフォームの背面にあり、通常の操作では起きない）。
+- PC 入力画面: 明細追加の応答が院・日付の切替後に返った場合も、その明細を表示中の一覧に加えない（追加先の日付を通知する）。保存の遅延応答の要約は日付で示し、院名は出さない（既存表示のまま）。
 
 ## 9. 適用手順・Rollback / forward-fix
 
@@ -162,6 +169,23 @@ where (
   )
   and not exists (select 1 from public.daily_report_items i where i.daily_report_id = r.id)
 group by 1;
+-- G1b: 予約履歴から「来院済み予約の明細を持っていた」ことが分かる明細0件の日報（下限）。
+--      items_sync_since は来院済み予約→明細の同期（20260507000100）を本番に適用した時刻を
+--      deploy 記録から指定する（それより前の来院済みでは明細が作られていないため誤検出になる）。
+--      出力は件数のみ（患者・予約の内容は出さない）。
+\set items_sync_since 'YYYY-MM-DDTHH:MI:SSZ'
+with arrived_days as (
+  select distinct h.clinic_id,
+         date((v.value ->> 'start_time')::timestamptz at time zone 'Asia/Tokyo') as report_date
+  from public.reservation_history h
+  cross join lateral (values (h.old_value), (h.new_value)) as v(value)
+  where v.value ->> 'status' = 'arrived'
+    and h.created_at >= :'items_sync_since'::timestamptz
+)
+select count(*) as reports
+from public.daily_reports r
+join arrived_days d on d.clinic_id = r.clinic_id and d.report_date = r.report_date
+where not exists (select 1 from public.daily_report_items i where i.daily_report_id = r.id);
 -- G2: 規模の把握（lock 時間の見積り）
 select count(*) as reports,
        count(*) filter (where exists (select 1 from public.daily_report_items i where i.daily_report_id = r.id)) as itemized
@@ -169,12 +193,11 @@ from public.daily_reports r;
 ```
 
 - G1 は下限である。`arrived_auto`（予約triggerが明細と同時にだけ書く文言）と `input_page_save`（入力画面は明細1件以上のときだけ保存でき、毎回この文言で上書きする）は過去に明細を持っていたことがほぼ確定している。`items_api_shell` は明細INSERT失敗でも残るため不確定。
-- **G1 が0件でも、曖昧な行が無いことは証明されない。** 次の行は G1 では検出できず、DB内の他の情報でも確定できない（§3.1）。
-  - 明細を失った後に mobile で保存された行（`report_text` が null になる）、PC編集画面で文言を書き換えた行。
-  - 明細の削除履歴は残らない（`daily_report_items` に監査triggerなし、`revenue_estimates` は cascade 削除）。確定にはバックアップ（PITR）との突合が必要で、本PRでは行わない。
+- G1b は文言に依存せず、予約履歴に「来院済み」が記録された日（`old_value` / `new_value` のどちらか）で明細0件の日報を数える。明細を失った後に mobile で保存された行（`report_text` が null）や PC で文言を書き換えた行も、来院済み予約由来なら検出できる。G1 と G1b は重なり得る（承認記録では両方の件数を残す）。G1b も下限で、予約の物理削除や service_role による履歴削除で漏れ得る。`items_sync_since` が早すぎると、明細が作られていなかった日を誤検出する。
+- **G1・G1b が0件でも、曖昧な行が無いことは証明されない。** DB内の情報で確定できないのは、明細APIで手入力した明細を後から削除した日のうち文言が残っていない行と、予約履歴が消えた行である（§3.1）。確定には明細の削除前を含むバックアップとの突合が必要で、本PRでは行わない。
 - 分類で保証できる範囲: 明細1件以上の行は確実に `items` になる。明細0件の行は `manual` になり、その行の挙動は変更前と同じ（手入力合計を受け付け、最初の明細で明細集計に置換）。どちらの分類でも `total_*` と `updated_at` は変わらない。保証できないのは「過去に明細を持っていた明細0件の行」に本PRの保護（古い合計で上書きされない）が及ぶことであり、そうした行は変更前と同じく手入力・古い合計で上書きされ得る。
-- G1 が0件以外: 停止。選択肢は (a) そのまま `manual`（変更前の挙動を維持、stale 合計の再上書きは起こり得る）、(b) `arrived_auto` / `input_page_save` 行を `items` に分類する（その行に後から手入力した合計は次の書込で0になる）。どちらを選んだかと種類別件数を承認記録に残す。
-- G1 が0件: 上の「保証できない範囲」を owner が受け入れたことを承認記録に残してから進める（§11.1）。
+- G1・G1b のどちらかが0件以外: 停止。選択肢は (a) そのまま `manual`（変更前の挙動を維持、stale 合計の再上書きは起こり得る）、(b) `arrived_auto` / `input_page_save` / G1b の行を `items` に分類する（その行に後から手入力した合計は次の書込で0になる）。どちらを選んだかと種類別件数を承認記録に残す。
+- G1・G1b が0件: 上の「確定できない残り」を owner が受け入れたことを承認記録に残してから進める（§11.1）。
 - (b) の実行方法: guard は明細0件の `manual → items` を全 role で拒否するため、通常の UPDATE では実行できない。
   - 本 migration をまだどの永続環境にも適用していない場合: 本 migration の手順2（分類UPDATE。guard 作成前に動く）の条件へ owner が選んだ種類を追加し、再review・CI を通してから適用する。
   - 適用済みの場合: 別の reviewed forward migration で、1 transaction 内に対象 id と変更前の合計を証跡へ記録し、`alter table public.daily_reports disable trigger daily_reports_aggregate_authority` → `aggregate_source` だけを更新 → `enable trigger` を行う（`ALTER TABLE` の lock を伴うため低負荷時間帯に実施）。trigger を無効のまま残す・削除する手順は禁止。
@@ -189,7 +212,7 @@ migration → 検証（pgTAP・競合スクリプト・catalog確認）→ ア�
 
 集計列を再び無条件に受け付けるrollbackは行わない（rollback SQLは実行するとエラーで停止する）。問題時は次の forward-fix に限る。
 
-1. アプリ: 表示の問題は UI だけを戻す（read model の `aggregateSource` を無視しても安全）。API 互換は維持しているため旧クライアントはそのまま動く。
+1. アプリ: 表示の問題は UI だけを戻す（read model の `aggregateSource` を無視しても安全）。PC の API 互換は維持しているため旧クライアントはそのまま動く。mobile は明細型の日の保存に 409 を返すようになったため、deploy 前に読み込まれた mobile 画面（旧 bridge）は予約の競合文言を表示する。書込は行われず入力も残るため安全側で、再読込すると新しい表示になる。
 2. 関数不具合: 新しい migration で `save_daily_report` / guard 関数を `create or replace` する。guard trigger の削除はしない。
 3. `items` の日報を手入力へ戻す手段は提供しない（`items → manual` は guard が拒否）。必要になった場合は、明細0件の日報だけを対象に、変更前の値を記録したうえで service_role 専用・監査ログ付きの保守関数を追加する別Issue（High）として扱う。
 
@@ -205,10 +228,10 @@ migration → 検証（pgTAP・競合スクリプト・catalog確認）→ ア�
 
 ### 11.1 既存データの分類（owner 判断）
 
-- 事実: §3.1・§9.1 のとおり、明細0件の既存行は `manual` に分類される。G1 は文言で識別できる一部の行しか数えない。G1=0 は「判別不能な行が無い」ことを意味しない。
+- 事実: §3.1・§9.1 のとおり、明細0件の既存行は `manual` に分類される。G1 は文言で、G1b は予約履歴で、過去に明細を持っていた行の一部を数える。どちらも下限であり、0件は「判別不能な行が無い」ことを意味しない。
 - 保証できる範囲: 合計値・`updated_at` を変えない。明細0件行の挙動は変更前と同じで、悪化しない。
-- 保証できない範囲: 過去に明細を持っていた明細0件行（判別不能）には本PRの保護が及ばない。
-- 判断が必要な事項: (1) 判別不能な行を `manual` のまま受け入れるか（推奨: 受け入れる。挙動は変更前と同じで、確定にはバックアップ突合が必要なため）。(2) G1 が0件以外の場合の (a)/(b)。(3) バックアップ突合など追加調査を行うか。いずれも承認記録に残す。
+- 保証できない範囲: G1・G1b で検出できない、過去に明細を持っていた明細0件行（明細APIで手入力した明細を後から削除し文言も残っていない行、予約履歴が消えた行）には本PRの保護が及ばない。
+- 判断が必要な事項: (1) G1・G1b が0件以外の場合の (a)/(b)。(2) 検出できない残りを `manual` のまま受け入れるか（推奨: 受け入れる。挙動は変更前と同じで悪化せず、DB内に確定手段が無い）。(3) バックアップ突合など追加調査を行うか。(4) G1b の `items_sync_since`（来院済み予約→明細の同期を本番に適用した時刻）の確定。いずれも承認記録に残す。
 
 ### 11.2 来院済み → 完了 等の後の扱い（owner 判断）
 
@@ -230,7 +253,7 @@ migration → 検証（pgTAP・競合スクリプト・catalog確認）→ ア�
 
 ### 11.4 適用前ゲートの実行（read-only、別承認）
 
-- 本番で G1・G2（§9.1）と catalog snapshot を read-only で取得し、11.1 の判断と併せて記録する。
+- 本番で G1・G1b・G2（§9.1）と catalog snapshot を read-only で取得し、11.1 の判断と併せて記録する（いずれも件数・catalog だけを出力する）。
 
 ### 11.5 承認
 
