@@ -9,6 +9,8 @@ These files come from an isolated, disposable PostgreSQL 17.6 cluster with a min
 | `catalog-before.txt` | `origin/main` `8e7ab4c` migrations + seed replayed from zero   |
 | `catalog-after.txt`  | same plus `20261020170757_os_daily_report_aggregate_authority` |
 
-Expected difference (and the only one): `daily_reports.aggregate_source` + its CHECK, triggers `daily_reports_aggregate_authority` (BEFORE) and `daily_reports_staff_clinic_check` (AFTER), functions `app_private.enforce_daily_report_aggregate_authority()` / `app_private.enforce_daily_report_staff_clinic()` / `public.save_daily_report(...)`, and `recalculate_daily_report_totals` `search_path` `public` → `""`. RLS, policies and table grants are unchanged.
+Expected difference (and the only one): `daily_reports.aggregate_source` + its CHECK, triggers `daily_reports_aggregate_authority` (BEFORE) and `daily_reports_staff_clinic_check` (AFTER), functions `app_private.enforce_daily_report_aggregate_authority()` / `app_private.enforce_daily_report_staff_clinic()` / `public.save_daily_report(uuid,date,integer,integer,numeric,numeric,numeric,uuid,uuid,text,boolean)`, and `recalculate_daily_report_totals` `search_path` `public` → `""`. RLS, policies and table grants are unchanged.
+
+`catalog-after.txt` was regenerated on 2026-10-21 after the review follow-up added `p_require_manual boolean default false` to `save_daily_report` (the migration has not been applied to any persistent environment, so it was edited in place). Compared with the previous snapshot, only that signature line changed.
 
 Before applying to a shared or production database, capture the same snapshot with read-only catalog queries and compare (spec §9.1). The snapshot queries read only `information_schema`, `pg_catalog` and `pg_policies` plus `supabase_migrations.schema_migrations`.
