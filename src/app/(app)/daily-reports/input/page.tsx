@@ -663,6 +663,9 @@ export default function DailyReportInputPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
+  // 表示中の院・日付の明細を一度でも取得できたか。取得前・取得失敗の間は
+  // 一覧がその日の全件とは限らないため、件数・合計を示さず保存も止める。
+  const [hasLoadedItems, setHasLoadedItems] = useState(false);
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [isSavingReport, setIsSavingReport] = useState(false);
   const [savingItemId, setSavingItemId] = useState<string | null>(null);
@@ -736,6 +739,7 @@ export default function DailyReportInputPage() {
         setNextReservationDrafts({});
         replaceSavedItems([]);
         setFormError(null);
+        setHasLoadedItems(false);
         itemsTargetRef.current = { clinicId, date };
       }
 
@@ -791,6 +795,7 @@ export default function DailyReportInputPage() {
 
         setItems(parsed.items);
         replaceSavedItems(parsed.items);
+        setHasLoadedItems(true);
         if (parsed.paymentMethods) {
           setPaymentMethods(parsed.paymentMethods);
         }
@@ -1243,6 +1248,7 @@ export default function DailyReportInputPage() {
   const isSubmitDisabled = useMemo(() => {
     if (!hasClinic || isLoading || errorMessage) return true;
     return (
+      !hasLoadedItems ||
       items.length === 0 ||
       savingItemId !== null ||
       confirmingPricingItemId !== null ||
@@ -1253,6 +1259,7 @@ export default function DailyReportInputPage() {
     hasClinic,
     isLoading,
     errorMessage,
+    hasLoadedItems,
     items.length,
     savingItemId,
     confirmingPricingItemId,
@@ -1412,8 +1419,12 @@ export default function DailyReportInputPage() {
               </HelpHint>
             </CardTitle>
             <CardDescription>
-              {loadError && items.length === 0 ? (
-                '明細を読み込めなかったため、患者数・合計売上は不明です'
+              {!hasLoadedItems ? (
+                loadError ? (
+                  '明細を読み込めなかったため、患者数・合計売上は不明です'
+                ) : (
+                  '患者数・合計売上は明細の読み込み後に表示します'
+                )
               ) : (
                 <>
                   本日の患者数: {totalPatients}名 | 合計売上: ¥
@@ -1957,7 +1968,12 @@ export default function DailyReportInputPage() {
                 <Button
                   onClick={addItem}
                   className='w-full'
-                  disabled={isAddingItem || loadError !== null}
+                  disabled={
+                    isAddingItem ||
+                    isLoadingItems ||
+                    !hasLoadedItems ||
+                    loadError !== null
+                  }
                 >
                   <Plus className='h-4 w-4 mr-2' />
                   {isAddingItem ? '追加中...' : '追加'}
@@ -1967,7 +1983,7 @@ export default function DailyReportInputPage() {
           </CardContent>
         </Card>
 
-        {items.length > 0 && (
+        {hasLoadedItems && items.length > 0 && (
           <Card className='bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-900'>
             <CardHeader>
               <CardTitle className='flex items-center gap-1'>
