@@ -5,7 +5,9 @@
  * Each race runs two psql sessions against a disposable LOCAL database. The
  * holder writes inside an open transaction and keeps it open until
  * pg_blocking_pids() proves the waiter is blocked by it, then commits. The
- * final state is asserted in the database. Only loopback hosts are accepted.
+ * final state is asserted in the database. Only loopback hosts are accepted,
+ * and libpq variables that could redirect psql (PGHOSTADDR, PGSERVICE, ...)
+ * are not passed to it (see local-psql.mjs).
  *
  * Usage: node scripts/daily-reports/verify-aggregate-authority-races.mjs
  *          [--db-url postgresql://postgres:postgres@127.0.0.1:54332/postgres]
@@ -17,9 +19,14 @@ import { mkdtempSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+import {
+  assertLoopbackDatabaseUrl,
+  buildPsqlInvocation,
+  findLibpqTargetOverrides,
+} from './local-psql.mjs';
+
 const DEFAULT_DB_URL =
   'postgresql://postgres:postgres@127.0.0.1:54332/postgres';
-const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]', '::1']);
 const PREFIX = 'f1469000-0000-4000-8000-';
 const id = suffix => `${PREFIX}${suffix}`;
 
@@ -39,48 +46,25 @@ function parseArgs(argv) {
   );
 }
 
-function assertLoopback(dbUrl) {
-  const parsed = new URL(dbUrl);
-  // libpq honours host/hostaddr/service in the query string over the URL host.
-  if (parsed.search !== '' || !LOOPBACK_HOSTS.has(parsed.hostname)) {
-    throw new Error(
-      `Refusing database URL "${parsed.hostname}${parsed.search}": only a loopback host without query parameters is accepted. This verifier writes fixtures and must only target a disposable local database.`
-    );
-  }
-}
-
-const tempDirectory = mkdtempSync(path.join(os.tmpdir(), 'os-f2-races-'));
+let tempDirectory = null;
 const writtenFiles = [];
 let fileCounter = 0;
 
 function runSql(dbUrl, applicationName, sql) {
   fileCounter += 1;
+  tempDirectory ??= mkdtempSync(path.join(os.tmpdir(), 'os-f2-races-'));
   const filePath = path.join(tempDirectory, `${fileCounter}.sql`);
   writeFileSync(filePath, sql, 'utf8');
   writtenFiles.push(filePath);
 
+  const { command, args, options } = buildPsqlInvocation(
+    dbUrl,
+    applicationName,
+    filePath,
+    process.env
+  );
   return new Promise((resolve, reject) => {
-    const child = spawn(
-      'psql',
-      [
-        '--dbname',
-        dbUrl,
-        '--no-psqlrc',
-        '--set',
-        'ON_ERROR_STOP=1',
-        '--file',
-        filePath,
-      ],
-      {
-        env: {
-          ...process.env,
-          PGAPPNAME: applicationName,
-          PGCONNECT_TIMEOUT: '10',
-        },
-        shell: false,
-        windowsHide: true,
-      }
-    );
+    const child = spawn(command, args, options);
     let stdout = '';
     let stderr = '';
     const timeout = setTimeout(() => child.kill(), 90_000);
@@ -439,7 +423,13 @@ async function runRace(dbUrl, race, index) {
 
 async function main() {
   const dbUrl = parseArgs(process.argv.slice(2));
-  assertLoopback(dbUrl);
+  assertLoopbackDatabaseUrl(dbUrl);
+  const ignored = findLibpqTargetOverrides(process.env);
+  if (ignored.length > 0) {
+    console.error(
+      `Not passing ${ignored.join(', ')} to psql: the database URL alone selects the target.`
+    );
+  }
 
   let failures = 0;
   try {
@@ -462,7 +452,7 @@ async function main() {
       await runSql(dbUrl, 'os_f2_race_cleanup', CLEANUP_SQL);
     } finally {
       for (const filePath of writtenFiles) unlinkSync(filePath);
-      rmdirSync(tempDirectory);
+      if (tempDirectory) rmdirSync(tempDirectory);
     }
   }
 

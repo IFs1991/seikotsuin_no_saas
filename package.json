@@ -18,7 +18,7 @@
     "type-check": "tsc --noEmit",
     "type-check:commercial": "tsc --project tsconfig.commercial.json",
     "test": "node scripts/run-jest.mjs",
-    "test:release-tooling": "node --test scripts/lib/image-pull-retry.test.mjs scripts/release/*.test.mjs scripts/release/__tests__/*.test.mjs",
+    "test:release-tooling": "node --test scripts/lib/image-pull-retry.test.mjs scripts/release/*.test.mjs scripts/release/__tests__/*.test.mjs scripts/daily-reports/*.test.mjs",
     "release:preflight": "node scripts/release/preflight.mjs",
     "release:seed": "node scripts/release/core100.mjs seed",
     "release:load:plan": "node scripts/release/core100.mjs plan",
