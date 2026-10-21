@@ -674,57 +674,286 @@ describe('DailyReportInputPage Phase 4A-5 pricing UI', () => {
     [
       'an error response',
       () => jsonResponse({ success: false }, { status: 500 }),
+      '日報明細の取得に失敗しました',
     ],
-    ['a network error', () => Promise.reject(new TypeError('network down'))],
+    [
+      'a network error',
+      () => Promise.reject(new TypeError('network down')),
+      'network down',
+    ],
   ])(
     'does not keep the previous date items savable when the new date load fails with %s',
-    async (_label, failLoad) => {
-      const fetchMock = jest
-        .spyOn(global, 'fetch')
-        .mockImplementation((input, init) => {
-          const url = new URL(urlFromFetchInput(input), 'http://localhost');
-          if (url.pathname === '/api/daily-reports/items') {
-            if (url.searchParams.get('report_date') === dateB) {
-              return failLoad() as Promise<Response>;
-            }
-            return jsonResponse({
-              success: true,
-              data: { items: itemsFor('A'), paymentMethods: [] },
-            });
+    async (_label, failLoad, loadErrorText) => {
+      jest.spyOn(global, 'fetch').mockImplementation((input, init) => {
+        const url = new URL(urlFromFetchInput(input), 'http://localhost');
+        if (url.pathname === '/api/daily-reports/items') {
+          if (url.searchParams.get('report_date') === dateB) {
+            return failLoad() as Promise<Response>;
           }
-          return jsonResponse(
-            {
-              success: false,
-              error: `unexpected ${init?.method ?? 'GET'} ${url}`,
-            },
-            { status: 500 }
-          );
-        });
+          return jsonResponse({
+            success: true,
+            data: { items: itemsFor('A'), paymentMethods: [] },
+          });
+        }
+        return jsonResponse(
+          {
+            success: false,
+            error: `unexpected ${init?.method ?? 'GET'} ${url}`,
+          },
+          { status: 500 }
+        );
+      });
+      const user = userEvent.setup();
 
       renderPage();
 
       await screen.findByRole('button', { name: '山田 太郎の金額を確定' });
+      // A form error left over from the previous date must not hide the
+      // new date's load failure.
+      await user.click(screen.getByRole('button', { name: '追加' }));
+      expect(
+        screen.getByText('患者名と施術内容を入力してください')
+      ).toBeInTheDocument();
+
       const dateInput = screen.getByLabelText('日付') as HTMLInputElement;
       fireEvent.change(dateInput, { target: { value: dateB } });
 
-      await waitFor(() =>
-        expect(
-          fetchMock.mock.calls.some(([input]) =>
-            urlFromFetchInput(input).includes(`report_date=${dateB}`)
-          )
-        ).toBe(true)
-      );
-      await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 0));
-      });
+      // Assert only after the failed load has settled.
+      expect(await screen.findByText(loadErrorText)).toBeInTheDocument();
+      expect(
+        screen.queryByText('明細を読み込み中です...')
+      ).not.toBeInTheDocument();
 
       expect(dateInput.value).toBe(dateB);
       expect(
         screen.queryByRole('button', { name: '山田 太郎の金額を確定' })
       ).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: '保存' })).toBeDisabled();
+      expect(
+        screen.queryByText('患者名と施術内容を入力してください')
+      ).not.toBeInTheDocument();
+      // The day is unknown, not empty: no "no items yet" claim, no manual add.
+      expect(
+        screen.queryByText(/本日の明細はまだありません/)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('まだ患者が登録されていません')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getAllByText(/明細を読み込めませんでした/).length
+      ).toBeGreaterThan(0);
+      expect(screen.getByRole('button', { name: '追加' })).toBeDisabled();
     }
   );
+
+  it('does not keep the previous clinic items savable when the new clinic load fails', async () => {
+    jest.spyOn(global, 'fetch').mockImplementation(input => {
+      const url = new URL(urlFromFetchInput(input), 'http://localhost');
+      if (url.pathname === '/api/daily-reports/items') {
+        if (url.searchParams.get('clinic_id') === selectedClinicId) {
+          return jsonResponse(
+            {
+              success: false,
+              error: 'このクリニックへのアクセス権がありません',
+            },
+            { status: 403 }
+          );
+        }
+        return jsonResponse({
+          success: true,
+          data: { items: itemsFor('A'), paymentMethods: [] },
+        });
+      }
+      return jsonResponse({ success: false }, { status: 500 });
+    });
+    const user = userEvent.setup();
+
+    render(
+      <UserProfileProvider
+        value={{
+          profile: {
+            id: 'user-1',
+            email: 'staff@example.com',
+            role: 'staff',
+            clinicId,
+            clinicName: 'テスト院',
+            isActive: true,
+            isAdmin: false,
+          },
+          loading: false,
+          error: null,
+        }}
+      >
+        <SelectedClinicProvider
+          initialClinicId={clinicId}
+          currentClinicId={clinicId}
+          clinics={[
+            { id: clinicId, name: 'テスト院' },
+            { id: selectedClinicId, name: '分院' },
+          ]}
+        >
+          <ClinicSwitcher />
+          <DailyReportInputPage />
+        </SelectedClinicProvider>
+      </UserProfileProvider>
+    );
+
+    await screen.findByRole('button', { name: '山田 太郎の金額を確定' });
+    await user.click(screen.getByRole('button', { name: '分院に切り替え' }));
+
+    expect(
+      await screen.findByText('このクリニックへのアクセス権がありません')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '山田 太郎の金額を確定' })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '保存' })).toBeDisabled();
+  });
+
+  it('keeps the rows on screen during a same-target reload after saving', async () => {
+    let resolveReload: (() => void) | null = null;
+    let itemLoads = 0;
+    jest.spyOn(global, 'fetch').mockImplementation((input, init) => {
+      const url = new URL(urlFromFetchInput(input), 'http://localhost');
+      if (url.pathname === '/api/daily-reports/items') {
+        itemLoads += 1;
+        if (itemLoads === 1) {
+          return jsonResponse({
+            success: true,
+            data: { items: itemsFor('A'), paymentMethods: [] },
+          });
+        }
+        return new Promise<Response>(resolve => {
+          resolveReload = () =>
+            resolve(
+              new Response(
+                JSON.stringify({
+                  success: true,
+                  data: { items: [...itemsFor('A'), ...itemsFor('B')] },
+                }),
+                {
+                  status: 200,
+                  headers: { 'Content-Type': 'application/json' },
+                }
+              )
+            );
+        });
+      }
+      if (url.pathname === '/api/daily-reports' && init?.method === 'POST') {
+        // Another tab added a row: the DB totals differ, so the page reloads.
+        return jsonResponse({
+          success: true,
+          data: { total_patients: 2, total_revenue: 4000 },
+        });
+      }
+      return jsonResponse({ success: false }, { status: 500 });
+    });
+    const user = userEvent.setup();
+
+    renderPage();
+
+    await screen.findByRole('button', { name: '山田 太郎の金額を確定' });
+    await user.click(screen.getByRole('button', { name: '保存' }));
+    await waitFor(() => expect(resolveReload).not.toBeNull());
+
+    // While the same-target reload is pending the list is not blanked.
+    expect(
+      screen.getByRole('button', {
+        name: '山田 太郎の金額を確定',
+        hidden: true,
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('明細を読み込み中です...')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveReload?.();
+    });
+    expect(
+      await screen.findByRole('button', {
+        name: '田中 次郎の金額を確定',
+        hidden: true,
+      })
+    ).toBeInTheDocument();
+  });
+
+  it('lists an item once when its add resolves after switching away and back', async () => {
+    const createdId = '123e4567-e89b-12d3-a456-426614174014';
+    const created = {
+      ...buildItem({
+        id: createdId,
+        patientName: '往復 花子',
+        treatmentName: '自費施術',
+        fee: 3000,
+        billingType: 'private',
+        revenueContextCode: 'insurance',
+      }),
+      source: 'manual',
+    };
+    let addCommitted = false;
+    let resolveAdd: (() => void) | null = null;
+    jest.spyOn(global, 'fetch').mockImplementation((input, init) => {
+      const url = new URL(urlFromFetchInput(input), 'http://localhost');
+      const method = init?.method ?? 'GET';
+      if (url.pathname === '/api/daily-reports/items' && method === 'GET') {
+        const onB = url.searchParams.get('report_date') === dateB;
+        return jsonResponse({
+          success: true,
+          data: {
+            items: onB
+              ? itemsFor('B')
+              : addCommitted
+                ? [...itemsFor('A'), created]
+                : itemsFor('A'),
+            paymentMethods: [],
+          },
+        });
+      }
+      if (url.pathname === '/api/daily-reports/items' && method === 'POST') {
+        // The row is committed at once; only the response is late.
+        addCommitted = true;
+        return new Promise<Response>(resolve => {
+          resolveAdd = () =>
+            resolve(
+              new Response(JSON.stringify({ success: true, data: created }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+              })
+            );
+        });
+      }
+      return jsonResponse({ success: false }, { status: 500 });
+    });
+    const user = userEvent.setup();
+
+    renderPage();
+
+    await screen.findByRole('button', { name: '山田 太郎の金額を確定' });
+    const dateInput = screen.getByLabelText('日付') as HTMLInputElement;
+    const dateA = dateInput.value;
+    await user.type(screen.getByPlaceholderText('田中花子'), '往復 花子');
+    await user.type(
+      screen.getByPlaceholderText('整体、マッサージ'),
+      '自費施術'
+    );
+    await user.click(screen.getByRole('button', { name: '追加' }));
+    await waitFor(() => expect(resolveAdd).not.toBeNull());
+
+    fireEvent.change(dateInput, { target: { value: dateB } });
+    await screen.findByRole('button', { name: '田中 次郎の金額を確定' });
+    fireEvent.change(dateInput, { target: { value: dateA } });
+    await screen.findByDisplayValue('往復 花子');
+
+    await act(async () => {
+      resolveAdd?.();
+    });
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+
+    expect(screen.getAllByDisplayValue('往復 花子')).toHaveLength(1);
+  });
 
   it('shows the saved DB totals and reloads stale items after saving', async () => {
     const fetchMock = setupFetch();

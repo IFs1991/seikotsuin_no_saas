@@ -735,6 +735,7 @@ export default function DailyReportInputPage() {
         setItems([]);
         setNextReservationDrafts({});
         replaceSavedItems([]);
+        setFormError(null);
         itemsTargetRef.current = { clinicId, date };
       }
 
@@ -1305,9 +1306,16 @@ export default function DailyReportInputPage() {
         {(formError || loadError) && (
           <Card className='border-red-200 bg-red-50 dark:bg-red-950/40'>
             <CardContent className='py-4'>
-              <p className='text-red-700 dark:text-red-300 font-medium'>
-                {formError ?? loadError}
-              </p>
+              {loadError && (
+                <p className='text-red-700 dark:text-red-300 font-medium'>
+                  {loadError}
+                </p>
+              )}
+              {formError && (
+                <p className='text-red-700 dark:text-red-300 font-medium'>
+                  {formError}
+                </p>
+              )}
             </CardContent>
           </Card>
         )}
@@ -1334,11 +1342,13 @@ export default function DailyReportInputPage() {
           <Card>
             <CardContent className='space-y-2 pt-6'>
               <p className='text-sm font-medium text-foreground' role='status'>
-                {totalPatients === 0
-                  ? '本日の明細はまだありません。来院済みの予約があれば自動で表示されます。'
-                  : pendingPricingCount === 0
-                    ? `全${totalPatients}件の金額確定が完了しています。あとは下の「日報を保存する」だけです。`
-                    : `明細${totalPatients}件のうち、残り${pendingPricingCount}件の金額確定が必要です。`}
+                {loadError
+                  ? '明細を読み込めませんでした。ページを再読み込みしてから入力してください。'
+                  : totalPatients === 0
+                    ? '本日の明細はまだありません。来院済みの予約があれば自動で表示されます。'
+                    : pendingPricingCount === 0
+                      ? `全${totalPatients}件の金額確定が完了しています。あとは下の「日報を保存する」だけです。`
+                      : `明細${totalPatients}件のうち、残り${pendingPricingCount}件の金額確定が必要です。`}
               </p>
               <Progress
                 value={confirmedPricingCount}
@@ -1404,7 +1414,9 @@ export default function DailyReportInputPage() {
               </div>
             ) : items.length === 0 ? (
               <div className='text-center py-8 text-gray-500'>
-                まだ患者が登録されていません
+                {loadError
+                  ? '明細を読み込めませんでした'
+                  : 'まだ患者が登録されていません'}
               </div>
             ) : (
               <div className='space-y-3'>
@@ -1930,7 +1942,7 @@ export default function DailyReportInputPage() {
                 <Button
                   onClick={addItem}
                   className='w-full'
-                  disabled={isAddingItem}
+                  disabled={isAddingItem || loadError !== null}
                 >
                   <Plus className='h-4 w-4 mr-2' />
                   {isAddingItem ? '追加中...' : '追加'}
