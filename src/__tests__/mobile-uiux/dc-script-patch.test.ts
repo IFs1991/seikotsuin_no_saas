@@ -770,7 +770,7 @@ describe('patchMobileUiuxDcScript', () => {
         'settings-detail',
         settingsPayload
       );
-      return { component, bridge };
+      return { component, bridge, window };
     }
 
     function openFormWithThreeRows(component: EvaluatedComponent) {
@@ -864,6 +864,79 @@ describe('patchMobileUiuxDcScript', () => {
       expect(bridge.submitDailyReport).not.toHaveBeenCalled();
       expect(component.renderVals().toastMsg).toBe('日報は保存されていません');
       expect(component.renderVals().itemRows).toHaveLength(1);
+    });
+
+    it('keys the item-derived flag per date: an itemized yesterday does not block a manual today', async () => {
+      const { component, window } = await evaluateRealDailyReportsComponent();
+      const bridge = {
+        submitDailyReport: jest.fn(async () => true),
+        notifyDailyReportItemized: jest.fn(() => true),
+      };
+      (
+        window as unknown as { MobileUiuxBridge: typeof bridge }
+      ).MobileUiuxBridge = bridge;
+      component.componentDidMount();
+      const today = dayPayload('manual').data.dailyReports.reports[0];
+      // Boot-shaped read (no start/end): latest reports first.
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('daily-reports', {
+        success: true,
+        data: {
+          clinicId: CLINIC,
+          startDate: null,
+          endDate: null,
+          dailyReports: {
+            reports: [
+              today,
+              {
+                ...today,
+                id: 'report-0709',
+                reportDate: '2026-07-09',
+                aggregateSource: 'items',
+              },
+            ],
+            summary: {
+              totalReports: 2,
+              averagePatients: 2,
+              averageRevenue: 5000,
+              totalRevenue: 10000,
+            },
+            monthlyTrends: [],
+          },
+        },
+        generatedAt: '2026-07-10T03:00:00.000Z',
+      });
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'settings-detail',
+        settingsPayload
+      );
+
+      openFormWithThreeRows(component);
+      expect(component.renderVals().formOpen).toBe(true);
+      await expect(save(component)).resolves.toBe(true);
+      expect(bridge.submitDailyReport).toHaveBeenCalledWith(
+        expect.objectContaining({ report_date: '2026-07-10' })
+      );
+      expect(bridge.notifyDailyReportItemized).not.toHaveBeenCalled();
+    });
+
+    it('clears the item-derived flag when a single-day read shows the report is gone', async () => {
+      const { component, window, bridge } = await mountDay(
+        'items',
+        async () => true
+      );
+
+      (component.renderVals().inputToday as () => void)();
+      expect(component.renderVals().formOpen).toBe(false);
+
+      // The report was deleted on PC; a picked-date read returns no report.
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'daily-reports',
+        dayPayload(undefined)
+      );
+      (component.renderVals().inputToday as () => void)();
+
+      expect(component.renderVals().formOpen).toBe(true);
+      expect(bridge.notifyDailyReportItemized).toHaveBeenCalledTimes(1);
     });
 
     it('keeps entered rows and reports no success when the day became item-derived before the save landed', async () => {

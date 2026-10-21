@@ -4059,6 +4059,11 @@ ${buildCanonicalRoleAdapterSource(DAILY_REPORTS_DC_ROLE_BY_CANONICAL)}
     for (const report of reports) {
       this.__mobileUiuxSetItemizedReportDate(report.dateKey, report.aggregateSource === 'items');
     }
+    // 単日読みでその日の日報が無い (PC で削除された等) なら明細型の記録も外す
+    if (typeof data.startDate === 'string' && data.startDate === data.endDate &&
+        !reports.some((report) => report.dateKey === data.startDate)) {
+      this.__mobileUiuxSetItemizedReportDate(data.startDate, false);
+    }
 
     const todayReport = reports.length > 0 ? reports[0] : null;
     const todaySubmitted = todayReport !== null;
