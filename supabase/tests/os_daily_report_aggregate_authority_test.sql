@@ -8,7 +8,7 @@ begin;
 
 set local search_path = pg_catalog, extensions, public, auth;
 
-select plan(81);
+select plan(85);
 
 -- ---------------------------------------------------------------- fixtures
 insert into public.clinics (id, name)
@@ -857,7 +857,44 @@ select throws_ok(
   '42501', 'DAILY_REPORT_NOT_ACCESSIBLE',
   'M6: another clinic cannot learn that a report is itemized through the manual-only error'
 );
+-- The mobile form sends no report id: the insert path must give another clinic
+-- the same RLS error whether the day is itemized or manual.
+select throws_ok(
+  $$select public.save_daily_report(
+      p_clinic_id => 'f1460000-0000-4000-8000-000000000001', p_report_date => '2095-01-01',
+      p_total_patients => 1, p_new_patients => 0, p_total_revenue => 1,
+      p_insurance_revenue => 0, p_private_revenue => 1, p_require_manual => true)$$,
+  '42501', 'new row violates row-level security policy for table "daily_reports"',
+  'M7: without a report id, another clinic gets the plain RLS error on an itemized day'
+);
+select throws_ok(
+  $$select public.save_daily_report(
+      p_clinic_id => 'f1460000-0000-4000-8000-000000000001', p_report_date => '2095-01-04',
+      p_total_patients => 1, p_new_patients => 0, p_total_revenue => 1,
+      p_insurance_revenue => 0, p_private_revenue => 1, p_require_manual => true)$$,
+  '42501', 'new row violates row-level security policy for table "daily_reports"',
+  'M8: without a report id, another clinic gets the same RLS error on a manual day'
+);
 reset role;
+
+select set_config('request.jwt.claims', (select claims from os_f2_jwt where user_key = 'a'), true);
+set local role authenticated;
+select throws_ok(
+  $$select public.save_daily_report(
+      p_clinic_id => 'f1460000-0000-4000-8000-000000000001', p_report_date => '2095-01-01',
+      p_total_patients => 3, p_new_patients => 0, p_total_revenue => 9000,
+      p_insurance_revenue => 0, p_private_revenue => 9000,
+      p_report_id => 'f1460000-0000-4000-8000-000000000101', p_require_manual => true)$$,
+  '55000', 'DAILY_REPORT_ITEMIZED',
+  'M9: the report-id path refuses an itemized report for a manual-only save too'
+);
+reset role;
+select is(
+  (select count(*) from pg_proc
+   where proname = 'save_daily_report' and pronamespace = 'public'::regnamespace),
+  1::bigint,
+  'M10: exactly one save_daily_report exists (no lingering overload)'
+);
 
 select * from finish();
 rollback;
