@@ -957,6 +957,8 @@ describe('DailyReportInputPage Phase 4A-5 pricing UI', () => {
     expect(
       screen.getByText('明細が他の操作で更新されました')
     ).toBeInTheDocument();
+    // The rows stay, but whether they are the whole day is unknown again.
+    expect(screen.getByRole('button', { name: '追加' })).toBeDisabled();
   });
 
   it('does not keep the previous clinic items savable when the new clinic load fails', async () => {
