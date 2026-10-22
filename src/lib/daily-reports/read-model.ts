@@ -15,6 +15,7 @@ export const DAILY_REPORT_SELECT = `
   insurance_revenue,
   private_revenue,
   report_text,
+  aggregate_source,
   created_at,
   staff(name, role)
 `;
@@ -46,10 +47,13 @@ type DailyReportReadRow = Pick<
   | 'insurance_revenue'
   | 'private_revenue'
   | 'report_text'
+  | 'aggregate_source'
   | 'created_at'
 > & {
   staff: StaffReadRow | StaffReadRow[] | null;
 };
+
+export type DailyReportAggregateSource = 'manual' | 'items';
 
 export type DailyReportApiResponse = {
   id: DailyReportRow['id'];
@@ -61,6 +65,8 @@ export type DailyReportApiResponse = {
   insuranceRevenue: number;
   privateRevenue: number;
   reportText: string | null;
+  /** 'items': totals are derived from detail rows and are not editable. */
+  aggregateSource: DailyReportAggregateSource;
   createdAt: string | null;
 };
 
@@ -104,6 +110,7 @@ function mapReport(report: DailyReportReadRow): DailyReportApiResponse {
     insuranceRevenue: report.insurance_revenue ?? 0,
     privateRevenue: report.private_revenue ?? 0,
     reportText: report.report_text,
+    aggregateSource: report.aggregate_source === 'items' ? 'items' : 'manual',
     createdAt: report.created_at,
   };
 }

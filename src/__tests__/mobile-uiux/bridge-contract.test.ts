@@ -99,7 +99,8 @@ type BridgeWindow = {
   MobileUiuxBridge?: {
     createReservation: (payload: unknown) => Promise<boolean>;
     updateReservation: (payload: unknown) => Promise<boolean>;
-    submitDailyReport: (payload: unknown) => Promise<boolean>;
+    submitDailyReport: (payload: unknown) => Promise<boolean | 'itemized'>;
+    notifyDailyReportItemized: () => boolean;
     updateSettings: (payload: unknown) => Promise<boolean>;
     refreshReadData: (params: {
       date?: string;
@@ -2416,7 +2417,7 @@ describe('mobile-uiux bridge contract', () => {
         data: {
           clinicId: '11111111-1111-4111-8111-111111111111',
           reportDate: '2026-06-30',
-          report: { id: 'report-1' },
+          report: { id: 'report-1', aggregateSource: 'manual' },
           dailyReports: { reports: [{ id: 'report-1' }] },
         },
         generatedAt: '2026-06-30T00:00:00.000Z',
@@ -2493,7 +2494,7 @@ describe('mobile-uiux bridge contract', () => {
         data: {
           clinicId: '11111111-1111-4111-8111-111111111111',
           reportDate: '2026-06-30',
-          report: { id: 'report-1' },
+          report: { id: 'report-1', aggregateSource: 'manual' },
           dailyReports: { reports: [{ id: 'report-1' }] },
         },
         generatedAt: '2026-06-30T00:00:00.000Z',
@@ -2554,7 +2555,7 @@ describe('mobile-uiux bridge contract', () => {
           data: {
             clinicId: '11111111-1111-4111-8111-111111111111',
             reportDate: '2026-06-30',
-            report: { id: 'report-1' },
+            report: { id: 'report-1', aggregateSource: 'manual' },
             dailyReports: {
               reports: [
                 {
@@ -2722,7 +2723,7 @@ describe('mobile-uiux bridge contract', () => {
         data: {
           clinicId: '11111111-1111-4111-8111-111111111111',
           reportDate: '2026-06-30',
-          report: { id: 'report-1' },
+          report: { id: 'report-1', aggregateSource: 'manual' },
           dailyReports: { reports: [{ id: 'report-1' }] },
         },
         generatedAt: '2026-06-30T00:00:00.000Z',
@@ -2787,6 +2788,193 @@ describe('mobile-uiux bridge contract', () => {
     expect(window.document.body.textContent).not.toContain('clinic-secret');
     expect(window.document.body.textContent).not.toContain('user-secret');
     expect(window.document.body.textContent).not.toContain('staff-secret');
+  });
+
+  describe('item-derived daily reports', () => {
+    const writeEnabledContext = {
+      ...contextPayload,
+      data: {
+        ...contextPayload.data,
+        flags: {
+          ...contextPayload.data.flags,
+          writeEnabled: true,
+          dailyReportWriteEnabled: true,
+        },
+      },
+    };
+    const bootReadPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        startDate: null,
+        endDate: null,
+        dailyReports: { reports: [] },
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    // 3名・9,000円 entered on the phone while the DB derives 2名・5,000円.
+    const formPayload = {
+      report_date: '2026-06-30',
+      total_patients: 3,
+      new_patients: 0,
+      total_revenue: 9000,
+      insurance_revenue: 0,
+      private_revenue: 9000,
+      report_text: null,
+    };
+    const itemizedGuidance =
+      '明細から自動集計される日報のため、モバイルでは合計を保存できません。PCの日報入力画面で明細を修正してください';
+
+    it('keeps the form input when the server refuses an item-derived report', async () => {
+      const script = buildMobileUiuxBridgeScript({
+        realDataEnabled: true,
+        manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+      });
+      const applyReadData = jest.fn(() => true);
+      const { window, bodyNodes } = buildBridgeWindow(
+        'daily-reports',
+        [
+          buildJsonResponse(200, writeEnabledContext),
+          buildJsonResponse(200, bootReadPayload),
+          buildJsonResponse(200, settingsDetailReadPayload),
+          buildJsonResponse(409, {
+            success: false,
+            error: { code: 'CONFLICT', message: 'server text is not shown' },
+          }),
+        ],
+        applyReadData
+      );
+
+      await runBridgeScript(script, window);
+      applyReadData.mockClear();
+      const result =
+        await window.MobileUiuxBridge?.submitDailyReport(formPayload);
+
+      expect(result).toBe('itemized');
+      expect(applyReadData).not.toHaveBeenCalled();
+      expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
+        'itemized'
+      );
+      expect(window.document.body.textContent).toContain(itemizedGuidance);
+      expect(window.document.body.textContent).not.toContain(
+        '日報を保存しました'
+      );
+      expect(
+        bodyNodes.filter(
+          node => node.dataset.mobileUiuxBridgeFallback !== undefined
+        )
+      ).toHaveLength(0);
+    });
+
+    it('does not apply DB totals of an item-derived report as a successful save', async () => {
+      const script = buildMobileUiuxBridgeScript({
+        realDataEnabled: true,
+        manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+      });
+      const applyReadData = jest.fn(() => true);
+      const { window } = buildBridgeWindow(
+        'daily-reports',
+        [
+          buildJsonResponse(200, writeEnabledContext),
+          buildJsonResponse(200, bootReadPayload),
+          buildJsonResponse(200, settingsDetailReadPayload),
+          buildJsonResponse(200, {
+            success: true,
+            data: {
+              clinicId: '11111111-1111-4111-8111-111111111111',
+              reportDate: '2026-06-30',
+              report: { id: 'report-1', aggregateSource: 'items' },
+              dailyReports: {
+                reports: [
+                  {
+                    id: 'report-1',
+                    reportDate: '2026-06-30',
+                    totalPatients: 2,
+                    totalRevenue: 5000,
+                    insuranceRevenue: 3000,
+                    privateRevenue: 2000,
+                    aggregateSource: 'items',
+                  },
+                ],
+              },
+            },
+            generatedAt: '2026-06-30T00:00:00.000Z',
+          }),
+        ],
+        applyReadData
+      );
+
+      await runBridgeScript(script, window);
+      applyReadData.mockClear();
+      const result =
+        await window.MobileUiuxBridge?.submitDailyReport(formPayload);
+
+      expect(result).toBe('itemized');
+      expect(applyReadData).not.toHaveBeenCalled();
+      expect(window.document.body.textContent).toContain(itemizedGuidance);
+      expect(window.document.body.textContent).not.toContain(
+        '日報を保存しました'
+      );
+    });
+
+    it('refuses a save response that does not state the saved aggregate source', async () => {
+      const script = buildMobileUiuxBridgeScript({
+        realDataEnabled: true,
+        manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+      });
+      const applyReadData = jest.fn(() => true);
+      const { window } = buildBridgeWindow(
+        'daily-reports',
+        [
+          buildJsonResponse(200, writeEnabledContext),
+          buildJsonResponse(200, bootReadPayload),
+          buildJsonResponse(200, settingsDetailReadPayload),
+          buildJsonResponse(200, {
+            success: true,
+            data: {
+              clinicId: '11111111-1111-4111-8111-111111111111',
+              reportDate: '2026-06-30',
+              report: { id: 'report-1' },
+              dailyReports: { reports: [] },
+            },
+            generatedAt: '2026-06-30T00:00:00.000Z',
+          }),
+        ],
+        applyReadData
+      );
+
+      await runBridgeScript(script, window);
+      applyReadData.mockClear();
+      const result =
+        await window.MobileUiuxBridge?.submitDailyReport(formPayload);
+
+      expect(result).toBe(false);
+      expect(applyReadData).not.toHaveBeenCalled();
+      expect(window.document.body.textContent).not.toContain(
+        '日報を保存しました'
+      );
+    });
+
+    it('shows the item-editor guidance on request without a network call', async () => {
+      const script = buildMobileUiuxBridgeScript({
+        realDataEnabled: true,
+        manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+      });
+      const { window, calls } = buildBridgeWindow('daily-reports', [
+        buildJsonResponse(200, writeEnabledContext),
+        buildJsonResponse(200, bootReadPayload),
+      ]);
+
+      await runBridgeScript(script, window);
+      const callsBefore = calls.length;
+
+      expect(window.MobileUiuxBridge?.notifyDailyReportItemized()).toBe(true);
+      expect(calls).toHaveLength(callsBefore);
+      expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
+        'itemized'
+      );
+      expect(window.document.body.textContent).toContain(itemizedGuidance);
+    });
   });
 
   it('reuses fallback and mutation status elements on repeated daily report failures', async () => {

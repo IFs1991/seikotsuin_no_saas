@@ -74,21 +74,6 @@ const dailyReportsReadModel = {
   ],
 };
 
-type MaybeSingleBuilder<T> = {
-  eq: jest.MockedFunction<
-    (field: string, value: unknown) => MaybeSingleBuilder<T>
-  >;
-  maybeSingle: jest.MockedFunction<() => Promise<{ data: T; error: null }>>;
-};
-
-type UpsertBuilder<T> = {
-  select: jest.MockedFunction<() => UpsertSelectBuilder<T>>;
-};
-
-type UpsertSelectBuilder<T> = {
-  single: jest.MockedFunction<() => Promise<{ data: T; error: null }>>;
-};
-
 type EntitlementRow = {
   clinic_id: string;
   mobile_uiux_enabled: boolean;
@@ -111,22 +96,6 @@ type EntitlementBuilder = {
     () => Promise<{ data: EntitlementRow[]; error: null }>
   >;
 };
-
-function createMaybeSingleBuilder<T>(data: T): MaybeSingleBuilder<T> {
-  const builder = {} as MaybeSingleBuilder<T>;
-  builder.eq = jest.fn().mockReturnValue(builder);
-  builder.maybeSingle = jest.fn().mockResolvedValue({ data, error: null });
-  return builder;
-}
-
-function createUpsertBuilder<T>(data: T): UpsertBuilder<T> {
-  const selectBuilder: UpsertSelectBuilder<T> = {
-    single: jest.fn().mockResolvedValue({ data, error: null }),
-  };
-  return {
-    select: jest.fn().mockReturnValue(selectBuilder),
-  };
-}
 
 function buildEntitlementRow(
   enabled: boolean,
@@ -166,12 +135,14 @@ function buildMutationRequest(payload = validDto) {
   });
 }
 
+type SaveRpcError = { code: string; message: string; details?: string };
+
 function buildMutationClient(params?: {
-  staffFound?: boolean;
-  reportFound?: boolean;
+  rpcError?: SaveRpcError;
+  savedRow?: Record<string, unknown>;
   entitlementRows?: EntitlementRow[];
 }) {
-  const upsertedRow = {
+  const savedRow = params?.savedRow ?? {
     id: reportId,
     clinic_id: clinicId,
     staff_id: validDto.staff_id,
@@ -182,40 +153,31 @@ function buildMutationClient(params?: {
     insurance_revenue: validDto.insurance_revenue,
     private_revenue: validDto.private_revenue,
     report_text: validDto.report_text,
+    aggregate_source: 'manual',
     created_at: '2026-06-30T09:00:00.000Z',
     updated_at: '2026-06-30T09:00:00.000Z',
   };
-  const staffQuery = createMaybeSingleBuilder(
-    params?.staffFound === false ? null : { id: staffId }
-  );
-  const reportQuery = createMaybeSingleBuilder(
-    params?.reportFound === false ? null : { id: reportId }
-  );
-  const upsertBuilder = createUpsertBuilder(upsertedRow);
   const entitlementBuilder = createEntitlementBuilder(
     params?.entitlementRows ?? []
   );
-  const staffTable = {
-    select: jest.fn().mockReturnValue(staffQuery),
-  };
-  const dailyReportsTable = {
-    select: jest.fn().mockReturnValue(reportQuery),
-    upsert: jest.fn().mockReturnValue(upsertBuilder),
-  };
+  const rpc = jest
+    .fn()
+    .mockResolvedValue(
+      params?.rpcError
+        ? { data: null, error: params.rpcError }
+        : { data: savedRow, error: null }
+    );
   const client = {
+    rpc,
     from: jest.fn().mockImplementation((table: string) => {
-      if (table === 'staff') return staffTable;
-      if (table === 'daily_reports') return dailyReportsTable;
       if (table === 'clinic_feature_flags') return entitlementBuilder;
-      return {};
+      throw new Error(`unexpected direct table access: ${table}`);
     }),
   };
 
   return {
     client,
-    staffQuery,
-    reportQuery,
-    dailyReportsTable,
+    rpc,
     entitlementBuilder,
   };
 }
@@ -262,7 +224,7 @@ describe('POST /api/mobile-uiux/daily-reports write pilot', () => {
 
   it('returns 403 when DB entitlement disables daily report write', async () => {
     process.env.MOBILE_UIUX_USE_DB_ENTITLEMENTS = 'true';
-    const { client, dailyReportsTable } = buildMutationClient({
+    const { client, rpc } = buildMutationClient({
       entitlementRows: [buildEntitlementRow(true, false)],
     });
     processClinicScopedBodyMock.mockResolvedValueOnce({
@@ -277,7 +239,7 @@ describe('POST /api/mobile-uiux/daily-reports write pilot', () => {
     const response = await POST(buildMutationRequest());
 
     expect(response.status).toBe(403);
-    expect(dailyReportsTable.upsert).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it('returns 400 when new_patients exceeds total_patients', async () => {
@@ -286,6 +248,12 @@ describe('POST /api/mobile-uiux/daily-reports write pilot', () => {
       total_patients: 2,
       new_patients: 3,
     };
+    const { client, rpc } = buildMutationClient({
+      rpcError: {
+        code: '23514',
+        message: 'DAILY_REPORT_NEW_PATIENTS_EXCEEDS_TOTAL',
+      },
+    });
     processClinicScopedBodyMock.mockImplementationOnce(
       async (_request, schema) => {
         const parsed = schema.safeParse(invalidDto);
@@ -300,15 +268,53 @@ describe('POST /api/mobile-uiux/daily-reports write pilot', () => {
           dto: parsed.data,
           auth,
           permissions,
-          supabase: buildMutationClient().client,
+          supabase: client,
         };
       }
     );
 
     const { POST } = await import('@/app/api/mobile-uiux/daily-reports/route');
     const response = await POST(buildMutationRequest(invalidDto));
+    const payload = await response.json();
 
     expect(response.status).toBe(400);
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(payload).toMatchObject({
+      success: false,
+      error: { code: 'BAD_REQUEST' },
+    });
+    expect(fetchDailyReportsReadModelMock).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when new_patients exceeds the DB-derived total of an itemized report', async () => {
+    const staleDto = {
+      ...validDto,
+      total_patients: 10,
+      new_patients: 5,
+    };
+    const { client } = buildMutationClient({
+      rpcError: {
+        code: '23514',
+        message: 'DAILY_REPORT_NEW_PATIENTS_EXCEEDS_DERIVED_TOTAL',
+        details: '2',
+      },
+    });
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: true,
+      dto: staleDto,
+      auth,
+      permissions,
+      supabase: client,
+    });
+
+    const { POST } = await import('@/app/api/mobile-uiux/daily-reports/route');
+    const response = await POST(buildMutationRequest(staleDto));
+    const payload = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(payload.error.message).toContain(
+      '明細から集計した総患者数（2名）以下'
+    );
   });
 
   it('returns 400 when revenue details exceed total_revenue', async () => {
@@ -318,6 +324,12 @@ describe('POST /api/mobile-uiux/daily-reports write pilot', () => {
       insurance_revenue: 800,
       private_revenue: 300,
     };
+    const { client } = buildMutationClient({
+      rpcError: {
+        code: '23514',
+        message: 'DAILY_REPORT_REVENUE_BREAKDOWN_EXCEEDS_TOTAL',
+      },
+    });
     processClinicScopedBodyMock.mockImplementationOnce(
       async (_request, schema) => {
         const parsed = schema.safeParse(invalidDto);
@@ -332,7 +344,7 @@ describe('POST /api/mobile-uiux/daily-reports write pilot', () => {
           dto: parsed.data,
           auth,
           permissions,
-          supabase: buildMutationClient().client,
+          supabase: client,
         };
       }
     );
@@ -373,9 +385,9 @@ describe('POST /api/mobile-uiux/daily-reports write pilot', () => {
     expect(response.status).toBe(400);
   });
 
-  it('returns 403 without upsert when report_id belongs outside the clinic scope', async () => {
-    const { client, dailyReportsTable } = buildMutationClient({
-      reportFound: false,
+  it('returns 403 without a write when report_id belongs outside the clinic scope', async () => {
+    const { client, rpc } = buildMutationClient({
+      rpcError: { code: '42501', message: 'DAILY_REPORT_NOT_ACCESSIBLE' },
     });
     processClinicScopedBodyMock.mockResolvedValueOnce({
       success: true,
@@ -400,10 +412,14 @@ describe('POST /api/mobile-uiux/daily-reports write pilot', () => {
     expect(response.status).toBe(403);
     expect(payload.success).toBe(false);
     expect(JSON.stringify(payload)).not.toContain(otherClinicReportId);
-    expect(dailyReportsTable.upsert).not.toHaveBeenCalled();
+    expect(rpc).toHaveBeenCalledWith(
+      'save_daily_report',
+      expect.objectContaining({ p_report_id: otherClinicReportId })
+    );
+    expect(fetchDailyReportsReadModelMock).not.toHaveBeenCalled();
   });
 
-  it('returns 403 without upsert when clinic_id is outside the authenticated clinic scope', async () => {
+  it('returns 403 without a write when clinic_id is outside the authenticated clinic scope', async () => {
     const forbiddenResponse = Response.json(
       { success: false, error: 'このクリニックへのアクセス権がありません' },
       { status: 403 }
@@ -424,9 +440,9 @@ describe('POST /api/mobile-uiux/daily-reports write pilot', () => {
     expect(response.status).toBe(403);
   });
 
-  it('returns 403 without upsert when staff_id is outside the clinic scope', async () => {
-    const { client, staffQuery, dailyReportsTable } = buildMutationClient({
-      staffFound: false,
+  it('returns 403 without a write when staff_id is outside the clinic scope', async () => {
+    const { client, rpc } = buildMutationClient({
+      rpcError: { code: '42501', message: 'DAILY_REPORT_STAFF_NOT_ACCESSIBLE' },
     });
     processClinicScopedBodyMock.mockResolvedValueOnce({
       success: true,
@@ -440,13 +456,15 @@ describe('POST /api/mobile-uiux/daily-reports write pilot', () => {
     const response = await POST(buildMutationRequest());
 
     expect(response.status).toBe(403);
-    expect(staffQuery.eq).toHaveBeenCalledWith('clinic_id', clinicId);
-    expect(staffQuery.eq).toHaveBeenCalledWith('id', staffId);
-    expect(dailyReportsTable.upsert).not.toHaveBeenCalled();
+    expect(rpc).toHaveBeenCalledWith(
+      'save_daily_report',
+      expect.objectContaining({ p_clinic_id: clinicId, p_staff_id: staffId })
+    );
+    expect(fetchDailyReportsReadModelMock).not.toHaveBeenCalled();
   });
 
-  it('upserts through the mobile BFF and verifies the same report through the PC read model', async () => {
-    const { client, dailyReportsTable } = buildMutationClient();
+  it('saves through the shared atomic boundary and verifies the same report through the PC read model', async () => {
+    const { client, rpc } = buildMutationClient();
     processClinicScopedBodyMock.mockResolvedValueOnce({
       success: true,
       dto: validDto,
@@ -468,22 +486,19 @@ describe('POST /api/mobile-uiux/daily-reports write pilot', () => {
         allowedRoles: ['admin', 'clinic_admin', 'therapist', 'staff'],
       }
     );
-    expect(dailyReportsTable.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        clinic_id: clinicId,
-        staff_id: staffId,
-        report_date: '2026-06-30',
-        total_patients: 18,
-        new_patients: 3,
-        total_revenue: 120000,
-        insurance_revenue: 40000,
-        private_revenue: 80000,
-        report_text: '共有事項',
-      }),
-      {
-        onConflict: 'clinic_id,report_date',
-      }
-    );
+    expect(rpc).toHaveBeenCalledWith('save_daily_report', {
+      p_clinic_id: clinicId,
+      p_report_date: '2026-06-30',
+      p_report_id: undefined,
+      p_staff_id: staffId,
+      p_total_patients: 18,
+      p_new_patients: 3,
+      p_total_revenue: 120000,
+      p_insurance_revenue: 40000,
+      p_private_revenue: 80000,
+      p_report_text: '共有事項',
+      p_require_manual: true,
+    });
     expect(fetchDailyReportsReadModelMock).toHaveBeenCalledWith({
       supabase: client,
       clinicId,
@@ -497,9 +512,45 @@ describe('POST /api/mobile-uiux/daily-reports write pilot', () => {
         reportDate: '2026-06-30',
         report: {
           id: reportId,
+          aggregateSource: 'manual',
         },
         dailyReports: dailyReportsReadModel,
       },
     });
+  });
+
+  it('refuses an item-derived report without writing and reports the input as not reflected', async () => {
+    // The mobile form only edits hand-entered totals. When the day's report is
+    // derived from detail rows (or becomes so while the form is open), the DB
+    // rejects the save under the row lock instead of overwriting new_patients,
+    // staff_id and report_text with the form's defaults.
+    const { client, rpc } = buildMutationClient({
+      rpcError: { code: '55000', message: 'DAILY_REPORT_ITEMIZED' },
+    });
+    const staleDto = { ...validDto, new_patients: 0 };
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: true,
+      dto: staleDto,
+      auth,
+      permissions,
+      supabase: client,
+    });
+
+    const { POST } = await import('@/app/api/mobile-uiux/daily-reports/route');
+    const response = await POST(buildMutationRequest(staleDto));
+    const payload = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(payload).toMatchObject({
+      success: false,
+      error: { code: 'CONFLICT' },
+    });
+    expect(payload.error.message).toContain('PCの日報入力画面');
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith(
+      'save_daily_report',
+      expect.objectContaining({ p_require_manual: true })
+    );
+    expect(fetchDailyReportsReadModelMock).not.toHaveBeenCalled();
   });
 });

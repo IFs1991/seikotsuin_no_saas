@@ -183,6 +183,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+function toFiniteNumber(value: unknown): number | null {
+  const parsed = typeof value === 'string' ? Number(value) : value;
+  return typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseSavedReportTotals(
+  payload: unknown
+): { patients: number; revenue: number } | null {
+  if (!isRecord(payload) || !isRecord(payload.data)) {
+    return null;
+  }
+  const patients = toFiniteNumber(payload.data.total_patients);
+  const revenue = toFiniteNumber(payload.data.total_revenue);
+  return patients === null || revenue === null ? null : { patients, revenue };
+}
+
 function isBillingType(value: unknown): value is BillingType {
   return value === 'insurance' || value === 'private';
 }
@@ -647,6 +663,9 @@ export default function DailyReportInputPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
+  // 表示中の院・日付の明細を一度でも取得できたか。取得前・取得失敗の間は
+  // 一覧がその日の全件とは限らないため、件数・合計を示さず保存も止める。
+  const [hasLoadedItems, setHasLoadedItems] = useState(false);
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [isSavingReport, setIsSavingReport] = useState(false);
   const [savingItemId, setSavingItemId] = useState<string | null>(null);
@@ -662,6 +681,27 @@ export default function DailyReportInputPage() {
   } | null>(null);
   const savedItemsRef = useRef<Map<string, DailyReportItem>>(new Map());
   const loadRequestIdRef = useRef(0);
+  // 画面に表示中の (院, 日付)。切替前に始まった保存・再取得の結果で
+  // 切替後の明細を上書きしないよう、非同期処理の対象と照合する。
+  const displayedTargetRef = useRef({ clinicId, date });
+
+  useEffect(() => {
+    displayedTargetRef.current = { clinicId, date };
+  }, [clinicId, date]);
+
+  // 一覧の明細がどの (院, 日付) のものか。別の対象の明細を新しい日付で
+  // 表示・保存しないよう、対象が変わった読込の開始時に一覧を空にする。
+  const itemsTargetRef = useRef<{
+    clinicId: string | null;
+    date: string;
+  } | null>(null);
+
+  const isDisplayedTarget = useCallback(
+    (target: { clinicId: string | null; date: string }) =>
+      displayedTargetRef.current.clinicId === target.clinicId &&
+      displayedTargetRef.current.date === target.date,
+    []
+  );
 
   const hasClinic = Boolean(clinicId);
   const isLoading = profileLoading || activeClinicLoading || isLoadingItems;
@@ -680,8 +720,28 @@ export default function DailyReportInputPage() {
         includePaymentMethods = true,
         showSpinner = true,
       } = options;
+      // 別の院・日付を対象に始まった処理からの再取得は、表示中の明細を
+      // 置き換えず、表示中の対象の取得も無効化しない。
+      if (!isDisplayedTarget({ clinicId, date })) {
+        return;
+      }
       const requestId = loadRequestIdRef.current + 1;
       loadRequestIdRef.current = requestId;
+
+      const itemsTarget = itemsTargetRef.current;
+      if (
+        !itemsTarget ||
+        itemsTarget.clinicId !== clinicId ||
+        itemsTarget.date !== date
+      ) {
+        // 前の院・日付の明細は、読込に失敗しても新しい対象として残さない
+        setItems([]);
+        setNextReservationDrafts({});
+        replaceSavedItems([]);
+        setFormError(null);
+        setHasLoadedItems(false);
+        itemsTargetRef.current = { clinicId, date };
+      }
 
       if (!clinicId) {
         setItems([]);
@@ -712,7 +772,11 @@ export default function DailyReportInputPage() {
         });
         const payload = await readJson(response);
 
-        if (signal?.aborted || requestId !== loadRequestIdRef.current) {
+        if (
+          signal?.aborted ||
+          requestId !== loadRequestIdRef.current ||
+          !isDisplayedTarget({ clinicId, date })
+        ) {
           return;
         }
 
@@ -731,12 +795,22 @@ export default function DailyReportInputPage() {
 
         setItems(parsed.items);
         replaceSavedItems(parsed.items);
+        setHasLoadedItems(true);
         if (parsed.paymentMethods) {
           setPaymentMethods(parsed.paymentMethods);
         }
         setNextReservationDrafts(buildNextReservationDrafts(parsed.items));
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
+        // 置き換えられた取得（更新・保存後の再取得は中断されない）の失敗で、
+        // 取得できた表示中の対象を失敗扱いにしない。
+        if (
+          signal?.aborted ||
+          requestId !== loadRequestIdRef.current ||
+          !isDisplayedTarget({ clinicId, date })
+        ) {
           return;
         }
         setLoadError(
@@ -750,7 +824,7 @@ export default function DailyReportInputPage() {
         }
       }
     },
-    [clinicId, date, replaceSavedItems]
+    [clinicId, date, isDisplayedTarget, replaceSavedItems]
   );
 
   useEffect(() => {
@@ -837,6 +911,7 @@ export default function DailyReportInputPage() {
 
     setIsAddingItem(true);
     setFormError(null);
+    const addTarget = { clinicId, date };
 
     try {
       const response = await fetch('/api/daily-reports/items', {
@@ -867,8 +942,22 @@ export default function DailyReportInputPage() {
         isDailyReportItem(payload.data)
       ) {
         const createdItem = payload.data;
+        if (!isDisplayedTarget(addTarget)) {
+          // 追加中に院・日付が切り替わった: 明細は追加先の日報に保存済み。
+          // 表示中の一覧には加えない（次の保存で別の日の合計にしない）。
+          setNewItem(emptyNewItem);
+          setFormError(
+            `追加中に日付・院が切り替わったため、明細は${addTarget.date}の日報に追加しました`
+          );
+          return;
+        }
         savedItemsRef.current.set(createdItem.id, createdItem);
-        setItems(prev => [...prev, createdItem]);
+        // 院・日付を往復した場合は再取得済みの一覧に同じ明細が入っている
+        setItems(prev =>
+          prev.some(item => item.id === createdItem.id)
+            ? prev
+            : [...prev, createdItem]
+        );
         setNextReservationDrafts(prev => ({
           ...prev,
           [createdItem.id]: '',
@@ -1091,6 +1180,7 @@ export default function DailyReportInputPage() {
 
     setIsSavingReport(true);
     setFormError(null);
+    const saveTarget = { clinicId, date };
 
     try {
       const insuranceRevenue = items
@@ -1120,11 +1210,23 @@ export default function DailyReportInputPage() {
       }
 
       // ピーク・エンド設計: 保存後は要約と次アクションを提示する（P11）
+      // 合計はDBが明細から集計した保存結果を表示する（画面の値は古い可能性がある）
+      const savedTotals = parseSavedReportTotals(payload);
       setSavedSummary({
         date,
-        patients: totalPatients,
-        revenue: totalRevenue,
+        patients: savedTotals?.patients ?? totalPatients,
+        revenue: savedTotals?.revenue ?? totalRevenue,
       });
+      if (
+        savedTotals &&
+        (savedTotals.patients !== totalPatients ||
+          savedTotals.revenue !== totalRevenue) &&
+        isDisplayedTarget(saveTarget)
+      ) {
+        // 別タブで明細が変わっていた場合は一覧もDBに合わせて再取得する。
+        // 保存中に院・日付が切り替わっていたら、切替後の明細は置き換えない
+        await loadItems({ includePaymentMethods: false, showSpinner: false });
+      }
     } catch (error) {
       setFormError(
         error instanceof Error ? error.message : '日報の保存に失敗しました'
@@ -1146,6 +1248,8 @@ export default function DailyReportInputPage() {
   const isSubmitDisabled = useMemo(() => {
     if (!hasClinic || isLoading || errorMessage) return true;
     return (
+      !hasLoadedItems ||
+      loadError !== null ||
       items.length === 0 ||
       savingItemId !== null ||
       confirmingPricingItemId !== null ||
@@ -1156,6 +1260,8 @@ export default function DailyReportInputPage() {
     hasClinic,
     isLoading,
     errorMessage,
+    hasLoadedItems,
+    loadError,
     items.length,
     savingItemId,
     confirmingPricingItemId,
@@ -1218,9 +1324,16 @@ export default function DailyReportInputPage() {
         {(formError || loadError) && (
           <Card className='border-red-200 bg-red-50 dark:bg-red-950/40'>
             <CardContent className='py-4'>
-              <p className='text-red-700 dark:text-red-300 font-medium'>
-                {formError ?? loadError}
-              </p>
+              {loadError && (
+                <p className='text-red-700 dark:text-red-300 font-medium'>
+                  {loadError}
+                </p>
+              )}
+              {formError && (
+                <p className='text-red-700 dark:text-red-300 font-medium'>
+                  {formError}
+                </p>
+              )}
             </CardContent>
           </Card>
         )}
@@ -1247,11 +1360,13 @@ export default function DailyReportInputPage() {
           <Card>
             <CardContent className='space-y-2 pt-6'>
               <p className='text-sm font-medium text-foreground' role='status'>
-                {totalPatients === 0
-                  ? '本日の明細はまだありません。来院済みの予約があれば自動で表示されます。'
-                  : pendingPricingCount === 0
-                    ? `全${totalPatients}件の金額確定が完了しています。あとは下の「日報を保存する」だけです。`
-                    : `明細${totalPatients}件のうち、残り${pendingPricingCount}件の金額確定が必要です。`}
+                {loadError
+                  ? '明細を読み込めませんでした。ページを再読み込みしてから入力してください。'
+                  : totalPatients === 0
+                    ? '本日の明細はまだありません。来院済みの予約があれば自動で表示されます。'
+                    : pendingPricingCount === 0
+                      ? `全${totalPatients}件の金額確定が完了しています。あとは下の「日報を保存する」だけです。`
+                      : `明細${totalPatients}件のうち、残り${pendingPricingCount}件の金額確定が必要です。`}
               </p>
               <Progress
                 value={confirmedPricingCount}
@@ -1306,8 +1421,18 @@ export default function DailyReportInputPage() {
               </HelpHint>
             </CardTitle>
             <CardDescription>
-              本日の患者数: {totalPatients}名 | 合計売上: ¥
-              {totalRevenue.toLocaleString()}
+              {!hasLoadedItems ? (
+                loadError ? (
+                  '明細を読み込めなかったため、患者数・合計売上は不明です'
+                ) : (
+                  '患者数・合計売上は明細の読み込み後に表示します'
+                )
+              ) : (
+                <>
+                  本日の患者数: {totalPatients}名 | 合計売上: ¥
+                  {totalRevenue.toLocaleString()}
+                </>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -1317,7 +1442,9 @@ export default function DailyReportInputPage() {
               </div>
             ) : items.length === 0 ? (
               <div className='text-center py-8 text-gray-500'>
-                まだ患者が登録されていません
+                {loadError
+                  ? '明細を読み込めませんでした'
+                  : 'まだ患者が登録されていません'}
               </div>
             ) : (
               <div className='space-y-3'>
@@ -1843,7 +1970,12 @@ export default function DailyReportInputPage() {
                 <Button
                   onClick={addItem}
                   className='w-full'
-                  disabled={isAddingItem}
+                  disabled={
+                    isAddingItem ||
+                    isLoadingItems ||
+                    !hasLoadedItems ||
+                    loadError !== null
+                  }
                 >
                   <Plus className='h-4 w-4 mr-2' />
                   {isAddingItem ? '追加中...' : '追加'}
@@ -1853,7 +1985,7 @@ export default function DailyReportInputPage() {
           </CardContent>
         </Card>
 
-        {items.length > 0 && (
+        {hasLoadedItems && items.length > 0 && (
           <Card className='bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-900'>
             <CardHeader>
               <CardTitle className='flex items-center gap-1'>

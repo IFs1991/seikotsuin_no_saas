@@ -103,7 +103,8 @@ class DCLogic {
     this.props = {};
   }
   setState(update) {
-    this.state = { ...this.state, ...update };
+    const patch = typeof update === 'function' ? update(this.state) : update;
+    this.state = { ...this.state, ...patch };
   }
   forceUpdate() {
     this.forceUpdated = true;
@@ -657,6 +658,319 @@ describe('patchMobileUiuxDcScript', () => {
       ).__mobileUiuxBuildDailyReportPayload();
 
       expect(payload.report_date).toBe('2026-07-10');
+    });
+  });
+
+  describe('daily-reports item-derived totals on the real design asset', () => {
+    const CLINIC = '11111111-1111-4111-8111-111111111111';
+
+    async function evaluateRealDailyReportsComponent() {
+      const html = await readFile(
+        path.join(FIXTURE_ROOT, 'daily-reports.dc.html'),
+        'utf-8'
+      );
+      const patched = patchMobileUiuxDcScript(html, {
+        screen: 'daily-reports',
+      });
+      const block = patched.match(
+        /<script\b(?=[^>]*\bdata-dc-script\b)[^>]*>([\s\S]*?)<\/script>/i
+      );
+      if (!block) throw new Error('daily-reports DC script not found');
+      // The design asset loads its theme helper with a dynamic import the vm
+      // sandbox cannot resolve; theming does not affect the form state.
+      return evaluatePatchedComponent(
+        block[1].replace(
+          "import('./clinic-shared.js')",
+          'Promise.resolve({ applyTheme() {} })'
+        )
+      );
+    }
+
+    // The DB holds 2名・5,000円 for the day.
+    const dayPayload = (aggregateSource?: 'manual' | 'items') => ({
+      success: true,
+      data: {
+        clinicId: CLINIC,
+        startDate: '2026-07-10',
+        endDate: '2026-07-10',
+        dailyReports: {
+          reports: aggregateSource
+            ? [
+                {
+                  id: 'report-0710',
+                  reportDate: '2026-07-10',
+                  staffName: null,
+                  totalPatients: 2,
+                  newPatients: 0,
+                  totalRevenue: 5000,
+                  insuranceRevenue: 3000,
+                  privateRevenue: 2000,
+                  reportText: null,
+                  aggregateSource,
+                  createdAt: '2026-07-10T01:00:00.000Z',
+                },
+              ]
+            : [],
+          summary: {
+            totalReports: aggregateSource ? 1 : 0,
+            averagePatients: 2,
+            averageRevenue: 5000,
+            totalRevenue: 5000,
+          },
+          monthlyTrends: [],
+        },
+      },
+      generatedAt: '2026-07-10T03:00:00.000Z',
+    });
+    const settingsPayload = {
+      success: true,
+      data: {
+        clinicId: CLINIC,
+        clinic: null,
+        menus: [
+          {
+            id: 'menu-private',
+            name: '自費施術',
+            price: 3000,
+            durationMinutes: 30,
+            isInsuranceApplicable: false,
+            isActive: true,
+          },
+        ],
+        resources: [],
+      },
+      generatedAt: '2026-07-10T03:00:00.000Z',
+    };
+
+    type Bridge = {
+      submitDailyReport: jest.Mock<Promise<boolean | 'itemized'>, [unknown]>;
+      notifyDailyReportItemized: jest.Mock<boolean, []>;
+    };
+
+    async function mountDay(
+      aggregateSource: 'manual' | 'items' | undefined,
+      submit: (
+        window: { __MOBILE_UIUX_APPLY_READ_DATA__?: ApplyReadData },
+        payload: unknown
+      ) => Promise<boolean | 'itemized'>
+    ) {
+      const { component, window } = await evaluateRealDailyReportsComponent();
+      const bridge: Bridge = {
+        submitDailyReport: jest.fn(payload => submit(window, payload)),
+        notifyDailyReportItemized: jest.fn(() => true),
+      };
+      (window as unknown as { MobileUiuxBridge: Bridge }).MobileUiuxBridge =
+        bridge;
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'daily-reports',
+        dayPayload(aggregateSource)
+      );
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'settings-detail',
+        settingsPayload
+      );
+      return { component, bridge, window };
+    }
+
+    function openFormWithThreeRows(component: EvaluatedComponent) {
+      (component.renderVals().inputToday as () => void)();
+      const addItem = component.renderVals().addItem as () => void;
+      addItem();
+      addItem();
+      addItem();
+    }
+
+    async function save(component: EvaluatedComponent) {
+      return (component.renderVals().saveReport as () => Promise<boolean>)();
+    }
+
+    beforeEach(() => {
+      jest.useFakeTimers({ now: new Date('2026-07-10T03:00:00Z') });
+    });
+
+    it('keeps the hand-entered totals form for a manual day and closes it after a reflected save', async () => {
+      const { component, bridge } = await mountDay(
+        'manual',
+        async (window, payload) => {
+          const saved = payload as {
+            total_patients: number;
+            total_revenue: number;
+          };
+          // The real bridge applies the saved read model before resolving.
+          const applied = dayPayload('manual');
+          applied.data.dailyReports.reports[0].totalPatients =
+            saved.total_patients;
+          applied.data.dailyReports.reports[0].totalRevenue =
+            saved.total_revenue;
+          applied.data.dailyReports.reports[0].insuranceRevenue = 0;
+          applied.data.dailyReports.reports[0].privateRevenue =
+            saved.total_revenue;
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('daily-reports', applied);
+          return true;
+        }
+      );
+
+      openFormWithThreeRows(component);
+      let vals = component.renderVals();
+      expect(vals.formOpen).toBe(true);
+      expect(vals.totalCount).toBe(3);
+      expect(vals.totalYen).toBe('¥9,000');
+
+      await expect(save(component)).resolves.toBe(true);
+
+      expect(bridge.submitDailyReport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          report_date: '2026-07-10',
+          total_patients: 3,
+          total_revenue: 9000,
+        })
+      );
+      vals = component.renderVals();
+      expect(vals.formOpen).toBe(false);
+      expect(vals.toastMsg).toBe('日報を保存しました');
+      expect(vals.sumPatients).toBe('3名');
+      expect(vals.sumRevenue).toBe('¥9,000');
+      expect(bridge.notifyDailyReportItemized).not.toHaveBeenCalled();
+    });
+
+    it('does not open an editable totals form for an item-derived day and points to the item editor', async () => {
+      const { component, bridge } = await mountDay('items', async () => true);
+
+      let vals = component.renderVals();
+      expect(vals.todaySubmittedFlag).toBe(true);
+      expect(vals.sumPatients).toBe('2名');
+      expect(vals.sumRevenue).toBe('¥5,000');
+
+      (vals.inputToday as () => void)();
+
+      vals = component.renderVals();
+      expect(vals.formOpen).toBe(false);
+      expect(vals.toastMsg).toBe('明細から自動集計される日報です');
+      expect(bridge.notifyDailyReportItemized).toHaveBeenCalledTimes(1);
+      expect(vals.sumPatients).toBe('2名');
+      expect(vals.sumRevenue).toBe('¥5,000');
+
+      // A save fired from a stale form state is not sent either.
+      component.state = {
+        ...component.state,
+        formOpen: true,
+        editKey: 'd0',
+        items: [
+          { id: 1, patient: '', menu: '自費施術', type: '自費', ratio: 3 },
+        ],
+      };
+      await expect(save(component)).resolves.toBe(false);
+      expect(bridge.submitDailyReport).not.toHaveBeenCalled();
+      expect(component.renderVals().toastMsg).toBe('日報は保存されていません');
+      expect(component.renderVals().itemRows).toHaveLength(1);
+    });
+
+    it('keys the item-derived flag per date: an itemized yesterday does not block a manual today', async () => {
+      const { component, window } = await evaluateRealDailyReportsComponent();
+      const bridge = {
+        submitDailyReport: jest.fn(async () => true),
+        notifyDailyReportItemized: jest.fn(() => true),
+      };
+      (
+        window as unknown as { MobileUiuxBridge: typeof bridge }
+      ).MobileUiuxBridge = bridge;
+      component.componentDidMount();
+      const today = dayPayload('manual').data.dailyReports.reports[0];
+      // Boot-shaped read (no start/end): latest reports first.
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('daily-reports', {
+        success: true,
+        data: {
+          clinicId: CLINIC,
+          startDate: null,
+          endDate: null,
+          dailyReports: {
+            reports: [
+              today,
+              {
+                ...today,
+                id: 'report-0709',
+                reportDate: '2026-07-09',
+                aggregateSource: 'items',
+              },
+            ],
+            summary: {
+              totalReports: 2,
+              averagePatients: 2,
+              averageRevenue: 5000,
+              totalRevenue: 10000,
+            },
+            monthlyTrends: [],
+          },
+        },
+        generatedAt: '2026-07-10T03:00:00.000Z',
+      });
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'settings-detail',
+        settingsPayload
+      );
+
+      openFormWithThreeRows(component);
+      expect(component.renderVals().formOpen).toBe(true);
+      await expect(save(component)).resolves.toBe(true);
+      expect(bridge.submitDailyReport).toHaveBeenCalledWith(
+        expect.objectContaining({ report_date: '2026-07-10' })
+      );
+      expect(bridge.notifyDailyReportItemized).not.toHaveBeenCalled();
+    });
+
+    it('clears the item-derived flag when a single-day read shows the report is gone', async () => {
+      const { component, window, bridge } = await mountDay(
+        'items',
+        async () => true
+      );
+
+      (component.renderVals().inputToday as () => void)();
+      expect(component.renderVals().formOpen).toBe(false);
+
+      // The report was deleted on PC; a picked-date read returns no report.
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'daily-reports',
+        dayPayload(undefined)
+      );
+      (component.renderVals().inputToday as () => void)();
+
+      expect(component.renderVals().formOpen).toBe(true);
+      expect(bridge.notifyDailyReportItemized).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps entered rows and reports no success when the day became item-derived before the save landed', async () => {
+      const { component, bridge } = await mountDay(
+        'manual',
+        async () => 'itemized'
+      );
+
+      openFormWithThreeRows(component);
+      await expect(save(component)).resolves.toBe(false);
+
+      let vals = component.renderVals();
+      expect(vals.formOpen).toBe(true);
+      expect(vals.itemRows).toHaveLength(3);
+      expect(vals.totalCount).toBe(3);
+      expect(vals.totalYen).toBe('¥9,000');
+      expect(vals.toastMsg).toBe('日報は保存されていません');
+      expect(vals.toastMsg).not.toBe('日報を保存しました');
+      // The day summary is not replaced by the DB-derived totals.
+      expect(vals.sumPatients).toBe('2名');
+
+      // Retrying does not resend; the guidance is shown again instead.
+      await expect(save(component)).resolves.toBe(false);
+      expect(bridge.submitDailyReport).toHaveBeenCalledTimes(1);
+      expect(bridge.notifyDailyReportItemized).toHaveBeenCalledTimes(1);
+      expect(component.renderVals().itemRows).toHaveLength(3);
+
+      // Reopening after closing points to the item editor instead.
+      (component.renderVals().closeForm as () => void)();
+      (component.renderVals().inputToday as () => void)();
+      vals = component.renderVals();
+      expect(vals.formOpen).toBe(false);
+      expect(vals.toastMsg).toBe('明細から自動集計される日報です');
+      expect(bridge.notifyDailyReportItemized).toHaveBeenCalledTimes(2);
     });
   });
 

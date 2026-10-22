@@ -5056,7 +5056,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/daily-reports/route.ts",
-        "line": 101,
+        "line": 98,
         "exportKind": "function"
       },
       "executionPath": {
@@ -5075,15 +5075,14 @@
           "business write helper"
         ],
         "validation": [
-          "safeParse",
-          "validation helper"
+          "safeParse"
         ],
         "serviceRole": [],
         "origin": [],
         "rateLimit": [],
         "idempotency": [],
         "writes": [
-          "upsert"
+          "rpc"
         ],
         "sideEffectCall": []
       },
@@ -5113,13 +5112,9 @@
         "sideEffectCall": []
       },
       "hints": {
-        "clinicScope": [
-          "clinic_id query predicate"
-        ],
+        "clinicScope": [],
         "validation": [],
-        "idempotency": [
-          "upsert call"
-        ]
+        "idempotency": []
       },
       "classification": "AUTH_SCOPED_BILLED",
       "unknowns": [],
@@ -5144,7 +5139,7 @@
       "method": "DELETE",
       "source": {
         "path": "src/app/api/daily-reports/route.ts",
-        "line": 169,
+        "line": 178,
         "exportKind": "function"
       },
       "executionPath": {
@@ -7995,7 +7990,7 @@
         "rateLimit": [],
         "idempotency": [],
         "writes": [
-          "upsert"
+          "rpc"
         ],
         "sideEffectCall": []
       },
@@ -8029,9 +8024,7 @@
           "clinic_id query predicate"
         ],
         "validation": [],
-        "idempotency": [
-          "upsert call"
-        ]
+        "idempotency": []
       },
       "classification": "AUTH_SCOPED_BILLED",
       "unknowns": [],

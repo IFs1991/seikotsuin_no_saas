@@ -1,0 +1,83 @@
+-- OS-F2 catalog snapshot: database 'p1_green' on isolated PostgreSQL 17.6 + Supabase shim (not the Supabase image)
+-- generated 2026-10-21T00:09:13Z from repo claude/hopeful-mayer-wfix4v working tree (manual-only save follow-up)
+## daily_reports columns
+column_name | data_type | is_nullable | column_default
+id | uuid | NO | uuid_generate_v4()
+clinic_id | uuid | NO | 
+report_date | date | NO | 
+staff_id | uuid | YES | 
+total_patients | integer | YES | 0
+new_patients | integer | YES | 0
+total_revenue | numeric | YES | 0.00
+insurance_revenue | numeric | YES | 0.00
+private_revenue | numeric | YES | 0.00
+report_text | text | YES | 
+created_at | timestamp with time zone | YES | CURRENT_TIMESTAMP
+updated_at | timestamp with time zone | YES | CURRENT_TIMESTAMP
+aggregate_source | text | NO | 'manual'::text
+(13 rows)
+## daily_reports constraints
+conname | pg_get_constraintdef
+daily_reports_aggregate_source_check | CHECK ((aggregate_source = ANY (ARRAY['manual'::text, 'items'::text])))
+daily_reports_clinic_id_fkey | FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE
+daily_reports_clinic_id_report_date_key | UNIQUE (clinic_id, report_date)
+daily_reports_id_clinic_unique | UNIQUE (id, clinic_id)
+daily_reports_pkey | PRIMARY KEY (id)
+daily_reports_staff_id_fkey | FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE SET NULL
+(6 rows)
+## triggers on daily_reports / daily_report_items
+tgrelid | tgname | tgenabled | pg_get_triggerdef
+daily_reports | daily_reports_aggregate_authority | O | CREATE TRIGGER daily_reports_aggregate_authority BEFORE INSERT OR UPDATE ON public.daily_reports FOR EACH ROW EXECUTE FUNCTION app_private.enforce_daily_report_aggregate_authority()
+daily_reports | daily_reports_staff_clinic_check | O | CREATE TRIGGER daily_reports_staff_clinic_check AFTER INSERT OR UPDATE OF staff_id, clinic_id ON public.daily_reports FOR EACH ROW EXECUTE FUNCTION app_private.enforce_daily_report_staff_clinic()
+daily_report_items | daily_report_items_analysis_ref_check | O | CREATE TRIGGER daily_report_items_analysis_ref_check BEFORE INSERT OR UPDATE ON public.daily_report_items FOR EACH ROW EXECUTE FUNCTION validate_daily_report_items_analysis_refs()
+daily_report_items | daily_report_items_clinic_ref_check | O | CREATE TRIGGER daily_report_items_clinic_ref_check BEFORE INSERT OR UPDATE ON public.daily_report_items FOR EACH ROW EXECUTE FUNCTION validate_daily_report_items_clinic_refs()
+daily_report_items | daily_report_items_pricing_ref_check | O | CREATE TRIGGER daily_report_items_pricing_ref_check BEFORE INSERT OR UPDATE OF clinic_id, customer_id, menu_billing_profile_id, customer_insurance_coverage_id ON public.daily_report_items FOR EACH ROW EXECUTE FUNCTION validate_daily_report_item_pricing_refs()
+daily_report_items | daily_report_items_recalculate_totals | O | CREATE TRIGGER daily_report_items_recalculate_totals AFTER INSERT OR DELETE OR UPDATE OF fee, billing_type, daily_report_id ON public.daily_report_items FOR EACH ROW EXECUTE FUNCTION sync_daily_report_item_totals()
+daily_report_items | update_daily_report_items_updated_at | O | CREATE TRIGGER update_daily_report_items_updated_at BEFORE UPDATE ON public.daily_report_items FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()
+(7 rows)
+## RLS and policies
+relname | relrowsecurity | relforcerowsecurity
+daily_report_items | t | f
+daily_reports | t | f
+(2 rows)
+tablename | policyname | cmd | roles | coalesce | coalesce
+daily_report_items | daily_report_items_delete_for_managers | DELETE | {authenticated} | ((app_private.get_current_role() = ANY (ARRAY['admin'::text, 'clinic_admin'::text, 'manager'::text])) AND app_private.can_access_clinic(clinic_id)) | 
+daily_report_items | daily_report_items_insert_for_staff | INSERT | {authenticated} |  | ((app_private.get_current_role() = ANY (ARRAY['admin'::text, 'clinic_admin'::text, 'manager'::text, 'therapist'::text, 'staff'::text])) AND app_private.can_access_clinic(clinic_id))
+daily_report_items | daily_report_items_select_for_staff | SELECT | {authenticated} | ((app_private.get_current_role() = ANY (ARRAY['admin'::text, 'clinic_admin'::text, 'manager'::text, 'therapist'::text, 'staff'::text])) AND app_private.can_access_clinic(clinic_id)) | 
+daily_report_items | daily_report_items_update_for_staff | UPDATE | {authenticated} | ((app_private.get_current_role() = ANY (ARRAY['admin'::text, 'clinic_admin'::text, 'manager'::text, 'therapist'::text, 'staff'::text])) AND app_private.can_access_clinic(clinic_id)) | ((app_private.get_current_role() = ANY (ARRAY['admin'::text, 'clinic_admin'::text, 'manager'::text, 'therapist'::text, 'staff'::text])) AND app_private.can_access_clinic(clinic_id))
+daily_reports | daily_reports_delete_for_managers | DELETE | {authenticated} | ((app_private.get_current_role() = ANY (ARRAY['admin'::text, 'clinic_admin'::text, 'manager'::text])) AND app_private.can_access_clinic(clinic_id)) | 
+daily_reports | daily_reports_insert_for_staff | INSERT | {authenticated} |  | ((app_private.get_current_role() = ANY (ARRAY['admin'::text, 'clinic_admin'::text, 'manager'::text, 'therapist'::text, 'staff'::text])) AND app_private.can_access_clinic(clinic_id))
+daily_reports | daily_reports_select_for_staff | SELECT | {authenticated} | ((app_private.get_current_role() = ANY (ARRAY['admin'::text, 'clinic_admin'::text, 'manager'::text, 'therapist'::text, 'staff'::text])) AND app_private.can_access_clinic(clinic_id)) | 
+daily_reports | daily_reports_update_for_staff | UPDATE | {authenticated} | ((app_private.get_current_role() = ANY (ARRAY['admin'::text, 'clinic_admin'::text, 'manager'::text, 'therapist'::text, 'staff'::text])) AND app_private.can_access_clinic(clinic_id)) | 
+(8 rows)
+## table grants
+table_name | grantee | string_agg
+daily_report_items | authenticated | SELECT
+daily_report_items | service_role | DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
+daily_reports | authenticated | DELETE,INSERT,SELECT,UPDATE
+daily_reports | service_role | DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
+(4 rows)
+## related functions: security, search_path, EXECUTE grantees
+oid | prosecdef | coalesce | execute_grantees
+recalculate_daily_report_totals(uuid) | t | search_path="" | service_role
+sync_daily_report_item_totals() | t | search_path=public, auth, extensions | service_role
+sync_arrived_reservation_daily_report_item() | t | search_path=public, auth, extensions | service_role
+app_private.enforce_daily_report_aggregate_authority() | t | search_path="" | 
+app_private.enforce_daily_report_staff_clinic() | t | search_path="" | 
+save_daily_report(uuid,date,integer,integer,numeric,numeric,numeric,uuid,uuid,text,boolean) | f | search_path="" | authenticated
+(6 rows)
+## public/app_private function counts
+nspname | count
+app_private | 16
+public | 302
+(2 rows)
+## public policy count
+count
+183
+(1 row)
+## migration history head
+version | name
+20261020170757 | os_daily_report_aggregate_authority
+20260906003219 | post_core100_notification_durability
+20260815104957 | pr11_deferred_production_forward_fix
+(3 rows)

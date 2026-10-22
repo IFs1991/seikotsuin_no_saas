@@ -10,7 +10,7 @@
     "scannedSourceFiles": 662,
     "catalogTables": 86,
     "catalogTablesWithLiteralReferences": 68,
-    "literalRpcNames": 37
+    "literalRpcNames": 38
   },
   "tables": [
     {
@@ -1155,12 +1155,12 @@
         },
         {
           "path": "src/app/api/daily-reports/route.ts",
-          "line": 202,
+          "line": 211,
           "clientModule": false
         },
         {
           "path": "src/app/api/daily-reports/route.ts",
-          "line": 230,
+          "line": 239,
           "clientModule": false
         },
         {
@@ -1190,22 +1190,12 @@
         },
         {
           "path": "src/lib/daily-reports/read-model.ts",
-          "line": 152,
+          "line": 159,
           "clientModule": false
         },
         {
           "path": "src/lib/daily-reports/read-model.ts",
-          "line": 212,
-          "clientModule": false
-        },
-        {
-          "path": "src/lib/daily-reports/write-model.ts",
-          "line": 37,
-          "clientModule": false
-        },
-        {
-          "path": "src/lib/daily-reports/write-model.ts",
-          "line": 88,
+          "line": 219,
           "clientModule": false
         },
         {
@@ -2932,11 +2922,6 @@
           "path": "src/app/api/staff/route.ts",
           "line": 430,
           "clientModule": false
-        },
-        {
-          "path": "src/lib/daily-reports/write-model.ts",
-          "line": 62,
-          "clientModule": false
         }
       ]
     },
@@ -3969,6 +3954,16 @@
         {
           "path": "src/lib/line/chat-cleanup-service.ts",
           "line": 14,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "save_daily_report",
+      "calls": [
+        {
+          "path": "src/lib/daily-reports/write-model.ts",
+          "line": 146,
           "clientModule": false
         }
       ]

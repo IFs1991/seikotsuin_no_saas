@@ -329,11 +329,18 @@ describe('commercial PR-06 migration contract', () => {
       expect(generatedTypes.match(exactRelationship) ?? []).toHaveLength(1);
     }
 
-    expect(dailyReportsDefinition).toMatch(/Row: \{\s*clinic_id: string;/);
-    expect(dailyReportsDefinition).toMatch(/Insert: \{\s*clinic_id: string;/);
-    expect(dailyReportsDefinition).toMatch(/Update: \{\s*clinic_id\?: string;/);
+    // Scoped to each block (no nested braces inside Row/Insert/Update) so
+    // later columns that sort before clinic_id (e.g. OS-F2 aggregate_source)
+    // do not matter; clinic_id must stay non-null and required on insert.
+    expect(dailyReportsDefinition).toMatch(/Row: \{[^}]*\sclinic_id: string;/);
+    expect(dailyReportsDefinition).toMatch(
+      /Insert: \{[^}]*\sclinic_id: string;/
+    );
+    expect(dailyReportsDefinition).toMatch(
+      /Update: \{[^}]*\sclinic_id\?: string;/
+    );
     expect(dailyReportsDefinition).not.toMatch(
-      /(?:Row|Insert|Update): \{\s*clinic_id\??: string \| null;/
+      /(?:Row|Insert|Update): \{[^}]*\sclinic_id\??: string \| null;/
     );
   });
 });
