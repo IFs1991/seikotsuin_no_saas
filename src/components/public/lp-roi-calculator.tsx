@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { ArrowRight, Clock3, Coins, RotateCcw } from 'lucide-react';
-import { createCtaLink } from './lp-links';
+import { createContactCtaLink } from './marketing-links';
 
 // 本部業務削減シミュレーター。入力値は保存せず、外部APIにも送信しない簡易試算機。
 type ScenarioId = 'conservative' | 'standard' | 'active';
@@ -55,7 +56,10 @@ const initialInputs: Inputs = {
   scenarioId: 'standard',
 };
 
-const demoCta = createCtaLink('この削減余地を自院で試す', 'demo');
+const demoCta = createContactCtaLink('この削減余地を自院で試す', 'demo', {
+  product: 'os',
+  intent: 'sales',
+});
 
 const fmtHours = (v: number) =>
   `${v.toLocaleString('ja-JP', { maximumFractionDigits: 1 })}時間`;
@@ -280,15 +284,14 @@ export function LpRoiCalculator() {
           LP上の簡易試算です。実際の効果は店舗の運用状況・予約率・単価・活用度によって変わり、効果を保証するものではありません。
         </p>
 
-        <a
+        <Link
           href={demoCta.href}
-          target={demoCta.external ? '_blank' : undefined}
-          rel={demoCta.external ? 'noreferrer' : undefined}
+          prefetch={false}
           className='mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[8px] bg-[#C4956C] px-5 py-3 text-[14px] font-bold text-white transition-colors hover:bg-[#b3855d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8B87A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#2B3A3F]'
         >
           {demoCta.label}
           <ArrowRight className='h-4 w-4' aria-hidden='true' />
-        </a>
+        </Link>
       </div>
     </div>
   );

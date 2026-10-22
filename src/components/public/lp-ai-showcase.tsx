@@ -62,7 +62,9 @@ export function LpAiShowcase() {
             <Brain className='h-5 w-5 text-white' aria-hidden='true' />
           </div>
           <div>
-            <p className='text-[13px] font-bold text-[#1A1A1A]'>Tiramisu AI</p>
+            <p className='text-[13px] font-bold text-[#1A1A1A]'>
+              Tiramisu OS AI
+            </p>
             <p className='font-mono text-[11px] text-[#595959]'>
               選択肢クリック式の分析イメージ
             </p>

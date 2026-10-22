@@ -2,7 +2,8 @@
  * 公開LP（Tiramisu）専用スタイル。
  * ネットワーク取得を伴わないシステムフォント、和紙テクスチャ、各種モーションを定義する。
  * CSPの都合でインライン<style>や外部フォントの @import は使わず、ここに集約する。
- * .lp-root 配下にだけ効くようスコープしている。
+ * .lp-root 配下にだけ効くようスコープしている（例外: 製品選択モーダルが開いている間だけ
+ * <html> に付く .lp-scroll-locked）。
  */
 
 .lp-root {
@@ -16,12 +17,82 @@
   --font-mono:
     ui-monospace, 'Cascadia Code', 'SFMono-Regular', Consolas,
     'Liberation Mono', monospace;
+  /*
+   * 公開サイトの色トークン。新しい公開ページ・部品はここを参照する。
+   * 既存OS LP（/os）は移設前のhex指定のまま維持している。
+   */
+  --lp-ink: #2b3a3f;
+  --lp-ink-deep: #1f292d;
+  --lp-ink-glass: rgb(43 58 63 / 0.95);
+  --lp-accent: #c4956c;
+  --lp-accent-soft: #e8b87a;
+  /* 淡色背景上の小さな暖色文字用（#c4956c では文字コントラストが不足するため） */
+  --lp-accent-strong: #8a5a32;
+  --lp-paper: #faf8f5;
+  --lp-paper-warm: #f3efe8;
+  --lp-ivory: #fbf8f2;
+  --lp-line: #e8e4de;
+  --lp-text: #1a1a1a;
+  --lp-text-muted: #595959;
+  --lp-good: #3f7d5c;
+  /* Tiramisu Works の深緑（既存の緑 #3f7d5c と同系色を暗くした値） */
+  --lp-works: #264a3e;
+  --lp-works-hover: #1d3a31;
+  --lp-works-soft: #edf2ee;
+  --lp-os-soft: #f7ede1;
+  /* Tailwind 3 は var() の色に /50 等の不透明度を付けられないため、透過色も個別に持つ */
+  --lp-works-line: rgb(38 74 62 / 0.18);
+  --lp-accent-line: rgb(196 149 108 / 0.32);
+  --lp-accent-muted: rgb(196 149 108 / 0.7);
+  --lp-accent-tint: rgb(196 149 108 / 0.14);
   font-family: var(--font-sans-jp);
   font-feature-settings: 'palt' 1;
   color: #1a1a1a;
   background-color: #faf8f5;
   line-height: 1.8;
   -webkit-font-smoothing: antialiased;
+}
+
+/* 固定ヘッダーの下にアンカー先の見出しが隠れないようにする */
+.lp-root [id] {
+  scroll-margin-top: 5rem;
+}
+@media (min-width: 1024px) {
+  .lp-root [id] {
+    scroll-margin-top: 8rem;
+  }
+}
+
+/* 製品選択モーダル（ネイティブ <dialog>）。開いている間だけ背景のスクロールを止める */
+html.lp-scroll-locked {
+  overflow: hidden;
+}
+.lp-dialog::backdrop {
+  background-color: rgb(20 27 30 / 0.72);
+}
+.lp-dialog[open] {
+  animation: lpDialogIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.lp-dialog[open]::backdrop {
+  animation: lpBackdropIn 0.22s ease-out;
+}
+@keyframes lpDialogIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes lpBackdropIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .lp-root .font-serif-jp {
@@ -128,7 +199,9 @@
   .lp-fade-up,
   .lp-pulse,
   .lp-marquee-track,
-  .lp-shimmer {
+  .lp-shimmer,
+  .lp-dialog[open],
+  .lp-dialog[open]::backdrop {
     animation: none;
   }
   .lp-fade-up {

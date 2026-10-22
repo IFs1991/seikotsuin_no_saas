@@ -1,5 +1,6 @@
-// 公開LP（Tiramisu）の表示コンテンツ。
+// Tiramisu OS LP（/os）の表示コンテンツ。
 // ターゲットは「5店舗以上の整骨院グループ／本部管理OS」。
+// 料金（planItems）はOS料金の正本。Tiramisu Worksの料金（works-content.ts）とは混ぜない。
 // ビューと文言を分離し、文言調整をこのファイルに集約する。
 
 import {
