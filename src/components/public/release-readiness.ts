@@ -24,6 +24,67 @@ export interface PublishableField {
   status: PublicationStatus;
 }
 
+// 参照画像・テンプレートに含まれる仮のドメイン。公開物・承認値のどちらにも使ってはいけない。
+export const PLACEHOLDER_DOMAINS: readonly string[] = [
+  'tiramisu.jp',
+  'your-app.vercel.app',
+];
+// 例示・試験用に予約されたドメイン（RFC 2606 / 6761）。本番の値として承認しない。
+const RESERVED_DOMAINS = ['example.com', 'example.net', 'example.org'];
+const RESERVED_TLDS = ['test', 'example', 'invalid', 'localhost', 'local'];
+
+function isNonProductionHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/\.$/, '');
+  const matches = (domain: string) =>
+    host === domain || host.endsWith(`.${domain}`);
+  if ([...PLACEHOLDER_DOMAINS, ...RESERVED_DOMAINS].some(matches)) return true;
+  const labels = host.split('.');
+  if (labels.length < 2) return true;
+  if (RESERVED_TLDS.includes(labels[labels.length - 1])) return true;
+  // IPアドレス（IPv4・角括弧付きIPv6）は公開originとして扱わない。
+  return /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.startsWith('[');
+}
+
+export function isPublishableText(value: string | null): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+export function isPublishableEmail(value: string | null): boolean {
+  if (!isPublishableText(value)) return false;
+  const match = /^[^\s@]+@([^\s@]+\.[^\s@]+)$/.exec(value.trim());
+  return match !== null && !isNonProductionHost(match[1]);
+}
+
+// 本番originは https・資格情報なし・パスや query なしの origin だけを認める。
+export function isProductionOrigin(value: string | null): boolean {
+  if (!isPublishableText(value)) return false;
+  const trimmed = value.trim();
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return false;
+  }
+  return (
+    url.protocol === 'https:' &&
+    url.username === '' &&
+    url.password === '' &&
+    url.pathname === '/' &&
+    url.search === '' &&
+    url.hash === '' &&
+    (trimmed === url.origin || trimmed === `${url.origin}/`) &&
+    !isNonProductionHost(url.hostname)
+  );
+}
+
+// 公開ページで表示してよい値。公開承認済みで空でない値だけを返し、それ以外は null。
+export function publishableValue(field: PublishableField): string | null {
+  return field.status === 'approved_for_publication' &&
+    isPublishableText(field.value)
+    ? field.value.trim()
+    : null;
+}
+
 export interface OperatorProfile {
   businessType: PublishableField;
   name: PublishableField;
@@ -222,11 +283,20 @@ export type LedgerId =
   | 'B09'
   | 'B10';
 
+export type RequiredValueKind = 'text' | 'email' | 'origin';
+
+export interface RequiredValue {
+  kind: RequiredValueKind;
+  value: string | null;
+}
+
 export interface ReleaseCheckItem {
   id: string;
   ledger: LedgerId;
   label: string;
   status: PublicationStatus;
+  /** 承認に加えて実値が必要な項目。承認状態だけでは公開可能にしない */
+  requiredValue?: RequiredValue;
   /** release: 公開サイトの公開に必要／plugin-submission: 後続のプラグイン申請に必要 */
   requiredFor: 'release' | 'plugin-submission';
   nextAction: string;
@@ -239,6 +309,7 @@ export const releaseCheckItems: readonly ReleaseCheckItem[] = [
     ledger: 'B01',
     label: '事業者の氏名の法務本文への掲載',
     status: operatorProfile.name.status,
+    requiredValue: { kind: 'text', value: operatorProfile.name.value },
     requiredFor: 'release',
     nextAction:
       '回答済みの氏名を再収集せず、公開用原稿への掲載を事業者が承認したら operatorProfile.name に反映する',
@@ -248,6 +319,7 @@ export const releaseCheckItems: readonly ReleaseCheckItem[] = [
     ledger: 'B01',
     label: '屋号・ブランド表記',
     status: operatorProfile.brand.status,
+    requiredValue: { kind: 'text', value: operatorProfile.brand.value },
     requiredFor: 'release',
     nextAction: 'Tiramisu の表記（屋号かサービスブランドか）を事業者が確認する',
   },
@@ -265,6 +337,7 @@ export const releaseCheckItems: readonly ReleaseCheckItem[] = [
     ledger: 'B02',
     label: 'フォームが使えない場合の代替窓口・公開用業務メール',
     status: operatorProfile.publicEmail.status,
+    requiredValue: { kind: 'email', value: operatorProfile.publicEmail.value },
     requiredFor: 'release',
     nextAction: '公開してよい業務用の連絡手段を事業者が決める',
   },
@@ -282,6 +355,10 @@ export const releaseCheckItems: readonly ReleaseCheckItem[] = [
     ledger: 'B03',
     label: '所在地・電話番号の開示方針の掲載文',
     status: operatorProfile.addressAndPhonePolicy.status,
+    requiredValue: {
+      kind: 'text',
+      value: operatorProfile.addressAndPhonePolicy.value,
+    },
     requiredFor: 'release',
     nextAction: '運用確認のあと、掲載文を事業者が承認する',
   },
@@ -290,6 +367,7 @@ export const releaseCheckItems: readonly ReleaseCheckItem[] = [
     ledger: 'B04',
     label: '正式な本番origin（canonical・metadataBase・申請URL）',
     status: publicSiteOrigin.status,
+    requiredValue: { kind: 'origin', value: publicSiteOrigin.value },
     requiredFor: 'release',
     nextAction:
       '既存設定から本番originを確認し、metadataBaseと絶対canonicalを確定する（画像の仮ドメインは使わない）',
@@ -370,6 +448,40 @@ export const releaseCheckItems: readonly ReleaseCheckItem[] = [
   },
 ];
 
+const requiredValueChecks: Record<
+  RequiredValueKind,
+  { isValid: (value: string | null) => boolean; problem: string }
+> = {
+  text: { isValid: isPublishableText, problem: '値が未設定または空です' },
+  email: {
+    isValid: isPublishableEmail,
+    problem: '公開用メールアドレスが未設定または不正な形式です',
+  },
+  origin: {
+    isValid: isProductionOrigin,
+    problem:
+      '本番originが未設定、または https の正式なoriginではありません（仮ドメイン・資格情報・パスを含む値は不可）',
+  },
+};
+
+export interface ReleaseItemCheck {
+  approved: boolean;
+  /** 実値が要件を満たさない場合の理由（値そのものは含めない） */
+  valueProblem: string | null;
+  satisfied: boolean;
+}
+
+// 1項目の判定。公開承認と必須の実値の両方を満たした場合だけ satisfied。
+export function checkReleaseItem(item: ReleaseCheckItem): ReleaseItemCheck {
+  const approved = item.status === 'approved_for_publication';
+  let valueProblem: string | null = null;
+  if (item.requiredValue) {
+    const check = requiredValueChecks[item.requiredValue.kind];
+    if (!check.isValid(item.requiredValue.value)) valueProblem = check.problem;
+  }
+  return { approved, valueProblem, satisfied: approved && !valueProblem };
+}
+
 export interface ReleaseReadinessResult {
   ready: boolean;
   blocking: ReleaseCheckItem[];
@@ -379,12 +491,23 @@ export interface ReleaseReadinessResult {
 export function evaluateReleaseReadiness(
   items: readonly ReleaseCheckItem[] = releaseCheckItems
 ): ReleaseReadinessResult {
-  const pending = items.filter(
-    item => item.status !== 'approved_for_publication'
-  );
+  const pending = items.filter(item => !checkReleaseItem(item).satisfied);
   const blocking = pending.filter(item => item.requiredFor === 'release');
   const deferred = pending.filter(
     item => item.requiredFor === 'plugin-submission'
   );
   return { ready: blocking.length === 0, blocking, deferred };
+}
+
+export type ReleaseVerdict = 'READY_FOR_RELEASE' | 'RELEASE_BLOCKED';
+
+// 公開前チェックの最終判定。承認台帳と、公開前チェックで見つかった確認エラー
+// （フォームURLの不正、ビルド出力の仮ドメイン・非公開文字列など）を合わせて決める唯一の箇所。
+export function decideRelease(
+  result: ReleaseReadinessResult,
+  checkErrors: readonly string[]
+): ReleaseVerdict {
+  return result.ready && checkErrors.length === 0
+    ? 'READY_FOR_RELEASE'
+    : 'RELEASE_BLOCKED';
 }

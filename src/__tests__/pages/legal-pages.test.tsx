@@ -115,12 +115,19 @@ describe('Legal pages', () => {
       screen.getByRole('heading', { level: 1, name: '運営者情報・販売条件' })
     ).toBeInTheDocument();
     const operator = container.querySelector('section#operator') as HTMLElement;
-    expect(operator).toHaveTextContent('個人事業主');
+    // 区分は事実確認済みだが公開承認前のため、値ではなく「確定後に掲載します」を表示する（F3）。
+    expect(
+      within(operator).getByText('事業者の区分').closest('div')
+    ).toHaveTextContent('確定後に掲載します');
+    expect(
+      within(operator).getByText('所在地').closest('div')
+    ).toHaveTextContent('ご請求に応じてお知らせします');
 
     const disclosure = container.querySelector(
       'section#operator-disclosure'
     ) as HTMLElement;
-    expect(disclosure).toHaveTextContent('お申し込み前にもご請求いただけます');
+    // 開示方針の掲載文は下書きのため表示せず、開示請求の導線は維持する。
+    expect(disclosure).toHaveTextContent('確定後に掲載します');
     expect(
       within(disclosure).getByRole('link', { name: '事業者情報の開示請求へ' })
     ).toHaveAttribute('href', '/contact?intent=operator-disclosure');
@@ -159,6 +166,52 @@ describe('Legal pages', () => {
     expect(operatorProfile.name.value).toBeNull();
   });
 
+  test('/legal の描画HTMLに未承認の運営者情報の値を含めない（F3）', async () => {
+    const { default: LegalNoticePage } =
+      await import('@/app/(public)/legal/page');
+    const { container } = render(<LegalNoticePage />);
+    const html = container.innerHTML;
+    for (const field of [
+      operatorProfile.businessType,
+      operatorProfile.brand,
+      operatorProfile.addressAndPhonePolicy,
+    ]) {
+      expect(field.status).not.toBe('approved_for_publication');
+      expect(field.value).not.toBeNull();
+      expect(html).not.toContain(field.value as string);
+    }
+  });
+
+  test('未承認の値は非nullでも運営者情報に描画しない（F3）', () => {
+    const unapproved: OperatorProfile = {
+      businessType: { value: '（テスト用）未承認の区分', status: 'confirmed' },
+      name: { value: '（テスト用）未承認の氏名', status: 'confirmed' },
+      brand: { value: '（テスト用）未承認のブランド', status: 'draft' },
+      addressAndPhonePolicy: {
+        value: '（テスト用）未承認の方針',
+        status: 'draft',
+      },
+      publicEmail: {
+        value: 'unapproved@fictional-tiramisu-test.co.jp',
+        status: 'missing',
+      },
+    };
+    const { container } = render(<OperatorProfileList profile={unapproved} />);
+    expect(container.innerHTML).not.toMatch(/未承認|unapproved@/);
+    expect(screen.getAllByText('確定後に掲載します')).toHaveLength(4);
+  });
+
+  test('公開承認済みでも空白だけの値は描画しない（F3）', () => {
+    const blank: OperatorProfile = {
+      ...operatorProfile,
+      name: { value: '   ', status: 'approved_for_publication' },
+    };
+    render(<OperatorProfileList profile={blank} />);
+    expect(screen.getByText('事業者の氏名').closest('div')).toHaveTextContent(
+      '確定後に掲載します'
+    );
+  });
+
   test('公開承認された値だけが運営者情報に表示される', () => {
     const approved: OperatorProfile = {
       ...operatorProfile,
@@ -169,5 +222,16 @@ describe('Legal pages', () => {
     };
     render(<OperatorProfileList profile={approved} />);
     expect(screen.getByText('（テスト用）事業者名')).toBeInTheDocument();
+    const email: OperatorProfile = {
+      ...operatorProfile,
+      publicEmail: {
+        value: 'contact@fictional-tiramisu-test.co.jp',
+        status: 'approved_for_publication',
+      },
+    };
+    render(<OperatorProfileList profile={email} />);
+    expect(
+      screen.getByText('contact@fictional-tiramisu-test.co.jp')
+    ).toBeInTheDocument();
   });
 });

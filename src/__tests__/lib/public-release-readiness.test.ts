@@ -5,9 +5,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+  checkReleaseItem,
+  decideRelease,
   evaluateReleaseReadiness,
+  isProductionOrigin,
+  isPublishableEmail,
   operatorProfile,
   publicSiteOrigin,
+  publishableValue,
   releaseCheckItems,
   worksClaims,
   type ReleaseCheckItem,
@@ -44,16 +49,158 @@ describe('公開前判定（A44/A46）', () => {
     expect(result.deferred.map(item => item.ledger)).toEqual(['B10']);
   });
 
-  it('すべて公開承認済みなら公開前条件を満たす', () => {
-    const approved = releaseCheckItems.map(item => ({
+  // 成功系は架空のテスト値だけを使う（実在の事業者情報は使わない）。
+  const fictitiousValues: Record<string, string> = {
+    'operator-name': '（テスト用）架空の事業者名',
+    'operator-brand': '（テスト用）架空のブランド',
+    'contact-alternative': 'contact@fictional-tiramisu-test.co.jp',
+    'operator-disclosure-text': '（テスト用）開示方針の文面',
+    'public-origin': 'https://lp.fictional-tiramisu-test.co.jp',
+  };
+  const approveAll = (
+    overrides: Record<string, string | null> = {}
+  ): ReleaseCheckItem[] =>
+    releaseCheckItems.map(item => ({
       ...item,
       status: 'approved_for_publication' as const,
+      ...(item.requiredValue
+        ? {
+            requiredValue: {
+              ...item.requiredValue,
+              value:
+                item.id in overrides
+                  ? overrides[item.id]
+                  : (fictitiousValues[item.id] ?? null),
+            },
+          }
+        : {}),
     }));
-    expect(evaluateReleaseReadiness(approved)).toEqual({
-      ready: true,
-      blocking: [],
-      deferred: [],
+
+  it('必須の実値を持つ項目は氏名・メール・origin・ブランド・開示方針の5件', () => {
+    expect(
+      releaseCheckItems
+        .filter(item => item.requiredValue)
+        .map(item => [item.id, item.requiredValue?.kind])
+    ).toEqual([
+      ['operator-name', 'text'],
+      ['operator-brand', 'text'],
+      ['contact-alternative', 'email'],
+      ['operator-disclosure-text', 'text'],
+      ['public-origin', 'origin'],
+    ]);
+    // 実値は台帳の値をそのまま参照し、別の値を持たない。
+    const byId = new Map(releaseCheckItems.map(item => [item.id, item]));
+    expect(byId.get('operator-name')?.requiredValue?.value).toBe(
+      operatorProfile.name.value
+    );
+    expect(byId.get('contact-alternative')?.requiredValue?.value).toBe(
+      operatorProfile.publicEmail.value
+    );
+    expect(byId.get('public-origin')?.requiredValue?.value).toBe(
+      publicSiteOrigin.value
+    );
+  });
+
+  it('全項目が公開承認済みで必須の実値も有効なら公開前条件を満たす', () => {
+    const result = evaluateReleaseReadiness(approveAll());
+    expect(result).toEqual({ ready: true, blocking: [], deferred: [] });
+    expect(decideRelease(result, [])).toBe('READY_FOR_RELEASE');
+  });
+
+  it.each([
+    ['氏名が null', 'operator-name', null],
+    ['氏名が空文字', 'operator-name', ''],
+    ['氏名が空白のみ', 'operator-name', ' \u3000\t'],
+    ['公開メールが null', 'contact-alternative', null],
+    ['公開メールが不正な形式', 'contact-alternative', 'not-an-email'],
+    ['公開メールが例示ドメイン', 'contact-alternative', 'info@example.com'],
+    ['本番originが null', 'public-origin', null],
+    [
+      '本番originが http',
+      'public-origin',
+      'http://lp.fictional-tiramisu-test.co.jp',
+    ],
+    ['本番originが不正なURL', 'public-origin', 'https//lp'],
+    ['本番originが画像の仮ドメイン', 'public-origin', 'https://tiramisu.jp'],
+    [
+      '本番originが仮ドメインのサブドメイン',
+      'public-origin',
+      'https://www.tiramisu.jp',
+    ],
+    [
+      '本番originがテンプレートの仮ドメイン',
+      'public-origin',
+      'https://your-app.vercel.app',
+    ],
+    [
+      '本番originが資格情報付き',
+      'public-origin',
+      'https://user:pass@lp.fictional-tiramisu-test.co.jp',
+    ],
+    [
+      '本番originがパス付き',
+      'public-origin',
+      'https://lp.fictional-tiramisu-test.co.jp/works',
+    ],
+    ['本番originが例示ドメイン', 'public-origin', 'https://example.com'],
+    ['本番originが localhost', 'public-origin', 'https://localhost:3000'],
+    ['本番originがIPアドレス', 'public-origin', 'https://127.0.0.1'],
+  ])('全ステータス承認済みでも%sなら公開不可', (_label, id, value) => {
+    const result = evaluateReleaseReadiness(approveAll({ [id]: value }));
+    expect(result.ready).toBe(false);
+    expect(result.blocking.map(item => item.id)).toEqual([id]);
+    const blocked = result.blocking[0];
+    expect(checkReleaseItem(blocked)).toMatchObject({
+      approved: true,
+      satisfied: false,
     });
+    expect(checkReleaseItem(blocked).valueProblem).toEqual(expect.any(String));
+    expect(decideRelease(result, [])).toBe('RELEASE_BLOCKED');
+  });
+
+  it('台帳が承認済みでも確認エラー（フォームURL・ビルド出力）があれば公開不可', () => {
+    const result = evaluateReleaseReadiness(approveAll());
+    expect(decideRelease(result, ['form-url'])).toBe('RELEASE_BLOCKED');
+  });
+
+  it('現状の台帳は公開不可で、未承認を承認済みとして扱わない', () => {
+    const result = evaluateReleaseReadiness();
+    expect(decideRelease(result, [])).toBe('RELEASE_BLOCKED');
+    expect(
+      releaseCheckItems.filter(
+        item => item.status === 'approved_for_publication'
+      )
+    ).toEqual([]);
+  });
+
+  it('本番originとメールの検証は正当な値を受け入れる', () => {
+    expect(isProductionOrigin('https://lp.fictional-tiramisu-test.co.jp')).toBe(
+      true
+    );
+    expect(
+      isProductionOrigin('https://lp.fictional-tiramisu-test.co.jp/')
+    ).toBe(true);
+    expect(
+      isProductionOrigin('https://lp.fictional-tiramisu-test.co.jp?x=1')
+    ).toBe(false);
+    expect(isPublishableEmail('contact@fictional-tiramisu-test.co.jp')).toBe(
+      true
+    );
+  });
+
+  it('公開用の値は公開承認済みかつ空でない場合だけ返す', () => {
+    expect(
+      publishableValue({ value: '（テスト用）値', status: 'confirmed' })
+    ).toBeNull();
+    expect(
+      publishableValue({ value: '  ', status: 'approved_for_publication' })
+    ).toBeNull();
+    expect(
+      publishableValue({
+        value: ' （テスト用）値 ',
+        status: 'approved_for_publication',
+      })
+    ).toBe('（テスト用）値');
   });
 
   it('未承認の個人情報・未確定のoriginを値として持たない（A43/A45）', () => {

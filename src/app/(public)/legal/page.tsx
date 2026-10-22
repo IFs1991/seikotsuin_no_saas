@@ -7,7 +7,10 @@ import { planItems } from '@/components/public/lp-content';
 import { MarketingFooter } from '@/components/public/marketing-footer';
 import { MarketingHeader } from '@/components/public/marketing-header';
 import { createContactHref } from '@/components/public/marketing-links';
-import { operatorProfile } from '@/components/public/release-readiness';
+import {
+  operatorProfile,
+  publishableValue,
+} from '@/components/public/release-readiness';
 import {
   formatYen,
   worksPlans,
@@ -76,9 +79,9 @@ export default function LegalNoticePage() {
               body: (
                 <>
                   <p>
-                    {operatorProfile.addressAndPhonePolicy.value ?? (
-                      <LegalPendingValue />
-                    )}
+                    {publishableValue(
+                      operatorProfile.addressAndPhonePolicy
+                    ) ?? <LegalPendingValue />}
                   </p>
                   <p>
                     <Link
