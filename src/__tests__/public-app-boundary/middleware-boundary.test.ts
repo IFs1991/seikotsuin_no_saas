@@ -155,4 +155,36 @@ describe('Middleware Boundary: public/app route separation', () => {
     );
     expect(res.status).not.toBe(307);
   });
+
+  // 公開サイト（共通トップ・製品LP・問い合わせ・法務）は認証なしで閲覧できる。
+  // middleware の保護一覧は変更しておらず、広いprefixでの公開も追加していない。
+  it.each(['/', '/works', '/os', '/contact', '/legal', '/terms', '/privacy'])(
+    'unauthenticated + %s (public site) -> no redirect, not marked no-store',
+    async pathname => {
+      const res = await middleware(createMockRequest(pathname));
+      expect(res.status).not.toBe(307);
+      expect(res.headers.get('location')).toBeNull();
+      expect(res.headers.get('Cache-Control')).toBeNull();
+    }
+  );
+
+  it.each([
+    ['/onboarding', '/login'],
+    ['/dashboard', '/login'],
+    ['/patients', '/login'],
+    ['/reservations', '/login'],
+    ['/staff', '/login'],
+    ['/manager', '/login'],
+    ['/daily-reports', '/login'],
+    ['/admin/users', '/admin/login'],
+  ])(
+    'unauthenticated + %s stays protected after public site routes were added',
+    async (pathname, loginPath) => {
+      const res = await middleware(createMockRequest(pathname));
+      expect(res.status).toBe(307);
+      const location = new URL(res.headers.get('location') ?? '');
+      expect(location.pathname).toBe(loginPath);
+      expect(location.searchParams.get('redirectTo')).toBe(pathname);
+    }
+  );
 });
