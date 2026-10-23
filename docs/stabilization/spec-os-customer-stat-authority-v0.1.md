@@ -160,7 +160,7 @@ SECURITY DEFINER・`search_path = ''`・所有者 `postgres`・EXECUTE は所有
 - SECURITY DEFINER が必要な理由: authenticated は `customers` に SELECT しか持たず、cache を書けない（変更前と同じく trigger が所有者権限で書く）。所有者 `postgres` は RLS の対象外（FORCE RLS なし）。
 - 両関数は `search_path = ''` で、表・関数に加えて型名も修飾する（`pg_catalog.uuid[]`）。`search_path = ''` でも、表と型の名前は `pg_temp` が先に検索されるため（関数・演算子は検索されない）、未修飾の型名は呼出元が作った temp の domain に置き換えられ得る（独立review で再現。任意の SQL と TEMP 権限が必要で PostgREST からは不可）。`integer` / `numeric` は文法上 `pg_catalog` に固定される。遷移表 `new_rows` / `old_rows` は同名の temp table より優先される。EXECUTE は所有者のみ（旧 `update_customer_stats()` にあった service_role の EXECUTE も無くなる）。PostgREST から呼べない（`app_private` は公開スキーマではなく、EXECUTE も無い）。
 - AFTER STATEMENT trigger は、RLS の USING / WITH CHECK、BEFORE trigger（`validate_reservations_clinic_refs`）、FK 検査を通った行だけを遷移表として受け取る。読むのはその行の顧客の、同じ院の予約だけで、呼出元へ値を返さない。エラー内容は他院のデータに依存しない。
-- clinic A の staff（RLS 経由）が clinic B に関わる書込を試みた場合、どれも cache の trigger より前に拒否され、両院の cache・行は変わらない（pgTAP T32〜T34）。他院の患者・メニュー・担当は RLS で見えないため、参照の検証（`validate_reservations_clinic_refs`、呼出元の権限で動く）が 23503 を返す（T8・T25・T26）。他院の予約 id への upsert は UPDATE の USING で 42501（T27）、DELETE は権限が無く 42501（T28）、clinic B の顧客は cache 列を含めて読めない（T29）。同じ INSERT は service_role では成功する（T30、取消済み）ため、拒否は RLS による。予約の院の変更は、予約履歴の FK（`(reservation_id, clinic_id)`）によりどの role でもできない（T31）。T9（患者を変えずに院だけ変更）の 23514 は参照の検証による拒否で、RLS には依存しない。T22・T23 は所有者権限での参照整合性の確認で、tenant の negative とは数えない。
+- clinic A の staff（RLS 経由）が clinic B に関わる書込を試みた場合、どれも cache の trigger より前に拒否され、両院の cache・行は変わらない（pgTAP T32〜T34）。他院の患者・メニュー・担当は RLS で見えないため、参照の検証（`validate_reservations_clinic_refs`、呼出元の権限で動く）が 23503 `customers.id not found` を返す（T8・T25・T26。FK が返す 23503 と区別するためメッセージまで固定する）。他院の予約 id への upsert は UPDATE の USING で 42501（T27）、DELETE は権限が無く 42501（T28）、clinic B の顧客は cache 列を含めて読めない（T29）。同じ INSERT は service_role では成功する（T30、取消済み）ため、拒否は RLS による。予約の院の変更は、予約履歴の FK（`(reservation_id, clinic_id)`）によりどの role でもできない（T31）。T9（患者を変えずに院だけ変更）の 23514 は参照の検証による拒否で、RLS には依存しない。T22・T23 は所有者権限での参照整合性の確認で、tenant の negative とは数えない。
 - RLS policy・RLS 有効化・table GRANT は不変（pgTAP B9〜B11 で定義の md5 と GRANT 一覧を固定）。
 
 ## 7. テスト
@@ -211,9 +211,13 @@ READ ONLY transaction で実行し、患者・予約の内容は出力しない�
 begin transaction read only;
 set local statement_timeout = '120s';
 
--- G0: pre-state the migration preflight requires. Before apply:
---     old_trigger_enabled = O, old_function_body_md5 =
---     f23956bd4e689a6f1003c7ddab8a8e11, new_triggers = 0 (after: NULL, NULL, 3).
+-- G0: pre-state the migration preflight requires, and the isolation level
+--     the new triggers need. Before apply: old_trigger_enabled = O,
+--     old_function_body_md5 = f23956bd4e689a6f1003c7ddab8a8e11,
+--     new_triggers = 0 (after: NULL, NULL, 3), default_isolation =
+--     read committed, non_rc_isolation_settings = 0 (a database, role or
+--     function default above READ COMMITTED would make every write that
+--     changes a counted reservation fail with 0A000 after the apply).
 select
   (select trigger_row.tgenabled from pg_trigger trigger_row
    where trigger_row.tgrelid = 'public.reservations'::regclass
@@ -222,7 +226,21 @@ select
    where proc.oid = to_regprocedure('public.update_customer_stats()')) as old_function_body_md5,
   (select count(*) from pg_trigger trigger_row
    where trigger_row.tgrelid = 'public.reservations'::regclass
-     and trigger_row.tgname like 'reservations_customer_visit_stats_%') as new_triggers;
+     and trigger_row.tgname like 'reservations_customer_visit_stats_%') as new_triggers,
+  current_setting('default_transaction_isolation') as default_isolation,
+  (select count(*) from (
+     select config.item
+     from pg_db_role_setting setting
+     cross join lateral unnest(setting.setconfig) as config(item)
+     union all
+     select config.item
+     from pg_proc proc
+     cross join lateral unnest(proc.proconfig) as config(item)
+   ) isolation_setting
+   where isolation_setting.item like 'default_transaction_isolation=%'
+     and isolation_setting.item not in ('default_transaction_isolation=read committed',
+                                        'default_transaction_isolation=read uncommitted')
+  ) as non_rc_isolation_settings;
 
 -- G1: cache vs the completed set (the contract of §2)
 with cache as (
@@ -351,7 +369,7 @@ select
 rollback;
 ```
 
-- G0: migration の preflight が要求する適用前の状態。`old_trigger_enabled = O`、`old_function_body_md5 = f23956bd4e689a6f1003c7ddab8a8e11`（baseline の関数本体）、`new_triggers = 0` でなければ適用しない（preflight も同じ条件で中断する）。G2 の再生は、旧 trigger がこの規則で動いていたことを前提にする。
+- G0: migration の preflight が要求する適用前の状態。`old_trigger_enabled = O`、`old_function_body_md5 = f23956bd4e689a6f1003c7ddab8a8e11`（baseline の関数本体）、`new_triggers = 0` でなければ適用しない（preflight も同じ条件で中断する）。G2 の再生は、旧 trigger がこの規則で動いていたことを前提にする。あわせて `default_isolation = read committed`、`non_rc_isolation_settings = 0`（DB・ロール・関数の既定の分離レベルが READ COMMITTED より上でない。PostgREST はロールや関数に設定された `default_transaction_isolation` で transaction を始め得る）を確認する。0 でなければ、適用後にその経路の完了予約に関わる書込が `0A000` で止まるため、設定を見直すまで適用しない（§5.3）。
 - G1 `mismatched`: cache が §2 の値と異なる顧客数。適用後、この顧客は次の書込で再構築される（§8）。
 - G2: 不整合を、削除する加算 trigger の規則を `public.reservation_history`（全予約の INSERT/UPDATE を OLD/NEW 付きで記録する baseline の trigger）から再生した値と比べる。
   - `explained_by_old_trigger`: cache が再生値と一致する（不整合は旧 trigger の既知の欠陥だけで説明できる）。最終来院日は、最後の完了イベントと同じ `created_at`（transaction 開始時刻）を持つイベントのどれかの `end_time` と一致すればよい。
@@ -466,15 +484,34 @@ commit;
 
 旧 `update_customer_stats`（加算のみ）を戻す rollback は行わない（rollback SQL は実行するとエラーで停止する）。問題時は次に限る。
 
-1. 関数の不具合: 新しい migration で `app_private.refresh_customer_visit_stats` / `app_private.sync_customer_visit_stats` を `create or replace` する（trigger は残す）。直した後、影響した顧客だけを同じ forward migration で再構築する（3. の SQL と同じ形）。
+1. 関数の不具合: 新しい migration で `app_private.refresh_customer_visit_stats` / `app_private.sync_customer_visit_stats` を `create or replace` する（trigger は残す）。直した後、影響した顧客だけを同じ forward migration で再構築する（3. の再開 SQL と同じ形）。
 2. ロック待ち・性能の問題: 対象の判定（§4.3）や索引を forward migration で調整する。trigger を削除しない。
-3. 緊急停止（owner 承認時のみ・時間を区切る）: `alter table public.reservations disable trigger reservations_customer_visit_stats_insert`（`_update` / `_delete` も同様）。停止中の cache は古い値のまま残る（壊れはしないが休眠抽出が古くなる）。無効のまま放置する手順は禁止。再開時は `enable trigger` の後、停止中に予約が変わった顧客だけを再構築する（§9.3 の一括再構築は §11.1 の別承認が要るため使わない）。`reservation_history.created_at` は transaction の開始時刻なので、停止時刻から最長の transaction の分（`:margin`）だけ早めた時刻から数え、履歴の変更前・変更後の両方の `customer_id` を対象にする。早めた範囲に migration 適用前の変更が入る場合（適用直後の停止）、その顧客も予約集合の値に揃う。
+3. 緊急停止（owner 承認時のみ・時間を区切る）: 下の停止 SQL を所有者（`postgres`）が1回で送り、出力の `window_start` を記録する。停止中の cache は古い値のまま残る（壊れはしないが休眠抽出が古くなる）。無効のまま放置する手順は禁止。再開時は3本を `enable trigger` した後、再開 SQL で停止中に予約が変わった顧客だけを再構築する（§9.3 の一括再構築は §11.1 の別承認が要るため使わない）。`reservation_history.created_at` は書き込んだ transaction の開始時刻なので、停止前に始まり停止後に書いた transaction の履歴は停止時刻より前の時刻になる。停止 SQL は `reservations` のロックを持ったまま、その時点で実行中の transaction（同じ DB、自分を含む）の最も古い開始時刻を `window_start` として返すため、停止中の書込の履歴はすべて `window_start` 以降になる（実行ロールが全セッションの開始時刻を読める `pg_read_all_stats` のメンバーでなければ、何も止めずに中断する）。再開 SQL は履歴の変更前・変更後の両方の `customer_id` を対象にする。`window_start` 以降に停止前の変更があれば、その顧客も予約集合の値に揃う（それ以外の顧客は変えない）。
 
 ```sql
--- :disabled_at は trigger を止めた時刻、:margin は停止時に実行中だった最長の
--- transaction の長さ（例 '1 hour'）。§4.3 と同じ条件（変更前または変更後が
--- 集計対象で、契約の列が変わった履歴）の顧客だけを、postgres（所有者）が
--- READ COMMITTED で再構築する。
+-- 停止 SQL（owner 承認時のみ）。postgres（所有者）が1回で送り、window_start を記録する。
+begin;
+do $$
+begin
+  if not pg_has_role('pg_read_all_stats', 'member') then
+    raise exception 'OS-F1 stop needs pg_read_all_stats to see every running transaction';
+  end if;
+end
+$$;
+alter table public.reservations disable trigger reservations_customer_visit_stats_insert;
+alter table public.reservations disable trigger reservations_customer_visit_stats_update;
+alter table public.reservations disable trigger reservations_customer_visit_stats_delete;
+select min(activity.xact_start) as window_start
+from pg_stat_activity activity
+where activity.datname = current_database()
+  and activity.xact_start is not null;
+commit;
+```
+
+```sql
+-- 再開 SQL。3本を enable trigger した後、停止 SQL の :window_start を渡して
+-- postgres（所有者）が READ COMMITTED で実行する。§4.3 と同じ条件（変更前
+-- または変更後が集計対象で、契約の列が変わった履歴）の顧客だけを再構築する。
 select app_private.refresh_customer_visit_stats(array(
   select distinct touched.customer_id
   from public.reservation_history history
@@ -482,7 +519,7 @@ select app_private.refresh_customer_visit_stats(array(
     ((history.old_value ->> 'customer_id')::uuid, history.old_value),
     ((history.new_value ->> 'customer_id')::uuid, history.new_value)
   ) touched(customer_id, row_value)
-  where history.created_at >= :'disabled_at'::timestamptz - :'margin'::interval
+  where history.created_at >= :'window_start'::timestamptz
     and touched.customer_id is not null
     and touched.row_value ->> 'status' = 'completed'
     and touched.row_value ->> 'is_deleted' = 'false'
@@ -512,7 +549,7 @@ where customer.id = backup.customer_id
   and customer.clinic_id = backup.clinic_id;
 ```
 
-（隔離DBで backup 9件が元の値に戻ることを確認し、rollback した。3. の SQL は、prod-like DB で trigger 停止中に 5件の予約を変えて確かめた（価格訂正・取消・別顧客への付け替え・メモのみ・`arrived` の価格変更）。`:margin = '0 seconds'` で選ばれたのは集計対象が変わった 4顧客（付け替えの前後を含む）だけで、再構築後はその4顧客が予約集合の値と一致した。メモのみの顧客と停止前から不整合だった顧客は古い値のまま残った。`:margin = '1 hour'` では fixture 作成時の変更も範囲に入り、その顧客も選ばれた）
+（隔離DBで backup 9件が元の値に戻ることを確認し、rollback した。3. の停止・再開 SQL は prod-like DB で確かめた。停止前に始まり停止後に書いた transaction（顧客53の価格訂正）と、停止中の価格訂正・取消・別顧客への付替え・メモのみ・`arrived` の価格変更を入れたところ、選ばれたのは集計対象が変わった顧客（付替えの前後と顧客53を含む）だけで、再構築後はその顧客が予約集合の値と一致した。メモのみの顧客と停止前から不整合だった顧客は古い値のまま残った。停止時刻から数えると顧客53が漏れることも確認した）
 
 ### 9.5 確認用SQL（read-only）
 
