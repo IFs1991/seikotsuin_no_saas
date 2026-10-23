@@ -1,0 +1,8 @@
+G0 (production qnanuoqveidwvacvbhqp, read-only, run ~2026-10-23T17:48Z)
+old_trigger_enabled=O old_function_body_md5=f23956bd4e689a6f1003c7ddab8a8e11 old_function_security_definer=true
+new_triggers=0 default_isolation=read committed non_rc_isolation_settings=0
+cache_columns=last_visit_date:timestamp with time zone,total_revenue:numeric(10,2),total_visits:integer
+app_private_schema=1 new_refresh_absent=true notification_0906_absent=true
+G1 customers=17 mismatched=0 mismatched_clinics=0 null_cache=0 visits_over=0 visits_under=0 revenue_differs=0 last_visit_differs=0
+G2 mismatched=0 explained_by_old_trigger=0 unexplained=0 with_history_gap=0 completion_events_in_history=0
+G3 customers=17 reservations=21 counted_reservations=0 reservations_without_created_history=0 max_customers_per_clinic=12

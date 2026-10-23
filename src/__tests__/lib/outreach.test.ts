@@ -395,6 +395,52 @@ describe('outreach dormant segment', () => {
     ]);
   });
 
+  it('reads the completed-visit cache of customers, not patient_visit_summary', async () => {
+    // spec-os-customer-stat-authority-v0.1: dormant candidates use the
+    // customers cache (completed visits, end_time). patient_visit_summary
+    // (arrived + completed, start_time JST date) is a different metric, and
+    // lifetime_value is selected as stored, never replaced by total_revenue.
+    const query = createCandidateQuery([]);
+    const customerSelect = jest.fn(() => query);
+    const credentialQuery = createCredentialQuery();
+    const failedLineQuery = createFailedLineQuery([]);
+    const from = jest.fn((table: string) => {
+      if (table === 'clinic_line_credentials') {
+        return { select: jest.fn(() => credentialQuery) };
+      }
+      if (table === 'customers') {
+        return { select: customerSelect };
+      }
+      if (table === 'line_message_outbox') {
+        return { select: jest.fn(() => failedLineQuery) };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const result = await fetchDormantCandidates(
+      { from },
+      { clinic_id: CLINIC_ID, days_from: 30, days_to: 60 },
+      new Date('2026-07-06T00:00:00.000Z')
+    );
+
+    expect(from).not.toHaveBeenCalledWith('patient_visit_summary');
+    expect(from).not.toHaveBeenCalledWith('reservations');
+    const selected = String(customerSelect.mock.calls[0]?.[0] ?? '')
+      .split(',')
+      .map(column => column.trim());
+    expect(selected).toEqual(
+      expect.arrayContaining([
+        'last_visit_date',
+        'total_visits',
+        'lifetime_value',
+      ])
+    );
+    expect(selected).not.toContain('total_revenue');
+    expect(query.gte).toHaveBeenCalledWith('last_visit_date', '2026-05-07');
+    expect(query.lte).toHaveBeenCalledWith('last_visit_date', '2026-06-06');
+    expect(result.candidates).toEqual([]);
+  });
+
   it('rejects draft creation when selected customers are no longer eligible', async () => {
     const fixture = createDraftClient([]);
 

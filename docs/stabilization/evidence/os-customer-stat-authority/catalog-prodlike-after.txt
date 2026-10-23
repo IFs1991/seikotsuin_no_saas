@@ -1,0 +1,77 @@
+Pager usage is off.
+## customers cache columns
+   column_name   |           type           | not_null | column_default |                                                                                   comment                                                                                    
+-----------------+--------------------------+----------+----------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ last_visit_date | timestamp with time zone | f        |                | OS-F1 cache: max(end_time) of the same reservations, NULL when none. patient_visit_summary.last_visit_date (arrived + completed, start_time JST date) is a different metric.
+ lifetime_value  | numeric(10,2)            | f        | 0              | 顧客生涯価値（LTV）
+ total_revenue   | numeric(10,2)            | f        | 0              | OS-F1 cache: sum of coalesce(actual_price, price, 0) over the same reservations. Not lifetime_value.
+ total_visits    | integer                  | f        | 0              | OS-F1 cache: number of completed, non-deleted reservations of this customer in its clinic. Maintained by reservations_customer_visit_stats_*.
+ updated_at      | timestamp with time zone | t        | now()          | 
+(5 rows)
+
+## triggers on reservations / customers
+   relation   |                     tgname                      | tgenabled |                                                                                                                                                    definition                                                                                                                                                     
+--------------+-------------------------------------------------+-----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ customers    | guard_customer_line_identity_trigger            | O         | CREATE TRIGGER guard_customer_line_identity_trigger BEFORE INSERT OR UPDATE OF line_user_id, line_credential_generation_id ON public.customers FOR EACH ROW EXECUTE FUNCTION protect_customer_line_identity()
+ customers    | initialize_customer_line_generation_trigger     | O         | CREATE TRIGGER initialize_customer_line_generation_trigger BEFORE INSERT OR UPDATE OF line_user_id, line_credential_generation_id ON public.customers FOR EACH ROW EXECUTE FUNCTION initialize_customer_line_generation()
+ customers    | update_customers_updated_at                     | O         | CREATE TRIGGER update_customers_updated_at BEFORE UPDATE ON public.customers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()
+ reservations | reservation_created_log                         | O         | CREATE TRIGGER reservation_created_log AFTER INSERT ON public.reservations FOR EACH ROW EXECUTE FUNCTION log_reservation_created()
+ reservations | reservation_deleted_log                         | O         | CREATE TRIGGER reservation_deleted_log AFTER DELETE ON public.reservations FOR EACH ROW EXECUTE FUNCTION log_reservation_deleted()
+ reservations | reservation_updated_log                         | O         | CREATE TRIGGER reservation_updated_log AFTER UPDATE ON public.reservations FOR EACH ROW EXECUTE FUNCTION log_reservation_updated()
+ reservations | reservations_clinic_ref_check                   | O         | CREATE TRIGGER reservations_clinic_ref_check BEFORE INSERT OR UPDATE ON public.reservations FOR EACH ROW EXECUTE FUNCTION validate_reservations_clinic_refs()
+ reservations | reservations_customer_visit_stats_delete        | O         | CREATE TRIGGER reservations_customer_visit_stats_delete AFTER DELETE ON public.reservations REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION app_private.sync_customer_visit_stats()
+ reservations | reservations_customer_visit_stats_insert        | O         | CREATE TRIGGER reservations_customer_visit_stats_insert AFTER INSERT ON public.reservations REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION app_private.sync_customer_visit_stats()
+ reservations | reservations_customer_visit_stats_update        | O         | CREATE TRIGGER reservations_customer_visit_stats_update AFTER UPDATE ON public.reservations REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION app_private.sync_customer_visit_stats()
+ reservations | sync_daily_report_item_from_arrived_reservation | O         | CREATE TRIGGER sync_daily_report_item_from_arrived_reservation AFTER INSERT OR UPDATE OF status, start_time, end_time, customer_id, menu_id, staff_id, actual_price, price, selected_options, notes, is_deleted ON public.reservations FOR EACH ROW EXECUTE FUNCTION sync_arrived_reservation_daily_report_item()
+ reservations | update_reservations_updated_at                  | O         | CREATE TRIGGER update_reservations_updated_at BEFORE UPDATE ON public.reservations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()
+(12 rows)
+
+## cache functions: security, search_path, owner, EXECUTE grantees
+                     function                     | prosecdef |     config     |  owner   | execute_grantees 
+--------------------------------------------------+-----------+----------------+----------+------------------
+ app_private.refresh_customer_visit_stats(uuid[]) | t         | search_path="" | postgres | postgres
+ app_private.sync_customer_visit_stats()          | t         | search_path="" | postgres | postgres
+(2 rows)
+
+## RLS and policies (customers / reservations)
+   relname    | relrowsecurity | relforcerowsecurity 
+--------------+----------------+---------------------
+ customers    | t              | f
+ reservations | t              | f
+(2 rows)
+
+  tablename   |            policyname            |  cmd   |      roles      |          definition_md5          
+--------------+----------------------------------+--------+-----------------+----------------------------------
+ customers    | customers_delete_for_admin       | DELETE | {authenticated} | 126fd7dc3d1849eb27b2dc1789aadaef
+ customers    | customers_insert_for_staff       | INSERT | {authenticated} | b642b07d841bd66f7d8856738172175c
+ customers    | customers_select_for_staff       | SELECT | {authenticated} | 2eb8d68f7bde85e9542ef48467630642
+ customers    | customers_update_for_staff       | UPDATE | {authenticated} | 2eb8d68f7bde85e9542ef48467630642
+ reservations | reservations_delete_for_managers | DELETE | {authenticated} | 553876662d9b616091bd8f7aa350f95e
+ reservations | reservations_insert_for_staff    | INSERT | {authenticated} | f25b6830c6f1aa9f53beabadd02d7b01
+ reservations | reservations_select_for_staff    | SELECT | {authenticated} | 2eb8d68f7bde85e9542ef48467630642
+ reservations | reservations_update_for_staff    | UPDATE | {authenticated} | 2eb8d68f7bde85e9542ef48467630642
+(8 rows)
+
+## table grants (anon / authenticated / service_role)
+  table_name  |    grantee    |                       privileges                        
+--------------+---------------+---------------------------------------------------------
+ customers    | authenticated | SELECT
+ customers    | service_role  | DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
+ reservations | authenticated | INSERT,SELECT,UPDATE
+ reservations | service_role  | DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
+(4 rows)
+
+## patient_visit_summary (unchanged contract)
+           viewdef_md5            |      reloptions       
+----------------------------------+-----------------------
+ e6500768e9f52db16517534f0f504f7b | security_invoker=true
+(1 row)
+
+## migration history tail
+    version     |                 name                 
+----------------+--------------------------------------
+ 20260815104957 | pr11_deferred_production_forward_fix
+ 20261020170757 | os_daily_report_aggregate_authority
+ 20261023064851 | os_customer_stat_authority
+(3 rows)
+

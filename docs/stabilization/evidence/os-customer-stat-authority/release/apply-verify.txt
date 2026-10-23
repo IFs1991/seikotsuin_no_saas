@@ -1,0 +1,23 @@
+[2026-10-23T23:28:09Z] reference: migration file + CLI-identical history row on a fresh prod-like DB
+[2026-10-23T23:28:17Z] expected target md5: c71e8adc43377cc6ea02640fd31c2e2b
+[2026-10-23T23:28:17Z] apply text: 546 lines, sha256 2629d4a973e2845788231daee8fda441c3b59f1df785a891d2ce88a571db433d
+[2026-10-23T23:28:17Z] case success (isolated PG 17.6, one simple query)
+[2026-10-23T23:28:25Z]   response: {"committed" : true, "history" : "20261023064851|os_customer_stat_authority|20|4a72d5d6c036c075d1a820b0b056b1cc", "triggers" : "reservations_customer_visit_stats_delete:O,reservations_customer_visit_stats_insert:O,reservations_customer_visit_stats_update:O"}
+[2026-10-23T23:28:25Z]   target md5 c71e8adc43377cc6ea02640fd31c2e2b state new/old/hist=3/0/1 data_unchanged=yes
+[2026-10-23T23:28:25Z] case tamper (one character in a function body)
+[2026-10-23T23:28:33Z]   ERROR:  RELEASE_SELF_CHECK_TARGETS 28b31990
+[2026-10-23T23:28:33Z]   state new/old/hist=0/1/0 data_unchanged=yes
+[2026-10-23T23:28:33Z] case lock wait (another session holds ROW EXCLUSIVE on reservations)
+[2026-10-23T23:28:47Z]   ERROR:  canceling statement due to lock timeout after 5s
+[2026-10-23T23:28:56Z]   state new/old/hist=0/1/0
+[2026-10-23T23:28:56Z] case duplicate history (row already present)
+[2026-10-23T23:29:05Z]   ERROR:  duplicate key value violates unique constraint "schema_migrations_pkey"
+[2026-10-23T23:29:05Z]   state new/old/hist=0/1/1 (hist 1 = the preexisting row)
+[2026-10-23T23:29:05Z] case preflight drift (old trigger disabled)
+[2026-10-23T23:29:13Z]   ERROR:  OS-F1 preflight failed: update_customer_stats_trigger is not in the reviewed state
+[2026-10-23T23:29:13Z]   state new/old/hist=0/1/0
+[2026-10-23T23:29:13Z] case success on the official supabase/postgres:17.6.1.140 image + real GoTrue (non-superuser postgres)
+[2026-10-23T23:29:33Z]   role: rolsuper=false
+[2026-10-23T23:29:33Z]   response: {"committed" : true, "history" : "20261023064851|os_customer_stat_authority|20|4a72d5d6c036c075d1a820b0b056b1cc", "triggers" : "reservations_customer_visit_stats_delete:O,reservations_customer_visit_stats_insert:O,reservations_customer_visit_stats_update:O"}
+[2026-10-23T23:29:34Z]   target md5 c71e8adc43377cc6ea02640fd31c2e2b state new/old/hist=3/0/1 data_unchanged=yes
+[2026-10-23T23:29:35Z] done (container os-f1-rel2 left in place)

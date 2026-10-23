@@ -1,0 +1,11 @@
+generated_at: 2026-10-23T16:30:46Z
+head: f5564f4855cc7e408a29d3bf16661818ed85327b
+base_main: 91d18779ed94c5688c1daa15363e4a5b99da1ecf
+pre_review_implementation: 2723f03c591f17611bfc30dc56f3df5b220f9d07
+migration_sha256: a8b95169167d0b3c12b5ecb86a147809eb82772f40572ef602ab1bbd4c64feec
+postgres: postgres (PostgreSQL) 17.6
+pgtap: 1.3.2
+pg_prove: pg_prove 3.36
+node: v22.22.0
+supabase_cli: 2.109.0
+cluster: isolated loopback PostgreSQL + Supabase role/auth shim (no Supabase images)

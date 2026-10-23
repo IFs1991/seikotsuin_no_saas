@@ -1,0 +1,188 @@
+supabase/tests/os_customer_stat_authority_test.sql .. 
+1..83
+ok 1 - A1: completing a reservation caches one visit
+not ok 2 - A2: cancelling the only completed reservation resets the cache to 0/0/NULL
+# Failed test 2: "A2: cancelling the only completed reservation resets the cache to 0/0/NULL"
+#         have: 1|1000.00|2096-03-01T02:00:00Z
+#         want: 0|0.00|null
+not ok 3 - A3: completed -> cancelled -> completed does not double count
+# Failed test 3: "A3: completed -> cancelled -> completed does not double count"
+#         have: 2|2000.00|2096-03-01T02:00:00Z
+#         want: 1|1000.00|2096-03-01T02:00:00Z
+ok 4 - A4: re-sending completed keeps the cache
+ok 5 - A5: notes/payment edits of a completed reservation keep the cache
+ok 6 - A6: edits outside the contract do not rewrite the customer row (no row version, no updated_at churn)
+ok 7 - A7: lifetime_value is a separate column and is never written by the cache maintenance
+not ok 8 - A8: completing an older reservation later keeps the latest end_time
+# Failed test 8: "A8: completing an older reservation later keeps the latest end_time"
+#         have: 2|5000.00|2096-02-10T02:00:00Z
+#         want: 2|5000.00|2096-03-10T02:00:00Z
+not ok 9 - A9: rescheduling the latest completed visit follows its end_time
+# Failed test 9: "A9: rescheduling the latest completed visit follows its end_time"
+#         have: 2|5000.00|2096-02-10T02:00:00Z
+#         want: 2|5000.00|2096-03-10T03:00:00Z
+not ok 10 - A10: removing the latest completed visit falls back to the remaining latest one
+# Failed test 10: "A10: removing the latest completed visit falls back to the remaining latest one"
+#         have: 2|5000.00|2096-02-10T02:00:00Z
+#         want: 1|3000.00|2096-02-10T02:00:00Z
+not ok 11 - A11: actual_price correction replaces the cached revenue
+# Failed test 11: "A11: actual_price correction replaces the cached revenue"
+#         have: 1|1000.00|2096-04-01T02:00:00Z
+#         want: 1|800.00|2096-04-01T02:00:00Z
+ok 12 - A12: clearing actual_price falls back to price
+not ok 13 - A13: option repricing replaces the cached revenue
+# Failed test 13: "A13: option repricing replaces the cached revenue"
+#         have: 1|1000.00|2096-04-01T02:00:00Z
+#         want: 1|1500.00|2096-04-01T02:00:00Z
+not ok 14 - A14: retrying the same repricing does not double count
+# Failed test 14: "A14: retrying the same repricing does not double count"
+#         have: 1|1000.00|2096-04-01T02:00:00Z
+#         want: 1|1500.00|2096-04-01T02:00:00Z
+ok 15 - A15: a completed visit without price counts as a visit with 0 revenue
+not ok 16 - A16: a logically deleted completed reservation is excluded
+# Failed test 16: "A16: a logically deleted completed reservation is excluded"
+#         have: 2|3000.00|2096-05-02T02:00:00Z
+#         want: 1|1000.00|2096-05-01T02:00:00Z
+ok 17 - A17: restoring it counts it once again
+not ok 18 - A18: only is_deleted = false counts (NULL is excluded)
+# Failed test 18: "A18: only is_deleted = false counts (NULL is excluded)"
+#         have: 2|3000.00|2096-05-02T02:00:00Z
+#         want: 1|1000.00|2096-05-01T02:00:00Z
+not ok 19 - A19: when no completed reservation remains the cache is 0/0/NULL
+# Failed test 19: "A19: when no completed reservation remains the cache is 0/0/NULL"
+#         have: 2|3000.00|2096-05-02T02:00:00Z
+#         want: 0|0.00|null
+not ok 20 - A20: the empty cache keeps the column types (integer 0, numeric 0.00, NULL)
+# Failed test 20: "A20: the empty cache keeps the column types (integer 0, numeric 0.00, NULL)"
+#         have: (2,3000.00,f)
+#         want: (0,0.00,t)
+ok 21 - A21: an arrived-only reservation is not added to the completed cache
+ok 22 - A22: patient_visit_summary still counts arrived visits (start_time JST date)
+ok 23 - A23: arrived -> completed is cached
+not ok 24 - A24: the previous customer no longer counts the moved visit
+# Failed test 24: "A24: the previous customer no longer counts the moved visit"
+#         have: 1|1000.00|2096-07-01T02:00:00Z
+#         want: 0|0.00|null
+not ok 25 - A25: the new customer counts the moved visit
+# Failed test 25: "A25: the new customer counts the moved visit"
+#         have: 0|0.00|null
+#         want: 1|1000.00|2096-07-01T02:00:00Z
+ok 26 - A26: a multi-row statement caches every row of the first customer
+ok 27 - A27: and of the second customer
+ok 28 - A28: physical reservation delete stays rejected (reservation history validation)
+ok 29 - A29: the rejected delete leaves the cache unchanged
+not ok 30 - A30: a reservation that is physically removed is no longer cached
+# Failed test 30: "A30: a reservation that is physically removed is no longer cached"
+#         have: 1|700.00|2096-09-01T02:00:00Z
+#         want: 0|0.00|null
+not ok 31 - A31: the cache is rebuilt from the reservation set, not incremented from a stale value
+# Failed test 31: "A31: the cache is rebuilt from the reservation set, not incremented from a stale value"
+#         have: 100|100999.99|2096-10-01T02:00:00Z
+#         want: 1|1000.00|2096-10-01T02:00:00Z
+not ok 32 - A32: total-neutral counted changes keep the cache
+# Failed test 32: "A32: total-neutral counted changes keep the cache"
+#         have: 2|3000.00|2096-03-05T02:00:00Z
+#         want: 2|3000.00|2096-03-20T02:00:00Z
+ok 33 - A33: the rebuild does not rewrite a customer row whose cache already matches
+not ok 34 - A34: a counted change that moves the totals does rewrite it
+# Failed test 34: "A34: a counted change that moves the totals does rewrite it"
+#         have: (0,35)
+#         want: anything else
+not ok 35 - B1: the increment-only update_customer_stats_trigger is gone
+# Failed test 35: "B1: the increment-only update_customer_stats_trigger is gone"
+#         have: 1
+#         want: 0
+not ok 36 - B2: public.update_customer_stats() is gone
+# Failed test 36: "B2: public.update_customer_stats() is gone"
+#         have: update_customer_stats()
+#         want: NULL
+not ok 37 - B3: insert/update/delete statement triggers maintain the cache from transition tables
+# Failed test 37: "B3: insert/update/delete statement triggers maintain the cache from transition tables"
+#         have: NULL
+#         want: CREATE TRIGGER reservations_customer_visit_stats_delete AFTER DELETE ON public.reservations REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION app_private.sync_customer_visit_stats()
+# CREATE TRIGGER reservations_customer_visit_stats_insert AFTER INSERT ON public.reservations REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION app_private.sync_customer_visit_stats()
+# CREATE TRIGGER reservations_customer_visit_stats_update AFTER UPDATE ON public.reservations REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION app_private.sync_customer_visit_stats()
+not ok 38 - B4: the three cache triggers are enabled
+# Failed test 38: "B4: the three cache triggers are enabled"
+#         have: 0
+#         want: 3
+not ok 39 - B5: both functions are SECURITY DEFINER with an empty search_path, owned by postgres
+# Failed test 39: "B5: both functions are SECURITY DEFINER with an empty search_path, owned by postgres"
+#         have: NULL
+#         want: refresh_customer_visit_stats:true:search_path="":postgres,sync_customer_visit_stats:true:search_path="":postgres
+ok 40 - B6: no role other than the owner (not PUBLIC, anon, authenticated or service_role) can EXECUTE them
+ok 41 - B7: patient_visit_summary definition is unchanged
+ok 42 - B8: patient_visit_summary stays security_invoker
+ok 43 - B9: customers/reservations RLS policies are unchanged
+ok 44 - B10: RLS stays enabled on customers and reservations
+ok 45 - B11: table grants on customers/reservations are unchanged
+ok 46 - B12: cache column types and defaults are unchanged
+ok 47 - T1: fixture cache of the clinic A customer
+ok 48 - T2: fixture cache of the clinic B customer
+{"sub": "f1470000-0000-4000-8000-000000000021", "role": "authenticated", "app_metadata": {"user_role": "staff", "clinic_scope_ids": ["f1470000-0000-4000-8000-000000000001"]}}
+ok 49 - T3: staff A completes a clinic A reservation through RLS
+not ok 50 - T4: the SECURITY DEFINER trigger maintains the cache for an RLS writer
+# Failed test 50: "T4: the SECURITY DEFINER trigger maintains the cache for an RLS writer"
+#         have: 2|3000.00|2096-11-01T02:00:00Z
+#         want: 2|3000.00|2096-11-02T02:00:00Z
+ok 51 - T5: staff A cancels a completed clinic A reservation through RLS
+not ok 52 - T6: cancelling through RLS removes the visit from the cache
+# Failed test 52: "T6: cancelling through RLS removes the visit from the cache"
+#         have: 2|3000.00|2096-11-01T02:00:00Z
+#         want: 1|1000.00|2096-11-01T02:00:00Z
+ok 53 - T7: staff A cannot update a clinic B reservation (RLS USING)
+ok 54 - T8: staff A cannot attach a clinic B customer to a clinic A reservation
+ok 55 - T9: staff A cannot move a clinic A reservation to clinic B
+ok 56 - T10: authenticated cannot write the cache directly (customers has SELECT only)
+not ok 57 - T11: authenticated cannot EXECUTE the cache rebuild function
+# Failed test 57: "T11: authenticated cannot EXECUTE the cache rebuild function"
+#       caught: 42883: function app_private.refresh_customer_visit_stats(uuid[]) does not exist
+#       wanted: 42501
+{"sub": "f1470000-0000-4000-8000-000000000023", "role": "authenticated", "app_metadata": {"user_role": "staff", "clinic_scope_ids": ["f1470000-0000-4000-8000-000000000001"]}}
+ok 58 - T12: an inactive profile cannot update reservations
+{"sub": "f1470000-0000-4000-8000-000000000024", "role": "authenticated", "app_metadata": {"user_role": "staff", "clinic_scope_ids": ["f1470000-0000-4000-8000-000000000001"]}}
+ok 59 - T13: a stale JWT scope (moved to clinic B, token says A) updates nothing in A or B
+ok 60 - T14: anon cannot update reservations
+not ok 61 - T15: anon cannot EXECUTE the cache rebuild function
+# Failed test 61: "T15: anon cannot EXECUTE the cache rebuild function"
+#       caught: 42883: function app_private.refresh_customer_visit_stats(uuid[]) does not exist
+#       wanted: 42501
+not ok 62 - T16: service_role (API) cannot EXECUTE the cache rebuild function either
+# Failed test 62: "T16: service_role (API) cannot EXECUTE the cache rebuild function either"
+#       caught: 42883: function app_private.refresh_customer_visit_stats(uuid[]) does not exist
+#       wanted: 42501
+ok 63 - T17: denied attempts leave the clinic A cache unchanged
+ok 64 - T18: denied attempts leave the clinic B cache unchanged
+ok 65 - T19: the clinic B customer row is not even rewritten
+ok 66 - T20: the clinic B reservation is unchanged
+ok 67 - T21: the clinic A reservation keeps its customer, clinic and status
+ok 68 - T22: a completed reservation for an unknown customer is rejected
+ok 69 - T23: a completed clinic A reservation for a clinic B customer is rejected
+ok 70 - T24: rejected references leave the clinic B cache unchanged
+{"sub": "f1470000-0000-4000-8000-000000000021", "role": "authenticated", "app_metadata": {"user_role": "staff", "clinic_scope_ids": ["f1470000-0000-4000-8000-000000000001"]}}
+ok 71 - T25: staff A cannot insert a completed clinic B reservation (B references are invisible under RLS)
+ok 72 - T26: staff A cannot move a completed clinic A reservation into clinic B with B references
+ok 73 - T27: staff A cannot upsert over a clinic B reservation id
+ok 74 - T28: authenticated has no DELETE privilege on reservations
+ok 75 - T29: staff A cannot read clinic B customers, cache columns included
+ok 76 - T30: the T25 insert succeeds for service_role (rolled back): the refusal is the RLS boundary
+ok 77 - T31: no role can move a reservation to another clinic: its history pins (id, clinic_id)
+ok 78 - T32: after the refused writes and the rolled-back contrast the clinic B cache is unchanged
+ok 79 - T33: and the clinic B customer row version is the same
+ok 80 - T34: the clinic A cache is unchanged as well
+not ok 81 - G1: every fixture customer cache equals the independently computed completed-set aggregate
+# Failed test 81: "G1: every fixture customer cache equals the independently computed completed-set aggregate"
+#         have: 10
+#         want: 0
+ok 82 - G2: no customer outside the fixtures was rewritten
+ok 83 - G3: lifetime_value of every fixture customer is untouched
+# Looks like you failed 29 tests of 83
+Failed 29/83 subtests 
+
+Test Summary Report
+-------------------
+supabase/tests/os_customer_stat_authority_test.sql (Wstat: 0 Tests: 83 Failed: 29)
+  Failed tests:  2-3, 8-11, 13-14, 16, 18-20, 24-25, 30-32
+                34-39, 50, 52, 57, 61-62, 81
+Files=1, Tests=83,  0 wallclock secs ( 0.02 usr  0.01 sys +  0.02 cusr  0.01 csys =  0.06 CPU)
+Result: FAIL
