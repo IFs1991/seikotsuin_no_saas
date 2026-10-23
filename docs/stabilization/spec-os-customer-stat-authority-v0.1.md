@@ -486,15 +486,25 @@ commit;
 
 1. 関数の不具合: 新しい migration で `app_private.refresh_customer_visit_stats` / `app_private.sync_customer_visit_stats` を `create or replace` する（trigger は残す）。直した後、影響した顧客だけを同じ forward migration で再構築する（3. の再開 SQL と同じ形）。
 2. ロック待ち・性能の問題: 対象の判定（§4.3）や索引を forward migration で調整する。trigger を削除しない。
-3. 緊急停止（owner 承認時のみ・時間を区切る）: 下の停止 SQL を所有者（`postgres`）が1回で送り、出力の `window_start` を記録する。停止中の cache は古い値のまま残る（壊れはしないが休眠抽出が古くなる）。無効のまま放置する手順は禁止。再開時は3本を `enable trigger` した後、再開 SQL で停止中に予約が変わった顧客だけを再構築する（§9.3 の一括再構築は §11.1 の別承認が要るため使わない）。`reservation_history.created_at` は書き込んだ transaction の開始時刻なので、停止前に始まり停止後に書いた transaction の履歴は停止時刻より前の時刻になる。停止 SQL は `reservations` のロックを持ったまま、その時点で実行中の transaction（同じ DB、自分を含む）の最も古い開始時刻を `window_start` として返すため、停止中の書込の履歴はすべて `window_start` 以降になる（実行ロールが全セッションの開始時刻を読める `pg_read_all_stats` のメンバーでなければ、何も止めずに中断する）。再開 SQL は履歴の変更前・変更後の両方の `customer_id` を対象にする。`window_start` 以降に停止前の変更があれば、その顧客も予約集合の値に揃う（それ以外の顧客は変えない）。
+3. 緊急停止（owner 承認時のみ・時間を区切る）: 下の停止 SQL を所有者（`postgres`）が1回で送り、出力の `window_start` を記録する。停止中の cache は古い値のまま残る（壊れはしないが休眠抽出が古くなる）。無効のまま放置する手順は禁止。再開時は3本を `enable trigger` した後、再開 SQL で停止中に予約が変わった顧客だけを再構築する（§9.3 の一括再構築は §11.1 の別承認が要るため使わない）。`reservation_history.created_at` は書き込んだ transaction の開始時刻なので、停止前に始まり停止後に書いた transaction の履歴は停止時刻より前の時刻になる。停止 SQL は `reservations` のロックを持ったまま、その時点で実行中の transaction（同じ DB、自分を含む）の最も古い開始時刻を `window_start` として返すため、停止中の書込の履歴はすべて `window_start` 以降になる（実行ロールが全セッションの開始時刻を読める `pg_read_all_stats` のメンバーでない場合と、`track_activities` が off の場合（そのセッションの開始時刻が見えない）は、何も止めずに中断する。長い書込 transaction がある場合も、その後ろで予約の書込を待たせないよう `lock_timeout` 5s で何も止めずに失敗するので、時間をおいて再試行する）。再開 SQL は履歴の変更前・変更後の両方の `customer_id` を対象にする。`window_start` 以降に停止前の変更があれば、その顧客も予約集合の値に揃う（それ以外の顧客は変えない）。
 
 ```sql
 -- 停止 SQL（owner 承認時のみ）。postgres（所有者）が1回で送り、window_start を記録する。
 begin;
+set local lock_timeout = '5s';
 do $$
 begin
   if not pg_has_role('pg_read_all_stats', 'member') then
     raise exception 'OS-F1 stop needs pg_read_all_stats to see every running transaction';
+  end if;
+  if pg_catalog.current_setting('track_activities') <> 'on'
+     or exists (
+       select 1
+       from pg_catalog.pg_db_role_setting setting
+       cross join lateral unnest(setting.setconfig) as config(item)
+       where config.item = 'track_activities=off'
+     ) then
+    raise exception 'OS-F1 stop needs track_activities on to see every running transaction';
   end if;
 end
 $$;
