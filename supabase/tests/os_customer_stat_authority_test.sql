@@ -541,7 +541,7 @@ select is(
 select throws_ok(
   $$update public.reservations set customer_id = 'f1470000-0000-4000-8000-000000000061'
     where id = 'f1470000-0000-4000-8000-000000000a01'$$,
-  '23503', null,
+  '23503', 'customers.id not found',
   'T8: staff A cannot attach a clinic B customer to a clinic A reservation'
 );
 select throws_ok(
@@ -653,7 +653,7 @@ select throws_ok(
     values ('f1470000-0000-4000-8000-000000000002', 'f1470000-0000-4000-8000-000000000061',
             'f1470000-0000-4000-8000-000000000032', 'f1470000-0000-4000-8000-000000000042',
             '2096-12-03 01:00+00', '2096-12-03 02:00+00', 'completed', 7000)$$,
-  '23503', null,
+  '23503', 'customers.id not found',
   'T25: staff A cannot insert a completed clinic B reservation (B references are invisible under RLS)'
 );
 select throws_ok(
@@ -664,7 +664,7 @@ select throws_ok(
         staff_id = 'f1470000-0000-4000-8000-000000000042',
         start_time = '2096-12-05 01:00+00', end_time = '2096-12-05 02:00+00'
     where id = 'f1470000-0000-4000-8000-000000000a01'$$,
-  '23503', null,
+  '23503', 'customers.id not found',
   'T26: staff A cannot move a completed clinic A reservation into clinic B with B references'
 );
 select throws_ok(
