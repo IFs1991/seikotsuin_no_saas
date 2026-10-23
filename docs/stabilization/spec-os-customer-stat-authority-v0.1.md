@@ -5,9 +5,10 @@
 - 基準 main: `91d18779ed94c5688c1daa15363e4a5b99da1ecf`（Issue の調査基準は `8e7ab4c`。指摘は最新 main でも残存を確認）
 - Migration: `supabase/migrations/20261023064851_os_customer_stat_authority.sql`（`supabase migration new` で採番）
 - Rollback / forward-fix: `supabase/rollbacks/20261023064851_os_customer_stat_authority_rollback.sql`（自動rollback禁止。§9.4）
-- SQL test: `supabase/tests/os_customer_stat_authority_test.sql`（pgTAP 70件）
+- SQL test: `supabase/tests/os_customer_stat_authority_test.sql`（pgTAP 83件）
 - 競合検証: `scripts/customers/verify-customer-stat-races.mjs`（`npm run customers:verify:races:local`、CI Database Contract に追加。接続先の固定は `scripts/daily-reports/local-psql.mjs` を共用）
 - catalog 前後・適用検証: `docs/stabilization/evidence/os-customer-stat-authority/`
+- 改訂: 2026-10-23 独立review 対応（REPEATABLE READ / SERIALIZABLE の書込を拒否、型名の修飾、preflight の強化、negative test の追加、runbook の訂正。§5.3・§6・§7・§9）
 
 ## 1. 問題（main `91d1877` の隔離DBで再現）
 
@@ -24,7 +25,7 @@
 | 並行更新: 新しい予約と過去予約を同時に完了                | 後から commit した側の `end_time`        | `max(end_time)`   |
 | 並行更新: 取消と別予約の完了                              | 取消が反映されない                       | 取消後の集合      |
 
-（pgTAP 31件・競合検証5件が main で正しい理由により失敗。§7）
+（pgTAP 83件中29件・競合検証8件中6件が main で正しい理由により失敗。内訳は §7）
 
 個別患者の実データの不整合は調査していない（本番の読出し・書換えは本Issueの対象外）。過去データは §8・§9 の read-only ゲートで評価する。
 
@@ -102,9 +103,9 @@
 
 SECURITY DEFINER・`search_path = ''`・所有者 `postgres`・EXECUTE は所有者以外に付与しない（PUBLIC / anon / authenticated / service_role から revoke）。
 
-1. 引数が NULL・空なら何もしない。
-2. 対象顧客の行を **id 順に** `FOR NO KEY UPDATE` でロックする（顧客単位で書込を直列化する。`FOR KEY SHARE` を取る予約の FK 検査とは衝突しない）。
-3. 分離レベルが READ COMMITTED 以外なら、対象顧客の集計対象行を `FOR SHARE` でロックする（§5.3）。
+1. 引数が NULL・空なら何もしない（分離レベルも見ない）。
+2. 分離レベルが READ COMMITTED（PostgreSQL では同じ動作の READ UNCOMMITTED を含む）以外なら、何もロック・書込せずに `CUSTOMER_VISIT_STATS_REQUIRES_READ_COMMITTED`（SQLSTATE `0A000`）で拒否する（§5.3）。
+3. 対象顧客の行を **id 順に** `FOR NO KEY UPDATE` でロックする（顧客単位で書込を直列化する。`FOR KEY SHARE` を取る予約の FK 検査とは衝突しない）。
 4. **次の文で** `S(c)` を集計し、値が異なる顧客だけを UPDATE する。READ COMMITTED では文ごとに新しい snapshot を取るため、ロック取得前に commit した書込をすべて含む。
 
 ### 4.2 文単位 trigger
@@ -117,7 +118,7 @@ SECURITY DEFINER・`search_path = ''`・所有者 `postgres`・EXECUTE は所有
 
 ### 4.4 書込の最小化
 
-- 値が一致する顧客の行は書き換えない（pgTAP A6 で `ctid` 不変を確認）。
+- 値が一致する顧客の行は書き換えない。契約外の列の変更では再構築しないこと（pgTAP A6）、再構築しても値が同じなら書き換えないこと（A33）を `ctid` で確認し、値が変わる場合は書き換えること（A34）も確認した。
 - migration は既存の cache 値を書き換えない（§8）。
 
 ## 5. 競合制御
@@ -135,48 +136,56 @@ SECURITY DEFINER・`search_path = ''`・所有者 `postgres`・EXECUTE は所有
 
 ### 5.3 REPEATABLE READ / SERIALIZABLE
 
-- snapshot が transaction の開始時に固定されるため、ロック後に集計しても他の transaction の commit を含まない。そこで再構築関数は、READ COMMITTED 以外では集計対象行を `FOR SHARE` でロックする。snapshot の後に他の transaction が変更・削除した行があれば 40001 で失敗する（値を誤らずに拒否）。集計対象を増やす変更（新しい完了・付替え）は顧客行の書換えを伴うため、顧客行のロックで 40001 になる。
-- アプリにこの分離レベルで予約を書く経路は無い（repo 内に `isolation level` 指定なし）。R6（READ COMMITTED は成功し正しい値）と R7（REPEATABLE READ は 40001）で確認した。
+- snapshot が transaction の開始時に固定されるため、ロック後に集計しても、その後に commit された変更を含まない。他の transaction が customers 行を書き換えていればロックで 40001 になるが、値が既に一致していて書き換えなかった commit は検出できない。旧 trigger が残した古い cache が新しい値と偶然一致する場合も同じで（R8）、snapshot の値で cache を上書きしてしまう。
+- そのため再構築関数は、READ COMMITTED 以外の transaction で再構築が必要になった時点で `0A000`（`CUSTOMER_VISIT_STATS_REQUIRES_READ_COMMITTED`）を返し、何もロック・書込しない。その transaction の予約の変更ごと取り消される。再構築が不要な書込（契約外の列だけの更新、変更前後とも集計対象外の行）は影響を受けない。
+- アプリ・API・RPC にこの分離レベルで予約を書く経路は無い（repo 内に `isolation level` 指定なし）。R6（READ COMMITTED は成功し正しい値）、R7・R8（REPEATABLE READ は `0A000`、値は変わらない）で確認した。旧版（`2723f03`。集計対象行を `FOR SHARE` でロックする方式）は R8 で REPEATABLE READ の書込を受け付け、誤った値（`1 / 900.00`、正しくは `2 / 2000.00`）を cache に書くことを独立review が示したため、拒否方式に変えた。
 
 ### 5.4 検証（実DB・2接続）
 
 `scripts/customers/verify-customer-stat-races.mjs` は2つの psql セッションで順序を固定する。blocking 型は先行側が transaction を開いたまま `pg_blocking_pids()` で後続側の待機を確認してから commit し、snapshot 型は後続側が snapshot を取った後に advisory lock で先行側の commit を待つ。最終状態は文字列の期待値で検証する。接続先は loopback だけを許可し、`PGHOST` / `PGHOSTADDR` / `PGSERVICE` 等の接続先を変える変数を psql に渡さない（`scripts/daily-reports/local-psql.mjs`）。
 
-| ID  | 競合                                                                           | 期待結果                                             |
-| --- | ------------------------------------------------------------------------------ | ---------------------------------------------------- |
-| R1  | 同じ顧客の別予約を2接続で完了（後続は RLS 経由の authenticated）               | `2 / 3000.00`、後続は顧客ロックで待機                |
-| R2  | 新しい予約の完了と過去予約の完了                                               | 最終来院日は新しい予約の `end_time`                  |
-| R3  | 完了予約の取消と別予約の完了                                                   | 取消後の集合（`1 / 2000.00`）                        |
-| R4  | 完了予約の付替え（X→Y）と Y の別予約の完了                                     | X `0 / 0.00 / NULL`、Y `2 / 3000.00`                 |
-| R5  | 同じ2顧客にまたがる複数行 UPDATE 同士（行の順序は逆）                          | デッドロックせず両顧客とも正しい                     |
-| R6  | 総計を変えない変更（最新でない完了予約の日時変更）の後の READ COMMITTED の取消 | 新しい snapshot で `1 / 2000.00 / 変更後の end_time` |
-| R7  | R6 と同じ順序を REPEATABLE READ で                                             | 後続は 40001、値は変わらない                         |
+| ID  | 競合                                                                                         | 期待結果                                                   |
+| --- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| R1  | 同じ顧客の別予約を2接続で完了（後続は RLS 経由の authenticated）                             | `2 / 3000.00`、後続は顧客ロックで待機                      |
+| R2  | 新しい予約の完了と過去予約の完了                                                             | 最終来院日は新しい予約の `end_time`                        |
+| R3  | 完了予約の取消と別予約の完了                                                                 | 取消後の集合（`1 / 2000.00`）                              |
+| R4  | 完了予約の付替え（X→Y）と Y の別予約の完了                                                   | X `0 / 0.00 / NULL`、Y `2 / 3000.00`                       |
+| R5  | 同じ2顧客にまたがる複数行 UPDATE 同士（行の順序は逆）                                        | デッドロックせず両顧客とも正しい                           |
+| R6  | 総計を変えない変更（最新でない完了予約の日時変更）の後の READ COMMITTED の取消               | 新しい snapshot で `1 / 2000.00 / 変更後の end_time`       |
+| R7  | R6 と同じ順序を REPEATABLE READ で                                                           | 後続は `0A000` で拒否、値は変わらない                      |
+| R8  | 古い cache と一致する値になる完了（customers 行を書かない）の後の REPEATABLE READ の価格訂正 | 後続は `0A000` で拒否、cache は正しい `2 / 2000.00` のまま |
 
 ## 6. 権限・テナント境界
 
 - SECURITY DEFINER が必要な理由: authenticated は `customers` に SELECT しか持たず、cache を書けない（変更前と同じく trigger が所有者権限で書く）。所有者 `postgres` は RLS の対象外（FORCE RLS なし）。
-- 両関数は `search_path = ''` で、参照はすべてスキーマ修飾。EXECUTE は所有者のみ（旧 `update_customer_stats()` にあった service_role の EXECUTE も無くなる）。PostgREST から呼べない（`app_private` は公開スキーマではなく、EXECUTE も無い）。
+- 両関数は `search_path = ''` で、表・関数に加えて型名も修飾する（`pg_catalog.uuid[]`）。`search_path = ''` でも、表と型の名前は `pg_temp` が先に検索されるため（関数・演算子は検索されない）、未修飾の型名は呼出元が作った temp の domain に置き換えられ得る（独立review で再現。任意の SQL と TEMP 権限が必要で PostgREST からは不可）。`integer` / `numeric` は文法上 `pg_catalog` に固定される。遷移表 `new_rows` / `old_rows` は同名の temp table より優先される。EXECUTE は所有者のみ（旧 `update_customer_stats()` にあった service_role の EXECUTE も無くなる）。PostgREST から呼べない（`app_private` は公開スキーマではなく、EXECUTE も無い）。
 - AFTER STATEMENT trigger は、RLS の USING / WITH CHECK、BEFORE trigger（`validate_reservations_clinic_refs`）、FK 検査を通った行だけを遷移表として受け取る。読むのはその行の顧客の、同じ院の予約だけで、呼出元へ値を返さない。エラー内容は他院のデータに依存しない。
-- 他院の患者への付替えは、BEFORE trigger（RLS で他院の患者が見えず 23503）または複合FKで拒否され、どちらの院の cache も変わらない（pgTAP T8・T9・T19）。
+- clinic A の staff（RLS 経由）が clinic B に関わる書込を試みた場合、どれも cache の trigger より前に拒否され、両院の cache・行は変わらない（pgTAP T32〜T34）。他院の患者・メニュー・担当は RLS で見えないため、参照の検証（`validate_reservations_clinic_refs`、呼出元の権限で動く）が 23503 を返す（T8・T25・T26）。他院の予約 id への upsert は UPDATE の USING で 42501（T27）、DELETE は権限が無く 42501（T28）、clinic B の顧客は cache 列を含めて読めない（T29）。同じ INSERT は service_role では成功する（T30、取消済み）ため、拒否は RLS による。予約の院の変更は、予約履歴の FK（`(reservation_id, clinic_id)`）によりどの role でもできない（T31）。T9（患者を変えずに院だけ変更）の 23514 は参照の検証による拒否で、RLS には依存しない。T22・T23 は所有者権限での参照整合性の確認で、tenant の negative とは数えない。
 - RLS policy・RLS 有効化・table GRANT は不変（pgTAP B9〜B11 で定義の md5 と GRANT 一覧を固定）。
 
 ## 7. テスト
 
-### 7.1 pgTAP（`supabase/tests/os_customer_stat_authority_test.sql`、70件）
+### 7.1 pgTAP（`supabase/tests/os_customer_stat_authority_test.sql`、83件）
 
 期待値は文字列リテラル（G1 のみ相関サブクエリによる独立した集計）で、実装の関数を期待値の計算に使わない。
 
-- Part A（反例・31件）: 取消→再完了、同じ status の再送、`notes`・`payment_status` だけの更新、`ctid` 不変、`lifetime_value` 不変、過去予約の後日完了、日時変更、来院なしへの変更、`actual_price` 訂正・クリア、オプション再計算（API と同じ列を service_role で更新）とその再送、価格なしの完了、論理削除・復元・NULL、全取消で `0/0/NULL`、型、`arrived` だけ（cache 対象外、`patient_visit_summary` は計上）、付替え、2顧客にまたがる複数行 UPDATE、物理削除の拒否と（履歴 trigger を検証中だけ止めた場合の）DELETE 反映、古い cache 値からの再構築。
+- Part A（反例・34件）: 取消→再完了、同じ status の再送、`notes`・`payment_status` だけの更新、`ctid` 不変、`lifetime_value` 不変、過去予約の後日完了、日時変更、来院なしへの変更、`actual_price` 訂正・クリア、オプション再計算（API と同じ列を service_role で更新）とその再送、価格なしの完了、論理削除・復元・NULL、全取消で `0/0/NULL`、型、`arrived` だけ（cache 対象外、`patient_visit_summary` は計上）、付替え、2顧客にまたがる複数行 UPDATE、物理削除の拒否と（履歴 trigger を検証中だけ止めた場合の）DELETE 反映、古い cache 値からの再構築、総計を変えない対象の変更（書き換えない）と総計を変える変更（書き換える）。
 - Part B（catalog・12件）: 旧 trigger・関数の削除、新 trigger 3本の定義と有効化、関数の SECURITY DEFINER・`search_path`・所有者・EXECUTE、`patient_visit_summary` の定義・`security_invoker`、RLS policy・RLS 有効化・table GRANT・列の型と既定値。
-- Part T（テナント・権限・24件）: clinic A の staff が RLS 経由で完了・取消できること（positive）、clinic B の予約を更新できない、他院の患者への付替え・他院への移動の拒否、customers への直接書込（42501）、再構築関数の EXECUTE 拒否（authenticated / anon / service_role、42501）、inactive プロフィール、DB では clinic B へ移動済みで JWT が clinic A のままの stale 権限、anon の UPDATE 拒否、不明な患者・他院の患者での INSERT 拒否、拒否後に両院の cache・行が変わらないこと。
+- Part T（テナント・権限・34件）: clinic A の staff が RLS 経由で完了・取消できること（positive）、clinic B の予約を更新できない、他院の患者への付替え・他院への移動の拒否、customers への直接書込（42501）、再構築関数の EXECUTE 拒否（authenticated / anon / service_role、42501）、inactive プロフィール、DB では clinic B へ移動済みで JWT が clinic A のままの stale 権限、anon の UPDATE 拒否、clinic B の参照一式での INSERT・移動の拒否、他院の予約 id への upsert の拒否、DELETE の拒否、clinic B の顧客の読取不可、service_role との対比（T30・T31、取消済みの subtransaction）、所有者権限での参照整合性（T22・T23）、拒否後に両院の cache・行が変わらないこと。§6 も参照。
 - Part G（3件）: 全 fixture 顧客の cache が独立集計と一致、fixture 外の顧客を書き換えていない、`lifetime_value` 不変。
 
-RED（main `91d1877`、2026-10-23）: 70件中31件が失敗（A2–A5, A8–A11, A13–A16, A18–A20, A24, A25, A30, A31, B1–B5, T4, T6, T11, T15–T17, G1）。失敗理由は cache 値の誤り（加算のみ・追従なし）と、契約（新 trigger・再構築関数）の不在。残り39件は変更しない契約・テナント境界の回帰ガードで、main でも成立する。
+RED（main `91d1877`、2026-10-23）: 83件中29件が失敗。
+
+- 独立した値の反例（18件）: A2・A3（取消・再完了）、A8・A32・T4（過去の予約の後日完了・後からの INSERT で最終来院日が後退）、A9・A10（日時・来院なしの変更）、A11・A13（価格訂正・オプション再計算）、A16・A18（論理削除・NULL）、A19（0件で `0/0/NULL` に戻らない）、A24・A25（付替え）、A30（DELETE）、A31（古い値からの加算）、A34（価格訂正で customers 行が書き換わらない）、T6（RLS 経由の取消）。
+- 前の検査の状態を引き継ぐ連鎖（2件）: A14（A13 の再計算結果の再送）、A20（A19 の後の型の確認）。
+- 全体の照合（1件）: G1。
+- 契約の不在（8件）: B1〜B5（旧 trigger・関数の残存、新 trigger・関数の不在）、T11・T15・T16（再構築関数が無く 42883）。
+- 残り54件は変更しない契約・テナント境界の回帰ガードで、main でも成立する（初版で連鎖して失敗していた A4・A5・A15・T17 は、独立した顧客・直前の値との比較に直した）。
 
 ### 7.2 競合検証（§5.4）
 
-- RED（main `91d1877`）: R2・R3・R4・R6・R7 が失敗（R2/R6 は cache 値の誤り、R3/R4 は旧 trigger が顧客を直列化せず後続が待たない、R7 は安全側の拒否なし）。R1・R5（加算だけの同時完了）は旧 trigger でも成立する。
-- 変異: ロック先行の文を除いた関数では R1〜R5 が lost update で失敗（例: R1 `1 / 2000.00`）。分離レベルの保護を除いた関数では R7 が失敗する。
+- RED（main `91d1877`）: R2・R3・R4・R6・R7・R8 が失敗（R2/R6 は cache 値の誤り、R3/R4 は旧 trigger が顧客を直列化せず後続が待たない、R7/R8 は安全側の拒否なし）。R1・R5（加算だけの同時完了）は旧 trigger でも成立する。
+- 変異: ロック先行の文を除いた関数では R1〜R5 が lost update で失敗（例: R1 `1 / 2000.00`）。分離レベルの拒否を除いた関数、および旧版（`2723f03` の `FOR SHARE` 方式）では R7・R8 が失敗する（旧版の R8 は REPEATABLE READ の書込を受け付ける）。値の一致判定を除いた関数では pgTAP A33 が失敗する。
 
 ### 7.3 Jest（実装に依存しない回帰ガード）
 
@@ -189,6 +198,7 @@ RED（main `91d1877`、2026-10-23）: 70件中31件が失敗（A2–A5, A8–A11
 - 適用後、ある顧客の集計対象の予約に契約上の変更（§4.3）が入った時点で、その顧客の cache だけが `S(c)` から再構築される。過去の不整合はその時点で解消される（`notes` だけの更新等では再構築しない）。触れられない顧客の値は残る（一括補正ではない）。
 - 休眠掘起しへの影響: 再構築された顧客は、取消済み・削除済みの完了予約による最終来院日が外れ、過去予約の後日完了で後退していた最終来院日が戻る。抽出対象への出入りが起こり得る（正しい値への変化）。
 - 予約と無関係に cache へ書かれた値（例: 手作業の取込）があれば、その顧客の次の書込で失われる。適用前に §9.1 の G2 で「旧 trigger で説明できない不整合」を数え、0件でなければ適用を止める。
+- 休眠掘起しの対象は、そもそも最近の予約変更が少ない患者である。§9.3 の一括再構築を行わない限り、その層の不整合の大半は残り続ける。一括再構築の要否は owner が判断する（§11.1）。
 
 ## 9. 適用手順・runbook
 
@@ -200,6 +210,19 @@ READ ONLY transaction で実行し、患者・予約の内容は出力しない�
 -- OS-F1 §9.1 pre-apply gate (read-only, counts only)
 begin transaction read only;
 set local statement_timeout = '120s';
+
+-- G0: pre-state the migration preflight requires. Before apply:
+--     old_trigger_enabled = O, old_function_body_md5 =
+--     f23956bd4e689a6f1003c7ddab8a8e11, new_triggers = 0 (after: NULL, NULL, 3).
+select
+  (select trigger_row.tgenabled from pg_trigger trigger_row
+   where trigger_row.tgrelid = 'public.reservations'::regclass
+     and trigger_row.tgname = 'update_customer_stats_trigger') as old_trigger_enabled,
+  (select md5(proc.prosrc) from pg_proc proc
+   where proc.oid = to_regprocedure('public.update_customer_stats()')) as old_function_body_md5,
+  (select count(*) from pg_trigger trigger_row
+   where trigger_row.tgrelid = 'public.reservations'::regclass
+     and trigger_row.tgname like 'reservations_customer_visit_stats_%') as new_triggers;
 
 -- G1: cache vs the completed set (the contract of §2)
 with cache as (
@@ -328,6 +351,7 @@ select
 rollback;
 ```
 
+- G0: migration の preflight が要求する適用前の状態。`old_trigger_enabled = O`、`old_function_body_md5 = f23956bd4e689a6f1003c7ddab8a8e11`（baseline の関数本体）、`new_triggers = 0` でなければ適用しない（preflight も同じ条件で中断する）。G2 の再生は、旧 trigger がこの規則で動いていたことを前提にする。
 - G1 `mismatched`: cache が §2 の値と異なる顧客数。適用後、この顧客は次の書込で再構築される（§8）。
 - G2: 不整合を、削除する加算 trigger の規則を `public.reservation_history`（全予約の INSERT/UPDATE を OLD/NEW 付きで記録する baseline の trigger）から再生した値と比べる。
   - `explained_by_old_trigger`: cache が再生値と一致する（不整合は旧 trigger の既知の欠陥だけで説明できる）。最終来院日は、最後の完了イベントと同じ `created_at`（transaction 開始時刻）を持つイベントのどれかの `end_time` と一致すればよい。
@@ -341,8 +365,10 @@ rollback;
 ### 9.2 適用順序と方法
 
 - 本番は `20261020170757` 適用済み・`20260906003219`（#145、通知）未適用で、履歴に差がある。`supabase db push` は未適用の古い version を含めるため（`--include-all` が必要）**使わない**。`0906` は本変更と独立で、便乗して適用しない。
-- 本 migration ファイルだけを1回の送信で適用する（ファイル自身が `begin; … commit;` を持ち、preflight と postflight で検査する）。同じ transaction で `supabase_migrations.schema_migrations` に `20261023064851` / `os_customer_stat_authority` を記録する（`20261020170757` と同じ方式。#163 の適用記録）。
-- 隔離DBで、本番相当の履歴（全 migration から `0906` と本 migration を除いて再生）に本 migration だけを適用し、次を確認した: 適用成功、customers・reservations・reservation_history・daily_reports の全行 fingerprint 不変、`0906` の関数・trigger が存在しないまま、履歴は `…20260815104957, 20261020170757, 20261023064851`、pgTAP（`0906` 用 suite を除く）、競合検証 7/7、日報競合検証 8/8。`commercial_function_execution_test.sql` #6（`0906` が作る関数を EXECUTE matrix に期待する）は本 migration の有無にかかわらず失敗する本番相当構成の既知差で、本変更の失敗ではない。
+- 適用は `20261020170757` と同じ方式で行う（PR #163 のリリース記録 v3）。CLI 2.109.0 の `supabase db push` はファイルの `begin` … `commit` を送った後、履歴の INSERT を別の transaction で送る（履歴だけが失敗し得る）。Supabase MCP の `apply_migration` は履歴の version を自前で採番する。どちらも使わない。
+- 代わりに、本 migration の最後の `commit;` を除いた本文（preflight・postflight を含む）、`supabase_migrations.schema_migrations` への履歴の INSERT（version `20261023064851`、name `os_customer_stat_authority`、statements は CLI と同じ形）、適用結果の自己検査（下の catalog 差分と一致すること）、`commit;` を連結した適用テキストを作り、1回だけ送る。これで migration と履歴が同じ transaction で commit される。適用テキストと sha256 は本番適用の承認記録で確定し、隔離DBで成功・改ざん・lock 待ちの各ケースを確かめてから使う（本PRでは作らない）。
+- 公式の Supabase Postgres image（17.6.1.140。`postgres` は superuser ではなく BYPASSRLS を持つ）でも、本 migration が所有者権限だけで適用できることを確認した。
+- 隔離DB（PostgreSQL 17.6 + shim と、公式 image + GoTrue migration の両方）で、本番相当の履歴（全 migration から `0906` と本 migration を除いて再生）に本 migration だけを適用し、次を確認した: 適用成功、customers・reservations・reservation_history・daily_reports の全行 fingerprint 不変、`0906` の関数・trigger が存在しないまま、履歴は `…20260815104957, 20261020170757, 20261023064851`、pgTAP（`0906` 用 suite を除く）、競合検証 8/8、日報競合検証 8/8。`commercial_function_execution_test.sql` #6（`0906` が作る関数を EXECUTE matrix に期待する）は本 migration の有無にかかわらず失敗する本番相当構成の既知差で、本変更の失敗ではない。
 - 順序: DB のみの変更で、アプリの変更は無い。稼働中のアプリは列・API を変えずに動く（旧アプリも trigger を意識しない）。
 - ロック: `reservations` に trigger の削除・作成のロック（ACCESS EXCLUSIVE を短時間）を取る。`lock_timeout = 5s` で取れなければ失敗して何も変わらないため、低負荷時間帯に再試行する。
 - 前後の catalog snapshot を取り、`docs/stabilization/evidence/os-customer-stat-authority/` の差分（列コメント3件、trigger 3本の追加と旧 trigger の削除、関数2件の追加と旧関数の削除、履歴1行）と一致することを確認する。RLS・policy・table GRANT・`patient_visit_summary` は不変。
@@ -440,10 +466,41 @@ commit;
 
 旧 `update_customer_stats`（加算のみ）を戻す rollback は行わない（rollback SQL は実行するとエラーで停止する）。問題時は次に限る。
 
-1. 関数の不具合: 新しい migration で `app_private.refresh_customer_visit_stats` / `app_private.sync_customer_visit_stats` を `create or replace` する（trigger は残す）。直した後、影響した顧客を §9.3 で再構築する。
+1. 関数の不具合: 新しい migration で `app_private.refresh_customer_visit_stats` / `app_private.sync_customer_visit_stats` を `create or replace` する（trigger は残す）。直した後、影響した顧客だけを同じ forward migration で再構築する（3. の SQL と同じ形）。
 2. ロック待ち・性能の問題: 対象の判定（§4.3）や索引を forward migration で調整する。trigger を削除しない。
-3. 緊急停止（owner 承認時のみ・時間を区切る）: `alter table public.reservations disable trigger reservations_customer_visit_stats_insert`（`_update` / `_delete` も同様）。停止中の cache は古い値のまま残る（壊れはしないが休眠抽出が古くなる）。再開時は `enable trigger` の後、停止中に予約が変わった顧客（`reservation_history.created_at` で特定）を §9.3 で再構築する。無効のまま放置する手順は禁止。
-4. 一括再構築（§9.3）を取り消す必要がある場合（再構築自体の誤り）: 同じ transaction で backup から戻す。戻した値は次の書込で再び再構築されるため、先に 1. で原因を直す。
+3. 緊急停止（owner 承認時のみ・時間を区切る）: `alter table public.reservations disable trigger reservations_customer_visit_stats_insert`（`_update` / `_delete` も同様）。停止中の cache は古い値のまま残る（壊れはしないが休眠抽出が古くなる）。無効のまま放置する手順は禁止。再開時は `enable trigger` の後、停止中に予約が変わった顧客だけを再構築する（§9.3 の一括再構築は §11.1 の別承認が要るため使わない）。`reservation_history.created_at` は transaction の開始時刻なので、停止時刻から最長の transaction の分（`:margin`）だけ早めた時刻から数え、履歴の変更前・変更後の両方の `customer_id` を対象にする。早めた範囲に migration 適用前の変更が入る場合（適用直後の停止）、その顧客も予約集合の値に揃う。
+
+```sql
+-- :disabled_at は trigger を止めた時刻、:margin は停止時に実行中だった最長の
+-- transaction の長さ（例 '1 hour'）。§4.3 と同じ条件（変更前または変更後が
+-- 集計対象で、契約の列が変わった履歴）の顧客だけを、postgres（所有者）が
+-- READ COMMITTED で再構築する。
+select app_private.refresh_customer_visit_stats(array(
+  select distinct touched.customer_id
+  from public.reservation_history history
+  cross join lateral (values
+    ((history.old_value ->> 'customer_id')::uuid, history.old_value),
+    ((history.new_value ->> 'customer_id')::uuid, history.new_value)
+  ) touched(customer_id, row_value)
+  where history.created_at >= :'disabled_at'::timestamptz - :'margin'::interval
+    and touched.customer_id is not null
+    and touched.row_value ->> 'status' = 'completed'
+    and touched.row_value ->> 'is_deleted' = 'false'
+    and (
+      history.old_value is null
+      or history.new_value is null
+      or exists (
+        select 1
+        from unnest(array['status', 'is_deleted', 'customer_id', 'clinic_id',
+                          'price', 'actual_price', 'end_time']) as contract(col)
+        where history.old_value -> contract.col is distinct from history.new_value -> contract.col
+      )
+    )
+  order by 1
+));
+```
+
+4. 一括再構築（§9.3）を取り消す必要がある場合（再構築自体の誤り）: commit 済みの再構築を戻すため、別の reviewed forward migration で backup から戻す。`updated_at` は戻らず、戻した時刻になる（`update_customers_updated_at`）。戻した値は次の書込で再び再構築されるため、先に 1. で原因を直す。
 
 ```sql
 update public.customers customer
@@ -455,7 +512,7 @@ where customer.id = backup.customer_id
   and customer.clinic_id = backup.clinic_id;
 ```
 
-（隔離DBで backup 9件が元の値に戻ることを確認し、rollback した）
+（隔離DBで backup 9件が元の値に戻ることを確認し、rollback した。3. の SQL は、prod-like DB で trigger 停止中に 5件の予約を変えて確かめた（価格訂正・取消・別顧客への付け替え・メモのみ・`arrived` の価格変更）。`:margin = '0 seconds'` で選ばれたのは集計対象が変わった 4顧客（付け替えの前後を含む）だけで、再構築後はその4顧客が予約集合の値と一致した。メモのみの顧客と停止前から不整合だった顧客は古い値のまま残った。`:margin = '1 hour'` では fixture 作成時の変更も範囲に入り、その顧客も選ばれた）
 
 ### 9.5 確認用SQL（read-only）
 
