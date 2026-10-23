@@ -24,10 +24,10 @@ G3 13 11 8 1 12
 ## data fingerprint before apply
 
 ```text
-customers 13 b9366d0745d7d3fdd4a60b40f89985f7
-reservations 11 9d7cdbc4f2a22c8bc5816662b03288fe
-reservation_history 19 f671be7f23be42e9008bfbe222b371c7
-daily_reports 1 0ac48b8c4924b86a73bd70c3b346c634
+customers 13 0b6e26c73787b1c9634e2a6a9e55c987
+reservations 11 965d39a0b475b5001d3ba5414beca579
+reservation_history 19 de9db2934c09ab488546eab2f2232f4a
+daily_reports 1 7758857a55b8e68cbfb61786fd91e518
 ```
 
 ## apply text = migration without its final commit + history row + commit, sent once (psql command tags)
@@ -59,10 +59,10 @@ COMMIT
 ## data fingerprint after apply
 
 ```text
-customers 13 b9366d0745d7d3fdd4a60b40f89985f7
-reservations 11 9d7cdbc4f2a22c8bc5816662b03288fe
-reservation_history 19 f671be7f23be42e9008bfbe222b371c7
-daily_reports 1 0ac48b8c4924b86a73bd70c3b346c634
+customers 13 0b6e26c73787b1c9634e2a6a9e55c987
+reservations 11 965d39a0b475b5001d3ba5414beca579
+reservation_history 19 de9db2934c09ab488546eab2f2232f4a
+daily_reports 1 7758857a55b8e68cbfb61786fd91e518
 ```
 
 ## history after apply
@@ -114,7 +114,7 @@ after 3 9000.00 2095-04-01 02:00:00+00
 Failed 1/20 subtests 
 supabase/tests/commercial_function_execution_test.sql                       (Wstat: 0 Tests: 20 Failed: 1)
   Failed test:  6
-Files=22, Tests=995,  6 wallclock secs ( 0.19 usr  0.05 sys +  0.64 cusr  0.26 csys =  1.14 CPU)
+Files=22, Tests=995,  5 wallclock secs ( 0.20 usr  0.03 sys +  0.56 cusr  0.24 csys =  1.03 CPU)
 Result: FAIL
 ```
 
@@ -125,7 +125,7 @@ Result: FAIL
 Failed 1/20 subtests 
 supabase/tests/commercial_function_execution_test.sql (Wstat: 0 Tests: 20 Failed: 1)
   Failed test:  6
-Files=1, Tests=20,  0 wallclock secs ( 0.03 usr  0.00 sys +  0.02 cusr  0.01 csys =  0.06 CPU)
+Files=1, Tests=20,  1 wallclock secs ( 0.02 usr  0.00 sys +  0.02 cusr  0.00 csys =  0.04 CPU)
 Result: FAIL
 ```
 

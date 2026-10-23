@@ -184,5 +184,5 @@ Test Summary Report
 supabase/tests/os_customer_stat_authority_test.sql (Wstat: 0 Tests: 83 Failed: 29)
   Failed tests:  2-3, 8-11, 13-14, 16, 18-20, 24-25, 30-32
                 34-39, 50, 52, 57, 61-62, 81
-Files=1, Tests=83,  1 wallclock secs ( 0.04 usr  0.00 sys +  0.03 cusr  0.01 csys =  0.08 CPU)
+Files=1, Tests=83,  0 wallclock secs ( 0.02 usr  0.01 sys +  0.02 cusr  0.01 csys =  0.06 CPU)
 Result: FAIL

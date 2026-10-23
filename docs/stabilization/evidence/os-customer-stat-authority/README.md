@@ -10,12 +10,12 @@ All data is synthetic. Nothing here was read from or written to a shared, stagin
 
 | Tree                                                   | Commit                                                             |
 | ------------------------------------------------------ | ------------------------------------------------------------------ |
-| head (code verified here)                              | `544014c375e903f33575b3d8a67739c7af4b5b7c`                         |
+| head (code verified here)                              | `f5564f4855cc7e408a29d3bf16661818ed85327b`                         |
 | base `main`                                            | `91d18779ed94c5688c1daa15363e4a5b99da1ecf`                         |
 | implementation before the independent review           | `2723f03c591f17611bfc30dc56f3df5b220f9d07`                         |
 | `20261023064851_os_customer_stat_authority.sql` sha256 | `a8b95169167d0b3c12b5ecb86a147809eb82772f40572ef602ab1bbd4c64feec` |
 
-`environment.txt`: PostgreSQL 17.6, pgTAP 1.3.2, pg_prove 3.36, Node v22.22.0, Supabase CLI 2.109.0. Every database was created empty and replayed from `supabase/migrations/` (plus `supabase/seed.sql`) for this run on 2026-10-23 between 12:22:23Z and 12:27:05Z; the official image run followed between 12:27:12Z and 12:27:53Z. `run.txt` has the timestamp and result of every step. The commit that adds these files after `544014c` changes this directory only.
+`environment.txt`: PostgreSQL 17.6, pgTAP 1.3.2, pg_prove 3.36, Node v22.22.0, Supabase CLI 2.109.0. Every database was created empty and replayed from `supabase/migrations/` (plus `supabase/seed.sql`) for this run on 2026-10-23 between 16:30:47Z and 16:34:18Z; the official image run followed between 16:34:18Z and 16:35:08Z. `run.txt` has the timestamp and result of every step. The commit that adds these files after `f5564f4` changes this directory only.
 
 ## Files
 
@@ -28,8 +28,8 @@ All data is synthetic. Nothing here was read from or written to a shared, stagin
 | `pgtap-red-base.txt`                                               | Head pgTAP suite on base `main` (RED, verbose)                                                                                                                           |
 | `races-red-base.txt` / `races-prev.txt` / `races-green-head-1.txt` | Race verifier on base `main` (RED), on `2723f03` (review counterexamples RED) and on head                                                                                |
 | `mutations.txt`                                                    | Three mutations of the head migration and one of the tenant boundary, and the tests that catch them                                                                      |
-| `reenable.txt`                                                     | §9.4 item 3: emergency stop and re-enable rebuild only the touched customers, including a transaction that began before the stop and wrote after it                      |
-| `official-image.txt`                                               | Production-like single-file apply on the official image (non-superuser `postgres`, real GoTrue migrations)                                                               |
+| `reenable.txt`                                                     | §9.4 item 3: emergency stop and re-enable rebuild only the touched customers, including a transaction that began before the stop and wrote after it; the stop SQL guards |
+| `official-image.txt`                                               | Production-like single-file apply, then the stop and re-enable SQL, on the official image (non-superuser `postgres`, real GoTrue migrations)                             |
 
 ## Expected catalog difference (and the only one)
 
@@ -53,7 +53,7 @@ Format of `docs/quality/change-dod-v1.0.md`. `environment: local-isolated` means
   status: PASS
   environment: local-isolated
   commit: 91d18779ed94c5688c1daa15363e4a5b99da1ecf
-  verified_at: '2026-10-23T12:22:58Z'
+  verified_at: '2026-10-23T16:31:14Z'
   evidence:
     - type: command
       reference: pg_prove --verbose supabase/tests/os_customer_stat_authority_test.sql (pgtap-red-base.txt)
@@ -63,7 +63,7 @@ Format of `docs/quality/change-dod-v1.0.md`. `environment: local-isolated` means
   status: PASS
   environment: local-isolated
   commit: 91d18779ed94c5688c1daa15363e4a5b99da1ecf
-  verified_at: '2026-10-23T12:24:08Z'
+  verified_at: '2026-10-23T16:32:23Z'
   evidence:
     - type: command
       reference: node scripts/customers/verify-customer-stat-races.mjs (races-red-base.txt)
@@ -73,7 +73,7 @@ Format of `docs/quality/change-dod-v1.0.md`. `environment: local-isolated` means
   status: PASS
   environment: local-isolated
   commit: 2723f03c591f17611bfc30dc56f3df5b220f9d07
-  verified_at: '2026-10-23T12:24:11Z'
+  verified_at: '2026-10-23T16:32:25Z'
   evidence:
     - type: command
       reference: races-prev.txt
@@ -82,8 +82,8 @@ Format of `docs/quality/change-dod-v1.0.md`. `environment: local-isolated` means
   title: full pgTAP on head after clean replay + seed
   status: PASS
   environment: local-isolated
-  commit: 544014c375e903f33575b3d8a67739c7af4b5b7c
-  verified_at: '2026-10-23T12:23:06Z'
+  commit: f5564f4855cc7e408a29d3bf16661818ed85327b
+  verified_at: '2026-10-23T16:31:21Z'
   evidence:
     - type: command
       reference: pg_prove supabase/tests/*.sql (run.txt)
@@ -92,8 +92,8 @@ Format of `docs/quality/change-dod-v1.0.md`. `environment: local-isolated` means
   title: real-DB two-connection races on head
   status: PASS
   environment: local-isolated
-  commit: 544014c375e903f33575b3d8a67739c7af4b5b7c
-  verified_at: '2026-10-23T12:24:21Z'
+  commit: f5564f4855cc7e408a29d3bf16661818ed85327b
+  verified_at: '2026-10-23T16:32:33Z'
   evidence:
     - type: command
       reference: node scripts/customers/verify-customer-stat-races.mjs, 3 runs (races-green-head-1.txt, run.txt)
@@ -102,8 +102,8 @@ Format of `docs/quality/change-dod-v1.0.md`. `environment: local-isolated` means
   title: tests catch the removal of each concurrency, minimal-write and tenant guard
   status: PASS
   environment: local-isolated
-  commit: 544014c375e903f33575b3d8a67739c7af4b5b7c
-  verified_at: '2026-10-23T12:27:05Z'
+  commit: f5564f4855cc7e408a29d3bf16661818ed85327b
+  verified_at: '2026-10-23T16:34:14Z'
   evidence:
     - type: command
       reference: mutations.txt
@@ -112,8 +112,8 @@ Format of `docs/quality/change-dod-v1.0.md`. `environment: local-isolated` means
   title: generated types unchanged
   status: PASS
   environment: local-isolated (postgres-meta v0.96.6, the version the pinned CLI uses, with the repo post-processing)
-  commit: 544014c375e903f33575b3d8a67739c7af4b5b7c
-  verified_at: '2026-10-23T12:24:29Z'
+  commit: f5564f4855cc7e408a29d3bf16661818ed85327b
+  verified_at: '2026-10-23T16:32:38Z'
   evidence:
     - type: command
       reference: run.txt (types)
@@ -122,8 +122,8 @@ Format of `docs/quality/change-dod-v1.0.md`. `environment: local-isolated` means
   title: single-file apply on the production-like history
   status: PASS
   environment: local-isolated
-  commit: 544014c375e903f33575b3d8a67739c7af4b5b7c
-  verified_at: '2026-10-23T12:26:53Z'
+  commit: f5564f4855cc7e408a29d3bf16661818ed85327b
+  verified_at: '2026-10-23T16:34:04Z'
   evidence:
     - type: command
       reference: prodlike.txt, catalog-prodlike-before.txt, catalog-prodlike-after.txt
@@ -132,22 +132,22 @@ Format of `docs/quality/change-dod-v1.0.md`. `environment: local-isolated` means
   title: rebuild template, restore, emergency stop and re-enable procedures
   status: PASS
   environment: local-isolated
-  commit: 544014c375e903f33575b3d8a67739c7af4b5b7c
-  verified_at: '2026-10-23T12:26:10Z'
+  commit: f5564f4855cc7e408a29d3bf16661818ed85327b
+  verified_at: '2026-10-23T16:33:54Z'
   evidence:
     - type: command
       reference: prodlike.txt (rebuild, restore), reenable.txt
-  notes: '§9.3: 9 backups, G1 mismatched 0 after, backup table RLS on and owner-only ACL; §9.4 restore 9/9 (rolled back); §9.4 stop SQL returns the start of the transaction that began before the stop, and the re-enable from it selects 51,52,53,55,57 (from the stop time 53 is missed); touched customers match their completed set, the others keep their values'
+  notes: '§9.3: 9 backups, G1 mismatched 0 after, backup table RLS on and owner-only ACL; §9.4 restore 9/9 (rolled back); §9.4 stop SQL returns the start of the transaction that began before the stop, and the re-enable from it selects 51,52,53,55,57 (from the stop time 53 is missed); touched customers match their completed set, the others keep their values; the stop SQL fails after lock_timeout 5s behind a writer and aborts when a role sets track_activities off, in both cases with all three triggers still enabled'
 - id: OS-F1-IMAGE-APPLY
   title: single-file apply on the official supabase/postgres image (non-superuser postgres, real GoTrue migrations)
   status: PASS
   environment: local-docker supabase/postgres:17.6.1.140 + supabase/gotrue:v2.192.0
-  commit: 544014c375e903f33575b3d8a67739c7af4b5b7c
-  verified_at: '2026-10-23T12:27:53Z'
+  commit: f5564f4855cc7e408a29d3bf16661818ed85327b
+  verified_at: '2026-10-23T16:35:08Z'
   evidence:
     - type: command
       reference: official-image.txt
-  notes: 'apply ok with owner privileges only; data fingerprints unchanged; history recorded in the same transaction; gate identical before/after; catalog difference identical to the isolated run; races 8/8, daily report races 8/8; pgTAP fails only commercial_function_execution #6 (as in the isolated control)'
+  notes: 'apply ok with owner privileges only; data fingerprints unchanged; history recorded in the same transaction; gate identical before/after; catalog difference identical to the isolated run; races 8/8, daily report races 8/8; pgTAP fails only commercial_function_execution #6 (as in the isolated control); postgres is a pg_read_all_stats member, the stop SQL disables the three triggers and returns window_start, and after enable the re-enable SQL rebuilds the customer changed during the stop'
 - id: OS-F1-APP-E2E
   title: App E2E (local Supabase + Chromium)
   status: NOT_RUN
