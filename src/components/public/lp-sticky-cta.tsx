@@ -1,10 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import { createCtaLink } from './lp-links';
+import { createContactCtaLink } from './marketing-links';
 
-const demoCta = createCtaLink('デモ相談をする', 'demo');
+const demoCta = createContactCtaLink('デモ相談をする', 'demo', {
+  product: 'os',
+  intent: 'sales',
+});
 
 // スクロールが一定量を超えたら下部に出るスティッキーCTA。
 export function LpStickyCta() {
@@ -44,16 +48,15 @@ export function LpStickyCta() {
             店舗数と現在の管理方法をもとに、デモ相談で確認します
           </p>
         </div>
-        <a
+        <Link
           href={demoCta.href}
-          target={demoCta.external ? '_blank' : undefined}
-          rel={demoCta.external ? 'noreferrer' : undefined}
+          prefetch={false}
           tabIndex={visible ? 0 : -1}
           className='inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-[8px] bg-[#2B3A3F] px-5 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-[#1f292d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4956C] focus-visible:ring-offset-2 md:text-[14px]'
         >
           {demoCta.label}
           <ArrowRight className='h-4 w-4' aria-hidden='true' />
-        </a>
+        </Link>
       </div>
     </div>
   );

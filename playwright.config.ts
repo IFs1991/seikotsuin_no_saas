@@ -60,7 +60,8 @@ const mobileUiuxAllowedClinicIds =
 export default defineConfig({
   testDir: 'src/__tests__/e2e-playwright',
   // 本番CSPはdevでは検証せず、専用configとCI Build jobで必ず実行する。
-  testIgnore: '**/production-csp.spec.ts',
+  // 公開サイトの受入検証も本番ビルド前提のため専用config（playwright.public-site.config.ts）で実行する。
+  testIgnore: ['**/production-csp.spec.ts', '**/public-site.spec.ts'],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

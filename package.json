@@ -55,6 +55,7 @@
     "commercial:verify:migrations": "node scripts/commercial-hardening/verify-migration-history.mjs",
     "commercial:verify:types:local": "node scripts/commercial-hardening/verify-generated-types.mjs --local --allow-postgrest-version-drift",
     "scan:secrets": "node scripts/scan-secrets.mjs",
+    "public-site:release-check": "node scripts/public-site/check-release-readiness.mjs",
     "verify:supabase": "node scripts/verify-supabase-connection.mjs",
     "verify:crm-line-growth:concurrency": "node scripts/verify-crm-line-growth-concurrency.mjs",
     "verify:line-setup:concurrency": "node scripts/verify-line-setup-concurrency.mjs",
