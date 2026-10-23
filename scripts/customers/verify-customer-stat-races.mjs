@@ -384,7 +384,7 @@ const RACES = [
   {
     // Same interleaving under REPEATABLE READ: the waiter's snapshot predates
     // the holder's commit, so recomputing from it would cache the old
-    // end_time. The rebuild locks the counted rows and fails with 40001.
+    // end_time. The rebuild refuses non-READ COMMITTED writers (0A000).
     name: 'R7 REPEATABLE READ writer with a stale snapshot fails closed',
     mode: 'snapshot',
     isolation: 'repeatable read',
@@ -409,8 +409,39 @@ const RACES = [
       'WAITER',
       `update public.reservations set status = 'cancelled' where id = '${id('000000001091')}'`
     ),
-    expectNotices: [/^WAITER error sqlstate=40001 /],
+    expectNotices: [
+      /^WAITER error sqlstate=0A000 message=CUSTOMER_VISIT_STATS_REQUIRES_READ_COMMITTED$/,
+    ],
     expected: { '000000000109': '2|3000.00|2097-08-05T02:00:00Z' },
+  },
+  {
+    // A cache left stale by the old trigger already equals the value the
+    // holder's completion produces, so the holder does not rewrite the row.
+    // A REPEATABLE READ writer that did not see that completion must not
+    // replace the cache with its snapshot total (it would cache 1|900).
+    name: 'R8 REPEATABLE READ writer after a completion that matched a stale cache',
+    mode: 'snapshot',
+    isolation: 'repeatable read',
+    setup:
+      customer('000000000110') +
+      reservation(
+        '000000001101',
+        '000000000110',
+        '2097-09-10',
+        1000,
+        'completed'
+      ) +
+      reservation('000000001102', '000000000110', '2097-09-01', 1000) +
+      `update public.customers set total_visits = 2, total_revenue = 2000, last_visit_date = '2097-09-10 02:00:00+00' where id = '${id('000000000110')}';\n`,
+    holder: `${SERVICE}begin;\nupdate public.reservations set status = 'completed' where id = '${id('000000001102')}';\n`,
+    waiter: attempt(
+      'WAITER',
+      `update public.reservations set actual_price = 900 where id = '${id('000000001101')}'`
+    ),
+    expectNotices: [
+      /^WAITER error sqlstate=0A000 message=CUSTOMER_VISIT_STATS_REQUIRES_READ_COMMITTED$/,
+    ],
+    expected: { '000000000110': '2|2000.00|2097-09-10T02:00:00Z' },
   },
 ];
 

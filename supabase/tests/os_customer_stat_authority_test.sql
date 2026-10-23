@@ -12,7 +12,7 @@ begin;
 set local search_path = pg_catalog, extensions, public, auth;
 set local timezone = 'UTC';
 
-select plan(70);
+select plan(83);
 
 -- ---------------------------------------------------------------- fixtures
 insert into public.clinics (id, name)
@@ -93,7 +93,7 @@ select
   'OS-F1 customer ' || suffix, '000-0000-0000',
   case when suffix = '51' then 12345.67 else 0 end
 from unnest(array['51', '52', '53', '54', '55', '56', '57', '58', '59',
-                  '5a', '5b', '5c', '61']) suffix;
+                  '5a', '5b', '5c', '5d', '5e', '5f', '61']) suffix;
 
 create temporary table os_f1_jwt(user_key text primary key, claims text not null)
   on commit drop;
@@ -194,23 +194,25 @@ select is(pg_temp.os_f1_cache('f1470000-0000-4000-8000-000000000051'),
   '1|1000.00|2096-03-01T02:00:00Z',
   'A3: completed -> cancelled -> completed does not double count');
 
--- A4-A6: retrying the same status (API retry) and unrelated edits change nothing.
+-- A4-A6: retrying the same status (API retry) and unrelated edits change
+-- nothing. Own customer: these hold for the old trigger too (guards).
+select pg_temp.os_f1_reserve('111', '5d', '2096-03-02', 1000, 'completed');
 create temporary table os_f1_before on commit drop as
-select pg_temp.os_f1_ctid('f1470000-0000-4000-8000-000000000051') as row_ctid;
+select pg_temp.os_f1_ctid('f1470000-0000-4000-8000-00000000005d') as row_ctid;
 
 update public.reservations set status = 'completed'
-where id = 'f1470000-0000-4000-8000-000000000101';
-select is(pg_temp.os_f1_cache('f1470000-0000-4000-8000-000000000051'),
-  '1|1000.00|2096-03-01T02:00:00Z', 'A4: re-sending completed keeps the cache');
+where id = 'f1470000-0000-4000-8000-000000000111';
+select is(pg_temp.os_f1_cache('f1470000-0000-4000-8000-00000000005d'),
+  '1|1000.00|2096-03-02T02:00:00Z', 'A4: re-sending completed keeps the cache');
 
 update public.reservations set notes = 'OS-F1 retry note', payment_status = 'paid'
-where id = 'f1470000-0000-4000-8000-000000000101';
-select is(pg_temp.os_f1_cache('f1470000-0000-4000-8000-000000000051'),
-  '1|1000.00|2096-03-01T02:00:00Z', 'A5: notes/payment edits of a completed reservation keep the cache');
+where id = 'f1470000-0000-4000-8000-000000000111';
+select is(pg_temp.os_f1_cache('f1470000-0000-4000-8000-00000000005d'),
+  '1|1000.00|2096-03-02T02:00:00Z', 'A5: notes/payment edits of a completed reservation keep the cache');
 
-select is(pg_temp.os_f1_ctid('f1470000-0000-4000-8000-000000000051'),
+select is(pg_temp.os_f1_ctid('f1470000-0000-4000-8000-00000000005d'),
   (select row_ctid from os_f1_before),
-  'A6: an unchanged cache is not rewritten (no customers row version, no updated_at churn)');
+  'A6: edits outside the contract do not rewrite the customer row (no row version, no updated_at churn)');
 
 select is(
   (select lifetime_value from public.customers where id = 'f1470000-0000-4000-8000-000000000051'),
@@ -276,9 +278,9 @@ reset role;
 select is(pg_temp.os_f1_cache('f1470000-0000-4000-8000-000000000053'),
   '1|1500.00|2096-04-01T02:00:00Z', 'A14: retrying the same repricing does not double count');
 
-select pg_temp.os_f1_reserve('302', '53', '2096-04-02', null, 'completed');
-select is(pg_temp.os_f1_cache('f1470000-0000-4000-8000-000000000053'),
-  '2|1500.00|2096-04-02T02:00:00Z', 'A15: a completed visit without price counts as a visit with 0 revenue');
+select pg_temp.os_f1_reserve('302', '5e', '2096-04-02', null, 'completed');
+select is(pg_temp.os_f1_cache('f1470000-0000-4000-8000-00000000005e'),
+  '1|0.00|2096-04-02T02:00:00Z', 'A15: a completed visit without price counts as a visit with 0 revenue');
 
 -- A16-A20: logical delete / restore / NULL is_deleted / zero reset.
 select pg_temp.os_f1_reserve('401', '54', '2096-05-01', 1000, 'completed');
@@ -373,6 +375,29 @@ select pg_temp.os_f1_reserve('801', '5b', '2096-10-01', 1000, 'completed');
 select is(pg_temp.os_f1_cache('f1470000-0000-4000-8000-00000000005b'),
   '1|1000.00|2096-10-01T02:00:00Z',
   'A31: the cache is rebuilt from the reservation set, not incremented from a stale value');
+
+-- A32-A34: counted changes that leave the totals unchanged (rescheduling a
+-- visit that is not the latest, actual_price set to the same amount as price)
+-- run the rebuild but do not rewrite the customer row.
+select pg_temp.os_f1_reserve('121', '5f', '2096-03-20', 1000, 'completed');
+select pg_temp.os_f1_reserve('122', '5f', '2096-03-05', 2000, 'completed');
+create temporary table os_f1_neutral on commit drop as
+select pg_temp.os_f1_ctid('f1470000-0000-4000-8000-00000000005f') as row_ctid;
+update public.reservations
+set start_time = '2096-03-06 01:00:00+00', end_time = '2096-03-06 02:00:00+00'
+where id = 'f1470000-0000-4000-8000-000000000122';
+update public.reservations set actual_price = 2000
+where id = 'f1470000-0000-4000-8000-000000000122';
+select is(pg_temp.os_f1_cache('f1470000-0000-4000-8000-00000000005f'),
+  '2|3000.00|2096-03-20T02:00:00Z', 'A32: total-neutral counted changes keep the cache');
+select is(pg_temp.os_f1_ctid('f1470000-0000-4000-8000-00000000005f'),
+  (select row_ctid from os_f1_neutral),
+  'A33: the rebuild does not rewrite a customer row whose cache already matches');
+update public.reservations set actual_price = 2100
+where id = 'f1470000-0000-4000-8000-000000000122';
+select isnt(pg_temp.os_f1_ctid('f1470000-0000-4000-8000-00000000005f'),
+  (select row_ctid from os_f1_neutral),
+  'A34: a counted change that moves the totals does rewrite it');
 
 -- ----------------------------------------- Part B: catalog contract
 select is(
@@ -501,6 +526,11 @@ reset role;
 select is(pg_temp.os_f1_cache('f1470000-0000-4000-8000-00000000005c'),
   '1|1000.00|2096-11-01T02:00:00Z', 'T6: cancelling through RLS removes the visit from the cache');
 
+create temporary table os_f1_tenant_a on commit drop as
+select
+  pg_temp.os_f1_cache('f1470000-0000-4000-8000-00000000005c') as cache_a,
+  pg_temp.os_f1_ctid('f1470000-0000-4000-8000-00000000005c') as ctid_a;
+
 -- Staff A cannot reach clinic B.
 set local role authenticated;
 select is(
@@ -574,7 +604,7 @@ select throws_ok(
 reset role;
 
 select is(pg_temp.os_f1_cache('f1470000-0000-4000-8000-00000000005c'),
-  '1|1000.00|2096-11-01T02:00:00Z', 'T17: denied attempts leave the clinic A cache unchanged');
+  (select cache_a from os_f1_tenant_a), 'T17: denied attempts leave the clinic A cache unchanged');
 select is(pg_temp.os_f1_cache('f1470000-0000-4000-8000-000000000061'),
   (select cache_b from os_f1_tenant_before), 'T18: denied attempts leave the clinic B cache unchanged');
 select is(pg_temp.os_f1_ctid('f1470000-0000-4000-8000-000000000061'),
@@ -590,7 +620,8 @@ select is(
   'T21: the clinic A reservation keeps its customer, clinic and status'
 );
 
--- An invalid customer reference never reaches the cache.
+-- Referential integrity (as the table owner, so independent of RLS): an
+-- invalid customer reference never reaches the cache.
 select throws_ok(
   $$insert into public.reservations (clinic_id, customer_id, menu_id, staff_id, start_time, end_time, status, price)
     values ('f1470000-0000-4000-8000-000000000001', 'f1470000-0000-4000-8000-0000000000ff',
@@ -609,6 +640,109 @@ select throws_ok(
 );
 select is(pg_temp.os_f1_cache('f1470000-0000-4000-8000-000000000061'),
   (select cache_b from os_f1_tenant_before), 'T24: rejected references leave the clinic B cache unchanged');
+
+-- RLS path (staff A, clinic A scope) aimed at clinic B with B's own
+-- references: refused before the cache trigger runs, and nothing of clinic B
+-- is readable. T30/T31 run the same writes as service_role in rolled-back
+-- subtransactions: the insert succeeds there (the refusal is the RLS
+-- boundary), the clinic move fails for every role (reservation history FK).
+select set_config('request.jwt.claims', (select claims from os_f1_jwt where user_key = 'a'), true);
+set local role authenticated;
+select throws_ok(
+  $$insert into public.reservations (clinic_id, customer_id, menu_id, staff_id, start_time, end_time, status, price)
+    values ('f1470000-0000-4000-8000-000000000002', 'f1470000-0000-4000-8000-000000000061',
+            'f1470000-0000-4000-8000-000000000032', 'f1470000-0000-4000-8000-000000000042',
+            '2096-12-03 01:00+00', '2096-12-03 02:00+00', 'completed', 7000)$$,
+  '23503', null,
+  'T25: staff A cannot insert a completed clinic B reservation (B references are invisible under RLS)'
+);
+select throws_ok(
+  $$update public.reservations
+    set clinic_id = 'f1470000-0000-4000-8000-000000000002',
+        customer_id = 'f1470000-0000-4000-8000-000000000061',
+        menu_id = 'f1470000-0000-4000-8000-000000000032',
+        staff_id = 'f1470000-0000-4000-8000-000000000042',
+        start_time = '2096-12-05 01:00+00', end_time = '2096-12-05 02:00+00'
+    where id = 'f1470000-0000-4000-8000-000000000a01'$$,
+  '23503', null,
+  'T26: staff A cannot move a completed clinic A reservation into clinic B with B references'
+);
+select throws_ok(
+  $$insert into public.reservations (id, clinic_id, customer_id, menu_id, staff_id, start_time, end_time, status, price)
+    values ('f1470000-0000-4000-8000-000000000b01', 'f1470000-0000-4000-8000-000000000001',
+            'f1470000-0000-4000-8000-00000000005c', 'f1470000-0000-4000-8000-000000000031',
+            'f1470000-0000-4000-8000-000000000041', '2096-12-04 01:00+00', '2096-12-04 02:00+00',
+            'cancelled', 0)
+    on conflict (id) do update set status = 'cancelled'$$,
+  '42501', null,
+  'T27: staff A cannot upsert over a clinic B reservation id'
+);
+select throws_ok(
+  $$delete from public.reservations where id = 'f1470000-0000-4000-8000-000000000a01'$$,
+  '42501', null,
+  'T28: authenticated has no DELETE privilege on reservations'
+);
+select is(
+  (select count(*)::integer from public.customers
+   where clinic_id = 'f1470000-0000-4000-8000-000000000002'),
+  0, 'T29: staff A cannot read clinic B customers, cache columns included'
+);
+reset role;
+
+create temporary table os_f1_role_contrast(label text primary key, outcome text)
+  on commit drop;
+do $contrast$
+declare
+  v_outcome text;
+begin
+  begin
+    perform set_config('role', 'service_role', true);
+    insert into public.reservations (clinic_id, customer_id, menu_id, staff_id, start_time, end_time, status, price)
+    values ('f1470000-0000-4000-8000-000000000002', 'f1470000-0000-4000-8000-000000000061',
+            'f1470000-0000-4000-8000-000000000032', 'f1470000-0000-4000-8000-000000000042',
+            '2096-12-03 01:00+00', '2096-12-03 02:00+00', 'completed', 7000);
+    select concat_ws('|', total_visits, total_revenue) into v_outcome
+    from public.customers where id = 'f1470000-0000-4000-8000-000000000061';
+    raise exception using errcode = 'P0001', message = 'os_f1_contrast_rollback';
+  exception when sqlstate 'P0001' then
+    insert into os_f1_role_contrast values ('insert', v_outcome);
+  end;
+
+  begin
+    perform set_config('role', 'service_role', true);
+    update public.reservations
+    set clinic_id = 'f1470000-0000-4000-8000-000000000002',
+        customer_id = 'f1470000-0000-4000-8000-000000000061',
+        menu_id = 'f1470000-0000-4000-8000-000000000032',
+        staff_id = 'f1470000-0000-4000-8000-000000000042',
+        start_time = '2096-12-05 01:00+00', end_time = '2096-12-05 02:00+00'
+    where id = 'f1470000-0000-4000-8000-000000000a01';
+    v_outcome := 'moved';
+    raise exception using errcode = 'P0001', message = 'os_f1_contrast_rollback';
+  exception
+    when sqlstate 'P0001' then
+      insert into os_f1_role_contrast values ('move', v_outcome);
+    when foreign_key_violation then
+      get stacked diagnostics v_outcome = constraint_name;
+      insert into os_f1_role_contrast values ('move', 'fk:' || v_outcome);
+  end;
+end
+$contrast$;
+
+select is((select outcome from os_f1_role_contrast where label = 'insert'), '2|12000.00',
+  'T30: the T25 insert succeeds for service_role (rolled back): the refusal is the RLS boundary');
+select is((select outcome from os_f1_role_contrast where label = 'move'),
+  'fk:reservation_history_reservation_id_fkey',
+  'T31: no role can move a reservation to another clinic: its history pins (id, clinic_id)');
+select is(pg_temp.os_f1_cache('f1470000-0000-4000-8000-000000000061'),
+  (select cache_b from os_f1_tenant_before),
+  'T32: after the refused writes and the rolled-back contrast the clinic B cache is unchanged');
+select is(pg_temp.os_f1_ctid('f1470000-0000-4000-8000-000000000061'),
+  (select ctid_b from os_f1_tenant_before),
+  'T33: and the clinic B customer row version is the same');
+select is(pg_temp.os_f1_cache('f1470000-0000-4000-8000-00000000005c'),
+  (select cache_a from os_f1_tenant_a),
+  'T34: the clinic A cache is unchanged as well');
 
 -- ------------------------------------------------ Part G: global checks
 -- Independent formulation of the contract (correlated subqueries, IS FALSE).
