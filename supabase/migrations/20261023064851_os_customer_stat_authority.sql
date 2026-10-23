@@ -1,14 +1,15 @@
 -- Spec: docs/stabilization/spec-os-customer-stat-authority-v0.1.md (Issue #147)
 -- Rollback: supabase/rollbacks/20261023064851_os_customer_stat_authority_rollback.sql
 --   (blocked by design; forward-fix only, see spec §9)
--- No data is rewritten here: existing caches change only when a later write
--- touches a reservation of that customer (spec §8).
+-- No data is rewritten here: an existing cache changes only when a later
+-- write changes a counted reservation of that customer (spec §8).
 begin;
 
 set local lock_timeout = '5s';
 set local statement_timeout = '60s';
 
--- 0. Preflight: the increment trigger and the cache columns are as reviewed.
+-- 0. Preflight: the increment trigger (enabled, baseline body) and the cache
+--    columns are as reviewed; the spec §9.1 replay assumes exactly this rule.
 do $preflight$
 begin
   if to_regprocedure('public.update_customer_stats()') is null
@@ -18,7 +19,15 @@ begin
        where trigger_row.tgrelid = 'public.reservations'::regclass
          and trigger_row.tgname = 'update_customer_stats_trigger'
          and trigger_row.tgfoid = to_regprocedure('public.update_customer_stats()')
+         and trigger_row.tgenabled = 'O'
          and not trigger_row.tgisinternal
+     )
+     or not exists (
+       select 1
+       from pg_catalog.pg_proc proc
+       where proc.oid = to_regprocedure('public.update_customer_stats()')
+         and proc.prosecdef
+         and pg_catalog.md5(proc.prosrc) = 'f23956bd4e689a6f1003c7ddab8a8e11'
      ) then
     raise exception 'OS-F1 preflight failed: update_customer_stats_trigger is not in the reviewed state';
   end if;
@@ -43,7 +52,7 @@ $preflight$;
 --    clinic-consistent, non-deleted, completed reservations:
 --    total_visits = count, total_revenue = sum(coalesce(actual_price, price, 0)),
 --    last_visit_date = max(end_time); no such reservation -> 0 / 0 / NULL.
-create function app_private.refresh_customer_visit_stats(p_customer_ids uuid[])
+create function app_private.refresh_customer_visit_stats(p_customer_ids pg_catalog.uuid[])
 returns void
 language plpgsql
 security definer
@@ -54,6 +63,17 @@ begin
     return;
   end if;
 
+  -- The rebuild needs a statement snapshot taken after the customer lock. A
+  -- REPEATABLE READ / SERIALIZABLE snapshot is fixed at transaction start and
+  -- can miss a commit that left the (possibly stale) cache unchanged, so such
+  -- writers are refused before anything is locked or written.
+  if pg_catalog.current_setting('transaction_isolation')
+     not in ('read committed', 'read uncommitted') then
+    raise exception 'CUSTOMER_VISIT_STATS_REQUIRES_READ_COMMITTED'
+      using errcode = '0A000',
+            hint = 'Write reservations that change completed visits under READ COMMITTED.';
+  end if;
+
   -- Serialize writers per customer before reading. Locks are taken in id
   -- order so two statements touching the same customers cannot deadlock here.
   perform 1
@@ -61,20 +81,6 @@ begin
   where customer.id = any (p_customer_ids)
   order by customer.id
   for no key update;
-
-  -- A REPEATABLE READ / SERIALIZABLE snapshot may predate the lock. Locking
-  -- the counted rows makes a concurrent change of any of them fail with
-  -- 40001 instead of being lost; changes that move the totals (new counted
-  -- rows) rewrite the customer row, which the lock above already reports.
-  if pg_catalog.current_setting('transaction_isolation') <> 'read committed' then
-    perform 1
-    from public.reservations reservation
-    where reservation.customer_id = any (p_customer_ids)
-      and reservation.status = 'completed'
-      and reservation.is_deleted = false
-    order by reservation.id
-    for share;
-  end if;
 
   -- New statement: under READ COMMITTED its snapshot includes every writer
   -- that held the customer lock before us. Unchanged caches are not
@@ -112,7 +118,7 @@ revoke all on function app_private.refresh_customer_visit_stats(uuid[])
   from public, anon, authenticated, service_role;
 
 comment on function app_private.refresh_customer_visit_stats(uuid[]) is
-  'OS-F1: rebuilds customers.total_visits/total_revenue/last_visit_date from the completed, non-deleted reservations of the same clinic. Owner-only EXECUTE; called by the reservation triggers and by approved maintenance (spec §9).';
+  'OS-F1: rebuilds customers.total_visits/total_revenue/last_visit_date from the completed, non-deleted reservations of the same clinic. READ COMMITTED only (0A000 otherwise). Owner-only EXECUTE; called by the reservation triggers and by approved maintenance (spec §9).';
 
 -- 2. Statement-level maintenance from transition tables. A reservation
 --    matters when it was or is counted and a column of the contract changed.
@@ -123,7 +129,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_customer_ids uuid[];
+  v_customer_ids pg_catalog.uuid[];
 begin
   if tg_op = 'INSERT' then
     select pg_catalog.array_agg(distinct inserted.customer_id)
@@ -173,7 +179,15 @@ revoke all on function app_private.sync_customer_visit_stats()
 comment on function app_private.sync_customer_visit_stats() is
   'OS-F1: recomputes the visit cache of every customer whose counted reservations changed in the statement. Runs after RLS admitted the rows; reads only the transition tables and the affected customers'' reservations.';
 
--- 3. Replace the increment-only trigger in the same transaction.
+comment on column public.customers.total_visits is
+  'OS-F1 cache: number of completed, non-deleted reservations of this customer in its clinic. Maintained by reservations_customer_visit_stats_*.';
+comment on column public.customers.total_revenue is
+  'OS-F1 cache: sum of coalesce(actual_price, price, 0) over the same reservations. Not lifetime_value.';
+comment on column public.customers.last_visit_date is
+  'OS-F1 cache: max(end_time) of the same reservations, NULL when none. patient_visit_summary.last_visit_date (arrived + completed, start_time JST date) is a different metric.';
+
+-- 3. Replace the increment-only trigger in the same transaction (the
+--    reservations lock is taken last to keep it short).
 drop trigger update_customer_stats_trigger on public.reservations;
 drop function public.update_customer_stats();
 
@@ -191,13 +205,6 @@ create trigger reservations_customer_visit_stats_delete
 after delete on public.reservations
 referencing old table as old_rows
 for each statement execute function app_private.sync_customer_visit_stats();
-
-comment on column public.customers.total_visits is
-  'OS-F1 cache: number of completed, non-deleted reservations of this customer in its clinic. Maintained by reservations_customer_visit_stats_*.';
-comment on column public.customers.total_revenue is
-  'OS-F1 cache: sum of coalesce(actual_price, price, 0) over the same reservations. Not lifetime_value.';
-comment on column public.customers.last_visit_date is
-  'OS-F1 cache: max(end_time) of the same reservations, NULL when none. patient_visit_summary.last_visit_date (arrived + completed, start_time JST date) is a different metric.';
 
 -- 4. Postflight.
 do $postflight$
