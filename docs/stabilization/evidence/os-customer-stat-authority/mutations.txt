@@ -1,0 +1,95 @@
+# Mutations of the head migration (each must be caught)
+
+## mutation isolation: READ COMMITTED check removed
+
+--- supabase/migrations/20261023064851_os_customer_stat_authority.sql
++++ mutation-isolation
+@@ -67,13 +67,6 @@
+   -- REPEATABLE READ / SERIALIZABLE snapshot is fixed at transaction start and
+   -- can miss a commit that left the (possibly stale) cache unchanged, so such
+   -- writers are refused before anything is locked or written.
+-  if pg_catalog.current_setting('transaction_isolation')
+-     not in ('read committed', 'read uncommitted') then
+-    raise exception 'CUSTOMER_VISIT_STATS_REQUIRES_READ_COMMITTED'
+-      using errcode = '0A000',
+-            hint = 'Write reservations that change completed visits under READ COMMITTED.';
+-  end if;
+-
+   -- Serialize writers per customer before reading. Locks are taken in id
+   -- order so two statements touching the same customers cannot deadlock here.
+   perform 1
+
+### pgTAP (Result: PASS)
+(no failing test)
+
+### races
+PASS R1 two completions of one customer (RLS writer waits for the service writer)
+PASS R2 newer visit completed first, older visit completed concurrently
+PASS R3 cancellation of a completed visit and a concurrent completion
+PASS R4 completed visit moved to another customer, concurrent completion there
+PASS R5 two multi-row statements over the same two customers
+PASS R6 READ COMMITTED writer after a total-neutral concurrent change
+FAIL R7 REPEATABLE READ writer with a stale snapshot fails closed: R7 REPEATABLE READ writer with a stale snapshot fails closed: missing /^WAITER error sqlstate=0A000 message=CUSTOMER_VISIT_STATS_REQUIRES_READ_COMMITTED$/; notices=["HOLDER_SAW_WAITER_BLOCKED","WAITER ok"]
+FAIL R8 REPEATABLE READ writer after a completion that matched a stale cache: R8 REPEATABLE READ writer after a completion that matched a stale cache: missing /^WAITER error sqlstate=0A000 message=CUSTOMER_VISIT_STATS_REQUIRES_READ_COMMITTED$/; notices=["HOLDER_SAW_WAITER_BLOCKED","WAITER ok"]
+2/8 race checks failed
+
+## mutation distinct: unchanged-value filter removed
+
+--- supabase/migrations/20261023064851_os_customer_stat_authority.sql
++++ mutation-distinct
+@@ -108,9 +108,7 @@
+     where target.id = any (p_customer_ids)
+     group by target.id
+   ) visit
+-  where customer.id = visit.id
+-    and (customer.total_visits, customer.total_revenue, customer.last_visit_date)
+-      is distinct from (visit.total_visits, visit.total_revenue, visit.last_visit_date);
++  where customer.id = visit.id;
+ end;
+ $$;
+ 
+
+### pgTAP (Result: FAIL)
+not ok 33 - A33: the rebuild does not rewrite a customer row whose cache already matches
+
+### races
+PASS R1 two completions of one customer (RLS writer waits for the service writer)
+PASS R2 newer visit completed first, older visit completed concurrently
+PASS R3 cancellation of a completed visit and a concurrent completion
+PASS R4 completed visit moved to another customer, concurrent completion there
+PASS R5 two multi-row statements over the same two customers
+PASS R6 READ COMMITTED writer after a total-neutral concurrent change
+PASS R7 REPEATABLE READ writer with a stale snapshot fails closed
+PASS R8 REPEATABLE READ writer after a completion that matched a stale cache
+8/8 race checks passed
+
+## mutation lock: lock-first statement removed
+
+--- supabase/migrations/20261023064851_os_customer_stat_authority.sql
++++ mutation-lock
+@@ -76,11 +76,6 @@
+ 
+   -- Serialize writers per customer before reading. Locks are taken in id
+   -- order so two statements touching the same customers cannot deadlock here.
+-  perform 1
+-  from public.customers customer
+-  where customer.id = any (p_customer_ids)
+-  order by customer.id
+-  for no key update;
+ 
+   -- New statement: under READ COMMITTED its snapshot includes every writer
+   -- that held the customer lock before us. Unchanged caches are not
+
+### pgTAP (Result: PASS)
+(no failing test)
+
+### races
+FAIL R1 two completions of one customer (RLS writer waits for the service writer): os_f1_race_0_assert failed (exit 3)
+FAIL R2 newer visit completed first, older visit completed concurrently: os_f1_race_1_assert failed (exit 3)
+FAIL R3 cancellation of a completed visit and a concurrent completion: os_f1_race_2_assert failed (exit 3)
+FAIL R4 completed visit moved to another customer, concurrent completion there: os_f1_race_3_assert failed (exit 3)
+FAIL R5 two multi-row statements over the same two customers: os_f1_race_4_assert failed (exit 3)
+PASS R6 READ COMMITTED writer after a total-neutral concurrent change
+PASS R7 REPEATABLE READ writer with a stale snapshot fails closed
+PASS R8 REPEATABLE READ writer after a completion that matched a stale cache
+5/8 race checks failed

@@ -1,0 +1,35 @@
+PASS R1 two completions of one customer (RLS writer waits for the service writer)
+  HOLDER_SAW_WAITER_BLOCKED
+  WAITER ok
+  R1 final 000000000101=2|3000.00|2097-01-02T02:00:00Z
+PASS R2 newer visit completed first, older visit completed concurrently
+  HOLDER_SAW_WAITER_BLOCKED
+  WAITER ok
+  R2 final 000000000102=2|5000.00|2097-03-10T02:00:00Z
+PASS R3 cancellation of a completed visit and a concurrent completion
+  HOLDER_SAW_WAITER_BLOCKED
+  WAITER ok
+  R3 final 000000000103=1|2000.00|2097-04-02T02:00:00Z
+PASS R4 completed visit moved to another customer, concurrent completion there
+  HOLDER_SAW_WAITER_BLOCKED
+  WAITER ok
+  R4 final 000000000104=0|0.00|null
+  R4 final 000000000105=2|3000.00|2097-05-02T02:00:00Z
+PASS R5 two multi-row statements over the same two customers
+  HOLDER_SAW_WAITER_BLOCKED
+  WAITER ok
+  R5 final 000000000106=2|4000.00|2097-06-03T02:00:00Z
+  R5 final 000000000107=2|6000.00|2097-06-04T02:00:00Z
+PASS R6 READ COMMITTED writer after a total-neutral concurrent change
+  HOLDER_SAW_WAITER_BLOCKED
+  WAITER ok
+  R6 final 000000000108=1|2000.00|2097-06-30T02:00:00Z
+PASS R7 REPEATABLE READ writer with a stale snapshot fails closed
+  HOLDER_SAW_WAITER_BLOCKED
+  WAITER error sqlstate=0A000 message=CUSTOMER_VISIT_STATS_REQUIRES_READ_COMMITTED
+  R7 final 000000000109=2|3000.00|2097-08-05T02:00:00Z
+PASS R8 REPEATABLE READ writer after a completion that matched a stale cache
+  HOLDER_SAW_WAITER_BLOCKED
+  WAITER error sqlstate=0A000 message=CUSTOMER_VISIT_STATS_REQUIRES_READ_COMMITTED
+  R8 final 000000000110=2|2000.00|2097-09-10T02:00:00Z
+8/8 race checks passed
