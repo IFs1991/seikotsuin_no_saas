@@ -111,7 +111,7 @@ Format of `docs/quality/change-dod-v1.0.md`. `environment: local-isolated` means
 - id: OS-F1-TYPES
   title: generated types unchanged
   status: PASS
-  environment: local-isolated (postgres-meta v0.96.6, the version the pinned CLI uses, with the repo post-processing)
+  environment: local-isolated (postgres-meta v0.96.6 from npm with the repo post-processing, a local stand-in for supabase gen types; the pinned CLI 2.109.0 runs postgres-meta v0.96.1 in CI, whose generated-type step is the canonical check)
   commit: f5564f4855cc7e408a29d3bf16661818ed85327b
   verified_at: '2026-10-23T16:32:38Z'
   evidence:
