@@ -10,24 +10,25 @@ All data is synthetic. Nothing here was read from or written to a shared, stagin
 
 | Tree                                                   | Commit                                                             |
 | ------------------------------------------------------ | ------------------------------------------------------------------ |
-| head (code verified here)                              | `93f84e5cddc7b795df984758a52fe6b0c2659fea`                         |
+| head (code verified here)                              | `544014c375e903f33575b3d8a67739c7af4b5b7c`                         |
 | base `main`                                            | `91d18779ed94c5688c1daa15363e4a5b99da1ecf`                         |
 | implementation before the independent review           | `2723f03c591f17611bfc30dc56f3df5b220f9d07`                         |
 | `20261023064851_os_customer_stat_authority.sql` sha256 | `a8b95169167d0b3c12b5ecb86a147809eb82772f40572ef602ab1bbd4c64feec` |
 
-`environment.txt`: PostgreSQL 17.6, pgTAP 1.3.2, pg_prove 3.36, Node v22.22.0, Supabase CLI 2.109.0. Every database was created empty and replayed from `supabase/migrations/` (plus `supabase/seed.sql`) for this run on 2026-10-23 between 11:56:49Z and 12:01:01Z (`run.log` has the timestamp and result of every step). The commits after `93f84e5` change documentation only.
+`environment.txt`: PostgreSQL 17.6, pgTAP 1.3.2, pg_prove 3.36, Node v22.22.0, Supabase CLI 2.109.0. Every database was created empty and replayed from `supabase/migrations/` (plus `supabase/seed.sql`) for this run on 2026-10-23 between 12:22:23Z and 12:27:05Z; the official image run followed between 12:27:12Z and 12:27:53Z. `run.txt` has the timestamp and result of every step. The commit that adds these files after `544014c` changes this directory only.
 
 ## Files
 
 | File                                                               | Content                                                                                                                                                                  |
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `environment.txt` / `run.txt`                                      | Versions and commits; every step with its timestamp and result                                                                                                           |
 | `catalog-before.txt` / `catalog-after.txt`                         | Catalog snapshot of base `main` and of head, both replayed from zero                                                                                                     |
 | `catalog-prodlike-before.txt` / `catalog-prodlike-after.txt`       | Production-like history (every migration except `20260906003219` and `20261023064851`) before and after applying `20261023064851` alone with its history row in one send |
-| `prodlike.txt`                                                     | The same run: §9.1 gate (counts only), data fingerprints, history, the apply, the next write, pgTAP, races, the §9.3 template, the §9.4 restore                          |
+| `prodlike.txt`                                                     | The same run: §9.1 gate (counts only), data fingerprints, history, the apply, the next write, pgTAP and its control, races, the §9.3 template, the §9.4 restore          |
 | `pgtap-red-base.txt`                                               | Head pgTAP suite on base `main` (RED, verbose)                                                                                                                           |
 | `races-red-base.txt` / `races-prev.txt` / `races-green-head-1.txt` | Race verifier on base `main` (RED), on `2723f03` (review counterexamples RED) and on head                                                                                |
-| `mutations.txt`                                                    | Three mutations of the head migration and the tests that catch them                                                                                                      |
-| `reenable.txt`                                                     | §9.4 item 3: trigger re-enable after an emergency stop rebuilds only the touched customers                                                                               |
+| `mutations.txt`                                                    | Three mutations of the head migration and one of the tenant boundary, and the tests that catch them                                                                      |
+| `reenable.txt`                                                     | §9.4 item 3: emergency stop and re-enable rebuild only the touched customers, including a transaction that began before the stop and wrote after it                      |
 | `official-image.txt`                                               | Production-like single-file apply on the official image (non-superuser `postgres`, real GoTrue migrations)                                                               |
 
 ## Expected catalog difference (and the only one)
@@ -52,7 +53,7 @@ Format of `docs/quality/change-dod-v1.0.md`. `environment: local-isolated` means
   status: PASS
   environment: local-isolated
   commit: 91d18779ed94c5688c1daa15363e4a5b99da1ecf
-  verified_at: '2026-10-23T11:57:20Z'
+  verified_at: '2026-10-23T12:22:58Z'
   evidence:
     - type: command
       reference: pg_prove --verbose supabase/tests/os_customer_stat_authority_test.sql (pgtap-red-base.txt)
@@ -62,7 +63,7 @@ Format of `docs/quality/change-dod-v1.0.md`. `environment: local-isolated` means
   status: PASS
   environment: local-isolated
   commit: 91d18779ed94c5688c1daa15363e4a5b99da1ecf
-  verified_at: '2026-10-23T11:58:29Z'
+  verified_at: '2026-10-23T12:24:08Z'
   evidence:
     - type: command
       reference: node scripts/customers/verify-customer-stat-races.mjs (races-red-base.txt)
@@ -72,7 +73,7 @@ Format of `docs/quality/change-dod-v1.0.md`. `environment: local-isolated` means
   status: PASS
   environment: local-isolated
   commit: 2723f03c591f17611bfc30dc56f3df5b220f9d07
-  verified_at: '2026-10-23T11:58:32Z'
+  verified_at: '2026-10-23T12:24:11Z'
   evidence:
     - type: command
       reference: races-prev.txt
@@ -81,68 +82,68 @@ Format of `docs/quality/change-dod-v1.0.md`. `environment: local-isolated` means
   title: full pgTAP on head after clean replay + seed
   status: PASS
   environment: local-isolated
-  commit: 93f84e5cddc7b795df984758a52fe6b0c2659fea
-  verified_at: '2026-10-23T11:57:27Z'
+  commit: 544014c375e903f33575b3d8a67739c7af4b5b7c
+  verified_at: '2026-10-23T12:23:06Z'
   evidence:
     - type: command
-      reference: pg_prove supabase/tests/*.sql (run.log)
+      reference: pg_prove supabase/tests/*.sql (run.txt)
   notes: '23 files / 1026 tests; OS-F1 suite 83/83'
 - id: OS-F1-GREEN-RACES
   title: real-DB two-connection races on head
   status: PASS
   environment: local-isolated
-  commit: 93f84e5cddc7b795df984758a52fe6b0c2659fea
-  verified_at: '2026-10-23T11:58:39Z'
+  commit: 544014c375e903f33575b3d8a67739c7af4b5b7c
+  verified_at: '2026-10-23T12:24:21Z'
   evidence:
     - type: command
-      reference: node scripts/customers/verify-customer-stat-races.mjs, 3 runs (races-green-head-1.txt, run.log)
+      reference: node scripts/customers/verify-customer-stat-races.mjs, 3 runs (races-green-head-1.txt, run.txt)
   notes: '8/8 in each of 3 runs; daily report races (#146) 8/8'
 - id: OS-F1-MUTATIONS
-  title: tests catch the removal of each concurrency/minimal-write guard
+  title: tests catch the removal of each concurrency, minimal-write and tenant guard
   status: PASS
   environment: local-isolated
-  commit: 93f84e5cddc7b795df984758a52fe6b0c2659fea
-  verified_at: '2026-10-23T11:59:29Z'
+  commit: 544014c375e903f33575b3d8a67739c7af4b5b7c
+  verified_at: '2026-10-23T12:27:05Z'
   evidence:
     - type: command
       reference: mutations.txt
-  notes: 'isolation check removed -> R7 R8; unchanged-value filter removed -> A33; lock-first removed -> R1-R5'
+  notes: 'isolation check removed -> R7 R8; unchanged-value filter removed -> A33; lock-first removed -> R1-R5; RLS off on customers/reservations and the reference check dropped -> B10 T7 T8 T9 T12 T13 T17-T21 T23-T27 T29'
 - id: OS-F1-TYPES
   title: generated types unchanged
   status: PASS
   environment: local-isolated (postgres-meta v0.96.6, the version the pinned CLI uses, with the repo post-processing)
-  commit: 93f84e5cddc7b795df984758a52fe6b0c2659fea
-  verified_at: '2026-10-23T11:58:50Z'
+  commit: 544014c375e903f33575b3d8a67739c7af4b5b7c
+  verified_at: '2026-10-23T12:24:29Z'
   evidence:
     - type: command
-      reference: run.log (types)
+      reference: run.txt (types)
   notes: 'base and head output byte-identical to the committed src/types/supabase.ts'
 - id: OS-F1-PRODLIKE-APPLY
   title: single-file apply on the production-like history
   status: PASS
   environment: local-isolated
-  commit: 93f84e5cddc7b795df984758a52fe6b0c2659fea
-  verified_at: '2026-10-23T11:59:52Z'
+  commit: 544014c375e903f33575b3d8a67739c7af4b5b7c
+  verified_at: '2026-10-23T12:26:53Z'
   evidence:
     - type: command
       reference: prodlike.txt, catalog-prodlike-before.txt, catalog-prodlike-after.txt
-  notes: 'history 20260815104957,20261020170757 -> +20261023064851 in the same transaction; 20260906003219 objects absent; data fingerprints unchanged; gate identical before/after; next counted write rebuilt the stale cache of one customer; races 8/8; pgTAP fails only commercial_function_execution #6, which fails identically without this migration (control in prodlike.txt)'
+  notes: 'history 20260815104957,20261020170757 -> +20261023064851 in the same transaction; 20260906003219 objects absent; data fingerprints unchanged; gate identical before/after (G0 default_isolation read committed, non_rc_isolation_settings 0); next counted write rebuilt the stale cache of one customer; races 8/8; pgTAP fails only commercial_function_execution #6, which fails identically without this migration (control in prodlike.txt)'
 - id: OS-F1-RUNBOOK
-  title: rebuild template, restore and re-enable procedures
+  title: rebuild template, restore, emergency stop and re-enable procedures
   status: PASS
   environment: local-isolated
-  commit: 93f84e5cddc7b795df984758a52fe6b0c2659fea
-  verified_at: '2026-10-23T12:00:03Z'
+  commit: 544014c375e903f33575b3d8a67739c7af4b5b7c
+  verified_at: '2026-10-23T12:26:10Z'
   evidence:
     - type: command
       reference: prodlike.txt (rebuild, restore), reenable.txt
-  notes: '§9.3: 9 backups, G1 mismatched 0 after, backup table RLS on and owner-only ACL; §9.4 restore 9/9 (rolled back); §9.4 re-enable selects only 51,52,55,57 with margin 0'
+  notes: '§9.3: 9 backups, G1 mismatched 0 after, backup table RLS on and owner-only ACL; §9.4 restore 9/9 (rolled back); §9.4 stop SQL returns the start of the transaction that began before the stop, and the re-enable from it selects 51,52,53,55,57 (from the stop time 53 is missed); touched customers match their completed set, the others keep their values'
 - id: OS-F1-IMAGE-APPLY
   title: single-file apply on the official supabase/postgres image (non-superuser postgres, real GoTrue migrations)
   status: PASS
   environment: local-docker supabase/postgres:17.6.1.140 + supabase/gotrue:v2.192.0
-  commit: 93f84e5cddc7b795df984758a52fe6b0c2659fea
-  verified_at: '2026-10-23T12:04:00Z'
+  commit: 544014c375e903f33575b3d8a67739c7af4b5b7c
+  verified_at: '2026-10-23T12:27:53Z'
   evidence:
     - type: command
       reference: official-image.txt

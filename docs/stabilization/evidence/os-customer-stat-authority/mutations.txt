@@ -1,4 +1,4 @@
-# Mutations of the head migration (each must be caught)
+# Mutations (each must be caught)
 
 ## mutation isolation: READ COMMITTED check removed
 
@@ -93,3 +93,28 @@ PASS R6 READ COMMITTED writer after a total-neutral concurrent change
 PASS R7 REPEATABLE READ writer with a stale snapshot fails closed
 PASS R8 REPEATABLE READ writer after a completion that matched a stale cache
 5/8 race checks failed
+
+## mutation boundary: RLS disabled on customers and reservations, reservations_clinic_ref_check dropped
+
+Applied to a clean replay of head before running the OS-F1 suite (the tenant tests must fail).
+
+### pgTAP
+not ok 44 - B10: RLS stays enabled on customers and reservations
+not ok 53 - T7: staff A cannot update a clinic B reservation (RLS USING)
+not ok 54 - T8: staff A cannot attach a clinic B customer to a clinic A reservation
+not ok 55 - T9: staff A cannot move a clinic A reservation to clinic B
+not ok 58 - T12: an inactive profile cannot update reservations
+not ok 59 - T13: a stale JWT scope (moved to clinic B, token says A) updates nothing in A or B
+not ok 63 - T17: denied attempts leave the clinic A cache unchanged
+not ok 64 - T18: denied attempts leave the clinic B cache unchanged
+not ok 65 - T19: the clinic B customer row is not even rewritten
+not ok 66 - T20: the clinic B reservation is unchanged
+not ok 67 - T21: the clinic A reservation keeps its customer, clinic and status
+not ok 69 - T23: a completed clinic A reservation for a clinic B customer is rejected
+not ok 70 - T24: rejected references leave the clinic B cache unchanged
+not ok 71 - T25: staff A cannot insert a completed clinic B reservation (B references are invisible under RLS)
+not ok 72 - T26: staff A cannot move a completed clinic A reservation into clinic B with B references
+not ok 73 - T27: staff A cannot upsert over a clinic B reservation id
+not ok 75 - T29: staff A cannot read clinic B customers, cache columns included
+  Parse errors: Bad plan.  You planned 83 tests but ran 75.
+Result: FAIL

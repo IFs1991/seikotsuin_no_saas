@@ -11,11 +11,11 @@ Synthetic fixture written through the old increment trigger before the apply (no
 ## gate before apply (spec §9.1, counts only)
 
 ```text
-G0 old_trigger_enabled | old_function_body_md5 | new_triggers
+G0 old_trigger_enabled | old_function_body_md5 | new_triggers | default_isolation | non_rc_isolation_settings
 G1 customers | mismatched | mismatched_clinics | null_cache | visits_over | visits_under | revenue_differs | last_visit_differs
 G2 mismatched | explained_by_old_trigger | unexplained | with_history_gap
 G3 customers | reservations | counted_reservations | reservations_without_created_history | max_customers_per_clinic
-G0 O f23956bd4e689a6f1003c7ddab8a8e11 0
+G0 O f23956bd4e689a6f1003c7ddab8a8e11 0 read committed 0
 G1 13 10 2 1 6 1 7 6
 G2 10 7 3 0
 G3 13 11 8 1 12
@@ -24,10 +24,10 @@ G3 13 11 8 1 12
 ## data fingerprint before apply
 
 ```text
-customers 13 bb3ae6ed7f4da8a9af940b63935ef926
-reservations 11 0f1b081a73f24b6ef47707d1101ac446
-reservation_history 19 87cae38bc3d6fbb0d886820e9d7f1f86
-daily_reports 1 e2e1db1a5499b688424c2c87f2e0d56a
+customers 13 b9366d0745d7d3fdd4a60b40f89985f7
+reservations 11 9d7cdbc4f2a22c8bc5816662b03288fe
+reservation_history 19 f671be7f23be42e9008bfbe222b371c7
+daily_reports 1 0ac48b8c4924b86a73bd70c3b346c634
 ```
 
 ## apply text = migration without its final commit + history row + commit, sent once (psql command tags)
@@ -59,10 +59,10 @@ COMMIT
 ## data fingerprint after apply
 
 ```text
-customers 13 bb3ae6ed7f4da8a9af940b63935ef926
-reservations 11 0f1b081a73f24b6ef47707d1101ac446
-reservation_history 19 87cae38bc3d6fbb0d886820e9d7f1f86
-daily_reports 1 e2e1db1a5499b688424c2c87f2e0d56a
+customers 13 b9366d0745d7d3fdd4a60b40f89985f7
+reservations 11 9d7cdbc4f2a22c8bc5816662b03288fe
+reservation_history 19 f671be7f23be42e9008bfbe222b371c7
+daily_reports 1 0ac48b8c4924b86a73bd70c3b346c634
 ```
 
 ## history after apply
@@ -88,11 +88,11 @@ reservations_customer_visit_stats_update O
 ## gate after apply
 
 ```text
-G0 old_trigger_enabled | old_function_body_md5 | new_triggers
+G0 old_trigger_enabled | old_function_body_md5 | new_triggers | default_isolation | non_rc_isolation_settings
 G1 customers | mismatched | mismatched_clinics | null_cache | visits_over | visits_under | revenue_differs | last_visit_differs
 G2 mismatched | explained_by_old_trigger | unexplained | with_history_gap
 G3 customers | reservations | counted_reservations | reservations_without_created_history | max_customers_per_clinic
-G0   3
+G0   3 read committed 0
 G1 13 10 2 1 6 1 7 6
 G2 10 7 3 0
 G3 13 11 8 1 12
@@ -114,7 +114,7 @@ after 3 9000.00 2095-04-01 02:00:00+00
 Failed 1/20 subtests 
 supabase/tests/commercial_function_execution_test.sql                       (Wstat: 0 Tests: 20 Failed: 1)
   Failed test:  6
-Files=22, Tests=995,  6 wallclock secs ( 0.17 usr  0.06 sys +  0.67 cusr  0.30 csys =  1.20 CPU)
+Files=22, Tests=995,  6 wallclock secs ( 0.19 usr  0.05 sys +  0.64 cusr  0.26 csys =  1.14 CPU)
 Result: FAIL
 ```
 
@@ -125,7 +125,7 @@ Result: FAIL
 Failed 1/20 subtests 
 supabase/tests/commercial_function_execution_test.sql (Wstat: 0 Tests: 20 Failed: 1)
   Failed test:  6
-Files=1, Tests=20,  0 wallclock secs ( 0.02 usr  0.00 sys +  0.04 cusr  0.00 csys =  0.06 CPU)
+Files=1, Tests=20,  0 wallclock secs ( 0.03 usr  0.00 sys +  0.02 cusr  0.01 csys =  0.06 CPU)
 Result: FAIL
 ```
 
@@ -144,11 +144,11 @@ Result: FAIL
 ## gate before the §9.3 rebuild template
 
 ```text
-G0 old_trigger_enabled | old_function_body_md5 | new_triggers
+G0 old_trigger_enabled | old_function_body_md5 | new_triggers | default_isolation | non_rc_isolation_settings
 G1 customers | mismatched | mismatched_clinics | null_cache | visits_over | visits_under | revenue_differs | last_visit_differs
 G2 mismatched | explained_by_old_trigger | unexplained | with_history_gap
 G3 customers | reservations | counted_reservations | reservations_without_created_history | max_customers_per_clinic
-G0   3
+G0   3 read committed 0
 G1 13 9 2 1 6 1 7 5
 G2 9 6 3 0
 G3 13 12 9 1 12
@@ -181,11 +181,11 @@ COMMIT
 ## gate after the §9.3 rebuild template
 
 ```text
-G0 old_trigger_enabled | old_function_body_md5 | new_triggers
+G0 old_trigger_enabled | old_function_body_md5 | new_triggers | default_isolation | non_rc_isolation_settings
 G1 customers | mismatched | mismatched_clinics | null_cache | visits_over | visits_under | revenue_differs | last_visit_differs
 G2 mismatched | explained_by_old_trigger | unexplained | with_history_gap
 G3 customers | reservations | counted_reservations | reservations_without_created_history | max_customers_per_clinic
-G0   3
+G0   3 read committed 0
 G1 13 0 0 0 0 0 0 0
 G2 0 0 0 0
 G3 13 12 9 1 12

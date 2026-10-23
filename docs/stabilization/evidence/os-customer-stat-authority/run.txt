@@ -1,0 +1,42 @@
+[2026-10-23T12:22:23Z] replay base main 91d18779ed94c5688c1daa15363e4a5b99da1ecf -> ev_before
+[2026-10-23T12:22:34Z] replay pre-review 2723f03c591f17611bfc30dc56f3df5b220f9d07 -> ev_prev
+[2026-10-23T12:22:46Z] replay head 544014c375e903f33575b3d8a67739c7af4b5b7c -> ev_after
+[2026-10-23T12:22:57Z] replays: APPLIED 69 migrations to ev_before SEEDED ev_before APPLIED 70 migrations to ev_prev SEEDED ev_prev APPLIED 70 migrations to ev_after SEEDED ev_after 
+[2026-10-23T12:22:57Z] catalog snapshots
+[2026-10-23T12:22:57Z] pgTAP RED: head suite on base main
+[2026-10-23T12:22:58Z] pgTAP RED result: Result: FAIL / failed: 29 / ids: A2 A3 A8 A9 A10 A11 A13 A14 A16 A18 A19 A20 A24 A25 A30 A31 A32 A34 B1 B2 B3 B4 B5 T4 T6 T11 T15 T16 G1 
+[2026-10-23T12:22:58Z] pgTAP: head suite on pre-review implementation
+[2026-10-23T12:22:58Z] pgTAP pre-review result: Result: PASS / failed: 0 / ids: 
+[2026-10-23T12:22:58Z] pgTAP GREEN: full suite on head
+[2026-10-23T12:23:05Z] pgTAP GREEN result: Files=23, Tests=1026,  7 wallclock secs ( 0.23 usr  0.05 sys +  0.70 cusr  0.32 csys =  1.30 CPU) Result: PASS 
+[2026-10-23T12:23:06Z] pgTAP GREEN OS-F1 suite: Result: PASS / failed: 0
+[2026-10-23T12:23:06Z] races RED on base main
+[2026-10-23T12:24:08Z] races RED result: 6/8 race checks failed / failed: R2 R3 R4 R6 R7 R8 
+[2026-10-23T12:24:08Z] races on pre-review implementation
+[2026-10-23T12:24:11Z] races pre-review result: 2/8 race checks failed / failed: R7 R8 
+[2026-10-23T12:24:14Z] races GREEN run 1 result: 8/8 race checks passed
+[2026-10-23T12:24:17Z] races GREEN run 2 result: 8/8 race checks passed
+[2026-10-23T12:24:19Z] races GREEN run 3 result: 8/8 race checks passed
+[2026-10-23T12:24:21Z] daily report races (#146) on head: 8/8 race checks passed
+[2026-10-23T12:24:21Z] generated types
+[2026-10-23T12:24:29Z] types: before: identical to base src/types/supabase.ts after: identical to head src/types/supabase.ts 
+[2026-10-23T12:24:43Z] mutation isolation: pgTAP failed: / races failed: R7 R8 
+[2026-10-23T12:24:58Z] mutation distinct: pgTAP failed: A33 / races failed: 
+[2026-10-23T12:25:12Z] mutation lock: pgTAP failed: / races failed: R1 R2 R3 R4 R5 
+[2026-10-23T12:25:12Z] prod-like history: head without 20260906003219 and 20261023064851
+[2026-10-23T12:25:42Z] apply 20261023064851 alone with its history row (one send)
+[2026-10-23T12:25:42Z] prodlike data fingerprints unchanged by migration
+[2026-10-23T12:25:42Z] prodlike history: 20260815104957,20261020170757 -> 20260815104957,20261020170757,20261023064851
+[2026-10-23T12:25:42Z] prodlike 0906 function absent / trigger count: true 0
+[2026-10-23T12:25:42Z] next counted write rebuilds a stale cache (53)
+[2026-10-23T12:25:42Z] 53: SET before 2 5000.00 2095-01-10 02:00:00+00 INSERT 0 1 after 3 9000.00 2095-04-01 02:00:00+00 
+[2026-10-23T12:25:49Z] prodlike pgTAP (0906 suite excluded): # Failed test 6: "the complete app_private runtime EXECUTE matrix matches exactly"   Failed test:  6 Files=22, Tests=995,  6 wallclock secs ( 0.19 usr  0.05 sys +  0.64 cusr  0.26 csys =  1.14 CPU) Result: FAIL 
+[2026-10-23T12:25:52Z] prodlike races: 8/8 race checks passed
+[2026-10-23T12:25:55Z] prodlike daily report races: 8/8 race checks passed
+[2026-10-23T12:25:55Z] rebuild backup: backup_rows 9 backup_rls t backup_acl postgres=arwdDxtm/postgres 
+[2026-10-23T12:25:55Z] restore (rolled back): restored_equal_backup 9/9
+[2026-10-23T12:25:55Z] emergency stop and re-enable rebuild only touched customers (ev_reenable)
+[2026-10-23T12:26:10Z] re-enable: window_start (stop SQL): 2026-10-23 12:26:06.454406+00 selected from window_start: 51,52,53,55,57 contrast, selected from the time just before the stop SQL (2026-10-23 12:26:07.445766+00): 51,52,55,57 refresh from window_start: ok 
+[2026-10-23T12:26:14Z] done
+[2026-10-23T12:26:53Z] control: prod-like history without 20261023064851 (20260815104957,20261020170757): commercial_function_execution suite: # Failed test 6: "the complete app_private runtime EXECUTE matrix matches exactly"   Failed test:  6 Files=1, Tests=20,  0 wallclock secs ( 0.03 usr  0.00 sys +  0.02 cusr  0.01 csys =  0.06 CPU) Result: FAIL 
+[2026-10-23T12:27:05Z] mutation boundary (RLS off on customers/reservations, reservations_clinic_ref_check dropped): pgTAP failed: B10 T7 T8 T9 T12 T13 T17 T18 T19 T20 T21 T23 T24 T25 T26 T27 T29 

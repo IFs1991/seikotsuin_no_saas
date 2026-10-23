@@ -1,6 +1,6 @@
 # Official supabase/postgres image: production-like single-file apply of 20261023064851
 
-Head 93f84e5cddc7b795df984758a52fe6b0c2659fea. New container on 127.0.0.1 (left in place). The auth schema comes from the real GoTrue migrations (no auth shim).
+Head 544014c375e903f33575b3d8a67739c7af4b5b7c. New container on 127.0.0.1 (left in place). The auth schema comes from the real GoTrue migrations (no auth shim).
 The apply text is the same one as prodlike.txt: the migration without its final commit, the history row, and commit, sent once as postgres.
 
 ## environment
@@ -17,21 +17,23 @@ postgres role: rolsuper=false rolbypassrls=true
 ## run
 
 ```text
-[2026-10-23T12:03:21Z] start os-f1-head-img (supabase/postgres:17.6.1.140) on 127.0.0.1:54445
-[2026-10-23T12:03:32Z] environment: image: supabase/postgres:17.6.1.140 (sha256:6501843661b1f8ff97e85c02de33edc0ee2e2693888ad596ee86222f02dc8ecc) gotrue: supabase/gotrue:v2.192.0 (sha256:b252efb680be37d4a8bf77c210cf0439c19b63a4b51929233a65dd101d25bdab) server: 17.6 auth.schema_migrations: 77 auth.uid() reads request.jwt.claims: t postgres role: rolsuper=false rolbypassrls=true 
-[2026-10-23T12:03:32Z] replay prod-like history (without 20260906003219 and 20261023064851)
-[2026-10-23T12:03:46Z] replay: APPLIED 68 migrations (official image + real GoTrue migrations, port 54445) SEEDED 
-[2026-10-23T12:03:47Z] apply 20261023064851 with its history row in one send (as postgres)
-[2026-10-23T12:03:47Z] apply ok
-[2026-10-23T12:03:47Z] data fingerprints unchanged by migration
-[2026-10-23T12:03:47Z] history: 20260815104957,20261020170757 -> 20260815104957,20261020170757,20261023064851
-[2026-10-23T12:03:47Z] 0906 function absent / trigger count: true 0
-[2026-10-23T12:03:47Z] gate before: O f23956bd4e689a6f1003c7ddab8a8e11 0/13 10 2 1 6 1 7 6/10 7 3 0/13 11 8 1 12/ after:   3/13 10 2 1 6 1 7 6/10 7 3 0/13 11 8 1 12/
-[2026-10-23T12:03:54Z] pgTAP (0906 suite excluded): # Failed test 6: "the complete app_private runtime EXECUTE matrix matches exactly"   Failed test:  6 Files=22, Tests=995,  7 wallclock secs ( 0.19 usr  0.05 sys +  0.88 cusr  0.31 csys =  1.43 CPU) Result: FAIL 
-[2026-10-23T12:03:57Z] races: 8/8 race checks passed
-[2026-10-23T12:04:00Z] daily report races: 8/8 race checks passed
-[2026-10-23T12:04:00Z] done (containers os-f1-head-img and os-f1-head-img-gotrue-migrate are left in place)
+[2026-10-23T12:27:12Z] start os-f1-final-img (supabase/postgres:17.6.1.140) on 127.0.0.1:54446
+[2026-10-23T12:27:23Z] environment: image: supabase/postgres:17.6.1.140 (sha256:6501843661b1f8ff97e85c02de33edc0ee2e2693888ad596ee86222f02dc8ecc) gotrue: supabase/gotrue:v2.192.0 (sha256:b252efb680be37d4a8bf77c210cf0439c19b63a4b51929233a65dd101d25bdab) server: 17.6 auth.schema_migrations: 77 auth.uid() reads request.jwt.claims: t postgres role: rolsuper=false rolbypassrls=true 
+[2026-10-23T12:27:23Z] replay prod-like history (without 20260906003219 and 20261023064851)
+[2026-10-23T12:27:38Z] replay: APPLIED 68 migrations (official image + real GoTrue migrations, port 54446) SEEDED 
+[2026-10-23T12:27:38Z] apply 20261023064851 with its history row in one send (as postgres)
+[2026-10-23T12:27:38Z] apply ok
+[2026-10-23T12:27:38Z] data fingerprints unchanged by migration
+[2026-10-23T12:27:38Z] history: 20260815104957,20261020170757 -> 20260815104957,20261020170757,20261023064851
+[2026-10-23T12:27:38Z] 0906 function absent / trigger count: true 0
+[2026-10-23T12:27:39Z] gate before: O f23956bd4e689a6f1003c7ddab8a8e11 0 read committed 0/13 10 2 1 6 1 7 6/10 7 3 0/13 11 8 1 12/ after:   3 read committed 0/13 10 2 1 6 1 7 6/10 7 3 0/13 11 8 1 12/
+[2026-10-23T12:27:46Z] pgTAP (0906 suite excluded): # Failed test 6: "the complete app_private runtime EXECUTE matrix matches exactly"   Failed test:  6 Files=22, Tests=995,  7 wallclock secs ( 0.21 usr  0.07 sys +  1.01 cusr  0.29 csys =  1.58 CPU) Result: FAIL 
+[2026-10-23T12:27:50Z] races: 8/8 race checks passed
+[2026-10-23T12:27:53Z] daily report races: 8/8 race checks passed
+[2026-10-23T12:27:53Z] done (containers os-f1-final-img and os-f1-final-img-gotrue-migrate are left in place)
 ```
+
+The gate lines are G0/G1/G2/G3 separated by '/', with the columns listed in prodlike.txt.
 
 ## catalog
 
