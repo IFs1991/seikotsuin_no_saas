@@ -13,7 +13,7 @@ PR #165 / migration `20261023064851_os_customer_stat_authority`。記録は件�
 | 本番の migration 履歴                                                                                                                   | 68件、最大は `20261020170757`。`20260906003219` と `20261023064851` は無い                                                                                                                                                                                               | PASS                               |
 | Vercel Production deployment（ID・配信 SHA・Production Branch・alias とドメイン・自動割当・Instant Rollback 後の停止・接続先 Supabase） | Vercel API は 403（team access が未承認）。本番ドメインへの取得は、この環境のネットワークポリシーで拒否される                                                                                                                                                            | UNKNOWN → owner確認（P8）          |
 | LP 公開ゲート（PR #164）                                                                                                                | `public-site:release-check` は RELEASE_BLOCKED（公開に必要な未承認項目 14件）。#164 の内容が既に Production で配信されているかは UNKNOWN（Vercel 待ち）                                                                                                                  | UNKNOWN → owner確認（P9）          |
-| 適用テキスト                                                                                                                            | `apply-20261023064851.sql`、sha256 `2629d4a973e2845788231daee8fda441c3b59f1df785a891d2ce88a571db433d`（`SHA256SUMS`）                                                                                                                                                    | §5                                 |
+| 適用テキスト                                                                                                                            | v1 `apply-20261023064851.sql`（sha256 `2629d4a9…`）。CRLF で貼り付けると自己検査で止まるため、改行に依存しない v2 `apply-20261023064851-v2.sql`（sha256 `51ca77c74027afc145264c017dfb3a84e81f2d587960dfe77d191d0762d39540`）を使う（`SHA256SUMS`）                       | §5・§8                             |
 
 ## 2. 適用前ゲート（本番・read-only、2026-10-23 17:48Z ごろ）
 
@@ -85,6 +85,28 @@ PR #165 / migration `20261023064851_os_customer_stat_authority`。記録は件�
   - SQLSTATE 付きのエラーが返った場合: 止めて、read-only で全体が取り消されたことを確認する。再送はしない。
   - 結果が分からない場合（timeout・接続断・空の応答）: 再送しない。read-only で、全部が適用されたか何も適用されていないかを確定する。
 - 適用後の不一致: マージしない。DB の rollback はしない。forward-fix は別の承認を得て行う。
+
+## 8. 適用の試行記録と適用テキスト v2
+
+本番の状態は、各試行の後に read-only で確認した（履歴 68件・新 trigger 0・旧 trigger `O`・行 fingerprint が適用前と一致）。どの試行でも本番は変わっていない。
+
+| 日時（UTC）               | 方法                                   | 結果                                                                                                                                                                                                 |
+| ------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 10-24 00:0x〜02:5x（4回） | Supabase MCP `execute_sql`（v1）       | MCP サーバーの送信前の確認に 60 秒以内の回答が届かず、タイムアウト。SQL は実行されていない                                                                                                           |
+| 10-25 13:59               | Dashboard SQL Editor（URL を貼り付け） | `42601` 構文エラー。何も実行されていない                                                                                                                                                             |
+| 10-25 14:01               | Dashboard SQL Editor（v1）             | `P0001 RELEASE_SELF_CHECK_TARGETS 7b75fc5d` で全体が取り消された。原因は貼り付け時の改行の CRLF 化（関数本体と履歴に `\r` が入る）。隔離DBで v1 を CRLF にすると同じ `7b75fc5d` になることで確認した |
+
+v2（`apply-20261023064851-v2.sql`）:
+
+- 内容は v1 と同じ（migration 本文・CLI と同じ履歴 20 要素・同じ自己検査 `c71e8adc…`・`commit`・結果の SELECT）。
+- 違いは2点だけ。
+  - migration 本文（`begin;` と `commit;` の間）を、`\r` をすべて除いた文字列として DO ブロックの `EXECUTE` 1回で実行する。
+  - 履歴の各要素からも `\r` を除いてから INSERT する。
+- そのため、LF でも CRLF でも同じ定義と履歴になる。1文字でも変われば、これまでと同じく自己検査で全体が取り消される。
+- 検証（`apply-v2-verify.txt`）:
+  - 隔離 PG 17.6: LF・CRLF とも成功し、target md5 は `c71e8adc…`、関数本体と履歴に `\r` は 0、データは不変。
+  - 失敗ケース（いずれも CRLF）: 改ざん・lock 待ち（5秒）・履歴の重複・preflight の前提崩れの4ケースで、全体が取り消された。
+  - 公式 `supabase/postgres:17.6.1.140`（superuser ではない `postgres`）: CRLF で成功し、データは不変。
 - マージ前:
   - P8: Production の deployment ID・SHA・branch・自動割当を確認できない場合は止める。
   - P9: マージによって未承認の LP（PR #164）が新たに公開される場合は止める。#164 が既に Production で配信中なら、本PRのマージで公開範囲は変わらない。
