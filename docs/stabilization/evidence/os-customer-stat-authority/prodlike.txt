@@ -1,0 +1,209 @@
+# Production-like history: single-file apply of 20261023064851
+
+Synthetic fixture written through the old increment trigger before the apply (no real data).
+
+## history before apply (versions >= 20260815)
+
+```text
+20260815104957,20261020170757
+```
+
+## gate before apply (spec §9.1, counts only)
+
+```text
+G0 old_trigger_enabled | old_function_body_md5 | new_triggers | default_isolation | non_rc_isolation_settings
+G1 customers | mismatched | mismatched_clinics | null_cache | visits_over | visits_under | revenue_differs | last_visit_differs
+G2 mismatched | explained_by_old_trigger | unexplained | with_history_gap
+G3 customers | reservations | counted_reservations | reservations_without_created_history | max_customers_per_clinic
+G0 O f23956bd4e689a6f1003c7ddab8a8e11 0 read committed 0
+G1 13 10 2 1 6 1 7 6
+G2 10 7 3 0
+G3 13 11 8 1 12
+```
+
+## data fingerprint before apply
+
+```text
+customers 13 0b6e26c73787b1c9634e2a6a9e55c987
+reservations 11 965d39a0b475b5001d3ba5414beca579
+reservation_history 19 de9db2934c09ab488546eab2f2232f4a
+daily_reports 1 7758857a55b8e68cbfb61786fd91e518
+```
+
+## apply text = migration without its final commit + history row + commit, sent once (psql command tags)
+
+```text
+BEGIN
+SET
+SET
+DO
+CREATE FUNCTION
+REVOKE
+COMMENT
+CREATE FUNCTION
+REVOKE
+COMMENT
+COMMENT
+COMMENT
+COMMENT
+DROP TRIGGER
+DROP FUNCTION
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE TRIGGER
+DO
+INSERT 0 1
+COMMIT
+```
+
+## data fingerprint after apply
+
+```text
+customers 13 0b6e26c73787b1c9634e2a6a9e55c987
+reservations 11 965d39a0b475b5001d3ba5414beca579
+reservation_history 19 de9db2934c09ab488546eab2f2232f4a
+daily_reports 1 7758857a55b8e68cbfb61786fd91e518
+```
+
+## history after apply
+
+```text
+20260815104957,20261020170757,20261023064851
+```
+
+## 20260906003219 absent (persist_reservation_notification_outbox missing, durable enqueue trigger count)
+
+```text
+true 0
+```
+
+## spec §9.5 check after apply
+
+```text
+reservations_customer_visit_stats_delete O
+reservations_customer_visit_stats_insert O
+reservations_customer_visit_stats_update O
+```
+
+## gate after apply
+
+```text
+G0 old_trigger_enabled | old_function_body_md5 | new_triggers | default_isolation | non_rc_isolation_settings
+G1 customers | mismatched | mismatched_clinics | null_cache | visits_over | visits_under | revenue_differs | last_visit_differs
+G2 mismatched | explained_by_old_trigger | unexplained | with_history_gap
+G3 customers | reservations | counted_reservations | reservations_without_created_history | max_customers_per_clinic
+G0   3 read committed 0
+G1 13 10 2 1 6 1 7 6
+G2 10 7 3 0
+G3 13 11 8 1 12
+```
+
+## next counted write rebuilds a stale cache (customer 53, completed insert of 4000)
+
+```text
+SET
+before 2 5000.00 2095-01-10 02:00:00+00
+INSERT 0 1
+after 3 9000.00 2095-04-01 02:00:00+00
+```
+
+## pgTAP on the prod-like history (20260906003219 suite excluded)
+
+```text
+# Failed test 6: "the complete app_private runtime EXECUTE matrix matches exactly"
+Failed 1/20 subtests 
+supabase/tests/commercial_function_execution_test.sql                       (Wstat: 0 Tests: 20 Failed: 1)
+  Failed test:  6
+Files=22, Tests=995,  5 wallclock secs ( 0.20 usr  0.03 sys +  0.56 cusr  0.24 csys =  1.03 CPU)
+Result: FAIL
+```
+
+## control: commercial_function_execution suite on the prod-like history WITHOUT 20261023064851
+
+```text
+# Failed test 6: "the complete app_private runtime EXECUTE matrix matches exactly"
+Failed 1/20 subtests 
+supabase/tests/commercial_function_execution_test.sql (Wstat: 0 Tests: 20 Failed: 1)
+  Failed test:  6
+Files=1, Tests=20,  1 wallclock secs ( 0.02 usr  0.00 sys +  0.02 cusr  0.00 csys =  0.04 CPU)
+Result: FAIL
+```
+
+## races on the prod-like history
+
+```text
+8/8 race checks passed
+```
+
+## daily report races (#146) on the prod-like history
+
+```text
+8/8 race checks passed
+```
+
+## gate before the §9.3 rebuild template
+
+```text
+G0 old_trigger_enabled | old_function_body_md5 | new_triggers | default_isolation | non_rc_isolation_settings
+G1 customers | mismatched | mismatched_clinics | null_cache | visits_over | visits_under | revenue_differs | last_visit_differs
+G2 mismatched | explained_by_old_trigger | unexplained | with_history_gap
+G3 customers | reservations | counted_reservations | reservations_without_created_history | max_customers_per_clinic
+G0   3 read committed 0
+G1 13 9 2 1 6 1 7 5
+G2 9 6 3 0
+G3 13 12 9 1 12
+```
+
+## §9.3 rebuild template output
+
+```text
+BEGIN
+SET
+SET
+CREATE TABLE
+ALTER TABLE
+REVOKE
+ count 
+-------
+    13
+(1 row)
+
+INSERT 0 9
+ refresh_customer_visit_stats 
+------------------------------
+ 
+(1 row)
+
+DO
+COMMIT
+```
+
+## gate after the §9.3 rebuild template
+
+```text
+G0 old_trigger_enabled | old_function_body_md5 | new_triggers | default_isolation | non_rc_isolation_settings
+G1 customers | mismatched | mismatched_clinics | null_cache | visits_over | visits_under | revenue_differs | last_visit_differs
+G2 mismatched | explained_by_old_trigger | unexplained | with_history_gap
+G3 customers | reservations | counted_reservations | reservations_without_created_history | max_customers_per_clinic
+G0   3 read committed 0
+G1 13 0 0 0 0 0 0 0
+G2 0 0 0 0
+G3 13 12 9 1 12
+```
+
+## backup table
+
+```text
+backup_rows 9
+backup_rls t
+backup_acl postgres=arwdDxtm/postgres
+```
+
+## §9.4 item 4 restore inside a rolled-back transaction
+
+```text
+BEGIN
+UPDATE 9
+restored_equal_backup 9/9
+ROLLBACK
+```

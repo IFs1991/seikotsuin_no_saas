@@ -1,0 +1,18 @@
+[2026-10-25T14:04:32Z] apply text v2: 553 lines, sha256 51ca77c74027afc145264c017dfb3a84e81f2d587960dfe77d191d0762d39540
+[2026-10-25T14:04:46Z] case success (lf): {"committed" : true, "history" : "20261023064851|os_customer_stat_authority|20|4a72d5d6c036c075d1a820b0b056b1cc", "triggers" : "reservations_customer_visit_stats_delete:O,reservations_customer_visit_stats_insert:O,reservations_customer_visit_stats_update:O"}
+[2026-10-25T14:04:46Z]   target md5 c71e8adc43377cc6ea02640fd31c2e2b state new/old/hist=3/0/1 data_unchanged=yes cr_in_prosrc=0 cr_in_history=0
+[2026-10-25T14:04:59Z] case success (crlf): {"committed" : true, "history" : "20261023064851|os_customer_stat_authority|20|4a72d5d6c036c075d1a820b0b056b1cc", "triggers" : "reservations_customer_visit_stats_delete:O,reservations_customer_visit_stats_insert:O,reservations_customer_visit_stats_update:O"}
+[2026-10-25T14:04:59Z]   target md5 c71e8adc43377cc6ea02640fd31c2e2b state new/old/hist=3/0/1 data_unchanged=yes cr_in_prosrc=0 cr_in_history=0
+[2026-10-25T14:05:12Z] case tamper (crlf, one character in a function body): ERROR:  RELEASE_SELF_CHECK_TARGETS 28b31990
+[2026-10-25T14:05:12Z]   state new/old/hist=0/1/0 data_unchanged=yes
+[2026-10-25T14:05:31Z] case lock wait (crlf): ERROR:  canceling statement due to lock timeout after 5s
+[2026-10-25T14:05:40Z]   state new/old/hist=0/1/0
+[2026-10-25T14:05:51Z] case duplicate history (crlf): ERROR:  duplicate key value violates unique constraint "schema_migrations_pkey"
+[2026-10-25T14:05:51Z]   state new/old/hist=0/1/1 (hist 1 = the preexisting row)
+[2026-10-25T14:06:04Z] case preflight drift (crlf, old trigger disabled): ERROR:  OS-F1 preflight failed: update_customer_stats_trigger is not in the reviewed state
+[2026-10-25T14:06:04Z]   state new/old/hist=0/1/0
+[2026-10-25T14:06:07Z] done
+[2026-10-25T14:07:30Z] case success on the official image (crlf): role rolsuper=false
+[2026-10-25T14:07:31Z]   response: {"committed" : true, "history" : "20261023064851|os_customer_stat_authority|20|4a72d5d6c036c075d1a820b0b056b1cc", "triggers" : "reservations_customer_visit_stats_delete:O,reservations_customer_visit_stats_insert:O,reservations_customer_visit_stats_update:O"}
+[2026-10-25T14:07:31Z]   target md5 c71e8adc43377cc6ea02640fd31c2e2b data_unchanged=yes history_max=20261023064851
+[2026-10-25T14:07:31Z] done (container os-f1-rel3 left in place)

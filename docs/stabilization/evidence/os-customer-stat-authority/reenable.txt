@@ -1,0 +1,26 @@
+early transaction: early_xact_start 2026-10-23 16:33:41.232063+00
+stop SQL output: BEGIN SET DO ALTER TABLE ALTER TABLE ALTER TABLE 2026-10-23 16:33:41.232063+00 COMMIT 
+window_start (stop SQL): 2026-10-23 16:33:41.232063+00
+selected from window_start: 51,52,53,55,57
+contrast, selected from the time just before the stop SQL (2026-10-23 16:33:42.235494+00): 51,52,55,57
+refresh from window_start: ok
+customer cache want verdict
+51 0|0.00|NULL 0|0.00|NULL consistent
+52 1|900.00|2095-01-02 1|900.00|2095-01-02 consistent
+53 2|4500.00|2095-02-10 2|4500.00|2095-02-10 consistent
+54 1|1000.00|2095-03-01 1|800.00|2095-03-01 stale
+55 1|1000.00|2095-03-03 1|1000.00|2095-03-03 consistent
+56 1|1000.00|2095-03-03 0|0.00|NULL stale
+57 0|0.00|NULL 0|0.00|NULL consistent
+58 0|0.00|NULL 0|0.00|NULL consistent
+59 7|7000.00|2090-01-01 0|0.00|NULL stale
+5a 3|1000.00|2095-03-05 1|1000.00|2095-03-05 stale
+5b 1|1000.00|2095-03-06 1|1000.00|2095-03-06 consistent
+5c NULL|0.00|NULL 0|0.00|NULL stale
+b1 1|5000.00|2095-03-07 0|0.00|NULL stale
+
+## stop SQL guards
+lock_timeout guard: stop SQL failed after 5s with: canceling statement due to lock timeout
+triggers after the lock_timeout failure: reservations_customer_visit_stats_delete=O reservations_customer_visit_stats_insert=O reservations_customer_visit_stats_update=O
+track_activities guard: stop SQL failed with: OS-F1 stop needs track_activities on to see every running transaction
+triggers after the track_activities abort: reservations_customer_visit_stats_delete=O reservations_customer_visit_stats_insert=O reservations_customer_visit_stats_update=O
