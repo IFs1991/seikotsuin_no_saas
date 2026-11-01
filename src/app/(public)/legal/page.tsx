@@ -11,6 +11,7 @@ import {
   operatorProfile,
   publishableValue,
   legalDescription,
+  legalRobots,
 } from '@/components/public/release-readiness';
 import {
   formatYen,
@@ -29,6 +30,7 @@ export const metadata: Metadata = {
     'Tiramisu Works・Tiramisu OSの運営者情報・販売条件と事業者情報の開示請求窓口。'
   ),
   alternates: { canonical: '/legal' },
+  robots: legalRobots('legal'),
 };
 
 const linkClass = 'underline underline-offset-4 hover:text-slate-900';

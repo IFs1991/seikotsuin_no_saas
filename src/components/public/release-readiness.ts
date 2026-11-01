@@ -4,8 +4,13 @@
 // - 事業者の氏名は回答済みだが、公開用原稿への掲載確認前のため非公開の原本だけで管理する。
 // - 所在地・電話番号の実値はここを含むリポジトリのどこにも入れない（請求時に個別提供する運用）。
 // - サーバー側（公開ページの描画と公開前チェック）からだけ参照し、client componentへ渡さない。
-// - build や本番リクエスト処理では判定しない。公開前にリリース担当が
-//   `npm run public-site:release-check` で明示的に実行する。
+// - 正式配信を選ぶVercel buildでは公開前チェックを必須実行する。
+//   通常のアプリ配信は停止せず、未承認の法務本文をProductionで保留する。
+
+import {
+  decideLegalDelivery,
+  legalDeliveryEnvironment,
+} from './legal-delivery';
 //
 // 状態の意味:
 //   missing                  未決定・未入手
@@ -631,5 +636,23 @@ export function legalDescription(
   document: LegalDocumentId,
   description: string
 ): string {
-  return `${description}${getLegalPublication(document).approved ? '' : '（公開承認待ち）'}`;
+  const publication = getLegalPublication(document);
+  const delivery = decideLegalDelivery(
+    publication.approved,
+    legalDeliveryEnvironment()
+  );
+  return delivery === 'hold'
+    ? '法務文書の正式公開は保留中です（公開承認待ち）。'
+    : `${description}${publication.approved ? '' : '（公開承認待ち）'}`;
+}
+
+export function legalRobots(document: LegalDocumentId): {
+  index: boolean;
+  follow: boolean;
+} {
+  const publication = getLegalPublication(document);
+  const published =
+    decideLegalDelivery(publication.approved, legalDeliveryEnvironment()) ===
+    'published';
+  return { index: published, follow: published };
 }

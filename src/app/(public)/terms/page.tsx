@@ -4,7 +4,10 @@ import Link from 'next/link';
 import { LegalArticle, LegalPage } from '@/components/legal/legal-page';
 import { MarketingFooter } from '@/components/public/marketing-footer';
 import { MarketingHeader } from '@/components/public/marketing-header';
-import { legalDescription } from '@/components/public/release-readiness';
+import {
+  legalDescription,
+  legalRobots,
+} from '@/components/public/release-readiness';
 import '../lp-styles.css';
 
 // 利用規約（暫定案）。共通事項と製品別の条件を見出し・アンカーで分ける。
@@ -17,6 +20,7 @@ export const metadata: Metadata = {
     'Tiramisu OS・Tiramisu Worksの共通利用条件と製品固有の条件。'
   ),
   alternates: { canonical: '/terms' },
+  robots: legalRobots('terms'),
 };
 
 const linkClass = 'underline underline-offset-4 hover:text-slate-900';
