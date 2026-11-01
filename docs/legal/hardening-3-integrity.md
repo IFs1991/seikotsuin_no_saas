@@ -35,4 +35,15 @@ EXTEND。`/terms`の共通条項を表示順に1/2/3/4/5へ訂正。意味・順
 
 read-onlyレビュー2件（公開制御/承認整合性）を実施。依存のdynamic import、バイナリhash、マーカー別名、依存先マーカー、任意profileのfallback除外を修正し負テストを追加。再確認で追加の重大・必須修正なし。レビューは法務承認・本番検証ではない。
 
-最終検証結果は後掲。外部ゲートは未設定・未実証、稼働中Production artifactは未変更である。
+## 検証記録
+
+- `npm run type-check` / `npm run lint`: PASS。
+- `npm run legal:manifest:check` / `npm run commercial:inventory:source:check`: PASS。追加ソースに伴う走査件数だけを更新し、DB参照の内容は変更していない。
+- 関連Jest: **8 suites / 154 tests PASS**。原稿/料金/運営者情報変更、CRLF、バイナリ差、内部依存、マーカー別名と依存部品、hash/証跡/日付/必須台帳の異常系、SSR、料金、条項番号、CLI環境読込を含む。
+- 修正完了後の`npm run build`: PASS（既存warningあり、コピー失敗なし）。
+- 最終build後の`public-site:release-check -- --scan-build .next`: **5,652ファイル、禁止ドメインBLOCK各0件**。serverの1759.js/mapとstandaloneコピーの8findingは根拠付きVALIDATION_DATA。未承認14項目＋3文書でRELEASE_BLOCKEDを維持。実値原本は取得せず、非公開語検出は合成の氏名/住所/電話による回帰テストで確認した。
+- Playwright: ローカルProduction保留 **1/1 PASS**（HTML/RSC、metadata、窓口、アプリ継続）、Preview公開サイト **34/34 PASS**（モバイル/目次/アンカー/請求導線/画像失敗/CSPを含む）。実本番・外部フォーム送信・DB書込みなし。
+- `npm run public-site:release-check`: **exit 1 / RELEASE_BLOCKED**。必須未承認14項目＋3文書。未解決必須項目は8/7/10件。B10は参考表示の別ゲートを維持。
+- 途中の全体Jestで、Nodeの拡張子なしrequireが同名JSONを先に解決する不整合を検出。JSONを`legal-content-snapshot.json`へ改名し、上記154件を再実行して解消。修正途中のbuildは最終成果物として採用しない。
+
+外部ゲートは未設定・未実証、稼働中Production artifactは未変更である。
