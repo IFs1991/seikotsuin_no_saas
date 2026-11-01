@@ -1,3 +1,10 @@
+import {
+  legalDocumentApprovals,
+  type LegalDocumentId,
+  type LegalDocumentApproval,
+} from './legal-approval-records';
+import { legalContentManifest } from '../legal/legal-content-manifest';
+import type { LegalContentState } from '../legal/legal-review-fields';
 // 公開サイト（共通トップ・Works／OS LP・問い合わせ・法務）の公開前判定に使う静的な承認台帳。
 //
 // - 値は公開してよいものだけを入れる。未確定・未承認は null とし、架空の値で埋めない。
@@ -518,60 +525,11 @@ export function decideRelease(
     : 'RELEASE_BLOCKED';
 }
 
-export type LegalDocumentId = 'privacy' | 'terms' | 'legal';
-
-export interface LegalDocumentApproval {
-  status: PublicationStatus;
-  /** 掲載原稿の版。原稿変更時は更新し、再承認する。 */
-  contentVersion: string;
-  reviewedVersion: string | null;
-  approvedOn: string | null;
-  revisedOn: string | null;
-  effectiveOn: string | null;
-  /** 公開可能な承認記録の参照のみ。承認者の個人情報・秘密は入れない。 */
-  evidence: string | null;
-  unresolvedDecisions: readonly string[];
-}
-
-// 実装完了は公開承認ではない。日付は事業者が承認した実値だけを記録する。
-export const legalDocumentApprovals: Readonly<
-  Record<LegalDocumentId, LegalDocumentApproval>
-> = {
-  privacy: {
-    status: 'draft',
-    contentVersion: 'issue-167-v1',
-    reviewedVersion: null,
-    approvedOn: null,
-    revisedOn: null,
-    effectiveOn: null,
-    evidence: null,
-    unresolvedDecisions: [
-      'B02-requests',
-      'B08-retention-transfers',
-      'B09-medical-dpa',
-    ],
-  },
-  terms: {
-    status: 'draft',
-    contentVersion: 'issue-167-v1',
-    reviewedVersion: null,
-    approvedOn: null,
-    revisedOn: null,
-    effectiveOn: null,
-    evidence: null,
-    unresolvedDecisions: ['B07-subscription', 'B09-liability-jurisdiction'],
-  },
-  legal: {
-    status: 'draft',
-    contentVersion: 'issue-167-v1',
-    reviewedVersion: null,
-    approvedOn: null,
-    revisedOn: null,
-    effectiveOn: null,
-    evidence: null,
-    unresolvedDecisions: ['B01-operator', 'B03-disclosure', 'B07-sales-tax'],
-  },
-};
+export { legalDocumentApprovals } from './legal-approval-records';
+export type {
+  LegalDocumentId,
+  LegalDocumentApproval,
+} from './legal-approval-records';
 
 function isCalendarDate(value: string | null): value is string {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -591,9 +549,23 @@ export function getLegalPublication(
   approvals: Readonly<
     Record<LegalDocumentId, LegalDocumentApproval>
   > = legalDocumentApprovals,
-  items: readonly ReleaseCheckItem[] = releaseCheckItems
+  items: readonly ReleaseCheckItem[] = releaseCheckItems,
+  contents: Readonly<
+    Record<LegalDocumentId, LegalContentState>
+  > = legalContentManifest.documents,
+  profile: OperatorProfile = operatorProfile
 ): LegalPublication {
   const approval = approvals[document];
+  const content = contents[document];
+  const operatorReady =
+    [
+      profile.businessType,
+      profile.name,
+      profile.brand,
+      profile.addressAndPhonePolicy,
+    ].every(field => publishableValue(field) !== null) &&
+    profile.publicEmail.status === 'approved_for_publication' &&
+    isPublishableEmail(profile.publicEmail.value);
   // 必須項目の省略・重複でも fail-closed。B01〜B09すべての既存要件を照合する。
   const dependencies = releaseCheckItems.filter(
     item => item.requiredFor === 'release'
@@ -613,6 +585,13 @@ export function getLegalPublication(
   });
   if (
     !prerequisitesMet ||
+    !operatorReady ||
+    !/^[a-f0-9]{64}$/.test(content.sha256) ||
+    approval.reviewedContentHash !== content.sha256 ||
+    approval.approvedContentHash !== content.sha256 ||
+    approval.reviewedRevisedOn !== approval.revisedOn ||
+    approval.reviewedEffectiveOn !== approval.effectiveOn ||
+    content.unresolvedFields.length > 0 ||
     approval.status !== 'approved_for_publication' ||
     !isPublishableText(approval.contentVersion) ||
     approval.reviewedVersion !== approval.contentVersion ||

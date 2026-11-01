@@ -33,6 +33,7 @@ function run(script, args = []) {
 }
 function main() {
   const { environment, checkRequired } = planLegalBuild(root);
+  run('scripts/public-site/legal-manifest.mjs', ['--check']);
   if (checkRequired && environment.vercelEnv !== 'production') {
     console.error(
       'RELEASE_BLOCKED: 正式配信には明示されたProduction環境が必要です。'

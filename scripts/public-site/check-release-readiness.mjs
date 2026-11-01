@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // 公開サイト（共通トップ・Works／OS LP・問い合わせ・法務）の公開前チェック。
 //
-// - build・CI・本番リクエスト処理には組み込まない。リリース担当が公開前に明示的に実行する。
+// - リリース担当の明示実行と、法務正式配信を選択したVercel buildの前後で実行する。
+//   通常CI・Preview・保留モードのアプリ配信を法務承認待ちで停止しない。
 // - 承認台帳（src/components/public/release-readiness.ts）と問い合わせフォームURLの設定を確認し、
 //   公開に必要な項目が未承認なら終了コード1で「公開不可（RELEASE_BLOCKED）」と判定する。
 // - --scan-build <dir>: ビルド出力（例: .next）に画像の仮ドメイン等が混入していないかを確認する。
@@ -17,6 +18,8 @@ import { createRequire } from 'node:module';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { verifyLegalManifest } from './legal-manifest.mjs';
+import { computeLegalManifest } from './legal-manifest.mjs';
 
 const require = createRequire(import.meta.url);
 const FORM_URL_KEY = 'NEXT_PUBLIC_LP_FORM_URL';
@@ -53,6 +56,13 @@ const quietLog = { info: () => {}, error: message => console.error(message) };
 // dev=false: `next build` / `next start` と同じ本番用の環境ファイル。
 const { loadedEnvFiles } = loadEnvConfig(projectDir, false, quietLog, true);
 
+if (!verifyLegalManifest()) {
+  console.error(
+    'RELEASE_BLOCKED: 法務原稿・依存データとmanifestが不一致です。再生成・再レビューが必要です。'
+  );
+  process.exit(1);
+}
+
 // 環境ファイルの読込後に、環境変数を参照するモジュールを読み込む。
 require('ts-node').register({
   transpileOnly: true,
@@ -88,10 +98,14 @@ console.log('公開サイト 公開前チェック');
 console.log('==========================');
 
 const result = evaluateReleaseReadiness(releaseCheckItems);
+const contentManifest = computeLegalManifest();
 for (const document of ['privacy', 'terms', 'legal']) {
   const publication = getLegalPublication(document);
   console.log(
     `法務文書 /${document}: ${publication.approved ? '公開承認済み' : '公開承認待ち（日付・版・未解決事項・必須台帳を要確認）'}`
+  );
+  console.log(
+    `  原稿SHA-256: ${contentManifest.documents[document].sha256} / 未解決必須項目: ${contentManifest.documents[document].unresolvedFields.length}件`
   );
   if (!publication.approved)
     documentBlockers.push(`legal-document:${document}`);
