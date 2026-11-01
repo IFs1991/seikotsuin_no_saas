@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, screen, within } from '@testing-library/react';
 import { OperatorProfileList } from '@/components/legal/operator-profile-list';
+import { LegalPage } from '@/components/legal/legal-page';
+import * as readiness from '@/components/public/release-readiness';
 import {
   operatorProfile,
   type OperatorProfile,
@@ -8,6 +10,16 @@ import {
 import { worksPlans, formatYen } from '@/components/public/works-content';
 import { planItems } from '@/components/public/lp-content';
 import { setupPublicSiteTestEnvironment } from './public-site-test-utils';
+
+jest.mock('@/components/public/release-readiness', () => {
+  const actual = jest.requireActual<
+    typeof import('@/components/public/release-readiness')
+  >('@/components/public/release-readiness');
+  return {
+    ...actual,
+    getLegalPublication: jest.fn(actual.getLegalPublication),
+  };
+});
 
 jest.mock('next/link', () => {
   const MockLink = ({
@@ -27,6 +39,110 @@ jest.mock('next/link', () => {
 
 describe('Legal pages', () => {
   setupPublicSiteTestEnvironment();
+  beforeEach(() => {
+    const actual = jest.requireActual<
+      typeof import('@/components/public/release-readiness')
+    >('@/components/public/release-readiness');
+    jest
+      .mocked(readiness.getLegalPublication)
+      .mockImplementation(actual.getLegalPublication);
+  });
+
+  test('文書承認後のみ警告を消し、承認された改定日・施行日を表示する', () => {
+    const publication = jest.spyOn(readiness, 'getLegalPublication');
+    try {
+      publication.mockReturnValue({
+        approved: true,
+        revisedOn: '2026-10-31',
+        effectiveOn: '2026-11-01',
+      });
+      const { container, rerender } = render(
+        <LegalPage title='テスト原稿' document='privacy' sections={[]} />
+      );
+      expect(container).toHaveTextContent(
+        '改定日: 2026-10-31 ／ 施行日: 2026-11-01'
+      );
+      expect(screen.queryByLabelText('法務確認状況')).not.toBeInTheDocument();
+      publication.mockReturnValue({ approved: false });
+      rerender(
+        <LegalPage title='テスト原稿' document='privacy' sections={[]} />
+      );
+      expect(screen.getByLabelText('法務確認状況')).toHaveTextContent(
+        '商用利用前の法務確認が必要です'
+      );
+      expect(container).not.toHaveTextContent('2026-10-31');
+      expect(container).toHaveTextContent('改定日・施行日は未確定');
+    } finally {
+      publication.mockRestore();
+    }
+  });
+
+  test('3ページのmetadataと全目次アンカーが本文・承認状態に対応する', async () => {
+    const pages = [
+      ['privacy', await import('@/app/(public)/privacy/page')],
+      ['terms', await import('@/app/(public)/terms/page')],
+      ['legal', await import('@/app/(public)/legal/page')],
+    ] as const;
+    for (const [path, page] of pages) {
+      expect(page.metadata.alternates?.canonical).toBe(`/${path}`);
+      expect(page.metadata.description).toContain('公開承認待ち');
+      const { container, unmount } = render(React.createElement(page.default));
+      for (const anchor of container.querySelectorAll(
+        'nav[aria-label="このページの目次"] a'
+      )) {
+        const href = anchor.getAttribute('href');
+        expect(href).toMatch(/^#/);
+        if (href)
+          expect(container.querySelector(`section${href}`)).toBeInTheDocument();
+      }
+      expect(container).toHaveTextContent('改定日・施行日は未確定');
+      expect(container).not.toHaveTextContent('最終更新日: 2026-10-22');
+      unmount();
+    }
+  });
+
+  test('プライバシーの実装事実・保持限界・責任分界と利用規約の必要条項', async () => {
+    const { default: PrivacyPage } =
+      await import('@/app/(public)/privacy/page');
+    const { container, unmount } = render(<PrivacyPage />);
+    for (const text of [
+      'Gemini',
+      'スタッフ名',
+      'DPA',
+      '個人情報保護法28条',
+      'Vault',
+      'MCP',
+      'PHI',
+      '24時間',
+      '毎時処理',
+      '7日',
+      'バックアップ',
+      '自動削除されません',
+    ]) {
+      expect(container).toHaveTextContent(text);
+    }
+    unmount();
+    const { default: TermsPage } = await import('@/app/(public)/terms/page');
+    const terms = render(<TermsPage />);
+    for (const text of [
+      '契約成立',
+      '最低利用期間',
+      '自動更新',
+      '解約',
+      '返金',
+      'DPA',
+      'outcome_unknown',
+      '自動で重複送信せず',
+      '知的財産',
+      '秘密保持',
+      '損害賠償',
+      '準拠法',
+      '裁判管轄',
+    ]) {
+      expect(terms.container).toHaveTextContent(text);
+    }
+    expect(terms.container).not.toHaveTextContent('利用した時点で本規約に同意');
+  });
 
   test('/terms で利用規約が表示される', async () => {
     const { default: TermsPage } = await import('@/app/(public)/terms/page');
@@ -148,7 +264,12 @@ describe('Legal pages', () => {
       expect(os).toHaveTextContent(
         `${plan.name}: 月額${plan.monthlyPrice}・初期費用${plan.initialCost}`
       );
+      expect(os).toHaveTextContent(plan.extraStore);
     }
+    expect(os).toHaveTextContent('OSの税区分と最終金額は未確定');
+    expect(works).toHaveTextContent('暫定価格（税別）');
+    expect(works).toHaveTextContent('支払方法・支払時期');
+    expect(works).toHaveTextContent('確定後に掲載します');
   });
 
   test('/legal は未承認の氏名・所在地・電話番号の値を表示しない（A43/A44）', async () => {

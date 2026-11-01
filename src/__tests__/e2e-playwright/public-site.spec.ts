@@ -32,6 +32,67 @@ const LEGACY_OS_ANCHORS = [
   'contact',
 ];
 
+for (const width of [375, 1280]) {
+  test(`法務3ページは承認待ち・目次・請求窓口を維持する (${width}px)`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    for (const path of ['/privacy', '/terms', '/legal']) {
+      const response = await page.goto(path);
+      expect(response?.status()).toBe(200);
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await expect(page.getByLabel('法務確認状況')).toContainText(
+        '商用利用前の法務確認が必要です'
+      );
+      await expect(
+        page.getByText('公開承認待ち（改定日・施行日は未確定）')
+      ).toBeVisible();
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        'href',
+        new RegExp(`${path}$`)
+      );
+      for (const link of await page
+        .getByRole('navigation', { name: 'このページの目次' })
+        .getByRole('link')
+        .all()) {
+        const href = await link.getAttribute('href');
+        expect(href).toMatch(/^#/);
+        if (href) await expect(page.locator(`section${href}`)).toHaveCount(1);
+      }
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth
+        )
+      ).toBe(true);
+      await page.screenshot({
+        path: `output/playwright/issue-167/${path.slice(1)}-${width}.png`,
+      });
+      const html = await page.content();
+      expect(html).not.toMatch(/〒\s?\d{3}-?\d{4}|\d{2,4}-\d{2,4}-\d{3,4}/);
+      if (path === '/privacy') {
+        await page
+          .getByRole('navigation', { name: 'このページの目次' })
+          .getByRole('link', { name: '開示等の請求・お問い合わせ' })
+          .click();
+        await expect(page).toHaveURL(/\/privacy#requests$/);
+        await expect(
+          page.locator('#requests a[href="/contact?intent=privacy"]')
+        ).toBeVisible();
+      }
+      if (path === '/legal') {
+        await expect(
+          page.locator(
+            '#operator-disclosure a[href="/contact?intent=operator-disclosure"]'
+          )
+        ).toBeVisible();
+        await expect(
+          page.locator('#operator-disclosure a[href="/privacy#requests"]')
+        ).toBeVisible();
+      }
+    }
+  });
+}
+
 interface PageWatch {
   cspViolations: string[];
   runtimeErrors: string[];

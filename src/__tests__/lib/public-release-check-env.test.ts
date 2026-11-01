@@ -26,11 +26,15 @@ function makeProjectDir(files: Record<string, string>): string {
   return dir;
 }
 
-function runCli(projectDir: string, extraEnv: Record<string, string> = {}) {
+function runCli(
+  projectDir: string,
+  extraEnv: Record<string, string> = {},
+  args: string[] = []
+) {
   // 親（Jest）の環境変数を引き継がない。NODE_ENV=test も渡さない。
   const result = spawnSync(
     process.execPath,
-    [cli, '--project-dir', projectDir],
+    [cli, '--project-dir', projectDir, ...args],
     {
       cwd: repoRoot,
       encoding: 'utf8',
@@ -52,6 +56,41 @@ afterAll(() => {
 
 describe('公開前チェックCLIの環境読み込み（F2）', () => {
   jest.setTimeout(120_000);
+
+  it('ビルドスキャンで非公開文字列の混入を検出し、実値をログに出さない', () => {
+    const privateTerm = 'PRIVATE_SENTINEL_ISSUE_167_ONLY';
+    const dir = makeProjectDir({ 'private-terms.txt': privateTerm });
+    const buildDir = path.join(dir, 'build');
+    fs.mkdirSync(buildDir);
+    fs.writeFileSync(
+      path.join(buildDir, 'privacy.html'),
+      `<p>${privateTerm}</p>`
+    );
+    const result = runCli(dir, {}, [
+      '--scan-build',
+      buildDir,
+      '--private-terms-file',
+      path.join(dir, 'private-terms.txt'),
+    ]);
+    expect(result.status).toBe(1);
+    expect(result.output).toContain('NG 非公開文字列 #1: 1件');
+    expect(result.output).not.toContain(privateTerm);
+    expect(result.output).toContain('RELEASE_BLOCKED');
+    fs.writeFileSync(
+      path.join(buildDir, 'privacy.html'),
+      '<p>公開可能な合成テスト原稿</p>'
+    );
+    const clean = runCli(dir, {}, [
+      '--scan-build',
+      buildDir,
+      '--private-terms-file',
+      path.join(dir, 'private-terms.txt'),
+    ]);
+    expect(clean.output).toContain('OK 非公開文字列 #1: 0件');
+    // スキャンが安全でも、未承認の文書を公開可にしない。
+    expect(clean.status).toBe(1);
+    expect(clean.output).toContain('法務文書の承認未完了 3件');
+  });
 
   it('.env.production だけにある http のURLを不正な設定として検出する', () => {
     const dir = makeProjectDir({
@@ -83,6 +122,10 @@ describe('公開前チェックCLIの環境読み込み（F2）', () => {
     // 台帳の未承認項目があるため判定は引き続き公開不可
     expect(run.status).toBe(1);
     expect(run.output).toContain('判定: 公開不可（RELEASE_BLOCKED）');
+    expect(run.output).toContain('法務文書の承認未完了 3件');
+    for (const document of ['privacy', 'terms', 'legal']) {
+      expect(run.output).toContain(`法務文書 /${document}: 公開承認待ち`);
+    }
   });
 
   it('プロセス環境変数が .env.production より優先される（不正なプロセス値は隠さない）', () => {

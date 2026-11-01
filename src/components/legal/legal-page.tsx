@@ -1,5 +1,9 @@
 import React from 'react';
 import { LegalFooterLinks } from '@/components/legal/legal-footer-links';
+import {
+  getLegalPublication,
+  type LegalDocumentId,
+} from '@/components/public/release-readiness';
 
 interface LegalPageSection {
   /** 製品別の条件などへ直接リンクするためのアンカー（JavaScriptなしでも移動できる） */
@@ -10,7 +14,7 @@ interface LegalPageSection {
 
 interface LegalPageProps {
   title: string;
-  updatedAt: string;
+  document: LegalDocumentId;
   sections: LegalPageSection[];
 }
 
@@ -38,29 +42,36 @@ export function LegalArticle({
   );
 }
 
-export function LegalPage({ title, updatedAt, sections }: LegalPageProps) {
+export function LegalPage({ title, document, sections }: LegalPageProps) {
   const anchoredSections = sections.filter(section => section.id);
+  const publication = getLegalPublication(document);
 
   return (
     <div className='mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-12'>
       <div className='rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8'>
         <div className='border-b border-slate-200 pb-6'>
           <h1 className='text-3xl font-bold text-slate-900'>{title}</h1>
-          <p className='mt-2 text-sm text-slate-500'>最終更新日: {updatedAt}</p>
+          <p className='mt-2 text-sm text-slate-500'>
+            {publication.approved
+              ? `改定日: ${publication.revisedOn} ／ 施行日: ${publication.effectiveOn}`
+              : '公開承認待ち（改定日・施行日は未確定）'}
+          </p>
         </div>
 
-        <aside
-          className='mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950'
-          aria-label='法務確認状況'
-        >
-          <p className='font-semibold'>商用利用前の法務確認が必要です</p>
-          <p className='mt-1'>
-            本文は暫定案です（Tiramisu
-            OSは限定パイロット向け）。事業者情報、問い合わせ窓口、
-            委託先・保管条件・保存期間・開示等の手順を確定し、専門家レビューを完了するまで、
-            正式な契約条件や法令適合、第三者認証の取得を示すものではありません。
-          </p>
-        </aside>
+        {!publication.approved ? (
+          <aside
+            className='mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950'
+            aria-label='法務確認状況'
+          >
+            <p className='font-semibold'>商用利用前の法務確認が必要です</p>
+            <p className='mt-1'>
+              本文は暫定案です（Tiramisu
+              OSは限定パイロット向け）。事業者情報、問い合わせ窓口、
+              委託先・保管条件・保存期間・開示等の手順を確定し、専門家レビューを完了するまで、
+              正式な契約条件や法令適合、第三者認証の取得を示すものではありません。
+            </p>
+          </aside>
+        ) : null}
 
         {anchoredSections.length > 0 ? (
           <nav

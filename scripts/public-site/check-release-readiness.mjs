@@ -66,6 +66,7 @@ const {
   evaluateReleaseReadiness,
   releaseCheckItems,
   worksClaims,
+  getLegalPublication,
 } = require('../../src/components/public/release-readiness.ts');
 const {
   resolveLpFormLink,
@@ -138,11 +139,20 @@ const statusLabels = {
 };
 
 const checkErrors = [];
+const documentBlockers = [];
 
 console.log('公開サイト 公開前チェック');
 console.log('==========================');
 
 const result = evaluateReleaseReadiness(releaseCheckItems);
+for (const document of ['privacy', 'terms', 'legal']) {
+  const publication = getLegalPublication(document);
+  console.log(
+    `法務文書 /${document}: ${publication.approved ? '公開承認済み' : '公開承認待ち（日付・版・未解決事項・必須台帳を要確認）'}`
+  );
+  if (!publication.approved)
+    documentBlockers.push(`legal-document:${document}`);
+}
 for (const item of releaseCheckItems) {
   const check = checkReleaseItem(item);
   const mark = check.satisfied ? 'OK ' : 'NG ';
@@ -248,9 +258,12 @@ if (scanDir) {
 }
 
 console.log('');
-if (decideRelease(result, checkErrors) === 'RELEASE_BLOCKED') {
+if (
+  decideRelease(result, [...checkErrors, ...documentBlockers]) ===
+  'RELEASE_BLOCKED'
+) {
   console.log(
-    `判定: 公開不可（RELEASE_BLOCKED）。公開に必要な未承認項目 ${result.blocking.length}件${checkErrors.length > 0 ? `、確認エラー ${checkErrors.length}件` : ''}。`
+    `判定: 公開不可（RELEASE_BLOCKED）。公開に必要な未承認項目 ${result.blocking.length}件、法務文書の承認未完了 ${documentBlockers.length}件${checkErrors.length > 0 ? `、確認エラー ${checkErrors.length}件` : ''}。`
   );
   process.exitCode = 1;
 } else {

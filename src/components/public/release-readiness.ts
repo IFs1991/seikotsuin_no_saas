@@ -409,7 +409,7 @@ export const releaseCheckItems: readonly ReleaseCheckItem[] = [
     status: 'missing',
     requiredFor: 'release',
     nextAction:
-      '製品別に確定し、LP・規約・運営者情報・申込導線を一致させる。解約を電話だけに限定しない',
+      'docs/legal/issue-167-decisions.md のB07を製品別に確定し、LP・規約・運営者情報・申込導線を一致させる。解約を電話だけに限定しない',
   },
   {
     id: 'data-handling',
@@ -417,7 +417,8 @@ export const releaseCheckItems: readonly ReleaseCheckItem[] = [
     label: '製品別のデータ取扱い（実フロー・保持・削除・委託・送信先）',
     status: 'missing',
     requiredFor: 'release',
-    nextAction: '実データフローを調査し、プライバシーポリシーの本文を確定する',
+    nextAction:
+      'docs/legal/issue-167-data-evidence.md の未確認事項（全送信先・国外提供・委託・保持・削除・バックアップ）を運用と照合し、本文と公開別表を承認する',
   },
   {
     id: 'legal-approval',
@@ -426,7 +427,7 @@ export const releaseCheckItems: readonly ReleaseCheckItem[] = [
     status: 'draft',
     requiredFor: 'release',
     nextAction:
-      '事業者と必要な専門家が確認する。特商法表示の要否は実際の販売方法から判断する',
+      '事業者と必要な専門家がB01〜B08と3文書の原稿版・実日付・未解決事項を確認し、legalDocumentApprovalsに承認証跡を記録する。特商法表示は実際の販売方法から判断する',
   },
   {
     id: 'os-migrated-claims',
@@ -510,4 +511,125 @@ export function decideRelease(
   return result.ready && checkErrors.length === 0
     ? 'READY_FOR_RELEASE'
     : 'RELEASE_BLOCKED';
+}
+
+export type LegalDocumentId = 'privacy' | 'terms' | 'legal';
+
+export interface LegalDocumentApproval {
+  status: PublicationStatus;
+  /** 掲載原稿の版。原稿変更時は更新し、再承認する。 */
+  contentVersion: string;
+  reviewedVersion: string | null;
+  approvedOn: string | null;
+  revisedOn: string | null;
+  effectiveOn: string | null;
+  /** 公開可能な承認記録の参照のみ。承認者の個人情報・秘密は入れない。 */
+  evidence: string | null;
+  unresolvedDecisions: readonly string[];
+}
+
+// 実装完了は公開承認ではない。日付は事業者が承認した実値だけを記録する。
+export const legalDocumentApprovals: Readonly<
+  Record<LegalDocumentId, LegalDocumentApproval>
+> = {
+  privacy: {
+    status: 'draft',
+    contentVersion: 'issue-167-v1',
+    reviewedVersion: null,
+    approvedOn: null,
+    revisedOn: null,
+    effectiveOn: null,
+    evidence: null,
+    unresolvedDecisions: [
+      'B02-requests',
+      'B08-retention-transfers',
+      'B09-medical-dpa',
+    ],
+  },
+  terms: {
+    status: 'draft',
+    contentVersion: 'issue-167-v1',
+    reviewedVersion: null,
+    approvedOn: null,
+    revisedOn: null,
+    effectiveOn: null,
+    evidence: null,
+    unresolvedDecisions: ['B07-subscription', 'B09-liability-jurisdiction'],
+  },
+  legal: {
+    status: 'draft',
+    contentVersion: 'issue-167-v1',
+    reviewedVersion: null,
+    approvedOn: null,
+    revisedOn: null,
+    effectiveOn: null,
+    evidence: null,
+    unresolvedDecisions: ['B01-operator', 'B03-disclosure', 'B07-sales-tax'],
+  },
+};
+
+function isCalendarDate(value: string | null): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return (
+    Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
+  );
+}
+
+export type LegalPublication =
+  | { approved: false }
+  | { approved: true; revisedOn: string; effectiveOn: string };
+
+/** 文書判定は全体公開判定を代行しない。B10の申請承認は常に別手続。 */
+export function getLegalPublication(
+  document: LegalDocumentId,
+  approvals: Readonly<
+    Record<LegalDocumentId, LegalDocumentApproval>
+  > = legalDocumentApprovals,
+  items: readonly ReleaseCheckItem[] = releaseCheckItems
+): LegalPublication {
+  const approval = approvals[document];
+  // 必須項目の省略・重複でも fail-closed。B01〜B09すべての既存要件を照合する。
+  const dependencies = releaseCheckItems.filter(
+    item => item.requiredFor === 'release'
+  );
+  const prerequisitesMet = dependencies.every(required => {
+    const matches = items.filter(item => item.id === required.id);
+    const item = matches[0];
+    return (
+      matches.length === 1 &&
+      item !== undefined &&
+      item.ledger === required.ledger &&
+      item.requiredFor === required.requiredFor &&
+      (!required.requiredValue ||
+        item.requiredValue?.kind === required.requiredValue.kind) &&
+      checkReleaseItem(item).satisfied
+    );
+  });
+  if (
+    !prerequisitesMet ||
+    approval.status !== 'approved_for_publication' ||
+    !isPublishableText(approval.contentVersion) ||
+    approval.reviewedVersion !== approval.contentVersion ||
+    !isPublishableText(approval.evidence) ||
+    approval.unresolvedDecisions.length > 0 ||
+    !isCalendarDate(approval.approvedOn) ||
+    !isCalendarDate(approval.revisedOn) ||
+    !isCalendarDate(approval.effectiveOn) ||
+    approval.approvedOn > approval.effectiveOn ||
+    approval.revisedOn > approval.effectiveOn
+  )
+    return { approved: false };
+  return {
+    approved: true,
+    revisedOn: approval.revisedOn,
+    effectiveOn: approval.effectiveOn,
+  };
+}
+
+export function legalDescription(
+  document: LegalDocumentId,
+  description: string
+): string {
+  return `${description}${getLegalPublication(document).approved ? '' : '（公開承認待ち）'}`;
 }
