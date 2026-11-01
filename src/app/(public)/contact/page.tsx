@@ -4,6 +4,11 @@ import Link from 'next/link';
 import { AlertTriangle, ArrowRight, ExternalLink, Info } from 'lucide-react';
 import { resolveLpFormLink } from '@/components/public/lp-links';
 import { LegalFooterLinks } from '@/components/legal/legal-footer-links';
+import {
+  operatorProfile,
+  publishableValue,
+  isPublishableEmail,
+} from '@/components/public/release-readiness';
 import { MarketingFooter } from '@/components/public/marketing-footer';
 import { MarketingHeader } from '@/components/public/marketing-header';
 import {
@@ -137,6 +142,7 @@ interface ContactPageProps {
 export default async function ContactPage({ searchParams }: ContactPageProps) {
   const selection = normalizeContactSelection(await searchParams);
   const formLink = resolveLpFormLink();
+  const publicEmail = publishableValue(operatorProfile.publicEmail);
   const hasSelection =
     selection.product !== null ||
     selection.intent !== null ||
@@ -251,6 +257,17 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
                 現在、お問い合わせフォームへのリンクを表示できません。時間をおいて、もう一度このページをご確認ください。
               </p>
             )}
+            {publicEmail !== null && isPublishableEmail(publicEmail) ? (
+              <p className='mt-4 text-[13px] leading-6 text-[color:var(--lp-text)]'>
+                メールでもお問い合わせいただけます：
+                <a
+                  href={`mailto:${publicEmail}`}
+                  className='underline underline-offset-4'
+                >
+                  {publicEmail}
+                </a>
+              </p>
+            ) : null}
             <ul className='mt-5 flex flex-col gap-2 text-[13px] leading-6 text-[color:var(--lp-text)]'>
               <li>
                 ・フォームを送信するまで、お問い合わせは届きません。フォームを開いただけでは受付になりません。
@@ -261,11 +278,17 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
               <li>
                 ・運営者の情報は
                 <Link
-                  href='/legal'
+                  href={
+                    selection.product === 'works'
+                      ? '/works/privacy#operator'
+                      : '/legal'
+                  }
                   prefetch={false}
                   className='mx-1 underline underline-offset-4 hover:text-[color:var(--lp-accent-strong)]'
                 >
-                  運営者情報・販売条件
+                  {selection.product === 'works'
+                    ? 'Worksの運営者情報'
+                    : '運営者情報・販売条件'}
                 </Link>
                 をご確認ください。
               </li>

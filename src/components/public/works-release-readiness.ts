@@ -27,6 +27,7 @@ export type WorksGateId =
   | 'operator-disclosure'
   | 'origin-verification'
   | 'data-practices'
+  | 'sales-conditions'
   | 'submission-scope';
 export interface WorksGate {
   id: WorksGateId;
@@ -38,11 +39,46 @@ const requiredGateIds: readonly WorksGateId[] = [
   'operator-disclosure',
   'origin-verification',
   'data-practices',
+  'sales-conditions',
   'submission-scope',
 ];
-export const worksLegalGates: readonly WorksGate[] = requiredGateIds.map(
-  id => ({ id, status: 'missing', evidence: null })
-);
+// 本人の完了申告は記録するが、実値・公開可能な証跡と原稿の照合前にapprovedへ移行しない。
+export const worksLegalGates: readonly WorksGate[] = [
+  {
+    id: 'support-operation',
+    status: 'confirmed',
+    evidence:
+      'docs/legal/works-submission-owner-confirmations-20261102.md#operator',
+  },
+  {
+    id: 'operator-disclosure',
+    status: 'confirmed',
+    evidence:
+      'docs/legal/works-submission-owner-confirmations-20261102.md#operator',
+  },
+  {
+    id: 'origin-verification',
+    status: 'confirmed',
+    evidence: 'docs/legal/works-submission-readiness-20261101.md',
+  },
+  {
+    id: 'data-practices',
+    status: 'draft',
+    evidence: 'docs/legal/works-submission-data-evidence-20261101.md',
+  },
+  {
+    id: 'sales-conditions',
+    status: 'confirmed',
+    evidence:
+      'docs/legal/works-submission-owner-confirmations-20261102.md#sales',
+  },
+  {
+    id: 'submission-scope',
+    status: 'confirmed',
+    evidence:
+      'docs/legal/works-submission-owner-confirmations-20261102.md#scope',
+  },
+];
 
 /** OSの価格・医療・正式公開承認は参照しない。Works固有の未確認事項は省略不可。 */
 export function getWorksLegalPublication(

@@ -15,10 +15,24 @@ test('公開済みの正しいWorks本文だけを合格にし、200のhold・�
   ])
     assert.equal(inspectWorksPage(html, 'works/privacy'), false);
 });
-test('問い合わせは実フォーム導線が必要。運用未確認は合格にしない', () => {
+test('問い合わせはフォームまたはメール導線が必要。運用未確認は合格にしない', () => {
   const support =
     '<main>Tiramisu Works サポート<a href="https://docs.google.com/forms/d/e/synthetic/viewform">窓口</a></main>';
   assert.equal(inspectWorksPage(support, null), true);
+  assert.equal(
+    inspectWorksPage(
+      '<main>Tiramisu Works サポート<a href="mailto:help@fictional-tiramisu-test.co.jp">メール</a></main>',
+      null
+    ),
+    true
+  );
+  assert.equal(
+    inspectWorksPage(
+      '<main>Tiramisu Works サポート<a href="mailto:invalid">メール</a></main>',
+      null
+    ),
+    false
+  );
   assert.equal(
     inspectWorksPage(
       support.replace('サポート', 'サポート 受信は未確認'),

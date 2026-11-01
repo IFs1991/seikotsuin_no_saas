@@ -12,10 +12,10 @@
 
 | 状態軸 | 判定 | 意味 |
 | --- | --- | --- |
-| CODE | LOCAL_CHECKS_PASS / REVIEW_PENDING | 実装・型・Jest・build・ブラウザ検証は成功。独立PRレビューと全成果物scanは別 |
-| CI | NOT_RUN | GitHub CIはローカル検証と別。PR作成後のcommit/jobで確認 |
-| PUBLIC_URL | BLOCKED | 紹介・Privacy・Termsの専用URLは実応答404。supportページは200だが運用未確認 |
-| OWNER_APPROVAL | PENDING | 名前/業務メール・窓口運用、データ/申請範囲、原稿/hash/実日付の承認待ち |
+| CODE | LOCAL_CHECKS_PASS / REVIEW_PENDING | 実装・型・Jest・build・ブラウザ検証は成功。独立PRレビューと公開/事業者承認は別 |
+| CI | 初版PASS / 更新版は別確認 | a2cd2ee5のCI（run 41321064102）は全ジョブ成功。本人回答・追加修正後のheadへは継承しない |
+| PUBLIC_URL | BLOCKED | 紹介・Privacy・Termsの専用URLは実応答404。supportページは200。窓口運用は本人が完了・証跡ありと回答、実装者による証跡照合は別 |
+| OWNER_APPROVAL | PARTIAL | 指定された公開用値は掲載承認に基づき反映済み。窓口運用完了・現manifest維持・有料申込受付を記録。データ/条件/証跡の照合と原稿/hash/実日付は未了 |
 | SUBMISSION | NOT_SUBMITTED | manifestのURL/公開者情報未完成。ZIP upload、申請、受理なし |
 
 ## ローカル検証
@@ -30,13 +30,13 @@
 | `npm run commercial:inventory:source:check` | PASS。正規generatorで`scannedSourceFiles`だけ682→689更新、DB参照内容不変 |
 | `npm run scan:secrets` | PASS（既知のsource秘密パターン検査） |
 | `npm run works:legal:test` | PASS 3件。URLの実GET・最終遷移・内容検査のoffline fixture |
-| `npm test -- --runInBand --runTestsByPath ...` | 確定ソースをNode24で実行し11 suites / 179 tests PASS |
+| `npm test -- --runInBand --runTestsByPath ...` | 確定ソースをNode24で実行し11 suites / 183 tests PASS |
 | `npm run build` | PASS、確定ソースのローカルbuild exit 0 |
 | `npm run test:e2e:pw -- --config playwright.legal-production.config.ts` | 2/2 PASS。最終の問い合わせリンク追加後に再確認済み |
 | `npm run test:e2e:pw -- --config playwright.public-site.config.ts` | 35/35 PASS、全公開ページ/CSP/320・375px等/Works原稿の390px screenshotを確認 |
-| `npm run works:legal:check` | 期待どおりexit 1 / WORKS_RELEASE_BLOCKED。未承認3文書・5項目を拒否 |
-| `npm run public-site:release-check` | 期待どおりRELEASE_BLOCKED。OSを含む既存14項目・3文書は保留 |
-| `npm run works:legal:check -- --scan-build .next` | 実行中。local standaloneのnode_modulesが親checkoutへのsymlinkであり、全.next検査にはその辿り先も含まれる。非公開値原本による照合は未実施 |
+| `npm run works:legal:check` | 期待どおりexit 1 / WORKS_RELEASE_BLOCKED。未承認3文書・6項目の承認境界を維持 |
+| `npm run public-site:release-check` | 期待どおりRELEASE_BLOCKED。OSを含む本人の掲載承認を反映後も既存10項目・3文書は保留 |
+| `npm run works:legal:check -- --scan-build .next` | contained local artifactでBLOCK 0、provenance一致のVALIDATION_DATA 8。最終ファイル数は8,734。非公開値原本による照合は未実施 |
 
 実行対象Jest:
 
@@ -70,10 +70,25 @@
 - Windows sandboxで最初のローカルbuildが`mkdir EPERM`。隔離checkout内の同じbuildを権限境界の外で、合成環境値のみを用いて再実行した。本番デプロイではない。
 - 独立checkoutもnpmであり、親checkoutと同種のlockfileが存在するというNext警告あり。異種package managerの競合ではない。依存/lockfileを変更して回避していない。
 - 既存のUpstash Edge API警告、`next start`とstandaloneの警告等は記録し、今回の法務公開ゲートを解除する理由にしていない。
-- 最初の成果物scanはbuild更新と重なって完全検査エラーになった。PASSにせず、確定buildの静止後に再検査する。
+- 最初の成果物scanはbuild更新と重なって完全検査エラーになった。次にmap欠落とnested standaloneの分類を検出し、正式法務buildだけserver mapを生成、workspace配下のstandaloneも同じAST/source map provenanceを検証するよう修正した。public/staticと出所不明データ・非公開語は引き続きBLOCK。
+- 独立checkoutのnode_modulesは親checkoutへのjunctionを再利用したため、Next standaloneにもhost絶対リンクが生成された。スキャン時はその生成リンクだけをoutputへ退避し、Nextが既にコピーしたartifact内の依存へ接続。元node_modulesとartifactファイル内容は変更していない。これはcontained local artifactの検証であり、未加工hostリンク付きartifactや実Vercel artifactをPASSにしたものではない。
 - 通則編全文の取得はtimeout。公式検索と個人情報保護委員会FAQで必要論点を確認した。未取得部分の全面的法務検証を主張しない。
 - Production設定・環境値・domain alias・OAuth・DB・Provider・フォーム受信は変更・実行していない。
 
 ## PRと残作業
 
-PRリンクとGitHub CIの状態は作成後の最終報告に添える。レビューの範囲・最小Gate・OWNER_ACTION_REQUIREDは[判断台帳](works-submission-readiness-20261101.md)のDを参照。Works manifestのURL/identity反映は実公開・承認成立後の別Works PRであり、今回のOS変更から承認済み扱いにしない。
+PR: https://github.com/IFs1991/seikotsuin_no_saas/pull/172 （draft）。初版CI: https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/41321064102 （a2cd2ee5、全ジョブ成功）。追加修正後のCIは別commitとして最終報告に添える。レビューの範囲・最小Gate・OWNER_ACTION_REQUIREDは[判断台帳](works-submission-readiness-20261101.md)のDを参照。Works manifestのURL/identity反映は実公開・承認成立後の別Works PRであり、今回のOS変更から承認済み扱いにしない。
+
+最終の公開用値を含むcontained local artifactの検査: 8,734ファイル、BLOCK 0、VALIDATION_DATA 8（server bundle/mapおよびstandaloneコピーの正本拒否定数）。問い合わせメール/有料申込の目的追記後の最終buildでも同じ結果を再確認した。最後の本文変更後はmanifest/Works承認2 suites 31 tests PASS、Production E2E 2/2とWorks Preview mobile 1/1も再確認。
+
+公開用値は本人の掲載承認に基づくものだけを保持し、/contactでは承認済み業務メールを代替窓口に表示する。未承認メールは非nullでも表示しない回帰を追加済み。事業者情報そのものの掲載承認と、Privacy/Terms原稿の公開承認を混同しない。
+
+## 現在のレビュー対象（全件draft）
+
+| 文書 | source SHA-256 | 未解決marker数 |
+| --- | --- | --- |
+| works/privacy | `2d0f9307bfa27be20d718110c4f722d878cf74662974dc9ea3caee1de8690ada` | 4 |
+| works/terms | `88ab67e124fc1009b2222736aef6ca3e9c44fd030b76a1840fda10ab49301b4a` | 1 |
+| works/plugin | `c54de5412cb1a912639d180b986d86ed7ef6f59f2c903e00b07de40c3eaf2061` | 1 |
+
+contentVersionはworks-submission-v1。実承認日・改定日・施行日はnull。未解決事項を実事実で解消したら再生成・再レビューが必要であり、このhashだけで公開可能とはならない。

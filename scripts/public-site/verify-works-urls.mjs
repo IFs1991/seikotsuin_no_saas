@@ -25,8 +25,10 @@ export function inspectWorksPage(html, document) {
     );
   return (
     body.includes('サポート') &&
-    links.some(link =>
-      /^https:\/\/(docs\.google\.com\/forms\/|forms\.gle\/)/.test(link)
+    links.some(
+      link =>
+        /^https:\/\/(docs\.google\.com\/forms\/|forms\.gle\/)/.test(link) ||
+        /^mailto:[^\s@]+@[^\s@]+\.[^\s@]+$/.test(link)
     ) &&
     !/受信.*未確認|運用確認.*未完了/.test(body)
   );

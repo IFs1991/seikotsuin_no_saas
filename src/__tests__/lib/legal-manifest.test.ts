@@ -121,9 +121,15 @@ describe('原稿SHA-256・依存データ・manifest鮮度（PR-3）', () => {
       text => text + '\n// synthetic approval-only change\n'
     );
     expect(compute()).toEqual(legalContentManifest);
-    change('src/components/public/release-readiness.ts', text =>
-      text.replace('name: { value: null', "name: { value: '架空の表示変更'")
-    );
+    change('src/components/public/release-readiness.ts', text => {
+      const changed = text.replace(
+        /name:\s*\{\s*value:\s*(?:null|'[^']*'|"[^"]*"),/,
+        "name: { value: '架空の表示変更',"
+      );
+      if (changed === text)
+        throw new Error('operator name fixture was not changed');
+      return changed;
+    });
     expect(compute().documents.legal.sha256).not.toBe(
       legalContentManifest.documents.legal.sha256
     );

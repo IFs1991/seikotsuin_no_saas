@@ -830,6 +830,14 @@ test('Works専用原稿はPreviewでスマートフォンでも読め、共通OS
     fullPage: true,
   });
   await page.goto('/works/terms');
+  await expect(
+    page.getByText(
+      /有料契約の申込みは別途提示する契約条件に基づいて受け付けます/
+    )
+  ).toBeVisible();
+  await expect(page.getByRole('main')).not.toContainText(
+    'オンライン契約・決済を行いません'
+  );
   await expect(page.getByText(/本規約では未確定の最低利用期間/)).toBeVisible();
   await expect(
     page.getByRole('link', { name: 'Worksプライバシーポリシー', exact: true })

@@ -32,7 +32,6 @@ describe('公開前判定（A44/A46）', () => {
     expect(result.ready).toBe(false);
     const ledgers = new Set(result.blocking.map(item => item.ledger));
     for (const ledger of [
-      'B01',
       'B02',
       'B03',
       'B04',
@@ -44,6 +43,12 @@ describe('公開前判定（A44/A46）', () => {
     ]) {
       expect(ledgers.has(ledger as ReleaseCheckItem['ledger'])).toBe(true);
     }
+    // 本人の掲載承認を反映したB01だけは充足しても、残る公開ゲートを代用しない。
+    expect(
+      releaseCheckItems
+        .filter(item => item.ledger === 'B01')
+        .every(item => checkReleaseItem(item).satisfied)
+    ).toBe(true);
     // プラグイン申請（B10）は公開判定とは別に扱う。
     expect(result.blocking.some(item => item.ledger === 'B10')).toBe(false);
     expect(result.deferred.map(item => item.ledger)).toEqual(['B10']);
@@ -167,10 +172,15 @@ describe('公開前判定（A44/A46）', () => {
     const result = evaluateReleaseReadiness();
     expect(decideRelease(result, [])).toBe('RELEASE_BLOCKED');
     expect(
-      releaseCheckItems.filter(
-        item => item.status === 'approved_for_publication'
-      )
-    ).toEqual([]);
+      releaseCheckItems
+        .filter(item => item.status === 'approved_for_publication')
+        .map(item => item.id)
+    ).toEqual([
+      'operator-name',
+      'operator-brand',
+      'contact-alternative',
+      'operator-disclosure-text',
+    ]);
   });
 
   it('本番originとメールの検証は正当な値を受け入れる', () => {
@@ -203,9 +213,11 @@ describe('公開前判定（A44/A46）', () => {
     ).toBe('（テスト用）値');
   });
 
-  it('未承認の個人情報・未確定のoriginを値として持たない（A43/A45）', () => {
-    expect(operatorProfile.name.value).toBeNull();
-    expect(operatorProfile.publicEmail.value).toBeNull();
+  it('掲載承認された公開用値だけを持ち、住所・電話実値や未確定originは追加しない（A43/A45）', () => {
+    expect(publishableValue(operatorProfile.name)).not.toBeNull();
+    expect(publishableValue(operatorProfile.brand)).not.toBeNull();
+    expect(operatorProfile.publicEmail.status).toBe('approved_for_publication');
+    expect(isPublishableEmail(operatorProfile.publicEmail.value)).toBe(true);
     expect(publicSiteOrigin.value).toBeNull();
     // 所在地・電話番号は方針文だけを持ち、実値の欄を設けない。
     expect(Object.keys(operatorProfile)).toEqual([

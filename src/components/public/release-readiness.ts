@@ -12,7 +12,7 @@ import type { LegalContentState } from '../legal/legal-review-fields';
 // 公開サイト（共通トップ・Works／OS LP・問い合わせ・法務）の公開前判定に使う静的な承認台帳。
 //
 // - 値は公開してよいものだけを入れる。未確定・未承認は null とし、架空の値で埋めない。
-// - 事業者の氏名は回答済みだが、公開用原稿への掲載確認前のため非公開の原本だけで管理する。
+// - 2026-11-02に本人が掲載承認した公開者名・ブランド・業務メールだけを反映する。
 // - 所在地・電話番号の実値はここを含むリポジトリのどこにも入れない（請求時に個別提供する運用）。
 // - サーバー側（公開ページの描画と公開前チェック）からだけ参照し、client componentへ渡さない。
 // - 正式配信を選ぶVercel buildでは公開前チェックを必須実行する。
@@ -112,17 +112,20 @@ export interface OperatorProfile {
 // /legal・/contact で使う運営者情報。value が null の項目は「公開前に確定」と表示する。
 export const operatorProfile: OperatorProfile = {
   businessType: { value: '個人事業主', status: 'confirmed' },
-  name: { value: null, status: 'confirmed' },
+  name: { value: '岩沢太', status: 'approved_for_publication' },
   brand: {
-    value: 'Tiramisu（サービスブランド。屋号の届出・商標の登録状況は確認中）',
-    status: 'draft',
+    value: 'Tiramisu',
+    status: 'approved_for_publication',
   },
   addressAndPhonePolicy: {
     value:
-      '所在地および電話番号は、ご請求に応じて遅滞なく電子メール等でお知らせします。お申し込み前にもご請求いただけます。「事業者情報の開示請求」からお問い合わせください。',
-    status: 'draft',
+      '所在地は、お問い合わせに応じて開示します。電話番号を含む事業者情報は「事業者情報の開示請求」からお問い合わせください。お申し込み前にもご請求いただけます。',
+    status: 'approved_for_publication',
   },
-  publicEmail: { value: null, status: 'missing' },
+  publicEmail: {
+    value: 'futoshi@tiramisu-app.com',
+    status: 'approved_for_publication',
+  },
 };
 
 // 正式な本番origin。未確認の間は null のままにし、metadataBase・絶対URLを仮造りしない。

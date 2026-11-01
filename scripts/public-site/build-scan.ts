@@ -53,7 +53,7 @@ function artifactClass(file: string): ArtifactClass {
   if (name.endsWith('.rsc')) return 'rsc';
   const server =
     !/(^|\/)(?:public|static)\//.test(name) &&
-    /^(?:server\/|standalone\/\.next\/server\/)/.test(name);
+    /^(?:server\/|standalone\/(?:[^/]+\/)*\.next\/server\/)/.test(name);
   if (name.endsWith('.map')) return server ? 'server-map' : 'browser-map';
   if (/\.(?:mjs|cjs|js)$/.test(name))
     return server ? 'server-bundle' : 'browser-js';
