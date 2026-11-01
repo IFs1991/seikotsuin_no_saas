@@ -50,3 +50,7 @@ type-check / lintはexit 0。関連Jest 6 suites 110 tests PASS、envファイ�
 read-only監査2件でenvファイル読込の時点不一致を検出し、`planLegalBuild`の判定前に`@next/env`を使用するよう修正。隔離fixtureのファイル由来approved/プロセスhold優先テストを追加。両監査者の再確認で必須修正残件なし。DOD-07/10/11に対応。UIはEXTEND、認可/RLS/DBを変更しない。
 
 本番環境は未変更であり、現在稼働中の旧artifactがこのコードのhold制御を持つとは主張しない。外部設定とProductionでの実証は人間の残作業。
+
+## CI追記
+
+初回GitHub CIは`commercial:inventory:source:check`で停止。新規`legal-delivery.ts`に伴う`scannedSourceFiles`の677→678だけを正規generatorで更新し、同checkのローカルPASSを確認した。DB参照台帳の内容や検査条件は変更していない。CI再実行の成功と法務公開許可は別である。
