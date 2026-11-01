@@ -21,6 +21,9 @@ const PUBLIC_PATHS = [
   '/terms',
   '/privacy',
   '/legal',
+  '/works/plugin',
+  '/works/privacy',
+  '/works/terms',
 ];
 const LEGACY_OS_ANCHORS = [
   'problems',
@@ -172,7 +175,7 @@ async function backgroundIsReleased(page: Page) {
 }
 
 test.describe('公開サイト: 本番CSPと認証不要の閲覧', () => {
-  test('公開7ページは認証なしで200を返し、CSP違反・実行時エラーがない（A13/A15 一部）', async ({
+  test('公開ページは認証なしで200を返し、CSP違反・実行時エラーがない（A13/A15 一部）', async ({
     browser,
   }) => {
     const { context, page, watched } = await openFreshPage(browser);
@@ -798,4 +801,45 @@ test.describe('公開サイト: 画面幅・文字拡大・動き・画像失敗
     await expect(page).toHaveURL(/\/works$/);
     await context.close();
   });
+});
+
+test('Works専用原稿はPreviewでスマートフォンでも読め、共通OS本文と適用先を混同しない', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/works/privacy');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    'Tiramisu Works プライバシーポリシー'
+  );
+  await expect(
+    page.locator('[data-legal-publication="preview"]')
+  ).toBeVisible();
+  await expect(
+    page.getByText(/一律のTTLや即時完全削除は約束しません/)
+  ).toBeVisible();
+  await expect(
+    page.locator('#requests a[href="/contact?product=works&intent=privacy"]')
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth
+    )
+  ).toBe(true);
+  await page.screenshot({
+    path: 'output/playwright/works-privacy-mobile-preview.png',
+    fullPage: true,
+  });
+  await page.goto('/works/terms');
+  await expect(
+    page.getByText(
+      /有料契約の申込みは別途提示する契約条件に基づいて受け付けます/
+    )
+  ).toBeVisible();
+  await expect(page.getByRole('main')).not.toContainText(
+    'オンライン契約・決済を行いません'
+  );
+  await expect(page.getByText(/本規約では未確定の最低利用期間/)).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Worksプライバシーポリシー', exact: true })
+  ).toHaveAttribute('href', '/works/privacy');
 });

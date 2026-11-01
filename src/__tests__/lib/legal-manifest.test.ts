@@ -12,7 +12,14 @@ const state = z.object({
 });
 const manifestSchema = z.object({
   schemaVersion: z.literal(1),
-  documents: z.object({ privacy: state, terms: state, legal: state }),
+  documents: z.object({
+    privacy: state,
+    terms: state,
+    legal: state,
+    'works/privacy': state,
+    'works/terms': state,
+    'works/plugin': state,
+  }),
 });
 const manifestPath = 'src/components/legal/legal-content-snapshot.json';
 const approvalPath = 'src/components/public/legal-approval-records.ts';
@@ -114,9 +121,15 @@ describe('原稿SHA-256・依存データ・manifest鮮度（PR-3）', () => {
       text => text + '\n// synthetic approval-only change\n'
     );
     expect(compute()).toEqual(legalContentManifest);
-    change('src/components/public/release-readiness.ts', text =>
-      text.replace('name: { value: null', "name: { value: '架空の表示変更'")
-    );
+    change('src/components/public/release-readiness.ts', text => {
+      const changed = text.replace(
+        /name:\s*\{\s*value:\s*(?:null|'[^']*'|"[^"]*"),/,
+        "name: { value: '架空の表示変更',"
+      );
+      if (changed === text)
+        throw new Error('operator name fixture was not changed');
+      return changed;
+    });
     expect(compute().documents.legal.sha256).not.toBe(
       legalContentManifest.documents.legal.sha256
     );

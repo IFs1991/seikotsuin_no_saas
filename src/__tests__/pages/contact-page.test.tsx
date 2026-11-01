@@ -7,6 +7,7 @@ import React from 'react';
 import { render, screen, within } from '@testing-library/react';
 import ContactPage from '@/app/(public)/contact/page';
 import type { ContactSearchParams } from '@/components/public/marketing-links';
+import { operatorProfile } from '@/components/public/release-readiness';
 import { setupPublicSiteTestEnvironment } from './public-site-test-utils';
 
 jest.mock('next/link', () => {
@@ -168,5 +169,66 @@ describe('ContactPage（/contact）', () => {
     expect(screen.queryByRole('button', { name: '製品を選ぶ' })).toBeNull();
     expect(container.querySelector('a[href="/works"]')).toBeInTheDocument();
     expect(container.querySelector('a[href="/os"]')).toBeInTheDocument();
+  });
+
+  it('Worksの問い合わせから専用Privacy・Terms・事業者情報へ戻れる', async () => {
+    const { container } = await renderContact({
+      product: 'works',
+      intent: 'privacy',
+    });
+    expect(
+      screen.getByRole('link', {
+        name: 'Worksプライバシーポリシー',
+        exact: true,
+      })
+    ).toHaveAttribute('href', '/works/privacy#requests');
+    for (const link of screen.getAllByRole('link', {
+      name: 'Worksの運営者情報',
+      exact: true,
+    }))
+      expect(link).toHaveAttribute('href', '/works/privacy#operator');
+    const nav = screen.getByRole('navigation', { name: 'Worksの利用条件' });
+    expect(
+      within(nav).getByRole('link', { name: '利用規約', exact: true })
+    ).toHaveAttribute('href', '/works/terms');
+    expect(container).not.toHaveTextContent('改定日:');
+  });
+
+  it('OSの問い合わせは共通Privacyの導線を維持する', async () => {
+    await renderContact({ product: 'os', intent: 'privacy' });
+    expect(
+      screen.queryByRole('navigation', { name: 'Worksの利用条件' })
+    ).toBeNull();
+    expect(
+      screen
+        .getAllByRole('link', { name: 'プライバシーポリシー', exact: true })
+        .some(link => link.getAttribute('href') === '/privacy#requests')
+    ).toBe(true);
+  });
+  it('掲載承認済みの公開用メールを代替窓口に表示する', async () => {
+    const { container } = await renderContact({
+      product: 'works',
+      intent: 'support',
+    });
+    expect(container.querySelector('a[href^="mailto:"]')).toBeInTheDocument();
+  });
+  it('値があっても掲載未承認のメールは表示しない', async () => {
+    const original = operatorProfile.publicEmail;
+    operatorProfile.publicEmail = {
+      value: 'unapproved@fictional-tiramisu-test.co.jp',
+      status: 'confirmed',
+    };
+    try {
+      const { container } = await renderContact({
+        product: 'works',
+        intent: 'support',
+      });
+      expect(container.querySelector('a[href^="mailto:"]')).toBeNull();
+      expect(container).not.toHaveTextContent(
+        'unapproved@fictional-tiramisu-test.co.jp'
+      );
+    } finally {
+      operatorProfile.publicEmail = original;
+    }
   });
 });

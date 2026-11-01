@@ -21,7 +21,16 @@ export function planLegalBuild(projectDir) {
   const { loadEnvConfig } = require('@next/env');
   loadEnvConfig(projectDir, false, { info: () => {}, error: () => {} }, true);
   const environment = legalDeliveryEnvironment();
-  return { environment, checkRequired: requiresLegalReleaseCheck(environment) };
+  const worksEnvironment = {
+    ...environment,
+    publicationMode: process.env.WORKS_LEGAL_PUBLICATION_MODE,
+  };
+  return {
+    environment,
+    checkRequired: requiresLegalReleaseCheck(environment),
+    worksEnvironment,
+    worksCheckRequired: requiresLegalReleaseCheck(worksEnvironment),
+  };
 }
 function run(script, args = []) {
   const result = spawnSync(
@@ -32,7 +41,8 @@ function run(script, args = []) {
   if (result.error || result.status !== 0) process.exit(result.status ?? 2);
 }
 function main() {
-  const { environment, checkRequired } = planLegalBuild(root);
+  const { environment, checkRequired, worksEnvironment, worksCheckRequired } =
+    planLegalBuild(root);
   run('scripts/public-site/legal-manifest.mjs', ['--check']);
   if (checkRequired && environment.vercelEnv !== 'production') {
     console.error(
@@ -41,6 +51,13 @@ function main() {
     process.exit(1);
   }
   if (checkRequired) run('scripts/public-site/check-release-readiness.mjs');
+  if (worksCheckRequired && worksEnvironment.vercelEnv !== 'production') {
+    console.error(
+      'RELEASE_BLOCKED: Works正式配信には明示されたProduction環境が必要です。'
+    );
+    process.exit(1);
+  }
+  if (worksCheckRequired) run('scripts/public-site/check-works-readiness.mjs');
   console.log(
     checkRequired
       ? '法務正式配信: 前後の公開チェックを必須実行'
@@ -50,6 +67,11 @@ function main() {
   run('node_modules/next/dist/bin/next', ['build']);
   if (checkRequired)
     run('scripts/public-site/check-release-readiness.mjs', [
+      '--scan-build',
+      '.next',
+    ]);
+  if (worksCheckRequired)
+    run('scripts/public-site/check-works-readiness.mjs', [
       '--scan-build',
       '.next',
     ]);

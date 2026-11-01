@@ -49,13 +49,28 @@ function renderOperatorProfile(profile: OperatorProfile) {
 
 describe('Legal pages', () => {
   setupPublicSiteTestEnvironment();
+  const savedProfile = { ...operatorProfile };
   beforeEach(() => {
+    // 本人が公開用値を承認した台帳とは分け、従来の未承認本文ケースを明示的に検証する。
+    Object.assign(operatorProfile, {
+      businessType: { value: '（テスト用）未承認の区分', status: 'confirmed' },
+      name: { value: null, status: 'confirmed' },
+      brand: { value: '（テスト用）未承認のブランド', status: 'draft' },
+      addressAndPhonePolicy: {
+        value: '（テスト用）未承認の開示方針',
+        status: 'draft',
+      },
+      publicEmail: { value: null, status: 'missing' },
+    } satisfies OperatorProfile);
     const actual = jest.requireActual<
       typeof import('@/components/public/release-readiness')
     >('@/components/public/release-readiness');
     jest
       .mocked(readiness.getLegalPublication)
       .mockImplementation(actual.getLegalPublication);
+  });
+  afterEach(() => {
+    Object.assign(operatorProfile, savedProfile);
   });
 
   test('/terms 共通条項は意味とアンカーを維持して1〜5の順序で表示', async () => {

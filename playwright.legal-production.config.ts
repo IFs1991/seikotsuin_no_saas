@@ -20,6 +20,7 @@ export default defineConfig({
       CSP_ROLLOUT_PHASE: 'full-enforce',
       VERCEL_ENV: 'production',
       LEGAL_PUBLICATION_MODE: 'hold',
+      WORKS_LEGAL_PUBLICATION_MODE: 'hold',
     },
   },
 });

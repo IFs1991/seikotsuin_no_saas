@@ -19,6 +19,14 @@ const directories = [
   'standalone',
   'standalone/public',
   'standalone/public/server',
+  'standalone/apps',
+  'standalone/apps/works',
+  'standalone/apps/works/.next',
+  'standalone/apps/works/.next/server',
+  'standalone/apps/works/.next/server/chunks',
+  'standalone/apps/works/public',
+  'standalone/apps/works/public/.next',
+  'standalone/apps/works/public/.next/server',
 ];
 const alphabet =
   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -92,6 +100,33 @@ describe('成果物分類と検査定数のprovenance（PR-2）', () => {
     expect(new Set(result.findings.map(finding => finding.fileClass))).toEqual(
       new Set(['server-bundle', 'server-map'])
     );
+  });
+  it('workspace配下のstandaloneも同じprovenanceを要求し、public配下をserverと誤認しない', () => {
+    const server = 'standalone/apps/works/.next/server/chunks/validator.js';
+    write(server, generated);
+    write(`${server}.map`, JSON.stringify(sourceMap()));
+    expect(
+      scanBuildOutput(root, []).findings.every(
+        finding => finding.verdict === 'VALIDATION_DATA'
+      )
+    ).toBe(true);
+    const publicFile = 'standalone/apps/works/public/.next/server/validator.js';
+    write(publicFile, generated);
+    write(`${publicFile}.map`, JSON.stringify(sourceMap()));
+    expect(
+      scanBuildOutput(root, []).findings.filter(
+        finding => finding.verdict === 'BLOCK'
+      )
+    ).toHaveLength(4);
+    write(
+      server,
+      generated + '\nconst secret="SYNTHETIC_PRIVATE_NESTED_VALUE";'
+    );
+    expect(
+      scanBuildOutput(root, ['SYNTHETIC_PRIVATE_NESTED_VALUE']).findings.some(
+        finding => finding.category === 'private' && finding.verdict === 'BLOCK'
+      )
+    ).toBe(true);
   });
   it.each([
     ['page.html', 'html'],

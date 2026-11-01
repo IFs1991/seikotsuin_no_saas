@@ -23,13 +23,21 @@ export const commonInputs = [
   'src/components/public/marketing-links.ts',
   'src/components/public/lp-links.ts',
 ];
-export const documentIds = ['privacy', 'terms', 'legal'];
+export const documentIds = [
+  'privacy',
+  'terms',
+  'legal',
+  'works/privacy',
+  'works/terms',
+  'works/plugin',
+];
 const normalize = text => text.replace(/\r\n/g, '\n');
 const digest = value =>
   createHash('sha256').update(value, 'utf8').digest('hex');
 const excludedInputs = new Set([
   manifestPath,
   'src/components/public/legal-approval-records.ts',
+  'src/components/public/works-legal-approval-records.ts',
 ]);
 function legalInputs(projectDir, page) {
   const visited = new Set();

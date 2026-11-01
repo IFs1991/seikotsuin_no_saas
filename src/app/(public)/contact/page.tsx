@@ -3,6 +3,12 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, ArrowRight, ExternalLink, Info } from 'lucide-react';
 import { resolveLpFormLink } from '@/components/public/lp-links';
+import { LegalFooterLinks } from '@/components/legal/legal-footer-links';
+import {
+  operatorProfile,
+  publishableValue,
+  isPublishableEmail,
+} from '@/components/public/release-readiness';
 import { MarketingFooter } from '@/components/public/marketing-footer';
 import { MarketingHeader } from '@/components/public/marketing-header';
 import {
@@ -52,7 +58,7 @@ interface IntentGuide {
   intent: ContactIntent;
   description: string;
   fill: string[];
-  note?: ReactNode;
+  note?: (product: ContactProduct | null) => ReactNode;
 }
 
 const intentGuides: readonly IntentGuide[] = [
@@ -84,15 +90,21 @@ const intentGuides: readonly IntentGuide[] = [
       '対象のサービス（分かる範囲で）',
       '返信先の連絡先',
     ],
-    note: (
+    note: product => (
       <>
         取扱いの詳細は
         <Link
-          href='/privacy#requests'
+          href={
+            product === 'works'
+              ? '/works/privacy#requests'
+              : '/privacy#requests'
+          }
           prefetch={false}
           className='mx-1 underline underline-offset-4 hover:text-[color:var(--lp-text)]'
         >
-          プライバシーポリシー
+          {product === 'works'
+            ? 'Worksプライバシーポリシー'
+            : 'プライバシーポリシー'}
         </Link>
         をご確認ください。
       </>
@@ -103,15 +115,19 @@ const intentGuides: readonly IntentGuide[] = [
     description:
       '当事業者の所在地・電話番号のご請求です。お申し込みの前でもご請求いただけ、ご購入・ご契約の有無や、ご請求の理由は問いません。ご本人の個人データの開示請求とは別の窓口です。',
     fill: ['「事業者情報の開示請求」であること', '返信先のメールアドレス'],
-    note: (
+    note: product => (
       <>
         開示の方針は
         <Link
-          href='/legal#operator-disclosure'
+          href={
+            product === 'works'
+              ? '/works/privacy#operator'
+              : '/legal#operator-disclosure'
+          }
           prefetch={false}
           className='mx-1 underline underline-offset-4 hover:text-[color:var(--lp-text)]'
         >
-          運営者情報・販売条件
+          {product === 'works' ? 'Worksの運営者情報' : '運営者情報・販売条件'}
         </Link>
         に掲載しています。
       </>
@@ -126,6 +142,7 @@ interface ContactPageProps {
 export default async function ContactPage({ searchParams }: ContactPageProps) {
   const selection = normalizeContactSelection(await searchParams);
   const formLink = resolveLpFormLink();
+  const publicEmail = publishableValue(operatorProfile.publicEmail);
   const hasSelection =
     selection.product !== null ||
     selection.intent !== null ||
@@ -240,6 +257,17 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
                 現在、お問い合わせフォームへのリンクを表示できません。時間をおいて、もう一度このページをご確認ください。
               </p>
             )}
+            {publicEmail !== null && isPublishableEmail(publicEmail) ? (
+              <p className='mt-4 text-[13px] leading-6 text-[color:var(--lp-text)]'>
+                メールでもお問い合わせいただけます：
+                <a
+                  href={`mailto:${publicEmail}`}
+                  className='underline underline-offset-4'
+                >
+                  {publicEmail}
+                </a>
+              </p>
+            ) : null}
             <ul className='mt-5 flex flex-col gap-2 text-[13px] leading-6 text-[color:var(--lp-text)]'>
               <li>
                 ・フォームを送信するまで、お問い合わせは届きません。フォームを開いただけでは受付になりません。
@@ -250,11 +278,17 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
               <li>
                 ・運営者の情報は
                 <Link
-                  href='/legal'
+                  href={
+                    selection.product === 'works'
+                      ? '/works/privacy#operator'
+                      : '/legal'
+                  }
                   prefetch={false}
                   className='mx-1 underline underline-offset-4 hover:text-[color:var(--lp-accent-strong)]'
                 >
-                  運営者情報・販売条件
+                  {selection.product === 'works'
+                    ? 'Worksの運営者情報'
+                    : '運営者情報・販売条件'}
                 </Link>
                 をご確認ください。
               </li>
@@ -309,7 +343,7 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
                     </ul>
                     {guide.note ? (
                       <p className='mt-3 text-[12px] leading-6 text-[color:var(--lp-text-muted)]'>
-                        {guide.note}
+                        {guide.note(selection.product)}
                       </p>
                     ) : null}
                   </section>
@@ -317,6 +351,15 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
               })}
             </div>
           </section>
+
+          {selection.product === 'works' ? (
+            <nav
+              aria-label='Worksの利用条件'
+              className='text-[14px] text-[color:var(--lp-text)]'
+            >
+              <LegalFooterLinks product='works' />
+            </nav>
+          ) : null}
 
           <nav
             aria-label='製品の説明ページ'
