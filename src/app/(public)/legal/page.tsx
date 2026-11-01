@@ -10,6 +10,7 @@ import { createContactHref } from '@/components/public/marketing-links';
 import {
   operatorProfile,
   publishableValue,
+  legalDescription,
 } from '@/components/public/release-readiness';
 import {
   formatYen,
@@ -23,8 +24,10 @@ import '../lp-styles.css';
 
 export const metadata: Metadata = {
   title: '運営者情報・販売条件 | Tiramisu',
-  description:
-    'Tiramisu Works・Tiramisu OSの運営者情報と販売条件（暫定案）、事業者情報の開示請求の窓口。',
+  description: legalDescription(
+    'legal',
+    'Tiramisu Works・Tiramisu OSの運営者情報・販売条件と事業者情報の開示請求窓口。'
+  ),
   alternates: { canonical: '/legal' },
 };
 
@@ -66,7 +69,7 @@ export default function LegalNoticePage() {
       <main id='main'>
         <LegalPage
           title='運営者情報・販売条件'
-          updatedAt='2026-10-22'
+          document='legal'
           sections={[
             {
               id: 'operator',
@@ -131,6 +134,10 @@ export default function LegalNoticePage() {
                       value: worksPricingCopy.provisionalLabel,
                     },
                     {
+                      label: '提供範囲・上限',
+                      value: worksPricingCopy.notes[1],
+                    },
+                    {
                       label: '商品代金以外の必要料金',
                       value: worksPricingCopy.externalFeesNote,
                     },
@@ -163,7 +170,8 @@ export default function LegalNoticePage() {
                             {planItems.map(plan => (
                               <li key={plan.name}>
                                 {plan.name}: 月額{plan.monthlyPrice}
-                                ・初期費用{plan.initialCost}
+                                ・初期費用{plan.initialCost}（{plan.stores}
+                                ・追加店舗: {plan.extraStore}）
                               </li>
                             ))}
                           </ul>
@@ -181,6 +189,16 @@ export default function LegalNoticePage() {
                         </>
                       ),
                     },
+                    {
+                      label: '価格・税区分',
+                      value:
+                        '現行LPの掲載値であり正式な営業決定ではありません。OSの税区分と最終金額は未確定です。契約前に統一した条件をご案内します。',
+                    },
+                    {
+                      label: '商品代金以外の必要料金',
+                      value:
+                        '追加店舗料金は上記のとおりです。通信費・端末費・外部連携先費用、移行・追加支援の費用と負担は個別見積もりで確認します。',
+                    },
                     ...pendingSalesTermRows,
                     { label: '動作環境', value: <LegalPendingValue /> },
                     {
@@ -190,6 +208,20 @@ export default function LegalNoticePage() {
                     },
                   ]}
                 />
+              ),
+            },
+            {
+              id: 'sales-method',
+              title: '販売方法と公開前の確認事項',
+              body: (
+                <>
+                  <p>
+                    本サイトは導入相談のみを受け付け、ここでは申込・決済・自動更新への同意は行いません。上記は現行掲載値であり、価格の掲載承認や確定した契約条件を示すものではありません。
+                  </p>
+                  <p>
+                    支払方法・期日、提供開始、最低利用期間、更新、解約・返金、動作環境は製品別に契約前に明示します。特定商取引法の適用・必要な表示、所在地・電話番号の請求時開示を利用できる条件と実際の受付・返信運用は専門家と事業者による確認が必要です。B2B向けであることだけで適用除外とは扱いません。
+                  </p>
+                </>
               ),
             },
           ]}
