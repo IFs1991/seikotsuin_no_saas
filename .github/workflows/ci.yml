@@ -134,6 +134,14 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: 'placeholder-service-role-key'
           NEXT_PUBLIC_APP_URL: 'http://localhost:3000'
 
+      - name: Verify legal Production hold on local build
+        run: npm run test:e2e:pw -- --config playwright.legal-production.config.ts
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54331'
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'placeholder-anon-key'
+          SUPABASE_SERVICE_ROLE_KEY: 'placeholder-service-role-key'
+          NEXT_PUBLIC_APP_URL: 'http://localhost:3122'
+
   # --------------------------------------------------------------------------
   # 3. Supabase Types Contract  (DOD-12, auxiliary)
   # Retained during the branch-protection transition so the existing required

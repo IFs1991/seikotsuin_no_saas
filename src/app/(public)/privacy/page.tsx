@@ -5,7 +5,10 @@ import { LegalArticle, LegalPage } from '@/components/legal/legal-page';
 import { MarketingFooter } from '@/components/public/marketing-footer';
 import { MarketingHeader } from '@/components/public/marketing-header';
 import { createContactHref } from '@/components/public/marketing-links';
-import { legalDescription } from '@/components/public/release-readiness';
+import {
+  legalDescription,
+  legalRobots,
+} from '@/components/public/release-readiness';
 import '../lp-styles.css';
 
 // プライバシーポリシー（暫定案）。共通ページでも、製品・窓口ごとに取得する情報は異なるため分けて記載する。
@@ -18,6 +21,7 @@ export const metadata: Metadata = {
     'Tiramisu OS・Tiramisu Works・お問い合わせフォームにおける個人情報の取扱い。'
   ),
   alternates: { canonical: '/privacy' },
+  robots: legalRobots('privacy'),
 };
 
 const linkClass = 'underline underline-offset-4 hover:text-slate-900';

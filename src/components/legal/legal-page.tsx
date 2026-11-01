@@ -1,5 +1,10 @@
 import React from 'react';
 import { LegalFooterLinks } from '@/components/legal/legal-footer-links';
+import Link from 'next/link';
+import {
+  decideLegalDelivery,
+  legalDeliveryEnvironment,
+} from '@/components/public/legal-delivery';
 import {
   getLegalPublication,
   type LegalDocumentId,
@@ -45,6 +50,11 @@ export function LegalArticle({
 export function LegalPage({ title, document, sections }: LegalPageProps) {
   const anchoredSections = sections.filter(section => section.id);
   const publication = getLegalPublication(document);
+  const delivery = decideLegalDelivery(
+    publication.approved,
+    legalDeliveryEnvironment()
+  );
+  const published = delivery !== 'hold' && publication.approved;
 
   return (
     <div className='mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-12'>
@@ -52,24 +62,30 @@ export function LegalPage({ title, document, sections }: LegalPageProps) {
         <div className='border-b border-slate-200 pb-6'>
           <h1 className='text-3xl font-bold text-slate-900'>{title}</h1>
           <p className='mt-2 text-sm text-slate-500'>
-            {publication.approved
+            {published && publication.approved
               ? `改定日: ${publication.revisedOn} ／ 施行日: ${publication.effectiveOn}`
               : '公開承認待ち（改定日・施行日は未確定）'}
           </p>
         </div>
 
-        {!publication.approved ? (
+        {!published ? (
           <aside
             className='mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950'
             aria-label='法務確認状況'
           >
             <p className='font-semibold'>商用利用前の法務確認が必要です</p>
-            <p className='mt-1'>
-              本文は暫定案です（Tiramisu
-              OSは限定パイロット向け）。事業者情報、問い合わせ窓口、
-              委託先・保管条件・保存期間・開示等の手順を確定し、専門家レビューを完了するまで、
-              正式な契約条件や法令適合、第三者認証の取得を示すものではありません。
-            </p>
+            {delivery === 'hold' ? (
+              <p className='mt-1'>
+                法務文書の正式公開を保留しています。コードの配信・CIの成功は法務承認や公開許可を意味しません。未承認の本文はこの環境では配信しません。
+              </p>
+            ) : (
+              <p className='mt-1'>
+                本文は暫定案です（Tiramisu
+                OSは限定パイロット向け）。事業者情報、問い合わせ窓口、
+                委託先・保管条件・保存期間・開示等の手順を確定し、専門家レビューを完了するまで、
+                正式な契約条件や法令適合、第三者認証の取得を示すものではありません。
+              </p>
+            )}
           </aside>
         ) : null}
 
@@ -100,7 +116,40 @@ export function LegalPage({ title, document, sections }: LegalPageProps) {
               <h2 className='text-xl font-semibold text-slate-900'>
                 {section.title}
               </h2>
-              <div className='mt-3 space-y-5'>{section.body}</div>
+              <div className='mt-3 space-y-5'>
+                {delivery !== 'hold' ? (
+                  section.body
+                ) : section.id === 'requests' ||
+                  section.id === 'operator-disclosure' ? (
+                  <>
+                    <p>
+                      本文の正式公開は保留中です。受付・返信の運用確認も完了していません。
+                    </p>
+                    <p>
+                      <Link
+                        href='/contact?intent=privacy'
+                        prefetch={false}
+                        className='underline underline-offset-4'
+                      >
+                        個人情報の取扱い・削除依頼
+                      </Link>
+                    </p>
+                    <p>
+                      <Link
+                        href='/contact?intent=operator-disclosure'
+                        prefetch={false}
+                        className='underline underline-offset-4'
+                      >
+                        事業者情報の開示請求
+                      </Link>
+                    </p>
+                  </>
+                ) : (
+                  <p>
+                    この項目を含む文書本文は、正式公開の承認後に掲載します。
+                  </p>
+                )}
+              </div>
             </section>
           ))}
         </div>

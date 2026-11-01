@@ -25,6 +25,10 @@ export default defineConfig({
           url: `${baseURL}/terms`,
           reuseExistingServer: false,
           timeout: 60_000,
-          env: { ...process.env, CSP_ROLLOUT_PHASE: 'full-enforce' },
+          env: {
+            ...process.env,
+            CSP_ROLLOUT_PHASE: 'full-enforce',
+            VERCEL_ENV: 'preview',
+          },
         },
 });

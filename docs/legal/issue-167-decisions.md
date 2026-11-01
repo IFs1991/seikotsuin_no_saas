@@ -1,5 +1,7 @@
 # Issue #167 法務掲載・公開判断台帳
 
+追加ハードニングPR-1のProduction配信方針とVercel読取結果は[Production制御](hardening-1-production.md)を参照。コード制御はレビュー対象であり、現在のProduction artifactや外部ゲートへの適用・実証は未実施。以下の法務・運用上のP0/P1を承認済みには変更しない。
+
 対象: [Issue #167](https://github.com/IFs1991/seikotsuin_no_saas/issues/167)。確認日: 2026-11-01 JST。
 
 OS基準main: `cc1803744e12da7c8ef161956515f860c0091fd2`。

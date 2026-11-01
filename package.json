@@ -7,6 +7,7 @@
     "dev": "npx next dev --hostname 0.0.0.0",
     "predev": "node scripts/check-swc-binary.mjs && node scripts/ensure-next-dev-dirs.mjs",
     "build": "next build",
+    "public-site:build:vercel": "node scripts/public-site/build-for-vercel.mjs",
     "prebuild": "node scripts/check-swc-binary.mjs",
     "start": "next start",
     "prestart": "node scripts/check-swc-binary.mjs",
