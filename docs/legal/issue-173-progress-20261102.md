@@ -19,7 +19,7 @@
 - B09: 3文書の最終原稿・版・hash・根拠・実施行日と公開承認。OpenAIのプラグイン申請は別工程。
 
 ## 次の実装担当に必須
-- `npm run legal:manifest` を実行して、**変更したTSXと6文書のソースhash snapshotを同期**させる。このブランチではジェネレータ実行環境がなく**未実施**。ここを対応するまで既存の manifest-check / CI は通らない。
+- `legal-content-snapshot.json` の3変更文書のSHA-256は更新済み。既存mainの3文書の計算値が既存snapshotと完全一致することを先に検証し、変更後のソースを同一フォーマット（legal-source-v2、UTF-8/LF、依存ファイル一覧、画像base64）で再計算した。`unresolvedFields`/入力ファイル一覧に変更はない。ただしリポジトリ本来の `npm run legal:manifest:check` / Jest / build はこの環境では**未実行**であり、CIの実結果を確認する。
 - 現状の `LegalReviewRequired`、`LegalPendingValue`、`legalDocumentApprovals`、`getLegalPublication`、`LEGAL_PUBLICATION_MODE` を無理にPASSにしない。3ページだけの文書公開がOS/Works LP全体の商用承認に不必要にブロックされる場合、文書固有の要件を保った別ゲートに設計する。ただしB08等必要なプライバシー/契約の証跡は維持。
 - モバイル/SSR/metadata/未承認値非漏洩/Works申請用ページへの回帰テストを実施。type-check、lint:ci、focused Jest、build、`npm run public-site:release-check -- --scan-build .next`、Playwrightを記録。
 - プロダクション配信の変更、法務承認、公開、マージはまだ実行しない。自己レビューでは独立レビューを代替できない。
