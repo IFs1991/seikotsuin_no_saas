@@ -89,7 +89,10 @@
     "customers:verify:races:local": "node scripts/customers/verify-customer-stat-races.mjs",
     "commercial:verify:pr09:auth:local": "node scripts/commercial-hardening/verify-pr09-auth-integration.mjs --local",
     "commercial:verify:pr09:rollback-guard:local": "node scripts/commercial-hardening/verify-pr09-rollback-guard-negative.mjs --local",
-    "commercial:verify:pr11:deferred:local": "node scripts/commercial-hardening/verify-pr11-deferred-production-path.mjs"
+    "commercial:verify:pr11:deferred:local": "node scripts/commercial-hardening/verify-pr11-deferred-production-path.mjs",
+    "works:legal:check": "node scripts/public-site/check-works-readiness.mjs",
+    "works:submission:urls": "node scripts/public-site/verify-works-urls.mjs",
+    "works:legal:test": "node --test scripts/public-site/works-urls.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

@@ -1,4 +1,8 @@
 import {
+  validateLegalApproval,
+  type LegalPublication,
+} from '../legal/legal-approval-validation';
+import {
   legalDocumentApprovals,
   type LegalDocumentId,
   type LegalDocumentApproval,
@@ -531,17 +535,7 @@ export type {
   LegalDocumentApproval,
 } from './legal-approval-records';
 
-function isCalendarDate(value: string | null): value is string {
-  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(`${value}T00:00:00Z`);
-  return (
-    Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
-  );
-}
-
-export type LegalPublication =
-  | { approved: false }
-  | { approved: true; revisedOn: string; effectiveOn: string };
+export type { LegalPublication };
 
 /** 文書判定は全体公開判定を代行しない。B10の申請承認は常に別手続。 */
 export function getLegalPublication(
@@ -583,32 +577,8 @@ export function getLegalPublication(
       checkReleaseItem(item).satisfied
     );
   });
-  if (
-    !prerequisitesMet ||
-    !operatorReady ||
-    !/^[a-f0-9]{64}$/.test(content.sha256) ||
-    approval.reviewedContentHash !== content.sha256 ||
-    approval.approvedContentHash !== content.sha256 ||
-    approval.reviewedRevisedOn !== approval.revisedOn ||
-    approval.reviewedEffectiveOn !== approval.effectiveOn ||
-    content.unresolvedFields.length > 0 ||
-    approval.status !== 'approved_for_publication' ||
-    !isPublishableText(approval.contentVersion) ||
-    approval.reviewedVersion !== approval.contentVersion ||
-    !isPublishableText(approval.evidence) ||
-    approval.unresolvedDecisions.length > 0 ||
-    !isCalendarDate(approval.approvedOn) ||
-    !isCalendarDate(approval.revisedOn) ||
-    !isCalendarDate(approval.effectiveOn) ||
-    approval.approvedOn > approval.effectiveOn ||
-    approval.revisedOn > approval.effectiveOn
-  )
-    return { approved: false };
-  return {
-    approved: true,
-    revisedOn: approval.revisedOn,
-    effectiveOn: approval.effectiveOn,
-  };
+  if (!prerequisitesMet || !operatorReady) return { approved: false };
+  return validateLegalApproval(approval, content);
 }
 
 export function legalDescription(

@@ -1,5 +1,8 @@
 // 必須条項の未解決マーカー。単語の全面禁止ではなく、原稿の要確認箇所を管理する。
 export const legalReviewSections = {
+  'works/privacy': ['operator', 'retention', 'transfers', 'requests'],
+  'works/terms': ['scope'],
+  'works/plugin': ['scope'],
   privacy: [
     'scope',
     'common',

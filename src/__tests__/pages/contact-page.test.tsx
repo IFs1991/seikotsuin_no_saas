@@ -169,4 +169,37 @@ describe('ContactPage（/contact）', () => {
     expect(container.querySelector('a[href="/works"]')).toBeInTheDocument();
     expect(container.querySelector('a[href="/os"]')).toBeInTheDocument();
   });
+
+  it('Worksの問い合わせから専用Privacy・Terms・事業者情報へ戻れる', async () => {
+    const { container } = await renderContact({
+      product: 'works',
+      intent: 'privacy',
+    });
+    expect(
+      screen.getByRole('link', {
+        name: 'Worksプライバシーポリシー',
+        exact: true,
+      })
+    ).toHaveAttribute('href', '/works/privacy#requests');
+    expect(
+      screen.getByRole('link', { name: 'Worksの運営者情報', exact: true })
+    ).toHaveAttribute('href', '/works/privacy#operator');
+    const nav = screen.getByRole('navigation', { name: 'Worksの利用条件' });
+    expect(
+      within(nav).getByRole('link', { name: '利用規約', exact: true })
+    ).toHaveAttribute('href', '/works/terms');
+    expect(container).not.toHaveTextContent('改定日:');
+  });
+
+  it('OSの問い合わせは共通Privacyの導線を維持する', async () => {
+    await renderContact({ product: 'os', intent: 'privacy' });
+    expect(
+      screen.queryByRole('navigation', { name: 'Worksの利用条件' })
+    ).toBeNull();
+    expect(
+      screen
+        .getAllByRole('link', { name: 'プライバシーポリシー', exact: true })
+        .some(link => link.getAttribute('href') === '/privacy#requests')
+    ).toBe(true);
+  });
 });

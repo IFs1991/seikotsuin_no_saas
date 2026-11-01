@@ -12,7 +12,14 @@ const state = z.object({
 });
 const manifestSchema = z.object({
   schemaVersion: z.literal(1),
-  documents: z.object({ privacy: state, terms: state, legal: state }),
+  documents: z.object({
+    privacy: state,
+    terms: state,
+    legal: state,
+    'works/privacy': state,
+    'works/terms': state,
+    'works/plugin': state,
+  }),
 });
 const manifestPath = 'src/components/legal/legal-content-snapshot.json';
 const approvalPath = 'src/components/public/legal-approval-records.ts';

@@ -54,5 +54,10 @@
         }
       ]
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "codex/works-legal-submission-nov03": false
+    }
+  }
 }

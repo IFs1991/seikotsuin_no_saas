@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "documents": {
     "privacy": {
-      "sha256": "f32cd74827ddd73282647223d2f3d76aa4f4f96e4f73cffb7466d3de66fd098c",
+      "sha256": "3b6d908676187871aba1f262311638bb7b363696c6f2207bd63f00aaf519793c",
       "unresolvedFields": [
         "privacy:common",
         "privacy:contact-form",
@@ -16,6 +16,7 @@
       "inputFiles": [
         "src/app/(public)/lp-styles.css",
         "src/app/(public)/privacy/page.tsx",
+        "src/components/legal/legal-approval-validation.ts",
         "src/components/legal/legal-content-manifest.ts",
         "src/components/legal/legal-footer-links.tsx",
         "src/components/legal/legal-page.tsx",
@@ -35,12 +36,13 @@
         "src/components/public/product-selector.tsx",
         "src/components/public/release-readiness.ts",
         "src/components/public/works-content.ts",
+        "src/components/public/works-release-readiness.ts",
         "src/images/brand/tiramisu-wordmark.png",
         "src/lib/utils.ts"
       ]
     },
     "terms": {
-      "sha256": "de59c67c6211eaa7fd7435f5413679098f7adc792cbb49b1434a569fcf5511c1",
+      "sha256": "63b05429577626913a0ed7f5f26ec7f8ca7adc86dced911541ef672540db1698",
       "unresolvedFields": [
         "terms:common",
         "terms:data-rights",
@@ -53,6 +55,7 @@
       "inputFiles": [
         "src/app/(public)/lp-styles.css",
         "src/app/(public)/terms/page.tsx",
+        "src/components/legal/legal-approval-validation.ts",
         "src/components/legal/legal-content-manifest.ts",
         "src/components/legal/legal-footer-links.tsx",
         "src/components/legal/legal-page.tsx",
@@ -72,12 +75,13 @@
         "src/components/public/product-selector.tsx",
         "src/components/public/release-readiness.ts",
         "src/components/public/works-content.ts",
+        "src/components/public/works-release-readiness.ts",
         "src/images/brand/tiramisu-wordmark.png",
         "src/lib/utils.ts"
       ]
     },
     "legal": {
-      "sha256": "e9d1aab9c00ce5dffdfa4755d9065eaff9077873466fd04674827cd00ced46fb",
+      "sha256": "12f8b908596cdc1e5c0ab74fed745cb58953e0a617b55d0e26625bce713bc4d8",
       "unresolvedFields": [
         "legal:operator",
         "legal:operator-disclosure",
@@ -93,6 +97,7 @@
       "inputFiles": [
         "src/app/(public)/legal/page.tsx",
         "src/app/(public)/lp-styles.css",
+        "src/components/legal/legal-approval-validation.ts",
         "src/components/legal/legal-content-manifest.ts",
         "src/components/legal/legal-footer-links.tsx",
         "src/components/legal/legal-page.tsx",
@@ -112,8 +117,87 @@
         "src/components/public/product-selector.tsx",
         "src/components/public/release-readiness.ts",
         "src/components/public/works-content.ts",
+        "src/components/public/works-release-readiness.ts",
         "src/images/brand/tiramisu-wordmark.png",
         "src/lib/utils.ts"
+      ]
+    },
+    "works/privacy": {
+      "sha256": "0bbf381935bfb8cdf573eb824f9ba9196ef341866e208067c4d32b02a7111477",
+      "unresolvedFields": [
+        "works/privacy:operator",
+        "works/privacy:requests",
+        "works/privacy:retention",
+        "works/privacy:transfers"
+      ],
+      "inputFiles": [
+        "src/app/(public)/lp-styles.css",
+        "src/app/(public)/works/privacy/page.tsx",
+        "src/components/legal/legal-approval-validation.ts",
+        "src/components/legal/legal-content-manifest.ts",
+        "src/components/legal/legal-footer-links.tsx",
+        "src/components/legal/legal-page.tsx",
+        "src/components/legal/legal-review-fields.ts",
+        "src/components/legal/legal-review-required.tsx",
+        "src/components/legal/operator-profile-list.tsx",
+        "src/components/legal/works-document.tsx",
+        "src/components/public/legal-delivery.ts",
+        "src/components/public/lp-content.ts",
+        "src/components/public/lp-links.ts",
+        "src/components/public/marketing-links.ts",
+        "src/components/public/release-readiness.ts",
+        "src/components/public/works-content.ts",
+        "src/components/public/works-release-readiness.ts"
+      ]
+    },
+    "works/terms": {
+      "sha256": "e743114a45a0c11f766e14b2508be5675688fde11aa6d800455843aa9e7f1636",
+      "unresolvedFields": [
+        "works/terms:scope"
+      ],
+      "inputFiles": [
+        "src/app/(public)/lp-styles.css",
+        "src/app/(public)/works/terms/page.tsx",
+        "src/components/legal/legal-approval-validation.ts",
+        "src/components/legal/legal-content-manifest.ts",
+        "src/components/legal/legal-footer-links.tsx",
+        "src/components/legal/legal-page.tsx",
+        "src/components/legal/legal-review-fields.ts",
+        "src/components/legal/legal-review-required.tsx",
+        "src/components/legal/operator-profile-list.tsx",
+        "src/components/legal/works-document.tsx",
+        "src/components/public/legal-delivery.ts",
+        "src/components/public/lp-content.ts",
+        "src/components/public/lp-links.ts",
+        "src/components/public/marketing-links.ts",
+        "src/components/public/release-readiness.ts",
+        "src/components/public/works-content.ts",
+        "src/components/public/works-release-readiness.ts"
+      ]
+    },
+    "works/plugin": {
+      "sha256": "9a76b2e02f09dccc6913a6e014e6aeba2867222e8aab92750ade607f3ea9f087",
+      "unresolvedFields": [
+        "works/plugin:scope"
+      ],
+      "inputFiles": [
+        "src/app/(public)/lp-styles.css",
+        "src/app/(public)/works/plugin/page.tsx",
+        "src/components/legal/legal-approval-validation.ts",
+        "src/components/legal/legal-content-manifest.ts",
+        "src/components/legal/legal-footer-links.tsx",
+        "src/components/legal/legal-page.tsx",
+        "src/components/legal/legal-review-fields.ts",
+        "src/components/legal/legal-review-required.tsx",
+        "src/components/legal/operator-profile-list.tsx",
+        "src/components/legal/works-document.tsx",
+        "src/components/public/legal-delivery.ts",
+        "src/components/public/lp-content.ts",
+        "src/components/public/lp-links.ts",
+        "src/components/public/marketing-links.ts",
+        "src/components/public/release-readiness.ts",
+        "src/components/public/works-content.ts",
+        "src/components/public/works-release-readiness.ts"
       ]
     }
   }

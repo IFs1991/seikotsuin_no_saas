@@ -9,6 +9,11 @@ import {
   getLegalPublication,
   type LegalDocumentId,
 } from '@/components/public/release-readiness';
+import {
+  getWorksLegalPublication,
+  worksLegalDeliveryEnvironment,
+} from '@/components/public/works-release-readiness';
+import type { WorksLegalDocumentId } from '@/components/public/works-legal-approval-records';
 
 interface LegalPageSection {
   /** 製品別の条件などへ直接リンクするためのアンカー（JavaScriptなしでも移動できる） */
@@ -19,7 +24,7 @@ interface LegalPageSection {
 
 interface LegalPageProps {
   title: string;
-  document: LegalDocumentId;
+  document: LegalDocumentId | WorksLegalDocumentId;
   sections: LegalPageSection[];
 }
 
@@ -49,15 +54,25 @@ export function LegalArticle({
 
 export function LegalPage({ title, document, sections }: LegalPageProps) {
   const anchoredSections = sections.filter(section => section.id);
-  const publication = getLegalPublication(document);
+  const worksDocument =
+    document === 'works/privacy' ||
+    document === 'works/terms' ||
+    document === 'works/plugin';
+  const publication = worksDocument
+    ? getWorksLegalPublication(document)
+    : getLegalPublication(document);
   const delivery = decideLegalDelivery(
     publication.approved,
-    legalDeliveryEnvironment()
+    worksDocument ? worksLegalDeliveryEnvironment() : legalDeliveryEnvironment()
   );
   const published = delivery !== 'hold' && publication.approved;
 
   return (
-    <div className='mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-12'>
+    <div
+      className='mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-12'
+      data-legal-document={document}
+      data-legal-publication={delivery === 'published' ? 'published' : delivery}
+    >
       <div className='rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8'>
         <div className='border-b border-slate-200 pb-6'>
           <h1 className='text-3xl font-bold text-slate-900'>{title}</h1>
@@ -73,10 +88,18 @@ export function LegalPage({ title, document, sections }: LegalPageProps) {
             className='mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950'
             aria-label='法務確認状況'
           >
-            <p className='font-semibold'>商用利用前の法務確認が必要です</p>
+            <p className='font-semibold'>
+              {worksDocument
+                ? 'Works文書の公開承認待ちです'
+                : '商用利用前の法務確認が必要です'}
+            </p>
             {delivery === 'hold' ? (
               <p className='mt-1'>
                 法務文書の正式公開を保留しています。コードの配信・CIの成功は法務承認や公開許可を意味しません。未承認の本文はこの環境では配信しません。
+              </p>
+            ) : worksDocument ? (
+              <p className='mt-1'>
+                本文は確認用原稿です。実装確認と事業者の承認を分けて管理し、未確認の運用・保持条件を公開可能とは判定しません。
               </p>
             ) : (
               <p className='mt-1'>
@@ -127,7 +150,11 @@ export function LegalPage({ title, document, sections }: LegalPageProps) {
                     </p>
                     <p>
                       <Link
-                        href='/contact?intent=privacy'
+                        href={
+                          worksDocument
+                            ? '/contact?product=works&intent=privacy'
+                            : '/contact?intent=privacy'
+                        }
                         prefetch={false}
                         className='underline underline-offset-4'
                       >
@@ -136,7 +163,11 @@ export function LegalPage({ title, document, sections }: LegalPageProps) {
                     </p>
                     <p>
                       <Link
-                        href='/contact?intent=operator-disclosure'
+                        href={
+                          worksDocument
+                            ? '/contact?product=works&intent=operator-disclosure'
+                            : '/contact?intent=operator-disclosure'
+                        }
                         prefetch={false}
                         className='underline underline-offset-4'
                       >
@@ -155,7 +186,7 @@ export function LegalPage({ title, document, sections }: LegalPageProps) {
         </div>
 
         <div className='mt-10 border-t border-slate-200 pt-6 text-sm text-slate-600'>
-          <LegalFooterLinks />
+          <LegalFooterLinks product={worksDocument ? 'works' : undefined} />
         </div>
       </div>
     </div>
