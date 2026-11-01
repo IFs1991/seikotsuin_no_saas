@@ -148,7 +148,7 @@ export function LegalPage({ title, document, sections }: LegalPageProps) {
                     <p>
                       {worksDocument
                         ? '本文の正式公開は保留中です。窓口運用は事業者から完了の申告があり、証跡を照合中です。'
-                        : '本文の正式公開は保留中です。受付・返信の運用確認も完了していません。'}
+                        : '本文の正式公開は保留中です。窓口運用は事業者から完了の申告があり、証跡を照合中です。'}
                     </p>
                     <p>
                       <Link

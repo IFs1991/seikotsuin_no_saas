@@ -57,7 +57,8 @@
   ],
   "git": {
     "deploymentEnabled": {
-      "codex/works-legal-submission-nov03": false
+      "codex/works-legal-submission-nov03": false,
+      "chatgpt/legal-common-finalization-173": false
     }
   }
 }

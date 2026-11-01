@@ -103,6 +103,8 @@ describe('Productionと法務正式配信の分離', () => {
       expect(html).toContain('/contact?intent=privacy');
       expect(html).toContain('/contact?intent=operator-disclosure');
       expect(html).toContain('正式公開を保留');
+      expect(html).toContain('窓口運用は事業者から完了の申告があり、証跡を照合中');
+      expect(html).not.toContain('受付・返信の運用確認も完了していません');
     } finally {
       if (previous === undefined) delete process.env.VERCEL_ENV;
       else process.env.VERCEL_ENV = previous;

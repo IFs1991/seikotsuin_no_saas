@@ -159,6 +159,8 @@ describe('Legal pages', () => {
       '7日',
       'バックアップ',
       '自動削除されません',
+      '東京リージョン（ap-northeast-1）',
+      '本番の削除タスク稼働と最終的な削除時刻は未確認',
     ]) {
       expect(container).toHaveTextContent(text);
     }
@@ -166,7 +168,7 @@ describe('Legal pages', () => {
     const { default: TermsPage } = await import('@/app/(public)/terms/page');
     const terms = render(<TermsPage />);
     for (const text of [
-      '契約成立',
+      '契約の成立時点',
       '最低利用期間',
       '自動更新',
       '解約',
@@ -183,6 +185,12 @@ describe('Legal pages', () => {
       expect(terms.container).toHaveTextContent(text);
     }
     expect(terms.container).not.toHaveTextContent('利用した時点で本規約に同意');
+    expect(terms.container).toHaveTextContent(
+      'その条件に基づく有料契約の申込みを受け付けます'
+    );
+    expect(terms.container).toHaveTextContent(
+      'サイト閲覧や問い合わせだけで有料契約は成立しません'
+    );
   });
 
   test('/terms で利用規約が表示される', async () => {
@@ -199,7 +207,12 @@ describe('Legal pages', () => {
     expect(
       screen.getByText('商用利用前の法務確認が必要です')
     ).toBeInTheDocument();
-    expect(screen.getByText(/事業者の正式名称.*未確定/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/運営者の氏名・ブランド・業務メールは掲載承認済み/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/事業者が運用確認完了を申告.*証跡の照合/)
+    ).toBeInTheDocument();
   });
 
   test('/privacy でプライバシーポリシーが表示される', async () => {
@@ -217,7 +230,12 @@ describe('Legal pages', () => {
     expect(
       screen.getByText('商用利用前の法務確認が必要です')
     ).toBeInTheDocument();
-    expect(screen.getByText(/正式窓口.*未確定/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/窓口の受信・通知・返信は事業者が運用確認完了を報告/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/本人確認・担当者・回答方法.*公開可能な運用証跡と照合/)
+    ).toBeInTheDocument();
   });
 
   test('/terms は共通事項と製品別の条件を見出し・アンカーで分ける', async () => {
