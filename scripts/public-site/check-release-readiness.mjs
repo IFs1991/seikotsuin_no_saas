@@ -14,7 +14,7 @@
 // 例: npm run public-site:release-check -- --scan-build .next --private-terms-file ../private/terms.txt
 
 import { createRequire } from 'node:module';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -72,64 +72,7 @@ const {
   resolveLpFormLink,
 } = require('../../src/components/public/lp-links.ts');
 
-const PLACEHOLDER_PATTERNS = PLACEHOLDER_DOMAINS;
-const SCANNED_EXTENSIONS = new Set([
-  '.html',
-  '.rsc',
-  '.js',
-  '.json',
-  '.body',
-  '.meta',
-  '.txt',
-  '.map',
-]);
-
-function listFiles(root) {
-  const files = [];
-  const stack = [root];
-  while (stack.length > 0) {
-    const current = stack.pop();
-    const stats = statSync(current);
-    if (stats.isDirectory()) {
-      for (const entry of readdirSync(current)) {
-        if (entry === 'cache') continue;
-        stack.push(path.join(current, entry));
-      }
-    } else if (SCANNED_EXTENSIONS.has(path.extname(current))) {
-      files.push(current);
-    }
-  }
-  return files;
-}
-
-function countOccurrences(text, term) {
-  let count = 0;
-  let from = 0;
-  for (;;) {
-    const index = text.indexOf(term, from);
-    if (index === -1) return count;
-    count += 1;
-    from = index + term.length;
-  }
-}
-
-function scanBuildOutput(buildDir, privateTerms) {
-  const files = listFiles(buildDir);
-  const placeholderHits = new Map(PLACEHOLDER_PATTERNS.map(p => [p, []]));
-  const privateHits = privateTerms.map(() => 0);
-  for (const file of files) {
-    const text = readFileSync(file, 'utf8');
-    for (const pattern of PLACEHOLDER_PATTERNS) {
-      if (text.includes(pattern)) {
-        placeholderHits.get(pattern).push(path.relative(buildDir, file));
-      }
-    }
-    privateTerms.forEach((term, index) => {
-      privateHits[index] += countOccurrences(text, term);
-    });
-  }
-  return { fileCount: files.length, placeholderHits, privateHits };
-}
+const { scanBuildOutput } = require('./build-scan.ts');
 
 const statusLabels = {
   missing: '未決定',
@@ -235,7 +178,15 @@ if (scanDir) {
   }
   const scan = scanBuildOutput(buildDir, privateTerms);
   console.log(`ビルド出力の確認: ${scan.fileCount}ファイル`);
-  for (const [pattern, files] of scan.placeholderHits) {
+  for (const pattern of PLACEHOLDER_DOMAINS) {
+    const files = scan.findings
+      .filter(
+        finding =>
+          finding.category === 'placeholder' &&
+          finding.rule === pattern &&
+          finding.verdict === 'BLOCK'
+      )
+      .map(finding => finding.file);
     if (files.length > 0) {
       checkErrors.push(`placeholder:${pattern}`);
       console.log(`  NG 仮ドメイン「${pattern}」: ${files.length}ファイル`);
@@ -244,12 +195,23 @@ if (scanDir) {
       console.log(`  OK 仮ドメイン「${pattern}」: 0ファイル`);
     }
   }
+  for (const finding of scan.findings) {
+    console.log(
+      `  ${finding.verdict === 'BLOCK' ? 'NG' : 'INFO'} [${finding.fileClass}] ${finding.file}: ${finding.category === 'private' ? '非公開文字列 #' + finding.rule : '仮ドメイン ' + finding.rule} / ${finding.reason} / ${finding.verdict}`
+    );
+  }
   if (privateTerms.length === 0) {
     console.log(
       '  非公開文字列: 未確認（--private-terms-file を指定すると確認します）'
     );
   }
-  scan.privateHits.forEach((count, index) => {
+  privateTerms.forEach((_term, index) => {
+    const count = scan.findings
+      .filter(
+        finding =>
+          finding.category === 'private' && finding.rule === String(index + 1)
+      )
+      .reduce((total, finding) => total + finding.occurrences, 0);
     if (count > 0) checkErrors.push(`private-term:${index + 1}`);
     console.log(
       `  ${count > 0 ? 'NG' : 'OK'} 非公開文字列 #${index + 1}: ${count}件`
