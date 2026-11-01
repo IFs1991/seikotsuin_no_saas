@@ -18,7 +18,7 @@
 - B03: 所在地・電話番号の請求時開示・本人確認の実際の応答フロー。非公開原本をrepoへ置かない。
 - B09: 3文書の最終原稿・版・hash・根拠・実施行日と公開承認。OpenAIのプラグイン申請は別工程。
 
-## 次の実装担当に必須
+## 初回ドラフト時の記録（以下の検証・マージ指示は後続依頼前の状態）
 - `legal-content-snapshot.json` の3変更文書のSHA-256は更新済み。既存mainの3文書の計算値が既存snapshotと完全一致することを先に検証し、変更後のソースを同一フォーマット（legal-source-v2、UTF-8/LF、依存ファイル一覧、画像base64）で再計算した。`unresolvedFields`/入力ファイル一覧に変更はない。ただしリポジトリ本来の `npm run legal:manifest:check` / Jest / build はこの環境では**未実行**であり、CIの実結果を確認する。
 - 現状の `LegalReviewRequired`、`LegalPendingValue`、`legalDocumentApprovals`、`getLegalPublication`、`LEGAL_PUBLICATION_MODE` を無理にPASSにしない。3ページだけの文書公開がOS/Works LP全体の商用承認に不必要にブロックされる場合、文書固有の要件を保った別ゲートに設計する。ただしB08等必要なプライバシー/契約の証跡は維持。
 - モバイル/SSR/metadata/未承認値非漏洩/Works申請用ページへの回帰テストを実施。type-check、lint:ci、focused Jest、build、`npm run public-site:release-check -- --scan-build .next`、Playwrightを記録。
@@ -32,3 +32,21 @@
 - OpenAI: https://developers.openai.com/plugins/plugin-guidelines
 
 **このブランチは「法務3ページ完成」の宣言ではない。** 確認済み事実の原稿反映を先行した作業用成果物である。
+
+## PR #174 レビュー・修正（2026-11-02 JST）
+
+後続の事業者依頼は、安全なsquashマージまでを対象とする。正式公開、承認レコードの更新、本番環境変数の変更、Works private plugin 1.0.1・申請パッケージの変更は含まない。Issue #173の正式公開要件は未完了のまま残す。
+
+- 最新main `4f0ca78ad982e0923bee9e15ac1b52a17a1f28c3` をfetchして照合。元head `c2903ad1c505867d09f2a8ee30b93d99f5761634` はmainを含み、競合・重複実装なし。既存の未追跡作業は保全。
+- 元headのCI [41330737911](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/41330737911) はJest 2 suite / 4件失敗。確認済み事実の修正で旧期待値が不整合となった3件と、否定文「必ずしも」を保証表現と検出した1件。ゲートを緩めず、事実に対応する期待値と個別条件の確認を案内する文へ修正。
+- 独立read-onlyレビュー2件（事実・契約条件／公開制御・非露出）。共通hold画面の「受付・返信の運用確認も完了していません」という旧説明を、事業者の完了申告・証跡照合中へ訂正。Works側の表示文字列は変更なし。修正後の再レビューでblocking指摘なし。
+- 共通部品修正に伴い `npm run legal:manifest` で6文書を正規再生成。各文書の `inputFiles`・`unresolvedFields` はmainと同一。Works専用3ページ・料金SSOT・承認台帳・配信判定は変更なし。hash再生成は法務承認ではない。
+- SSRのhold文言と本文非露出を同時検証する負テストを追加し、修正前FAIL→修正後PASSを確認。Playwrightでも同じ確認を追加。掲載承認済み事実・有料申込み・東京region・本番削除時刻の未確認状態を回帰テストで確認。
+- ローカル実行: `legal:manifest:check` PASS、`type-check` PASS、`lint:ci` PASS（0 errors / 127 existing warnings）、`scan:secrets` PASS、`git diff --check` PASS。関連Jest 7 suites / 144 tests PASS（legal-pages、public-release-readiness、legal-manifest、legal-publication、legal-production-delivery、works-legal-build、works-legal-publication）。Node.js 24.18.0 / npmを使用。
+- マージ前の匿名本番GETは共通3ページ・Works専用3ページともHTTP 200、hold/noindex、検査対象の原稿文字列非露出。マージ対象headのCI、最終build／Playwright／release-checkとマージ後デプロイの実結果はPR最終記録で確認する。`RELEASE_BLOCKED` は正式承認未完了による想定結果として維持する。
+
+### Change DoD / Design
+
+High risk（public/legal）。`docs/quality/change-dod-v1.0.md` のruntime・UI・独立review、歴史的DoD-07/10/11に対応。EXTEND：既存の `LegalPage` / `LegalArticle`、和紙LPのTailwind/CSSとアンカー・レスポンシブ構造を継承。新規トークン・依存・グローバルスタイル変更なし。行動UXパターン追加なし。Ethics Gateでは確認済み事実と未確認事項を区別し、架空の条件・承認や購入誘導を追加しない。成功条件は事実性とholdでの非露出、ガードレールはnoindex・窓口導線・Works非回帰。rollbackは承認ゲートを維持した通常のrevert/forward-fixとし、reset/force pushを使用しない。
+
+正式公開のP0は上記B03/B07/B08/B09のまま。事業者・運用担当・専門家が根拠を確認するまで、本文をhold/noindexで非配信とする。マージを正式公開や法的承認と同一視しない。

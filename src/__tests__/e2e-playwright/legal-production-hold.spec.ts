@@ -34,6 +34,12 @@ test('Production相当では未承認本文をHTML/RSCへ配信せず、アプ�
     );
   }
   await page.goto('/privacy#requests');
+  await expect(page.locator('#requests')).toContainText(
+    '窓口運用は事業者から完了の申告があり、証跡を照合中'
+  );
+  await expect(page.locator('#requests')).not.toContainText(
+    '受付・返信の運用確認も完了していません'
+  );
   await expect(
     page.locator('#requests a[href="/contact?intent=privacy"]')
   ).toBeVisible();
