@@ -1,30 +1,46 @@
 import React from 'react';
 import Link from 'next/link';
-import { LegalPendingValue } from '@/components/legal/legal-page';
 import { createContactHref } from '@/components/public/marketing-links';
 import {
   publishableValue,
+  operatorProfile,
+  isPublishableEmail,
   type OperatorProfile,
 } from '@/components/public/release-readiness';
 
 // 運営者情報の一覧。公開承認済み（approved_for_publication）の値だけを表示し、未承認・未入力の項目は
 // 架空の値で埋めず「確定後に掲載します」と表示する（値が入っていても承認前は描画しない）。
 // 所在地・電話番号の実値は扱わず、請求時に個別に提供する方針と窓口だけを表示する。
-export function OperatorProfileList({ profile }: { profile: OperatorProfile }) {
+// 任意のprofileを受け取らず、正式公開判定と同じSSOTだけを読む。
+export function OperatorProfileValue({
+  field,
+}: {
+  field: keyof OperatorProfile;
+}) {
+  const value = publishableValue(operatorProfile[field]);
+  return value !== null &&
+    (field !== 'publicEmail' || isPublishableEmail(value)) ? (
+    <>{value}</>
+  ) : (
+    <span className='text-slate-500'>確定後に掲載します</span>
+  );
+}
+
+export function OperatorProfileList() {
   const disclosureHref = createContactHref({ intent: 'operator-disclosure' });
   const rows: Array<{ label: string; value: React.ReactNode }> = [
     {
       label: '事業者の区分',
-      value: publishableValue(profile.businessType) ?? <LegalPendingValue />,
+      value: <OperatorProfileValue field='businessType' />,
     },
     {
       label: '事業者の氏名',
-      value: publishableValue(profile.name) ?? <LegalPendingValue />,
+      value: <OperatorProfileValue field='name' />,
     },
     { label: 'サービス名', value: 'Tiramisu Works／Tiramisu OS' },
     {
       label: 'ブランド',
-      value: publishableValue(profile.brand) ?? <LegalPendingValue />,
+      value: <OperatorProfileValue field='brand' />,
     },
     {
       label: '所在地',
@@ -60,7 +76,7 @@ export function OperatorProfileList({ profile }: { profile: OperatorProfile }) {
     },
     {
       label: 'メールアドレス',
-      value: publishableValue(profile.publicEmail) ?? <LegalPendingValue />,
+      value: <OperatorProfileValue field='publicEmail' />,
     },
   ];
 

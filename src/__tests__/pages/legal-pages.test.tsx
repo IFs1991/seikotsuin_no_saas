@@ -37,6 +37,16 @@ jest.mock('next/link', () => {
   return MockLink;
 });
 
+function renderOperatorProfile(profile: OperatorProfile) {
+  const previous = { ...operatorProfile };
+  Object.assign(operatorProfile, profile);
+  try {
+    return render(<OperatorProfileList />);
+  } finally {
+    Object.assign(operatorProfile, previous);
+  }
+}
+
 describe('Legal pages', () => {
   setupPublicSiteTestEnvironment();
   beforeEach(() => {
@@ -46,6 +56,22 @@ describe('Legal pages', () => {
     jest
       .mocked(readiness.getLegalPublication)
       .mockImplementation(actual.getLegalPublication);
+  });
+
+  test('/terms 共通条項は意味とアンカーを維持して1〜5の順序で表示', async () => {
+    const { default: TermsPage } = await import('@/app/(public)/terms/page');
+    const { container } = render(<TermsPage />);
+    const titles = [...container.querySelectorAll('#common h3')].map(
+      heading => heading.textContent
+    );
+    expect(titles).toEqual([
+      '1. 運営者',
+      '2. 契約の成立・料金・契約期間',
+      '3. アカウント・権限・禁止事項',
+      '4. 期間・更新・解約・返金・支払遅延',
+      '5. お問い合わせ',
+    ]);
+    expect(container.querySelector('a[href="#common"]')).toBeInTheDocument();
   });
 
   test('文書承認後のみ警告を消し、承認された改定日・施行日を表示する', () => {
@@ -317,7 +343,7 @@ describe('Legal pages', () => {
         status: 'missing',
       },
     };
-    const { container } = render(<OperatorProfileList profile={unapproved} />);
+    const { container } = renderOperatorProfile(unapproved);
     expect(container.innerHTML).not.toMatch(/未承認|unapproved@/);
     expect(screen.getAllByText('確定後に掲載します')).toHaveLength(4);
   });
@@ -327,7 +353,7 @@ describe('Legal pages', () => {
       ...operatorProfile,
       name: { value: '   ', status: 'approved_for_publication' },
     };
-    render(<OperatorProfileList profile={blank} />);
+    renderOperatorProfile(blank);
     expect(screen.getByText('事業者の氏名').closest('div')).toHaveTextContent(
       '確定後に掲載します'
     );
@@ -341,7 +367,7 @@ describe('Legal pages', () => {
         status: 'approved_for_publication',
       },
     };
-    render(<OperatorProfileList profile={approved} />);
+    renderOperatorProfile(approved);
     expect(screen.getByText('（テスト用）事業者名')).toBeInTheDocument();
     const email: OperatorProfile = {
       ...operatorProfile,
@@ -350,7 +376,7 @@ describe('Legal pages', () => {
         status: 'approved_for_publication',
       },
     };
-    render(<OperatorProfileList profile={email} />);
+    renderOperatorProfile(email);
     expect(
       screen.getByText('contact@fictional-tiramisu-test.co.jp')
     ).toBeInTheDocument();

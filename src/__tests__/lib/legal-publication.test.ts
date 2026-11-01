@@ -1,11 +1,12 @@
 import {
-  getLegalPublication,
+  getLegalPublication as checkPublication,
   legalDocumentApprovals,
   releaseCheckItems,
   evaluateReleaseReadiness,
   type LegalDocumentApproval,
   type LegalDocumentId,
   type ReleaseCheckItem,
+  type OperatorProfile,
 } from '@/components/public/release-readiness';
 
 // 架空の承認証跡だけを使用。実承認を付与しない。
@@ -20,6 +21,10 @@ function approvedDocument(): LegalDocumentApproval {
     status: 'approved_for_publication',
     contentVersion: 'test-v1',
     reviewedVersion: 'test-v1',
+    reviewedContentHash: 'a'.repeat(64),
+    approvedContentHash: 'a'.repeat(64),
+    reviewedRevisedOn: '2026-10-31',
+    reviewedEffectiveOn: '2026-11-01',
     approvedOn: '2026-10-31',
     revisedOn: '2026-10-31',
     effectiveOn: '2026-11-01',
@@ -47,7 +52,116 @@ export const approvedItems: ReleaseCheckItem[] = releaseCheckItems.map(
   })
 );
 
+const reviewedContents: Record<
+  LegalDocumentId,
+  { sha256: string; unresolvedFields: readonly string[] }
+> = {
+  privacy: { sha256: 'a'.repeat(64), unresolvedFields: [] },
+  terms: { sha256: 'a'.repeat(64), unresolvedFields: [] },
+  legal: { sha256: 'a'.repeat(64), unresolvedFields: [] },
+};
+const reviewedProfile: OperatorProfile = {
+  businessType: { value: '架空の事業区分', status: 'approved_for_publication' },
+  name: { value: '架空の承認氏名', status: 'approved_for_publication' },
+  brand: { value: '架空のブランド', status: 'approved_for_publication' },
+  addressAndPhonePolicy: {
+    value: '架空の開示方針',
+    status: 'approved_for_publication',
+  },
+  publicEmail: {
+    value: 'contact@fictional-tiramisu-test.co.jp',
+    status: 'approved_for_publication',
+  },
+};
+function getLegalPublication(
+  document: LegalDocumentId,
+  approvals = legalDocumentApprovals,
+  items: readonly ReleaseCheckItem[] = releaseCheckItems
+) {
+  return checkPublication(
+    document,
+    approvals,
+    items,
+    reviewedContents,
+    reviewedProfile
+  );
+}
+
 describe('文書公開承認はfail-closed（Issue #167）', () => {
+  it('manual未解決リストを消しても原稿マーカー・販売placeholderが残ると正式承認にしない', () => {
+    expect(
+      checkPublication(
+        'privacy',
+        approvedDocuments,
+        approvedItems,
+        {
+          ...reviewedContents,
+          privacy: {
+            sha256: 'a'.repeat(64),
+            unresolvedFields: ['privacy:retention'],
+          },
+        },
+        reviewedProfile
+      ).approved
+    ).toBe(false);
+    expect(
+      checkPublication(
+        'legal',
+        approvedDocuments,
+        approvedItems,
+        {
+          ...reviewedContents,
+          legal: {
+            sha256: 'a'.repeat(64),
+            unresolvedFields: ['legal:sales-placeholder'],
+          },
+        },
+        reviewedProfile
+      ).approved
+    ).toBe(false);
+  });
+  it('本文/依存データのhashが変われば版名を据え置いても再承認を要求', () => {
+    expect(
+      checkPublication(
+        'terms',
+        approvedDocuments,
+        approvedItems,
+        {
+          ...reviewedContents,
+          terms: { sha256: 'b'.repeat(64), unresolvedFields: [] },
+        },
+        reviewedProfile
+      ).approved
+    ).toBe(false);
+  });
+  it('ハッシュ一致だけでは未承認・欠損した事業者情報を公開しない', () => {
+    for (const profile of [
+      {
+        ...reviewedProfile,
+        name: { value: null, status: 'approved_for_publication' as const },
+      },
+      {
+        ...reviewedProfile,
+        businessType: { value: '架空の区分', status: 'confirmed' as const },
+      },
+      {
+        ...reviewedProfile,
+        publicEmail: {
+          value: 'invalid',
+          status: 'approved_for_publication' as const,
+        },
+      },
+    ])
+      expect(
+        checkPublication(
+          'legal',
+          approvedDocuments,
+          approvedItems,
+          reviewedContents,
+          profile
+        ).approved
+      ).toBe(false);
+  });
   it.each<LegalDocumentId>(['privacy', 'terms', 'legal'])(
     '%s: 現在は未承認、承認済みの版・日付・全前提が揃った場合のみ正式表示',
     document => {
@@ -63,6 +177,14 @@ describe('文書公開承認はfail-closed（Issue #167）', () => {
     }
   );
   const invalid: Partial<LegalDocumentApproval>[] = [
+    { reviewedContentHash: null },
+    { approvedContentHash: null },
+    { reviewedContentHash: 'b'.repeat(64) },
+    { approvedContentHash: 'b'.repeat(64) },
+    { reviewedRevisedOn: null },
+    { reviewedEffectiveOn: null },
+    { revisedOn: '2026-10-30' },
+    { effectiveOn: '2026-11-02' },
     { status: 'confirmed' },
     { status: 'draft' },
     { status: 'missing' },

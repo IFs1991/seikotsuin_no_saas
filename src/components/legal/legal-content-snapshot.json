@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "documents": {
+    "privacy": {
+      "sha256": "f32cd74827ddd73282647223d2f3d76aa4f4f96e4f73cffb7466d3de66fd098c",
+      "unresolvedFields": [
+        "privacy:common",
+        "privacy:contact-form",
+        "privacy:os",
+        "privacy:pending",
+        "privacy:requests",
+        "privacy:retention",
+        "privacy:scope",
+        "privacy:works"
+      ],
+      "inputFiles": [
+        "src/app/(public)/lp-styles.css",
+        "src/app/(public)/privacy/page.tsx",
+        "src/components/legal/legal-content-manifest.ts",
+        "src/components/legal/legal-footer-links.tsx",
+        "src/components/legal/legal-page.tsx",
+        "src/components/legal/legal-review-fields.ts",
+        "src/components/legal/legal-review-required.tsx",
+        "src/components/legal/operator-profile-list.tsx",
+        "src/components/public/csp-safe-image.tsx",
+        "src/components/public/legal-delivery.ts",
+        "src/components/public/lp-content.ts",
+        "src/components/public/lp-links.ts",
+        "src/components/public/marketing-content.ts",
+        "src/components/public/marketing-footer.tsx",
+        "src/components/public/marketing-header.tsx",
+        "src/components/public/marketing-links.ts",
+        "src/components/public/phrase-text.tsx",
+        "src/components/public/product-cards.tsx",
+        "src/components/public/product-selector.tsx",
+        "src/components/public/release-readiness.ts",
+        "src/components/public/works-content.ts",
+        "src/images/brand/tiramisu-wordmark.png",
+        "src/lib/utils.ts"
+      ]
+    },
+    "terms": {
+      "sha256": "de59c67c6211eaa7fd7435f5413679098f7adc792cbb49b1434a569fcf5511c1",
+      "unresolvedFields": [
+        "terms:common",
+        "terms:data-rights",
+        "terms:liability",
+        "terms:os",
+        "terms:pending",
+        "terms:scope",
+        "terms:works"
+      ],
+      "inputFiles": [
+        "src/app/(public)/lp-styles.css",
+        "src/app/(public)/terms/page.tsx",
+        "src/components/legal/legal-content-manifest.ts",
+        "src/components/legal/legal-footer-links.tsx",
+        "src/components/legal/legal-page.tsx",
+        "src/components/legal/legal-review-fields.ts",
+        "src/components/legal/legal-review-required.tsx",
+        "src/components/legal/operator-profile-list.tsx",
+        "src/components/public/csp-safe-image.tsx",
+        "src/components/public/legal-delivery.ts",
+        "src/components/public/lp-content.ts",
+        "src/components/public/lp-links.ts",
+        "src/components/public/marketing-content.ts",
+        "src/components/public/marketing-footer.tsx",
+        "src/components/public/marketing-header.tsx",
+        "src/components/public/marketing-links.ts",
+        "src/components/public/phrase-text.tsx",
+        "src/components/public/product-cards.tsx",
+        "src/components/public/product-selector.tsx",
+        "src/components/public/release-readiness.ts",
+        "src/components/public/works-content.ts",
+        "src/images/brand/tiramisu-wordmark.png",
+        "src/lib/utils.ts"
+      ]
+    },
+    "legal": {
+      "sha256": "e9d1aab9c00ce5dffdfa4755d9065eaff9077873466fd04674827cd00ced46fb",
+      "unresolvedFields": [
+        "legal:operator",
+        "legal:operator-disclosure",
+        "legal:os",
+        "legal:sales-method",
+        "legal:sales-placeholder@220",
+        "legal:sales-placeholder@61",
+        "legal:sales-placeholder@62",
+        "legal:sales-placeholder@63",
+        "legal:sales-placeholder@64",
+        "legal:works"
+      ],
+      "inputFiles": [
+        "src/app/(public)/legal/page.tsx",
+        "src/app/(public)/lp-styles.css",
+        "src/components/legal/legal-content-manifest.ts",
+        "src/components/legal/legal-footer-links.tsx",
+        "src/components/legal/legal-page.tsx",
+        "src/components/legal/legal-review-fields.ts",
+        "src/components/legal/legal-review-required.tsx",
+        "src/components/legal/operator-profile-list.tsx",
+        "src/components/public/csp-safe-image.tsx",
+        "src/components/public/legal-delivery.ts",
+        "src/components/public/lp-content.ts",
+        "src/components/public/lp-links.ts",
+        "src/components/public/marketing-content.ts",
+        "src/components/public/marketing-footer.tsx",
+        "src/components/public/marketing-header.tsx",
+        "src/components/public/marketing-links.ts",
+        "src/components/public/phrase-text.tsx",
+        "src/components/public/product-cards.tsx",
+        "src/components/public/product-selector.tsx",
+        "src/components/public/release-readiness.ts",
+        "src/components/public/works-content.ts",
+        "src/images/brand/tiramisu-wordmark.png",
+        "src/lib/utils.ts"
+      ]
+    }
+  }
+}

@@ -36,6 +36,16 @@ const unapproved: OperatorProfile = {
   },
 };
 
+function renderOperatorProfile(profile: OperatorProfile) {
+  const original = { ...operatorProfile };
+  Object.assign(operatorProfile, profile);
+  try {
+    return renderToStaticMarkup(createElement(OperatorProfileList));
+  } finally {
+    Object.assign(operatorProfile, original);
+  }
+}
+
 describe('運営者情報のサーバー描画（F3）', () => {
   it('3文書のSSR・metadataにも未承認値や架空の施行日を含めない', () => {
     const original = { ...operatorProfile };
@@ -60,25 +70,19 @@ describe('運営者情報のサーバー描画（F3）', () => {
     }
   });
   it('未承認の値はサーバー描画HTMLに含まれない', () => {
-    const html = renderToStaticMarkup(
-      createElement(OperatorProfileList, { profile: unapproved })
-    );
+    const html = renderOperatorProfile(unapproved);
     expect(html).toContain('確定後に掲載します');
     expect(html).not.toMatch(/未承認|unapproved@/);
   });
 
   it('公開承認済みの値はサーバー描画HTMLに含まれる', () => {
-    const html = renderToStaticMarkup(
-      createElement(OperatorProfileList, {
-        profile: {
-          ...unapproved,
-          name: {
-            value: '（テスト用）承認済みの氏名',
-            status: 'approved_for_publication',
-          },
-        },
-      })
-    );
+    const html = renderOperatorProfile({
+      ...unapproved,
+      name: {
+        value: '（テスト用）承認済みの氏名',
+        status: 'approved_for_publication',
+      },
+    });
     expect(html).toContain('（テスト用）承認済みの氏名');
     expect(html).not.toContain('未承認の区分');
   });
