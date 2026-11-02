@@ -4,11 +4,11 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 describe('製品別の正式配信build前提', () => {
-  it('正式法務buildだけserver mapを生成し、browser mapは有効化しない', () => {
+  it('本番holdでも検査用server mapを生成し、browser mapは有効化しない', () => {
     for (const [vercel, works, osMode, expected] of [
       ['production', 'approved', 'hold', true],
       ['production', 'hold', 'approved', true],
-      ['production', 'hold', 'hold', false],
+      ['production', 'hold', 'hold', true],
       ['preview', 'approved', 'approved', false],
     ] as const) {
       const result = spawnSync(

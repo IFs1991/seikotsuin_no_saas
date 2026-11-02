@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "documents": {
     "privacy": {
-      "sha256": "053c0b7b3a9f9d0bdcecdd562ab61cdaa14d0e5d68b2f614d967616331ac138e",
+      "sha256": "c5001c9b8e822a3db599167e8f56bfac6e165b8dadbd531ab9ca9b0f6d08fcc1",
       "unresolvedFields": [
         "privacy:common",
         "privacy:contact-form",
@@ -42,7 +42,7 @@
       ]
     },
     "terms": {
-      "sha256": "67aa04966cffac9756eb2fa669043375fd760e0988e8374446cb8007c888c941",
+      "sha256": "47a7dafdf872b42175a17dc7266b2156146a6a48ce84dda94736fe1997732c59",
       "unresolvedFields": [
         "terms:common",
         "terms:data-rights",
@@ -81,7 +81,7 @@
       ]
     },
     "legal": {
-      "sha256": "77f0673f7f4d8ff85eba2c83b0cde9aa5d677ff466c07380c4259629f630d9ce",
+      "sha256": "71f52abf07ee5793324cc1900659673644a8faf99ecf2d859d8fa9365b3e0fcf",
       "unresolvedFields": [
         "legal:operator",
         "legal:operator-disclosure",
@@ -123,7 +123,7 @@
       ]
     },
     "works/privacy": {
-      "sha256": "742f5123ad548651b96b21bb5001874de591d4fc55b05893a58c8087e8341ea2",
+      "sha256": "a6c8a48895b8303446527d5206b4984b8e693f546cf9cca884d429112af150ab",
       "unresolvedFields": [
         "works/privacy:operator",
         "works/privacy:requests",
@@ -151,7 +151,7 @@
       ]
     },
     "works/terms": {
-      "sha256": "7a6f453cd831fd8ffd452520d322f727cfdf44d0de4b29c27db98ef6d169fe51",
+      "sha256": "e49dc1baa69a41757e7bcd0b46d7e9afdbf480dd96bb5a9421131de832c32a3b",
       "unresolvedFields": [
         "works/terms:scope"
       ],
@@ -176,7 +176,7 @@
       ]
     },
     "works/plugin": {
-      "sha256": "8c05233e3282825cfdce2a8f23aad7294950c82f0310f9a2a0d32f7e20ef50bd",
+      "sha256": "44c3118fb52b046f437b989f9aba7a5feea2f6bd4b29d15acc5267baca7e7165",
       "unresolvedFields": [
         "works/plugin:scope"
       ],

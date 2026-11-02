@@ -50,7 +50,8 @@ function main() {
     );
     process.exit(1);
   }
-  if (checkRequired) run('scripts/public-site/check-release-readiness.mjs');
+  if (checkRequired)
+    run('scripts/public-site/check-release-readiness.mjs', ['--legal-only']);
   if (worksCheckRequired && worksEnvironment.vercelEnv !== 'production') {
     console.error(
       'RELEASE_BLOCKED: Works正式配信には明示されたProduction環境が必要です。'
@@ -67,6 +68,7 @@ function main() {
   run('node_modules/next/dist/bin/next', ['build']);
   if (checkRequired)
     run('scripts/public-site/check-release-readiness.mjs', [
+      '--legal-only',
       '--scan-build',
       '.next',
     ]);
