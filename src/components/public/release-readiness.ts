@@ -128,10 +128,10 @@ export const operatorProfile: OperatorProfile = {
   },
 };
 
-// 正式な本番origin。未確認の間は null のままにし、metadataBase・絶対URLを仮造りしない。
+// Vercel alias/匿名GETで照合済みのorigin。掲載承認前はmetadataBase等へ採用しない。
 export const publicSiteOrigin: PublishableField = {
-  value: null,
-  status: 'missing',
+  value: 'https://www.tiramisu-app.com',
+  status: 'confirmed',
 };
 
 export interface WorksClaim {
@@ -346,10 +346,10 @@ export const releaseCheckItems: readonly ReleaseCheckItem[] = [
     id: 'contact-form-operation',
     ledger: 'B02',
     label: 'Googleフォームの現物・受信・通知・担当・返信手段',
-    status: 'missing',
+    status: 'confirmed',
     requiredFor: 'release',
     nextAction:
-      '設問・通知先・ログイン要否を現物確認する。試験送信は別途承認を得てから行う',
+      '受信・通知・返信は事業者の完了申告済み。docs/legal/works-submission-owner-confirmations-20261102.md#operator の公開可能な証跡参照先、設問・閲覧権限・本人確認・保持条件を照合する。再試験を一律には求めない',
   },
   {
     id: 'contact-alternative',
@@ -364,10 +364,10 @@ export const releaseCheckItems: readonly ReleaseCheckItem[] = [
     id: 'operator-disclosure-operation',
     ledger: 'B03',
     label: '所在地・電話番号の請求時開示の運用（受付から返信まで）',
-    status: 'missing',
+    status: 'confirmed',
     requiredFor: 'release',
     nextAction:
-      '非公開の原本、通知先、担当、返信に使う業務メールを決め、契約前の請求から返信までを限定試験する',
+      '受付・返信は事業者の完了申告済み。公開可能な証跡参照先と、申込み前に遅滞なく開示する手順・担当を照合する。住所・電話の原本再収集や再試験を一律には求めない',
   },
   {
     id: 'operator-disclosure-text',
@@ -389,7 +389,7 @@ export const releaseCheckItems: readonly ReleaseCheckItem[] = [
     requiredValue: { kind: 'origin', value: publicSiteOrigin.value },
     requiredFor: 'release',
     nextAction:
-      '既存設定から本番originを確認し、metadataBaseと絶対canonicalを確定する（画像の仮ドメインは使わない）',
+      '照合済みoriginを最終原稿の公開承認と併せて承認する。承認前はmetadataBaseと絶対canonicalへ採用しない',
   },
   {
     id: 'works-claims',
@@ -540,7 +540,24 @@ export type {
 
 export type { LegalPublication };
 
-/** 文書判定は全体公開判定を代行しない。B10の申請承認は常に別手続。 */
+// ADR: docs/legal/issue-173-publication-gates-adr.md
+// LP広告2項目だけを分離する。契約・価格・データ取扱い・窓口等の要件は維持。
+export const legalPublicationPrerequisiteIds = [
+  'operator-name',
+  'operator-brand',
+  'contact-form-operation',
+  'contact-alternative',
+  'operator-disclosure-operation',
+  'operator-disclosure-text',
+  'public-origin',
+  'works-plan-scope',
+  'works-pricing-publication',
+  'subscription-terms',
+  'data-handling',
+  'legal-approval',
+] as const;
+
+/** 文書判定はLP全体・B10の申請承認を代行しない。 */
 export function getLegalPublication(
   document: LegalDocumentId,
   approvals: Readonly<
@@ -563,11 +580,10 @@ export function getLegalPublication(
     ].every(field => publishableValue(field) !== null) &&
     profile.publicEmail.status === 'approved_for_publication' &&
     isPublishableEmail(profile.publicEmail.value);
-  // 必須項目の省略・重複でも fail-closed。B01〜B09すべての既存要件を照合する。
-  const dependencies = releaseCheckItems.filter(
-    item => item.requiredFor === 'release'
-  );
-  const prerequisitesMet = dependencies.every(required => {
+  // 明示した法務必須項目の省略・重複・定義変更でも fail-closed。
+  const prerequisitesMet = legalPublicationPrerequisiteIds.every(id => {
+    const required = releaseCheckItems.find(item => item.id === id);
+    if (!required) return false;
     const matches = items.filter(item => item.id === required.id);
     const item = matches[0];
     return (

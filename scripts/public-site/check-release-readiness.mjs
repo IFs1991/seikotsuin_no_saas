@@ -6,6 +6,7 @@
 // - 承認台帳（src/components/public/release-readiness.ts）と問い合わせフォームURLの設定を確認し、
 //   公開に必要な項目が未承認なら終了コード1で「公開不可（RELEASE_BLOCKED）」と判定する。
 // - --scan-build <dir>: ビルド出力（例: .next）に画像の仮ドメイン等が混入していないかを確認する。
+// - --legal-only: 共通3法務文書と法務必須台帳だけを検査。既定のLP全体検査は変更しない。
 // - --private-terms-file <path>: 公開してはいけない文字列（氏名・所在地・電話番号等）を1行1件で書いた
 //   リポジトリ外のファイル。値そのものは出力せず、何番目の文字列が何件見つかったかだけを表示する。
 // - --project-dir <dir>: 環境ファイルを読むディレクトリ（既定はリポジトリのルート）。
@@ -77,6 +78,7 @@ const {
   releaseCheckItems,
   worksClaims,
   getLegalPublication,
+  legalPublicationPrerequisiteIds,
 } = require('../../src/components/public/release-readiness.ts');
 const {
   resolveLpFormLink,
@@ -97,7 +99,14 @@ const documentBlockers = [];
 console.log('公開サイト 公開前チェック');
 console.log('==========================');
 
-const result = evaluateReleaseReadiness(releaseCheckItems);
+const legalOnly = process.argv.includes('--legal-only');
+const scopedItems = legalOnly
+  ? releaseCheckItems.filter(item =>
+      legalPublicationPrerequisiteIds.includes(item.id)
+    )
+  : releaseCheckItems;
+console.log(`検査範囲: ${legalOnly ? '共通法務3文書' : '公開サイト全体'}`);
+const result = evaluateReleaseReadiness(scopedItems);
 const contentManifest = computeLegalManifest();
 for (const document of ['privacy', 'terms', 'legal']) {
   const publication = getLegalPublication(document);
@@ -110,7 +119,7 @@ for (const document of ['privacy', 'terms', 'legal']) {
   if (!publication.approved)
     documentBlockers.push(`legal-document:${document}`);
 }
-for (const item of releaseCheckItems) {
+for (const item of scopedItems) {
   const check = checkReleaseItem(item);
   const mark = check.satisfied ? 'OK ' : 'NG ';
   const scope = item.requiredFor === 'release' ? '' : '（申請時）';
@@ -125,19 +134,21 @@ for (const item of releaseCheckItems) {
   }
 }
 
-console.log('');
-console.log('Works 公開主張の管理表');
-const approvedClaims = worksClaims.filter(
-  claim => claim.status === 'approved_for_publication'
-);
-console.log(
-  `  ${worksClaims.length}件中 ${approvedClaims.length}件が公開承認済み`
-);
-for (const claim of worksClaims) {
-  if (claim.status === 'approved_for_publication') continue;
-  console.log(
-    `  - ${claim.claimId}: ${statusLabels[claim.status]} / 有効化: ${claim.enablement} / 本番E2E確認日: ${claim.lastProductionE2eOn ?? 'なし'} / 確認者: ${claim.reviewer ?? 'なし'}`
+if (!legalOnly) {
+  console.log('');
+  console.log('Works 公開主張の管理表');
+  const approvedClaims = worksClaims.filter(
+    claim => claim.status === 'approved_for_publication'
   );
+  console.log(
+    `  ${worksClaims.length}件中 ${approvedClaims.length}件が公開承認済み`
+  );
+  for (const claim of worksClaims) {
+    if (claim.status === 'approved_for_publication') continue;
+    console.log(
+      `  - ${claim.claimId}: ${statusLabels[claim.status]} / 有効化: ${claim.enablement} / 本番E2E確認日: ${claim.lastProductionE2eOn ?? 'なし'} / 確認者: ${claim.reviewer ?? 'なし'}`
+    );
+  }
 }
 
 console.log('');

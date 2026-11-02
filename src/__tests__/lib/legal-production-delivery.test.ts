@@ -11,6 +11,24 @@ import path from 'node:path';
 import os from 'node:os';
 
 describe('Productionと法務正式配信の分離', () => {
+  it('法務専用CLIはLP承認を要求せず、未承認文書・契約・データ条件を拒否する', () => {
+    const result = spawnSync(
+      process.execPath,
+      ['scripts/public-site/check-release-readiness.mjs', '--legal-only'],
+      {
+        env: { ...process.env, NODE_ENV: 'production' },
+        encoding: 'utf8',
+        timeout: 60_000,
+      }
+    );
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain('RELEASE_BLOCKED');
+    for (const required of ['/privacy', '/terms', '/legal', '[B07]', '[B08]'])
+      expect(result.stdout).toContain(required);
+    expect(result.stdout).not.toContain('[B05]');
+    expect(result.stdout).not.toContain('移設したOS LPの既存表現');
+    expect(result.stdout).not.toContain('Works 公開主張の管理表');
+  });
   it('Nextと同じ本番env優先順位でファイル由来approvedにも事前チェックを要求する', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'legal-build-env-'));
     // repoの設定や実値を読まない。破棄はfixtureの既知ファイルのみ。

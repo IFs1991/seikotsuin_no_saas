@@ -213,12 +213,22 @@ describe('公開前判定（A44/A46）', () => {
     ).toBe('（テスト用）値');
   });
 
-  it('掲載承認された公開用値だけを持ち、住所・電話実値や未確定originは追加しない（A43/A45）', () => {
+  it('照合済みoriginや窓口完了申告を公開承認へ昇格せず、住所・電話実値を持たない（A43/A45）', () => {
     expect(publishableValue(operatorProfile.name)).not.toBeNull();
     expect(publishableValue(operatorProfile.brand)).not.toBeNull();
     expect(operatorProfile.publicEmail.status).toBe('approved_for_publication');
     expect(isPublishableEmail(operatorProfile.publicEmail.value)).toBe(true);
-    expect(publicSiteOrigin.value).toBeNull();
+    expect(isProductionOrigin(publicSiteOrigin.value)).toBe(true);
+    expect(publicSiteOrigin.status).toBe('confirmed');
+    expect(publishableValue(publicSiteOrigin)).toBeNull();
+    for (const id of ['contact-form-operation', 'operator-disclosure-operation']) {
+      const item = releaseCheckItems.find(candidate => candidate.id === id);
+      if (!item) throw new Error(`Missing prerequisite ${id}`);
+      expect(item.status).toBe('confirmed');
+      expect(checkReleaseItem(item).satisfied).toBe(false);
+      expect(item.nextAction).toContain('完了申告済み');
+      expect(item.nextAction).toContain('証跡');
+    }
     // 所在地・電話番号は方針文だけを持ち、実値の欄を設けない。
     expect(Object.keys(operatorProfile)).toEqual([
       'businessType',

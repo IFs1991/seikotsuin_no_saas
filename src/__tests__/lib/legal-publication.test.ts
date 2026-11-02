@@ -216,14 +216,42 @@ describe('文書公開承認はfail-closed（Issue #167）', () => {
       )
     ).toEqual({ approved: false });
   });
+  const marketingOnlyIds = ['works-claims', 'os-migrated-claims'];
+  it.each<LegalDocumentId>(['privacy', 'terms', 'legal'])(
+    '%s: LP広告の承認待ちを文書承認へ結合せず、サイト全体は拒否を維持',
+    document => {
+      const items = approvedItems.filter(
+        item => !marketingOnlyIds.includes(item.id)
+      );
+      expect(
+        getLegalPublication(document, approvedDocuments, items).approved
+      ).toBe(true);
+      const pendingMarketing = approvedItems.map(item =>
+        marketingOnlyIds.includes(item.id)
+          ? { ...item, status: 'draft' as const }
+          : item
+      );
+      expect(
+        getLegalPublication(document, approvedDocuments, pendingMarketing)
+          .approved
+      ).toBe(true);
+      expect(evaluateReleaseReadiness(pendingMarketing).ready).toBe(false);
+    }
+  );
   it.each(
-    releaseCheckItems
-      .filter(item => item.requiredFor === 'release')
-      .map(item => item.id)
-  )('必須台帳%sの未承認/欠落を拒否', id => {
+    (['privacy', 'terms', 'legal'] as const).flatMap(document =>
+      releaseCheckItems
+        .filter(
+          item =>
+            item.requiredFor === 'release' &&
+            !marketingOnlyIds.includes(item.id)
+        )
+        .map(item => ({ document, id: item.id }))
+    )
+  )('$document: 法務必須台帳$idの未承認/欠落を拒否', ({ document, id }) => {
     expect(
       getLegalPublication(
-        'privacy',
+        document,
         approvedDocuments,
         approvedItems.map(item =>
           item.id === id ? { ...item, status: 'confirmed' } : item
@@ -232,7 +260,7 @@ describe('文書公開承認はfail-closed（Issue #167）', () => {
     ).toBe(false);
     expect(
       getLegalPublication(
-        'privacy',
+        document,
         approvedDocuments,
         approvedItems.filter(item => item.id !== id)
       ).approved

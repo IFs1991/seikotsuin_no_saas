@@ -98,12 +98,9 @@ function exportNextConfig(config) {
 const nextConfig = {
   // パフォーマンス最適化設定（Supabaseを除外）
   experimental: {
-    // 法務正式buildの成果物検査で、拒否定数の出所を既存scannerへ証明する。
-    // browser source mapsは有効化しない。原稿の公開承認とは独立したbuild設定。
-    serverSourceMaps:
-      process.env.VERCEL_ENV === 'production' &&
-      (process.env.LEGAL_PUBLICATION_MODE === 'approved' ||
-        process.env.WORKS_LEGAL_PUBLICATION_MODE === 'approved'),
+    // 本番holdも含め、拒否定数の出所を厳格な既存scannerへ証明する。
+    // server用のみ。browser source maps・法務公開モードは変更しない。
+    serverSourceMaps: process.env.VERCEL_ENV === 'production',
     optimizePackageImports: ['lucide-react'],
     // Next.js 15.4.x の segment explorer は dev 中に React Client Manifest
     // エラーを誘発し、Playwright の長時間実行を不安定にするため無効化する。
