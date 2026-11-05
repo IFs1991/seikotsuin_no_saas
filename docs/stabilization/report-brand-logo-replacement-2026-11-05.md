@@ -68,3 +68,11 @@
 - `prettier --check`（変更した8つのTSX）: PASS。
 - 歴史的DoDとの対応: `DoD-v0.1.md` DOD-10（型・lint・ビルド）、DOD-11（関連Jest回帰）。全体DoD・出荷資格のPASSを意味しない。
 - 現行基準: `docs/quality/change-dod-v1.0.md` UI/runtime。リスクはMedium（ブランド表示のみ）。
+
+## 2026-11-06 マージ前の確認
+
+- PR #177。最新main `67f264e76f58a2a65585a8fb9f0397674f508fd3`を取り込み、mainの法務文書3件との差分ゼロを確認。法務snapshotは標準コマンドで再生成し、承認状態は変更しない。
+- head `f3bcd3333a21394cb1d2050b7502cccec700bb1f`で既存5 suitesに`src/__tests__/lib/legal-manifest.test.ts`を加えて再実行し、6 suites / 54 tests PASS。`npm run legal:manifest:check`と`git diff --check`もPASS。
+- 同headのVercel PreviewはREADY。CI run `42056729650`は`Verify commercial source inventory drift`でFAILし、後続jobはSKIPPEDだったため、全CI成功とは扱わない。
+- 原因は`BrandLogo`の新規ファイルに対する生成台帳の更新漏れ。`npm run commercial:inventory:source`による差分は`scannedSourceFiles: 689 → 690`の1行のみ。DB参照・RPC・権限の変更なし。`npm run commercial:inventory:source:check`はPASS。
+- この台帳修正を追加したheadでGitHub checksを再実行する。マージ結果はPRを参照。
