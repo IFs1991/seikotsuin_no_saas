@@ -16,24 +16,23 @@ import {
   type MarketingProductKey,
 } from './marketing-content';
 import { PhraseText } from './phrase-text';
+import { BrandLogo } from './brand-logo';
 
 // 製品カード。トップの通常表示（JavaScriptなしでも選べる実リンク）と、
 // 製品選択モーダル内のコンパクト表示で同じデータを使う。
 
 const productTheme: Record<
   MarketingProductKey,
-  { surface: string; monogram: string; link: string }
+  { surface: string; link: string }
 > = {
   works: {
     surface:
       'border-[color:var(--lp-works-line)] bg-[color:var(--lp-works-soft)]',
-    monogram: 'bg-[color:var(--lp-works)] text-white',
     link: 'bg-[color:var(--lp-works)] text-white hover:bg-[color:var(--lp-works-hover)] focus-visible:ring-[color:var(--lp-works)]',
   },
   os: {
     surface:
       'border-[color:var(--lp-accent-line)] bg-[color:var(--lp-os-soft)]',
-    monogram: 'bg-[color:var(--lp-accent-strong)] text-white',
     link: 'bg-[color:var(--lp-accent)] text-[color:var(--lp-ink-deep)] hover:bg-[color:var(--lp-accent-soft)] focus-visible:ring-[color:var(--lp-accent-strong)]',
   },
 };
@@ -117,24 +116,13 @@ function ProductHeading({
 }) {
   const Heading = headingLevel;
   return (
-    <div className='flex items-center gap-3'>
-      <span
-        aria-hidden='true'
-        className={cn(
-          'flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] font-serif-en text-[22px] font-bold',
-          productTheme[product.key].monogram
-        )}
-      >
-        {product.monogram}
-      </span>
-      <div className='min-w-0'>
-        <Heading className='font-serif-en text-[20px] font-bold leading-tight text-[color:var(--lp-text)] sm:text-[22px]'>
-          {product.name}
-        </Heading>
-        <p className='mt-1 inline-block rounded-full border border-black/10 bg-white/70 px-2.5 py-0.5 text-[11px] font-semibold text-[color:var(--lp-text-muted)]'>
-          {product.label}
-        </p>
-      </div>
+    <div className='min-w-0'>
+      <Heading className='font-serif-en text-[20px] font-bold leading-tight text-[color:var(--lp-text)] sm:text-[22px]'>
+        <BrandLogo product={product.key} className='w-56' />
+      </Heading>
+      <p className='mt-1 inline-block rounded-full border border-black/10 bg-white/70 px-2.5 py-0.5 text-[11px] font-semibold text-[color:var(--lp-text-muted)]'>
+        {product.label}
+      </p>
     </div>
   );
 }
@@ -276,13 +264,13 @@ export function ProductComparison() {
                 scope='col'
                 className='px-5 py-4 text-[14px] font-bold text-[color:var(--lp-text)]'
               >
-                Tiramisu Works
+                <BrandLogo product='works' />
               </th>
               <th
                 scope='col'
                 className='px-5 py-4 text-[14px] font-bold text-[color:var(--lp-text)]'
               >
-                Tiramisu OS
+                <BrandLogo product='os' />
               </th>
             </tr>
           </thead>

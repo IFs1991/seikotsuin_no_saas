@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { BrandLogo } from '@/components/public/brand-logo';
 import Link from 'next/link';
 import {
   ArrowDown,
@@ -127,9 +128,7 @@ export default function WorksLandingPage() {
         <section className='relative overflow-hidden bg-[color:var(--lp-ink)] text-white'>
           <div className='mx-auto grid max-w-7xl gap-12 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:px-8 lg:py-24'>
             <div className='flex flex-col gap-6'>
-              <p className='inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1 font-serif-en text-[14px] tracking-[0.12em] text-[color:var(--lp-accent-soft)]'>
-                {worksHeroCopy.eyebrow}
-              </p>
+              <BrandLogo product='works' className='w-64 sm:w-80' priority />
               <h1 className='font-serif-jp text-[30px] font-bold leading-[1.4] tracking-tight sm:text-[44px] lg:text-[50px]'>
                 {worksHeroCopy.titleLines.map(line => (
                   <span key={line} className='block'>
@@ -622,7 +621,7 @@ export default function WorksLandingPage() {
         </section>
       </main>
 
-      <MarketingFooter />
+      <MarketingFooter product='works' />
     </div>
   );
 }

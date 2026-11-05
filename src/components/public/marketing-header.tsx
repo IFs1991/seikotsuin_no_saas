@@ -2,8 +2,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { LogIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import tiramisuWordmark from '@/images/brand/tiramisu-wordmark.png';
-import { CspSafeImage } from './csp-safe-image';
+import { BrandLogo } from './brand-logo';
 import { productSelectorCopy } from './marketing-content';
 import { ProductSelectorCards } from './product-cards';
 import { ProductSelector } from './product-selector';
@@ -60,12 +59,15 @@ export function MarketingHeader({
             prefetch={false}
             className='flex shrink-0 items-center rounded-[6px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--lp-accent-soft)]'
           >
-            <CspSafeImage
-              src={tiramisuWordmark}
-              alt='Tiramisu'
-              width={178}
-              height={50}
-              className='h-10 w-auto shrink-0 object-contain sm:h-11'
+            <BrandLogo
+              product={
+                current === 'works' || current === 'os' ? current : 'tiramisu'
+              }
+              className={
+                current === 'works' || current === 'os'
+                  ? 'w-40 sm:w-48'
+                  : 'h-10 w-auto sm:h-11'
+              }
               priority
             />
           </Link>
