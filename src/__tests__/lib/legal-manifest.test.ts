@@ -139,11 +139,16 @@ describe('原稿SHA-256・依存データ・manifest鮮度（PR-3）', () => {
     expect(current.documents.privacy.unresolvedFields).toContain(
       'privacy:retention'
     );
+    expect(current.documents.legal.unresolvedFields).toEqual(
+      expect.arrayContaining(['legal:works', 'legal:os', 'legal:sales-method'])
+    );
+    // 販売欄の原稿を埋めても、placeholder検出自体は弱めない。
     expect(
-      current.documents.legal.unresolvedFields.some(field =>
-        field.includes('sales-placeholder')
+      invoke(
+        "export const s = { id: 'sales', body: <LegalPendingValue /> };",
+        'unresolved'
       )
-    ).toBe(true);
+    ).toEqual([expect.stringContaining('sales-placeholder')]);
     expect(
       invoke(
         "export const s = { id: 'response', body: <p>実行結果が未確定の場合は照合する</p> };",

@@ -2,12 +2,11 @@ import { LegalReviewRequired } from '@/components/legal/legal-review-required';
 import React from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { LegalPage, LegalPendingValue } from '@/components/legal/legal-page';
+import { LegalPage } from '@/components/legal/legal-page';
 import {
   OperatorProfileList,
   OperatorProfileValue,
 } from '@/components/legal/operator-profile-list';
-import { planItems } from '@/components/public/lp-content';
 import { MarketingFooter } from '@/components/public/marketing-footer';
 import { MarketingHeader } from '@/components/public/marketing-header';
 import { createContactHref } from '@/components/public/marketing-links';
@@ -15,15 +14,12 @@ import {
   legalDescription,
   legalRobots,
 } from '@/components/public/release-readiness';
-import {
-  formatYen,
-  worksPlans,
-  worksPricingCopy,
-} from '@/components/public/works-content';
+import { worksPricingCopy } from '@/components/public/works-content';
 import '../lp-styles.css';
 
-// 運営者情報・販売条件（暫定案）。特定商取引法に基づく表示の要否と項目は、
-// 実際の販売・申込みの方法を確認してから確定する（公開前チェック B07・B09）。
+// 掲載確認用の運営者情報・販売条件。個別条件の提示による申込方式を記載する。
+// 実契約・料金・税区分と、販売方法に応じた必要表示の照合は別途必要。
+// LegalReviewRequiredを維持し、本文の編集を文書の公開承認には扱わない。
 
 export const metadata: Metadata = {
   title: '運営者情報・販売条件 | Tiramisu',
@@ -57,11 +53,27 @@ function TermsList({
   );
 }
 
-const pendingSalesTermRows = [
-  { label: '支払方法・支払時期', value: <LegalPendingValue /> },
-  { label: '提供開始時期', value: <LegalPendingValue /> },
-  { label: '契約期間・更新', value: <LegalPendingValue /> },
-  { label: '解約・返金', value: <LegalPendingValue /> },
+const individualContractRows = [
+  {
+    label: '支払方法・支払時期',
+    value:
+      '支払方法、請求時期、支払期限、初期費用と継続料金の支払区分は、お申込み前に提示する見積書・申込書・契約書等に明示します。',
+  },
+  {
+    label: '提供開始時期',
+    value:
+      '利用する機能、接続設定、導入作業の内容を確認したうえで、提供開始日を個別の契約条件としてご案内します。',
+  },
+  {
+    label: '契約期間・更新',
+    value:
+      '契約期間、最低利用期間、自動更新の有無、更新時の条件・通知期限は、お申込み前に個別の契約条件として明示します。',
+  },
+  {
+    label: '解約・返金',
+    value:
+      '解約の受付方法・通知期限・効力発生日、既払い料金の返金・日割りの有無は、お申込み前に個別の契約条件として明示します。手続の確認はお問い合わせ窓口で受け付けます。',
+  },
 ];
 
 export default function LegalNoticePage() {
@@ -130,21 +142,28 @@ export default function LegalNoticePage() {
                         {
                           label: '販売価格',
                           value: (
-                            <ul className='space-y-1'>
-                              {worksPlans.map(plan => (
-                                <li key={plan.key}>
-                                  {plan.name}: 月額
-                                  {formatYen(plan.monthlyFeeYen)}
-                                  ・初期費用{formatYen(plan.initialFeeYen)}
-                                </li>
-                              ))}
-                              <li>個別見積もり: 個別にご案内します</li>
-                            </ul>
+                            <>
+                              <p>
+                                対象店舗、接続先、業務と導入支援の範囲に応じて個別にご案内します。適用する初期費用・継続料金・追加費用と税区分は、お申込み前に提示する見積書等をご確認ください。
+                              </p>
+                              <p className='mt-2'>
+                                検討用の参考料金は、
+                                <Link
+                                  href='/works#pricing'
+                                  prefetch={false}
+                                  className={linkClass}
+                                >
+                                  Tiramisu Worksの料金欄
+                                </Link>
+                                に掲載しています。掲載額をそのまま契約金額とするものではありません。
+                              </p>
+                            </>
                           ),
                         },
                         {
                           label: '価格の表示',
-                          value: worksPricingCopy.provisionalLabel,
+                          value:
+                            '公開サイトの料金は検討用の参考情報です。正式な金額、税区分、初期費用と継続料金の内訳は、お申込み前に個別の契約条件として明示します。',
                         },
                         {
                           label: '提供範囲・上限',
@@ -154,11 +173,11 @@ export default function LegalNoticePage() {
                           label: '商品代金以外の必要料金',
                           value: worksPricingCopy.externalFeesNote,
                         },
-                        ...pendingSalesTermRows,
+                        ...individualContractRows,
                         {
                           label: '動作環境',
                           value:
-                            'ChatGPT（対応するプラン・利用環境は導入前にご案内します）',
+                            '利用するChatGPTのプラン・環境、連携先サービスの契約、必要な権限と接続設定を導入前にご案内します。',
                         },
                         {
                           label: 'お申し込み',
@@ -183,17 +202,11 @@ export default function LegalNoticePage() {
                           label: '販売価格',
                           value: (
                             <>
-                              <ul className='space-y-1'>
-                                {planItems.map(plan => (
-                                  <li key={plan.name}>
-                                    {plan.name}: 月額{plan.monthlyPrice}
-                                    ・初期費用{plan.initialCost}（{plan.stores}
-                                    ・追加店舗: {plan.extraStore}）
-                                  </li>
-                                ))}
-                              </ul>
+                              <p>
+                                対象店舗数、利用する機能、移行・導入支援の範囲に応じて、契約条件を個別にご案内します。適用する初期費用・継続料金・追加店舗料金は、お申込み前に提示する見積書等をご確認ください。
+                              </p>
                               <p className='mt-2'>
-                                税の表記と最終金額は、
+                                検討用の参考料金は、
                                 <Link
                                   href='/os#pricing'
                                   prefetch={false}
@@ -201,7 +214,7 @@ export default function LegalNoticePage() {
                                 >
                                   Tiramisu OSの料金欄
                                 </Link>
-                                の注記をご確認ください。
+                                に掲載しています。掲載額をそのまま契約金額とするものではありません。
                               </p>
                             </>
                           ),
@@ -209,15 +222,19 @@ export default function LegalNoticePage() {
                         {
                           label: '価格・税区分',
                           value:
-                            '現行LPの掲載値であり正式な営業決定ではありません。OSの税区分と最終金額は未確定です。契約前に統一した条件をご案内します。',
+                            '正式な金額、税区分、初期費用と継続料金の内訳は、お申込み前に提示する見積書・申込書・契約書等に明示します。',
                         },
                         {
                           label: '商品代金以外の必要料金',
                           value:
-                            '追加店舗料金は上記のとおりです。通信費・端末費・外部連携先費用、移行・追加支援の費用と負担は個別見積もりで確認します。',
+                            '利用店舗の追加、通信費・端末費・外部連携先費用、移行・追加支援に費用が発生する場合は、対象と負担する費用をお申込み前にご案内します。',
                         },
-                        ...pendingSalesTermRows,
-                        { label: '動作環境', value: <LegalPendingValue /> },
+                        ...individualContractRows,
+                        {
+                          label: '動作環境',
+                          value:
+                            '利用する端末・ブラウザーとネットワーク環境、必要な外部サービスを導入前にご案内します。',
+                        },
                         {
                           label: 'お申し込み',
                           value:
@@ -231,16 +248,32 @@ export default function LegalNoticePage() {
             },
             {
               id: 'sales-method',
-              title: '販売方法と公開前の確認事項',
+              title: 'お申し込みと契約条件の確認',
               body: (
                 <LegalReviewRequired field='legal:sales-method'>
                   {
                     <>
                       <p>
-                        本サイト上には申込み・決済・自動更新への同意機能はありません。一方、Worksは導入相談後に別途提示した条件に基づき有料契約の申込みを受け付けます。上記は現行掲載値であり、実際の税区分・価格・契約条件は別途提示する内容を確認してください。OSの商用提供条件は別途確定します。
+                        本サイト上には申込み・決済・自動更新への同意機能はありません。Worksは導入相談後に別途提示した条件に基づき、有料契約の申込みを受け付けます。OSは導入相談のうえ、提供範囲と契約条件をご案内します。サイトの閲覧やお問い合わせだけで、有料契約又は自動更新に同意したものとは扱いません。
                       </p>
                       <p>
-                        支払方法・期日、提供開始、最低利用期間、更新、解約・返金、動作環境は製品別に契約前に明示します。特定商取引法の適用・必要な表示、所在地・電話番号の請求時開示を利用できる条件と実際の受付・返信運用は専門家と事業者による確認が必要です。B2B向けであることだけで適用除外とは扱いません。
+                        お申込み前に、製品ごとの費用、支払方法・期日、提供開始、契約期間・更新、解約・返金、動作環境と、
+                        <Link
+                          href='/terms'
+                          prefetch={false}
+                          className={linkClass}
+                        >
+                          利用規約
+                        </Link>
+                        をご確認ください。提示された条件に不明な点がある場合は、
+                        <Link
+                          href='/contact'
+                          prefetch={false}
+                          className={linkClass}
+                        >
+                          お問い合わせ窓口
+                        </Link>
+                        へご連絡ください。
                       </p>
                     </>
                   }

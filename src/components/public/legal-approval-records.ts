@@ -25,7 +25,7 @@ export const legalDocumentApprovals: Readonly<
 > = {
   privacy: {
     status: 'draft',
-    contentVersion: 'issue-167-v1',
+    contentVersion: 'issue-173-draft-20261106',
     reviewedVersion: null,
     reviewedContentHash: null,
     approvedContentHash: null,
@@ -43,7 +43,7 @@ export const legalDocumentApprovals: Readonly<
   },
   terms: {
     status: 'draft',
-    contentVersion: 'issue-167-v1',
+    contentVersion: 'issue-173-draft-20261106',
     reviewedVersion: null,
     reviewedContentHash: null,
     approvedContentHash: null,
@@ -57,7 +57,7 @@ export const legalDocumentApprovals: Readonly<
   },
   legal: {
     status: 'draft',
-    contentVersion: 'issue-167-v1',
+    contentVersion: 'issue-173-draft-20261106',
     reviewedVersion: null,
     reviewedContentHash: null,
     approvedContentHash: null,
