@@ -1,5 +1,33 @@
 # Issue #173 — 最新残件と事業者の最小確認リスト
 
+## 2026-11-05：Works申請との対応更新
+
+サイトの最新mainとVercel production aliasは`e150b21aca2050f6fda3b23802063a109888a0ed`。
+Worksは`46940d2cc97eb61ed9223efd7fe647561e252794`。下記11/2の判定・採用版は履歴であり、
+そのまま最新の承認・稼働証明にはしない。
+
+本人指定の申請URL・JP・Plugin内決済なし／外部有料契約の区分を
+[確認事項](works-submission-owner-confirmations-20261102.md#2026-11-05申請metadataの指定公開承認とは別)へ追記。
+[データ別表](works-submission-data-evidence-20261101.md)には未保存previewと保存受付の違い、
+今回の限定read、retention実運用の未確認を追記した。原稿の創作や法務承認レコード変更はない。
+
+今回指定は共通`/privacy`・`/terms`であり、過去の専用URL案`/works/privacy`・`/works/terms`とは別。
+既存`works:submission:urls`は専用4経路の検査であるため、その結果を今回指定4URLの受入に流用しない。
+共通Privacy/Terms/Legalは承認待ちであり、正式本文と運営者情報の公開条件は下の12前提・
+原稿版/hash・未解決marker・実日付・根拠の照合を要する。`/works`には料金/広告があるため、
+そのページのclaim/表示整合も公開所有者が確認する。LPの存在だけで申請Websiteを合格にしない。
+
+現行の6承認レコードはdraft、承認hashと実日付はnullのまま。所有者・法務担当は既存4組の
+残件だけを解消し、対象原稿と公開可能な承認証跡を指定する。Release ownerはその承認後に
+別途明示許可された公開設定・配信を行い、指定URLの匿名GETで正式本文を確認する。
+OpenAI Verified Publisher名、審査アカウント、録画、Portal操作は別GateでありBLOCKED。
+
+今回の差分は3つの監査文書の追補のみ。`npm run legal:manifest:check`はexit0で、6文書の
+原稿・依存hashが既存snapshotと一致した（Node24.18.0/npm10.9.2、既存TypeScriptをNODE_PATHで参照）。
+`git diff --check`もexit0。別のAIレビュー担当が両repoのdiff/境界を確認し、指摘なし。
+この法務docs差分でアプリbaseline/buildは再実行していない。本文・承認・環境変数の変更がなく、
+今回の照合やWorksのコード検証を法務承認へ昇格しない。
+
 - 確認日: 2026-11-02 JST
 - OS基点: 最新main `49cbd889b6635ff87d385bbf05e1d52eb9ced943`（PR #174のsquash後）。作業前fetchで確認。
 - Works: 最新main `f02d5cdcba8d7a2dfeb58131b7c7bf9dee3a5437`。GitHub read-only照会で[既存データ証跡](works-submission-data-evidence-20261101.md)の固定SHAと差分ゼロ。

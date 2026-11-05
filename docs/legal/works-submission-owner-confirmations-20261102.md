@@ -1,5 +1,24 @@
 # 事業者の確認事項（2026-11-02 JST）
 
+## 2026-11-05：申請metadataの指定（公開承認とは別）
+
+Works Issue #194の継続作業で、本人から次の申請値を指定された。
+Websiteは`https://www.tiramisu-app.com/works`、Supportは`https://www.tiramisu-app.com/contact`、
+Privacyは`https://www.tiramisu-app.com/privacy`、Termsは`https://www.tiramisu-app.com/terms`。
+運営者情報の参照先は`https://www.tiramisu-app.com/legal`、対応国は日本（JP）。
+
+Plugin内の商品購入・決済はない。Works自体は外部契約による有料サービスであり、
+サービス全体を無料・相談のみ・契約受付なしと説明しない。Works側のportable申請metadataへ
+4URL・JP・commerce=falseと外部契約の説明を反映する。Verified Publisher名はOpenAI側の
+登録情報の照合が必要であり、サイトの運営者名やprivate Pluginのauthorから推測しない。
+
+この回答は法務3本文の正式公開承認、版/hash・施行日・改定日の承認ではない。
+本人はPrivacy・Terms・Legalの「公開承認待ち」を明示し、正式公開は所有者承認後と指定した。
+既存のapproved/confirmedの意味、12前提、原稿marker、hold/noindex、配信モードを維持する。
+過去の専用`/works/privacy`等のURL案を今回の指定へ無断で代替しない。
+共通URLを採用する以上、共通法務の未解決事項も残り、Works専用ページのゲート分離で
+共通文書の承認不足を免除できない。
+
 この記録は利用者本人から本タスクで受けた回答の参照先。公開者の実値・私用連絡先・住所・電話・顧客情報を含めない。文書原稿の版/hash、改定日・施行日の公開承認を代行しない。
 
 ## scope
