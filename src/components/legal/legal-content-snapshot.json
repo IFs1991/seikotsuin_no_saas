@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "documents": {
     "privacy": {
-      "sha256": "7f19f2121f01c32a2d536f9d81b207553b1ceebf0d52429f0582e440f4ce7514",
+      "sha256": "6c336aee4fe527d7aed7020b755e98b34f7366990ab010288ebeea61c803e34f",
       "unresolvedFields": [
         "privacy:common",
         "privacy:contact-form",
@@ -40,12 +40,12 @@
         "src/components/public/works-release-readiness.ts",
         "src/images/brand/tiramisu-os.png",
         "src/images/brand/tiramisu-wordmark.png",
-        "src/images/brand/tiramisu-works.png",
+        "src/images/brand/tiramisu-works-v2.png",
         "src/lib/utils.ts"
       ]
     },
     "terms": {
-      "sha256": "a467a869117a8f329da1845afdb27821bff8844fc77f0d9ab2116fc7129f193b",
+      "sha256": "3aee080694c442ed84f852d8953c51595bd0974de6835cf2e6bcf3ee1413ecb8",
       "unresolvedFields": [
         "terms:common",
         "terms:data-rights",
@@ -82,12 +82,12 @@
         "src/components/public/works-release-readiness.ts",
         "src/images/brand/tiramisu-os.png",
         "src/images/brand/tiramisu-wordmark.png",
-        "src/images/brand/tiramisu-works.png",
+        "src/images/brand/tiramisu-works-v2.png",
         "src/lib/utils.ts"
       ]
     },
     "legal": {
-      "sha256": "8a4498c6de2f1ad9debf785c73e5178e2cb83e3878bf535e2836a6661eaa6e2e",
+      "sha256": "45462485972e5fcdb5a7a8531557ae417ccedc202d3f3b957166e2a66ccbb971",
       "unresolvedFields": [
         "legal:operator",
         "legal:operator-disclosure",
@@ -127,7 +127,7 @@
         "src/components/public/works-release-readiness.ts",
         "src/images/brand/tiramisu-os.png",
         "src/images/brand/tiramisu-wordmark.png",
-        "src/images/brand/tiramisu-works.png",
+        "src/images/brand/tiramisu-works-v2.png",
         "src/lib/utils.ts"
       ]
     },
