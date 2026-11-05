@@ -1,6 +1,5 @@
 import Link from 'next/link';
-import tiramisuWordmark from '@/images/brand/tiramisu-wordmark.png';
-import { CspSafeImage } from './csp-safe-image';
+import { BrandLogo } from './brand-logo';
 import { createContactHref } from './marketing-links';
 
 // 公開サイト専用フッター。両製品・問い合わせ・法務への通常リンクをまとめる。
@@ -36,7 +35,7 @@ const footerColumns: ReadonlyArray<{
   },
 ];
 
-export function MarketingFooter() {
+export function MarketingFooter({ product }: { product?: 'works' | 'os' }) {
   return (
     <footer className='bg-[color:var(--lp-ink-deep)] py-12 text-white/75'>
       <div className='mx-auto max-w-6xl px-4 sm:px-6 lg:px-8'>
@@ -47,12 +46,9 @@ export function MarketingFooter() {
               prefetch={false}
               className='inline-flex rounded-[6px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--lp-accent-soft)]'
             >
-              <CspSafeImage
-                src={tiramisuWordmark}
-                alt='Tiramisu'
-                width={178}
-                height={50}
-                className='h-11 w-auto shrink-0 object-contain'
+              <BrandLogo
+                product={product}
+                className={product ? undefined : 'h-11 w-auto'}
               />
             </Link>
             <p className='mt-4 max-w-sm text-[12px] leading-6 text-white/65'>

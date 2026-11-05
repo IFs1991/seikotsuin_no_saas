@@ -23,7 +23,7 @@ import { getAdminMenuItemsForRole } from '@/lib/navigation/items';
 import { getRoleLabel, isTherapistRole } from '@/lib/constants/roles';
 import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 import { MobileUiuxEntryPrompt } from '@/components/mobile-uiux/mobile-entry-prompt';
-import tiramisuWordmark from '@/images/brand/tiramisu-wordmark.png';
+import tiramisuOs from '@/images/brand/tiramisu-os.png';
 import { AdminNotificationsMenu } from './admin-notifications-menu';
 
 const ClinicReservationsPreviewModal = dynamic(
@@ -378,13 +378,13 @@ export const Header = React.memo(function Header({
           aria-label='トップページへ移動'
         >
           <Image
-            src={tiramisuWordmark}
-            alt='ティラミス'
-            width={143}
-            height={40}
+            src={tiramisuOs}
+            alt='Tiramisu OS'
+            width={192}
+            height={64}
             // Next Imageの既定inline styleを出さず、厳格CSPを維持する。
             style={{ color: undefined }}
-            className='h-8 sm:h-10 w-auto shrink-0 object-contain rounded bg-white px-1'
+            className='h-auto w-40 sm:w-48 max-w-full shrink-0 object-contain'
             priority
           />
           <span className='text-left'>

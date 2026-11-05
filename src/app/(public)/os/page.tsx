@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { BrandLogo } from '@/components/public/brand-logo';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import {
@@ -139,6 +140,7 @@ export default function OsLandingPage() {
           <div className='absolute inset-x-0 top-0 h-px bg-[#C4956C]/50' />
           <div className='mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[1fr_0.92fr] lg:px-8 lg:py-24'>
             <div className='lp-fade-up flex flex-col justify-center gap-7'>
+              <BrandLogo product='os' className='w-64 sm:w-80' priority />
               <span className='inline-flex w-fit items-center gap-2 rounded-full border border-[#C4956C]/40 bg-[#C4956C]/15 px-3 py-1 font-mono text-[12px] font-bold uppercase tracking-wider text-[#E8B87A]'>
                 <Building2 className='h-4 w-4' aria-hidden='true' />
                 For 5+ clinic groups
@@ -832,7 +834,7 @@ export default function OsLandingPage() {
       </main>
 
       {/* ===== Footer ===== */}
-      <MarketingFooter />
+      <MarketingFooter product='os' />
 
       <DynamicLpStickyCta />
     </div>
