@@ -1,5 +1,29 @@
 # Works申請 データ取扱い監査（2026-11-01 JST）
 
+## 2026-11-05：Issue #194からの限定再照合
+
+Works main `46940d2cc97eb61ed9223efd7fe647561e252794`、サイトmain
+`e150b21aca2050f6fda3b23802063a109888a0ed`を再取得した。下の11/1監査は当時の記録として残す。
+今回の限定照合は全データ分類・委託契約・削除実行の再監査ではない。
+
+- 新しい`preview_line_content`は未保存・未送信・未承認の本文事前診断。
+  `packages/application/src/line-content-preview.ts`と登録handler、実際のread-only応答を照合した。
+  本文は会話/Tool入力として処理されるが、このpreview自身は投稿案・Run・Outboxを保存せず、
+  Provider/Healthを呼ばない。保存済み投稿案のE1/E2とは分け、OpenAI側の保持までゼロと保証しない。
+- `submit_content_proposal`は別の明示依頼と認可が必要で、E1/E2の保存・handoff・Slackカードの
+  副作用があり得る。preview成功や`executionAllowed=false`を保存承認に読み替えない。
+- 許可されたProduction読み取りで、98 migration（最新`20261104160815`）、現デモ組織の
+  `private.mcp_content_rollout.enabled=true`、既存`cleanup_content_media`と
+  `cleanup_content_line_assets`の存在を確認。顧客本文・素材・Vault秘密は取得していない。
+  `apps/runtime-worker/src/tasks.ts:instagramAssetCleanup`は毎時37分、
+  `MCP_CONTENT_RETENTION_ENABLED`を確認して既存cleanupを呼ぶ実装だった。
+  本番flag・schedule有効性・最終成功・Storage remove/ack・backupは今回もUNKNOWN。
+  関数の存在やWorkerのdeployment成功を実削除成功へ昇格しない。
+- 実ホストP05の隔離先・現在の店舗利用・本人宛先/同意・保存副作用への許可が未成立。
+  店舗のLINE/Slack利用設定停止をreadで確認した。保存/承認/外部送信の実証はしていない。
+
+この限定事実を採用しても、B08の保持・削除・外部提供・契約と法務本文の正式承認は未完了。
+
 ## 範囲と証拠の限界
 
 OS main: `b9e3907f160482ee3ed0dab2a4d0c845f9c73379`。Works main: `f02d5cdcba8d7a2dfeb58131b7c7bf9dee3a5437`。両方を作業開始時に取得し、前回確認SHAと一致。OSの元checkoutは別ブランチ・既存未追跡物あり、tracked treeはmainと差分なし。独立checkoutで変更し、既存物は変更していない。
