@@ -1,5 +1,5 @@
 import tiramisuWordmark from '@/images/brand/tiramisu-wordmark.png';
-import tiramisuWorks from '@/images/brand/tiramisu-works.png';
+import tiramisuWorks from '@/images/brand/tiramisu-works-v2.png';
 import tiramisuOs from '@/images/brand/tiramisu-os.png';
 import { cn } from '@/lib/utils';
 import { CspSafeImage } from './csp-safe-image';
