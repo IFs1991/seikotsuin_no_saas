@@ -136,14 +136,22 @@ describe('原稿SHA-256・依存データ・manifest鮮度（PR-3）', () => {
   });
   it('必須条項マーカー・販売placeholderを収集し、未確定という単語だけは禁止しない', () => {
     const current = compute();
-    expect(current.documents.privacy.unresolvedFields).toContain(
-      'privacy:retention'
-    );
+    for (const document of ['privacy', 'terms', 'legal'] as const)
+      expect(current.documents[document].unresolvedFields).toEqual([]);
+    // 採用済み原稿からマーカーを除いても、未レビュー原稿の検出は維持する。
     expect(
-      current.documents.legal.unresolvedFields.some(field =>
-        field.includes('sales-placeholder')
+      invoke(
+        "export const s = { id: 'retention', body: <LegalReviewRequired field='terms:retention'><p>確認前の本文</p></LegalReviewRequired> };",
+        'unresolved'
       )
-    ).toBe(true);
+    ).toEqual(['terms:retention']);
+    // 販売欄の原稿を埋めても、placeholder検出自体は弱めない。
+    expect(
+      invoke(
+        "export const s = { id: 'sales', body: <LegalPendingValue /> };",
+        'unresolved'
+      )
+    ).toEqual([expect.stringContaining('sales-placeholder')]);
     expect(
       invoke(
         "export const s = { id: 'response', body: <p>実行結果が未確定の場合は照合する</p> };",
@@ -243,6 +251,22 @@ describe('原稿SHA-256・依存データ・manifest鮮度（PR-3）', () => {
     expect(() => compute()).toThrow('manifest fixture command failed');
   });
   it('生成JSONの未解決項目だけを手で消しても鮮度検証に失敗', () => {
+    change(
+      'src/app/(public)/privacy/page.tsx',
+      text =>
+        "import { LegalReviewRequired } from '@/components/legal/legal-review-required';\n" +
+        text +
+        "\nexport const syntheticReview = <LegalReviewRequired field='privacy:retention'><p>確認前の本文</p></LegalReviewRequired>;"
+    );
+    const withUnresolved = compute();
+    expect(withUnresolved.documents.privacy.unresolvedFields).toContain(
+      'privacy:retention'
+    );
+    fs.writeFileSync(
+      path.join(root, manifestPath),
+      JSON.stringify(withUnresolved, null, 2) + '\n'
+    );
+    expect(invoke(root, 'verify')).toBe(true);
     change(manifestPath, text => {
       const manifest = manifestSchema.parse(JSON.parse(text));
       manifest.documents.privacy.unresolvedFields = [];

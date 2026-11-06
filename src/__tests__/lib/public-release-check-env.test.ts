@@ -87,9 +87,11 @@ describe('公開前チェックCLIの環境読み込み（F2）', () => {
       path.join(dir, 'private-terms.txt'),
     ]);
     expect(clean.output).toContain('OK 非公開文字列 #1: 0件');
-    // スキャンが安全でも、未承認の文書を公開可にしない。
+    // スキャンと共通法務が安全でも、LP広告の未承認を公開可にしない。
     expect(clean.status).toBe(1);
-    expect(clean.output).toContain('法務文書の承認未完了 3件');
+    expect(clean.output).toContain('[B05]');
+    expect(clean.output).toContain('移設したOS LPの既存表現');
+    expect(clean.output).toContain('RELEASE_BLOCKED');
   });
 
   it('.env.production だけにある http のURLを不正な設定として検出する', () => {
@@ -122,9 +124,10 @@ describe('公開前チェックCLIの環境読み込み（F2）', () => {
     // 台帳の未承認項目があるため判定は引き続き公開不可
     expect(run.status).toBe(1);
     expect(run.output).toContain('判定: 公開不可（RELEASE_BLOCKED）');
-    expect(run.output).toContain('法務文書の承認未完了 3件');
+    expect(run.output).toContain('[B05]');
+    expect(run.output).toContain('移設したOS LPの既存表現');
     for (const document of ['privacy', 'terms', 'legal']) {
-      expect(run.output).toContain(`法務文書 /${document}: 公開承認待ち`);
+      expect(run.output).toContain(`法務文書 /${document}: 公開承認済み`);
     }
   });
 

@@ -2,17 +2,8 @@
   "schemaVersion": 1,
   "documents": {
     "privacy": {
-      "sha256": "6c336aee4fe527d7aed7020b755e98b34f7366990ab010288ebeea61c803e34f",
-      "unresolvedFields": [
-        "privacy:common",
-        "privacy:contact-form",
-        "privacy:os",
-        "privacy:pending",
-        "privacy:requests",
-        "privacy:retention",
-        "privacy:scope",
-        "privacy:works"
-      ],
+      "sha256": "6c90560cbf39413ad236c8cf993ca236185aaacb7dc1f0e6f37720a3a705576b",
+      "unresolvedFields": [],
       "inputFiles": [
         "src/app/(public)/lp-styles.css",
         "src/app/(public)/privacy/page.tsx",
@@ -45,16 +36,8 @@
       ]
     },
     "terms": {
-      "sha256": "3aee080694c442ed84f852d8953c51595bd0974de6835cf2e6bcf3ee1413ecb8",
-      "unresolvedFields": [
-        "terms:common",
-        "terms:data-rights",
-        "terms:liability",
-        "terms:os",
-        "terms:pending",
-        "terms:scope",
-        "terms:works"
-      ],
+      "sha256": "548b2d68309e6c4f520f07cb8202a07e692da9d1b7de5c891da3431d1fe4866a",
+      "unresolvedFields": [],
       "inputFiles": [
         "src/app/(public)/lp-styles.css",
         "src/app/(public)/terms/page.tsx",
@@ -87,19 +70,8 @@
       ]
     },
     "legal": {
-      "sha256": "45462485972e5fcdb5a7a8531557ae417ccedc202d3f3b957166e2a66ccbb971",
-      "unresolvedFields": [
-        "legal:operator",
-        "legal:operator-disclosure",
-        "legal:os",
-        "legal:sales-method",
-        "legal:sales-placeholder@220",
-        "legal:sales-placeholder@61",
-        "legal:sales-placeholder@62",
-        "legal:sales-placeholder@63",
-        "legal:sales-placeholder@64",
-        "legal:works"
-      ],
+      "sha256": "90ecf56d64dc5080c35ee9160575ccc51c21489028429fb80a69c47a4dc6a50c",
+      "unresolvedFields": [],
       "inputFiles": [
         "src/app/(public)/legal/page.tsx",
         "src/app/(public)/lp-styles.css",
@@ -132,7 +104,7 @@
       ]
     },
     "works/privacy": {
-      "sha256": "a6c8a48895b8303446527d5206b4984b8e693f546cf9cca884d429112af150ab",
+      "sha256": "63578471def9772ebaef93a04544332d7c309d026403a8405a2e1fe341b7314e",
       "unresolvedFields": [
         "works/privacy:operator",
         "works/privacy:requests",
@@ -160,7 +132,7 @@
       ]
     },
     "works/terms": {
-      "sha256": "e49dc1baa69a41757e7bcd0b46d7e9afdbf480dd96bb5a9421131de832c32a3b",
+      "sha256": "95c5f00abbd0b80c417ae5f429cc852d801a25cc2db9eb35146e4149cbe22b70",
       "unresolvedFields": [
         "works/terms:scope"
       ],
@@ -185,7 +157,7 @@
       ]
     },
     "works/plugin": {
-      "sha256": "44c3118fb52b046f437b989f9aba7a5feea2f6bd4b29d15acc5267baca7e7165",
+      "sha256": "ddfbf6c3612cb557e726a90bb7009d4cd3e1acd7c1777140494ce768b89e5548",
       "unresolvedFields": [
         "works/plugin:scope"
       ],

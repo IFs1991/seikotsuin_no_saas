@@ -4,25 +4,84 @@ import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const { parse } = require('node-html-parser');
 
-export function inspectWorksPage(html, document) {
+// 本人が2026-11-05に指定した申請metadataと同じ4URLを検査する。
+// 専用 /works/privacy 等の検査で、共通法務URLの公開確認を代用しない。
+export const submissionPages = [
+  { field: 'websiteURL', route: '/works', kind: 'website', document: null },
+  { field: 'supportURL', route: '/contact', kind: 'support', document: null },
+  {
+    field: 'privacyPolicyURL',
+    route: '/privacy',
+    kind: 'legal',
+    document: 'privacy',
+  },
+  {
+    field: 'termsOfServiceURL',
+    route: '/terms',
+    kind: 'legal',
+    document: 'terms',
+  },
+];
+
+const requiredLegalSections = {
+  privacy: ['common', 'os', 'works', 'requests', 'retention'],
+  terms: ['common', 'os', 'works', 'data-rights', 'liability'],
+};
+
+export function inspectWorksPage(
+  html,
+  document,
+  kind = document ? 'legal' : 'support'
+) {
   const dom = parse(html);
-  const body = dom.querySelector('main')?.textContent ?? '';
+  // script/RSC内の文字列を、利用者が読める本文として数えない。
+  for (const node of dom.querySelectorAll(
+    'script, style, template, [hidden], [aria-hidden="true"]'
+  ))
+    node.remove();
+  const main = dom.querySelector('main');
+  const body = main?.textContent ?? '';
   const robots =
     dom.querySelector('meta[name="robots"]')?.getAttribute('content') ?? '';
   const marker = document
-    ? dom.querySelector(`[data-legal-document="${document}"]`)
+    ? main?.querySelector(`[data-legal-document="${document}"]`)
     : undefined;
   const links = dom
     .querySelectorAll('a')
     .map(a => a.getAttribute('href') ?? '');
   if (!body.includes('Tiramisu Works') || /noindex/i.test(robots)) return false;
-  if (document)
+  if (kind === 'legal') {
+    const sections = requiredLegalSections[document];
+    if (!sections) return false;
     return (
       marker?.getAttribute('data-legal-publication') === 'published' &&
-      links.includes('/works/privacy') &&
-      links.includes('/works/terms') &&
-      !/UNKNOWN|OWNER_ACTION_REQUIRED|確認用原稿|確定後に掲載/.test(body)
+      links.includes('/privacy') &&
+      links.includes('/terms') &&
+      sections.every(id => {
+        const section = marker.querySelector(`section#${id}`);
+        return (
+          Boolean(section?.querySelector('h2')?.textContent.trim()) &&
+          section
+            .querySelectorAll('p, li')
+            .some(node => node.textContent.trim())
+        );
+      }) &&
+      !/UNKNOWN|OWNER_ACTION_REQUIRED|確認用原稿|確定後に掲載|公開承認待ち|正式公開.*保留|正式公開の承認後に掲載|未確定/.test(
+        body
+      )
     );
+  }
+  if (kind === 'website')
+    return (
+      Boolean(main?.querySelector('h1')?.textContent.trim()) &&
+      Boolean(
+        main?.querySelector('#how-it-works ol li h3 + p')?.textContent.trim()
+      ) &&
+      links.some(link => link === '/contact' || link.startsWith('/contact?')) &&
+      links.includes('/privacy') &&
+      links.includes('/terms')
+    );
+  if (kind !== 'support') return false;
   return (
     body.includes('サポート') &&
     links.some(
@@ -35,14 +94,8 @@ export function inspectWorksPage(html, document) {
 }
 
 export async function verifyWorksUrls(origin, fetchPage = fetch) {
-  const paths = [
-    ['websiteURL', '/works/plugin', 'works/plugin'],
-    ['supportURL', '/contact?product=works&intent=support', null],
-    ['privacyPolicyURL', '/works/privacy', 'works/privacy'],
-    ['termsOfServiceURL', '/works/terms', 'works/terms'],
-  ];
   return Promise.all(
-    paths.map(async ([field, route, document]) => {
+    submissionPages.map(async ({ field, route, document, kind }) => {
       try {
         const url = new URL(route, origin);
         const response = await fetchPage(url, {
@@ -53,10 +106,7 @@ export async function verifyWorksUrls(origin, fetchPage = fetch) {
         const correctDestination =
           finalUrl.origin === url.origin &&
           finalUrl.pathname === url.pathname &&
-          (!document
-            ? finalUrl.searchParams.get('product') === 'works' &&
-              finalUrl.searchParams.get('intent') === 'support'
-            : finalUrl.search === '');
+          finalUrl.search === '';
         const html = await response.text();
         return {
           field,
@@ -68,7 +118,7 @@ export async function verifyWorksUrls(origin, fetchPage = fetch) {
             (response.headers.get('content-type') ?? '').includes(
               'text/html'
             ) &&
-            inspectWorksPage(html, document),
+            inspectWorksPage(html, document, kind),
         };
       } catch {
         return { field, route, status: null, passed: false };
@@ -86,10 +136,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     publicSiteOrigin,
     publishableValue,
     isProductionOrigin,
+    getLegalPublication,
   } = require('../../src/components/public/release-readiness.ts');
-  const {
-    getWorksLegalPublication,
-  } = require('../../src/components/public/works-release-readiness.ts');
   const index = process.argv.indexOf('--origin');
   const approvedOrigin = publishableValue(publicSiteOrigin);
   const origin = index === -1 ? approvedOrigin : process.argv[index + 1];
@@ -101,8 +149,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   } else {
     const results = await verifyWorksUrls(origin);
     for (const result of results) console.log(JSON.stringify(result));
-    const ownerReady = ['works/privacy', 'works/terms', 'works/plugin'].every(
-      id => getWorksLegalPublication(id).approved
+    const ownerReady = ['privacy', 'terms'].every(
+      id => getLegalPublication(id).approved
     );
     const passed =
       results.every(result => result.passed) &&

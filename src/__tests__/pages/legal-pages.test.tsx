@@ -7,8 +7,6 @@ import {
   operatorProfile,
   type OperatorProfile,
 } from '@/components/public/release-readiness';
-import { worksPlans, formatYen } from '@/components/public/works-content';
-import { planItems } from '@/components/public/lp-content';
 import { setupPublicSiteTestEnvironment } from './public-site-test-utils';
 
 jest.mock('@/components/public/release-readiness', () => {
@@ -149,18 +147,24 @@ describe('Legal pages', () => {
     for (const text of [
       'Gemini',
       'スタッフ名',
-      'DPA',
-      '個人情報保護法28条',
-      'Vault',
-      'MCP',
+      '利用院の指示と利用目的の範囲',
+      '国外への個人データの提供',
+      '認証情報',
+      'OpenAI',
+      'Supabase',
+      'Trigger.dev',
       'PHI',
       '24時間',
-      '毎時処理',
       '7日',
       'バックアップ',
       '自動削除されません',
-      '東京リージョン（ap-northeast-1）',
-      '本番の削除タスク稼働と最終的な削除時刻は未確認',
+      '東京リージョン',
+      'サーバーから実際に削除される時点は異なります',
+      'アカウント・OS・業務記録の保存期間',
+      '問い合わせへの回答と関連する対応が完了するまで保存',
+      '対象データ、対応方法および完了の見込み',
+      '投稿案の保存には別の依頼が必要',
+      'Worksで会話から利用するSquare予約の検証用連携',
     ]) {
       expect(container).toHaveTextContent(text);
     }
@@ -173,23 +177,23 @@ describe('Legal pages', () => {
       '自動更新',
       '解約',
       '返金',
-      'DPA',
-      'outcome_unknown',
-      '自動で重複送信せず',
+      'データ処理契約',
+      '実行結果が不明な操作を自動再送しません',
+      '新しい依頼として再送する前に',
       '知的財産',
       '秘密保持',
       '損害賠償',
       '準拠法',
-      '裁判管轄',
+      '紛争解決',
     ]) {
       expect(terms.container).toHaveTextContent(text);
     }
     expect(terms.container).not.toHaveTextContent('利用した時点で本規約に同意');
     expect(terms.container).toHaveTextContent(
-      'その条件に基づく有料契約の申込みを受け付けます'
+      '別途提示する条件に基づき申込みを受け付けます'
     );
     expect(terms.container).toHaveTextContent(
-      'サイト閲覧や問い合わせだけで有料契約は成立しません'
+      'サイトの閲覧やお問い合わせだけで有料契約は成立しません'
     );
   });
 
@@ -208,10 +212,12 @@ describe('Legal pages', () => {
       screen.getByText('商用利用前の法務確認が必要です')
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/運営者の氏名・ブランド・業務メールは掲載承認済み/)
+      screen.getByText(/お申込み前に、利用する製品と提供範囲/)
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/事業者が運用確認完了を申告.*証跡の照合/)
+      screen.getByText(
+        /本規約のみを根拠に、最低利用期間、自動更新又は返金不可の条件を付加/
+      )
     ).toBeInTheDocument();
   });
 
@@ -225,17 +231,22 @@ describe('Legal pages', () => {
       screen.getByRole('heading', { name: 'プライバシーポリシー' })
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/医療情報システムの安全管理に関するガイドライン/)
+      screen.getByText(/利用院が預ける情報は、利用院の指示と利用目的の範囲/)
     ).toBeInTheDocument();
     expect(
       screen.getByText('商用利用前の法務確認が必要です')
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/窓口の受信・通知・返信は事業者が運用確認完了を報告/)
+      screen.getByText(
+        /ご請求の内容に応じて、ご本人.*管理権限.*利用院と連携して対応/
+      )
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/本人確認・担当者・回答方法.*公開可能な運用証跡と照合/)
+      screen.getByText(/当事業者が管理する範囲を手動で確認して対応/)
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText('確認用原稿に残る未確定事項')
+    ).not.toBeInTheDocument();
   });
 
   test('/terms は共通事項と製品別の条件を見出し・アンカーで分ける', async () => {
@@ -313,22 +324,29 @@ describe('Legal pages', () => {
     ).toHaveAttribute('href', '/privacy#requests');
 
     const works = container.querySelector('section#works') as HTMLElement;
-    for (const plan of worksPlans) {
-      expect(works).toHaveTextContent(
-        `${plan.name}: 月額${formatYen(plan.monthlyFeeYen)}・初期費用${formatYen(plan.initialFeeYen)}`
-      );
-    }
     const os = container.querySelector('section#os') as HTMLElement;
-    for (const plan of planItems) {
-      expect(os).toHaveTextContent(
-        `${plan.name}: 月額${plan.monthlyPrice}・初期費用${plan.initialCost}`
+    expect(
+      within(works).getByRole('link', { name: 'Tiramisu Worksの料金欄' })
+    ).toHaveAttribute('href', '/works#pricing');
+    expect(
+      within(os).getByRole('link', { name: 'Tiramisu OSの料金欄' })
+    ).toHaveAttribute('href', '/os#pricing');
+    for (const section of [works, os]) {
+      expect(section).toHaveTextContent(
+        '掲載額をそのまま契約金額とするものではありません'
       );
-      expect(os).toHaveTextContent(plan.extraStore);
+      expect(section).toHaveTextContent('税区分');
+      for (const label of [
+        '支払方法・支払時期',
+        '提供開始時期',
+        '契約期間・更新',
+        '解約・返金',
+      ]) {
+        const row = within(section).getByText(label).closest('div');
+        expect(row).not.toHaveTextContent('確定後に掲載します');
+        expect(row).toHaveTextContent(/契約|申込み/);
+      }
     }
-    expect(os).toHaveTextContent('OSの税区分と最終金額は未確定');
-    expect(works).toHaveTextContent('暫定価格（税別）');
-    expect(works).toHaveTextContent('支払方法・支払時期');
-    expect(works).toHaveTextContent('確定後に掲載します');
   });
 
   test('/legal は未承認の氏名・所在地・電話番号の値を表示しない（A43/A44）', async () => {

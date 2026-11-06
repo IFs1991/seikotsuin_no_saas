@@ -11,6 +11,7 @@ import {
   isProductionOrigin,
   isPublishableEmail,
   operatorProfile,
+  legalPublicationPrerequisiteIds,
   publicSiteOrigin,
   publishableValue,
   releaseCheckItems,
@@ -27,26 +28,19 @@ import {
 import { planItems } from '@/components/public/lp-content';
 
 describe('公開前判定（A44/A46）', () => {
-  it('現状の台帳では公開不可と判定し、公開に必要な残件を列挙する', () => {
+  it('共通法務の採用後もLP広告の未承認項目をサイト全体の残件として維持する', () => {
     const result = evaluateReleaseReadiness();
     expect(result.ready).toBe(false);
-    const ledgers = new Set(result.blocking.map(item => item.ledger));
-    for (const ledger of [
-      'B02',
-      'B03',
-      'B04',
-      'B05',
-      'B06',
-      'B07',
-      'B08',
-      'B09',
-    ]) {
-      expect(ledgers.has(ledger as ReleaseCheckItem['ledger'])).toBe(true);
-    }
-    // 本人の掲載承認を反映したB01だけは充足しても、残る公開ゲートを代用しない。
+    expect(result.blocking.map(item => item.id)).toEqual([
+      'works-claims',
+      'os-migrated-claims',
+    ]);
+    // 本人が採用した法務12項目は、LP広告やB10の承認を代用しない。
     expect(
       releaseCheckItems
-        .filter(item => item.ledger === 'B01')
+        .filter(item =>
+          legalPublicationPrerequisiteIds.some(id => id === item.id)
+        )
         .every(item => checkReleaseItem(item).satisfied)
     ).toBe(true);
     // プラグイン申請（B10）は公開判定とは別に扱う。
@@ -175,12 +169,7 @@ describe('公開前判定（A44/A46）', () => {
       releaseCheckItems
         .filter(item => item.status === 'approved_for_publication')
         .map(item => item.id)
-    ).toEqual([
-      'operator-name',
-      'operator-brand',
-      'contact-alternative',
-      'operator-disclosure-text',
-    ]);
+    ).toEqual([...legalPublicationPrerequisiteIds]);
   });
 
   it('本番originとメールの検証は正当な値を受け入れる', () => {
@@ -213,21 +202,31 @@ describe('公開前判定（A44/A46）', () => {
     ).toBe('（テスト用）値');
   });
 
-  it('照合済みoriginや窓口完了申告を公開承認へ昇格せず、住所・電話実値を持たない（A43/A45）', () => {
+  it('本人の暫定採用をoriginと窓口へ反映し、住所・電話実値を持たない（A43/A45）', () => {
     expect(publishableValue(operatorProfile.name)).not.toBeNull();
     expect(publishableValue(operatorProfile.brand)).not.toBeNull();
     expect(operatorProfile.publicEmail.status).toBe('approved_for_publication');
     expect(isPublishableEmail(operatorProfile.publicEmail.value)).toBe(true);
     expect(isProductionOrigin(publicSiteOrigin.value)).toBe(true);
-    expect(publicSiteOrigin.status).toBe('confirmed');
-    expect(publishableValue(publicSiteOrigin)).toBeNull();
-    for (const id of ['contact-form-operation', 'operator-disclosure-operation']) {
+    expect(operatorProfile.businessType.status).toBe(
+      'approved_for_publication'
+    );
+    expect(publicSiteOrigin.status).toBe('approved_for_publication');
+    expect(publishableValue(publicSiteOrigin)).toBe(
+      'https://www.tiramisu-app.com'
+    );
+    for (const id of [
+      'contact-form-operation',
+      'operator-disclosure-operation',
+    ]) {
       const item = releaseCheckItems.find(candidate => candidate.id === id);
       if (!item) throw new Error(`Missing prerequisite ${id}`);
-      expect(item.status).toBe('confirmed');
-      expect(checkReleaseItem(item).satisfied).toBe(false);
-      expect(item.nextAction).toContain('完了申告済み');
-      expect(item.nextAction).toContain('証跡');
+      expect(item.status).toBe('approved_for_publication');
+      expect(checkReleaseItem(item).satisfied).toBe(true);
+      expect(item.nextAction).toContain('完了申告');
+      expect(item.nextAction).toContain(
+        'interim-publication-approval-20261106.md'
+      );
     }
     // 所在地・電話番号は方針文だけを持ち、実値の欄を設けない。
     expect(Object.keys(operatorProfile)).toEqual([
