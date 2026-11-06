@@ -12,7 +12,8 @@ import type { LegalContentState } from '../legal/legal-review-fields';
 // 公開サイト（共通トップ・Works／OS LP・問い合わせ・法務）の公開前判定に使う静的な承認台帳。
 //
 // - 値は公開してよいものだけを入れる。未確定・未承認は null とし、架空の値で埋めない。
-// - 2026-11-02に本人が掲載承認した公開者名・ブランド・業務メールだけを反映する。
+// - 本人の掲載承認済み情報と、2026-11-06に採用された共通3文書の暫定方針を反映する。
+//   根拠: docs/legal/interim-publication-approval-20261106.md。LP機能主張の承認は別管理。
 // - 所在地・電話番号の実値はここを含むリポジトリのどこにも入れない（請求時に個別提供する運用）。
 // - サーバー側（公開ページの描画と公開前チェック）からだけ参照し、client componentへ渡さない。
 // - 正式配信を選ぶVercel buildでは公開前チェックを必須実行する。
@@ -111,7 +112,7 @@ export interface OperatorProfile {
 
 // /legal・/contact で使う運営者情報。value が null の項目は「公開前に確定」と表示する。
 export const operatorProfile: OperatorProfile = {
-  businessType: { value: '個人事業主', status: 'confirmed' },
+  businessType: { value: '個人事業主', status: 'approved_for_publication' },
   name: { value: '岩沢太', status: 'approved_for_publication' },
   brand: {
     value: 'Tiramisu',
@@ -128,10 +129,10 @@ export const operatorProfile: OperatorProfile = {
   },
 };
 
-// Vercel alias/匿名GETで照合済みのorigin。掲載承認前はmetadataBase等へ採用しない。
+// Vercel alias/匿名GETで照合し、2026-11-06の共通3文書公開で採用したorigin。
 export const publicSiteOrigin: PublishableField = {
   value: 'https://www.tiramisu-app.com',
-  status: 'confirmed',
+  status: 'approved_for_publication',
 };
 
 export interface WorksClaim {
@@ -346,10 +347,10 @@ export const releaseCheckItems: readonly ReleaseCheckItem[] = [
     id: 'contact-form-operation',
     ledger: 'B02',
     label: 'Googleフォームの現物・受信・通知・担当・返信手段',
-    status: 'confirmed',
+    status: 'approved_for_publication',
     requiredFor: 'release',
     nextAction:
-      '受信・通知・返信は事業者の完了申告済み。docs/legal/works-submission-owner-confirmations-20261102.md#operator の公開可能な証跡参照先、設問・閲覧権限・本人確認・保持条件を照合する。再試験を一律には求めない',
+      '受信・通知・返信の完了申告と既存の窓口を採用。本人確認・保存・回答は暫定プライバシー方針に従う。根拠: docs/legal/interim-publication-approval-20261106.md',
   },
   {
     id: 'contact-alternative',
@@ -364,10 +365,10 @@ export const releaseCheckItems: readonly ReleaseCheckItem[] = [
     id: 'operator-disclosure-operation',
     ledger: 'B03',
     label: '所在地・電話番号の請求時開示の運用（受付から返信まで）',
-    status: 'confirmed',
+    status: 'approved_for_publication',
     requiredFor: 'release',
     nextAction:
-      '受付・返信は事業者の完了申告済み。公開可能な証跡参照先と、申込み前に遅滞なく開示する手順・担当を照合する。住所・電話の原本再収集や再試験を一律には求めない',
+      '受付・返信の完了申告と、申込み前にも所在地・電話番号の開示を受け付ける方針を採用。原本を公開リポジトリへ転記しない。根拠: docs/legal/interim-publication-approval-20261106.md',
   },
   {
     id: 'operator-disclosure-text',
@@ -408,45 +409,48 @@ export const releaseCheckItems: readonly ReleaseCheckItem[] = [
     id: 'works-plan-scope',
     ledger: 'B06',
     label:
-      'プランの利用範囲（課金単位・接続・業務・利用者・実行枠・追加料金・支援上限）',
-    status: 'missing',
+      '利用範囲を申込前に個別提示する方針（課金単位・接続・業務・利用者・実行枠・追加料金・支援上限）',
+    status: 'approved_for_publication',
     requiredFor: 'release',
-    nextAction: '事業者が決める。決まるまで料金カードは定性的な説明に留める',
+    nextAction:
+      '共通規約・販売条件の個別提示方式を採用。固定上限を新設せず、契約前に対象・数量・追加料金を提示する。標準見積書等は後日作成する。根拠: docs/legal/interim-publication-approval-20261106.md',
   },
   {
     id: 'works-pricing-publication',
     ledger: 'B07',
     label: 'Works料金（暫定固定・税別）の掲載文言と販売条件',
-    status: 'confirmed',
+    status: 'approved_for_publication',
     requiredFor: 'release',
-    nextAction: '金額・掲載文言・販売条件を事業者が最終承認する',
+    nextAction:
+      '既存LPの税別参考料金と、正式な金額・税を申込前に個別提示する掲載方針を採用。価格SSOTの数値変更はしない。根拠: docs/legal/interim-publication-approval-20261106.md',
   },
   {
     id: 'subscription-terms',
     ledger: 'B07',
-    label: 'サブスク条件（支払・期間・更新・解約・返金・税表記）',
-    status: 'missing',
+    label: '契約条件の個別提示方針（支払・期間・更新・解約・返金・税表記）',
+    status: 'approved_for_publication',
     requiredFor: 'release',
     nextAction:
-      'docs/legal/issue-167-decisions.md のB07を製品別に確定し、LP・規約・運営者情報・申込導線を一致させる。解約を電話だけに限定しない',
+      '申込前の条件提示と合意による個別契約方式を採用。閲覧・問い合わせだけで契約・課金は成立しない。統一の最低期間・自動更新・返金不可を新設しない。根拠: docs/legal/interim-publication-approval-20261106.md',
   },
   {
     id: 'data-handling',
     ledger: 'B08',
-    label: '製品別のデータ取扱い（実フロー・保持・削除・委託・送信先）',
-    status: 'missing',
+    label:
+      '製品別のデータ取扱いの掲載方針（処理先・保存理由・終了と削除請求・外部保存）',
+    status: 'approved_for_publication',
     requiredFor: 'release',
     nextAction:
-      'docs/legal/issue-167-data-evidence.md の未確認事項（全送信先・国外提供・委託・保持・削除・バックアップ）を運用と照合し、本文と公開別表を承認する',
+      '確認した処理経路と、利用終了・削除請求に応じた手動対応の暫定方針を採用。有効期限と物理削除を区別し、未検証の自動消去期限・国内限定処理を約束しない。根拠: docs/legal/interim-publication-approval-20261106.md',
   },
   {
     id: 'legal-approval',
     ledger: 'B09',
-    label: '利用規約・プライバシーポリシー・運営者情報の最終承認',
-    status: 'draft',
+    label: '利用規約・プライバシーポリシー・運営者情報の暫定版掲載承認',
+    status: 'approved_for_publication',
     requiredFor: 'release',
     nextAction:
-      '事業者と必要な専門家がB01〜B08と3文書の原稿版・実日付・未解決事項を確認し、legalDocumentApprovalsに承認証跡を記録する。特商法表示は実際の販売方法から判断する',
+      '2026-11-06の本人回答により暫定原稿の採用とLP反映を承認。原稿版・hash・施行日をlegalDocumentApprovalsへ記録する。根拠: docs/legal/interim-publication-approval-20261106.md',
   },
   {
     id: 'os-migrated-claims',

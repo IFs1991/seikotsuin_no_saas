@@ -163,9 +163,13 @@ describe('文書公開承認はfail-closed（Issue #167）', () => {
       ).toBe(false);
   });
   it.each<LegalDocumentId>(['privacy', 'terms', 'legal'])(
-    '%s: 現在は未承認、承認済みの版・日付・全前提が揃った場合のみ正式表示',
+    '%s: 採用済み暫定版の実台帳・hash・日付が揃っている',
     document => {
-      expect(getLegalPublication(document)).toEqual({ approved: false });
+      expect(checkPublication(document)).toEqual({
+        approved: true,
+        revisedOn: '2026-11-06',
+        effectiveOn: '2026-11-06',
+      });
       expect(
         getLegalPublication(document, approvedDocuments, approvedItems)
       ).toEqual({
@@ -173,7 +177,10 @@ describe('文書公開承認はfail-closed（Issue #167）', () => {
         revisedOn: '2026-10-31',
         effectiveOn: '2026-11-01',
       });
-      expect(legalDocumentApprovals[document].approvedOn).toBeNull();
+      expect(legalDocumentApprovals[document].approvedOn).toBe('2026-11-06');
+      expect(legalDocumentApprovals[document].contentVersion).toBe(
+        'interim-20261106'
+      );
     }
   );
   const invalid: Partial<LegalDocumentApproval>[] = [
@@ -297,7 +304,14 @@ describe('文書公開承認はfail-closed（Issue #167）', () => {
       'plugin-submission',
     ]);
     expect(
-      getLegalPublication('privacy', legalDocumentApprovals, items).approved
+      getLegalPublication(
+        'privacy',
+        {
+          ...approvedDocuments,
+          privacy: { ...approvedDocuments.privacy, status: 'draft' },
+        },
+        items
+      ).approved
     ).toBe(false);
     // 文書の正当な承認をしてもB10が承認されたことにはならない。
     expect(

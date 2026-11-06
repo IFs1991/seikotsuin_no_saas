@@ -11,7 +11,7 @@ import path from 'node:path';
 import os from 'node:os';
 
 describe('Productionと法務正式配信の分離', () => {
-  it('法務専用CLIはLP承認を要求せず、未承認文書・契約・データ条件を拒否する', () => {
+  it('法務専用CLIは採用済み共通3文書を許可し、LP広告の承認とは分離する', () => {
     const result = spawnSync(
       process.execPath,
       ['scripts/public-site/check-release-readiness.mjs', '--legal-only'],
@@ -21,8 +21,8 @@ describe('Productionと法務正式配信の分離', () => {
         timeout: 60_000,
       }
     );
-    expect(result.status).toBe(1);
-    expect(result.stdout).toContain('RELEASE_BLOCKED');
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('READY_FOR_RELEASE');
     for (const required of ['/privacy', '/terms', '/legal', '[B07]', '[B08]'])
       expect(result.stdout).toContain(required);
     expect(result.stdout).not.toContain('[B05]');
@@ -96,7 +96,9 @@ describe('Productionと法務正式配信の分離', () => {
   });
   it('Production SSRは原稿のpropsをHTMLへ出さず既存アンカーを保持', () => {
     const previous = process.env.VERCEL_ENV;
+    const previousMode = process.env.LEGAL_PUBLICATION_MODE;
     process.env.VERCEL_ENV = 'production';
+    process.env.LEGAL_PUBLICATION_MODE = 'hold';
     try {
       const html = renderToStaticMarkup(
         createElement(LegalPage, {
@@ -121,14 +123,18 @@ describe('Productionと法務正式配信の分離', () => {
       expect(html).toContain('/contact?intent=privacy');
       expect(html).toContain('/contact?intent=operator-disclosure');
       expect(html).toContain('正式公開を保留');
-      expect(html).toContain('窓口運用は事業者から完了の申告があり、証跡を照合中');
+      expect(html).toContain(
+        '窓口運用は事業者から完了の申告があり、証跡を照合中'
+      );
       expect(html).not.toContain('受付・返信の運用確認も完了していません');
     } finally {
       if (previous === undefined) delete process.env.VERCEL_ENV;
       else process.env.VERCEL_ENV = previous;
+      if (previousMode === undefined) delete process.env.LEGAL_PUBLICATION_MODE;
+      else process.env.LEGAL_PUBLICATION_MODE = previousMode;
     }
   });
-  it('未承認の正式配信buildはNext buildより前に失敗する', () => {
+  it('原稿承認後も不正な問い合わせ設定の正式配信buildはNext buildより前に失敗する', () => {
     const result = spawnSync(
       process.execPath,
       ['scripts/public-site/build-for-vercel.mjs'],
@@ -138,6 +144,8 @@ describe('Productionと法務正式配信の分離', () => {
           NODE_ENV: 'production',
           VERCEL_ENV: 'production',
           LEGAL_PUBLICATION_MODE: 'approved',
+          NEXT_PUBLIC_LP_FORM_URL:
+            'http://forms.fictional-tiramisu-test.co.jp/invalid',
         },
         encoding: 'utf8',
         timeout: 60_000,

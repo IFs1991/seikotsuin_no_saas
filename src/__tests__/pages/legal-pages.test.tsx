@@ -147,7 +147,7 @@ describe('Legal pages', () => {
     for (const text of [
       'Gemini',
       'スタッフ名',
-      'データ処理に関する合意',
+      '利用院の指示と利用目的の範囲',
       '国外への個人データの提供',
       '認証情報',
       'OpenAI',
@@ -160,7 +160,9 @@ describe('Legal pages', () => {
       '自動削除されません',
       '東京リージョン',
       'サーバーから実際に削除される時点は異なります',
-      '確認用原稿に残る未確定事項',
+      'アカウント・OS・業務記録の保存期間',
+      '問い合わせへの回答と関連する対応が完了するまで保存',
+      '対象データ、対応方法および完了の見込み',
       '投稿案の保存には別の依頼が必要',
       'Worksで会話から利用するSquare予約の検証用連携',
     ]) {
@@ -229,17 +231,22 @@ describe('Legal pages', () => {
       screen.getByRole('heading', { name: 'プライバシーポリシー' })
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/利用院が預ける情報の範囲.*個別のデータ処理に関する合意/)
+      screen.getByText(/利用院が預ける情報は、利用院の指示と利用目的の範囲/)
     ).toBeInTheDocument();
     expect(
       screen.getByText('商用利用前の法務確認が必要です')
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/ご請求の内容に応じてご本人確認.*利用院と連携して対応/)
+      screen.getByText(
+        /ご請求の内容に応じて、ご本人.*管理権限.*利用院と連携して対応/
+      )
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/窓口の受信・通知・返信は事業者から完了申告済み/)
+      screen.getByText(/当事業者が管理する範囲を手動で確認して対応/)
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText('確認用原稿に残る未確定事項')
+    ).not.toBeInTheDocument();
   });
 
   test('/terms は共通事項と製品別の条件を見出し・アンカーで分ける', async () => {

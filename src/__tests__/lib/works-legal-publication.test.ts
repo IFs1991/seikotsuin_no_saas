@@ -3,7 +3,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { LegalPage } from '@/components/legal/legal-page';
 import {
   getLegalPublication,
-  operatorProfile,
   type OperatorProfile,
 } from '@/components/public/release-readiness';
 import {
@@ -89,10 +88,10 @@ const check = (overrides: Partial<LegalDocumentApproval> = {}) =>
 
 describe('WorksとOSの法務承認境界', () => {
   afterEach(() => jest.restoreAllMocks());
-  it('Worksの正しい承認だけで成立し、OSは保留のまま', () => {
+  it('共通3文書の承認をWorks専用文書へ流用せず、Worksは自身の承認を必要とする', () => {
     expect(check().approved).toBe(true);
     for (const id of ['privacy', 'terms', 'legal'] as const)
-      expect(getLegalPublication(id).approved).toBe(false);
+      expect(getLegalPublication(id).approved).toBe(true);
     expect(getWorksLegalPublication('works/privacy').approved).toBe(false);
     expect(
       Object.values(worksLegalApprovals).every(
@@ -145,7 +144,10 @@ describe('WorksとOSの法務承認境界', () => {
         approvals,
         gates,
         contents,
-        operatorProfile,
+        {
+          ...profile,
+          businessType: { ...profile.businessType, status: 'confirmed' },
+        },
         origin
       ).approved
     ).toBe(false);
@@ -219,14 +221,14 @@ describe('WorksとOSの法務承認境界', () => {
           ).approved
         ).toBe(false);
   });
-  it('ProductionではWorksの承認と独立した明示配信設定が必要。OS原稿は非公開', () => {
+  it('Productionでは共通・Worksそれぞれの承認と独立した明示配信設定が必要', () => {
     const old = {
       vercel: process.env.VERCEL_ENV,
       works: process.env.WORKS_LEGAL_PUBLICATION_MODE,
       os: process.env.LEGAL_PUBLICATION_MODE,
     };
     process.env.VERCEL_ENV = 'production';
-    process.env.LEGAL_PUBLICATION_MODE = 'approved';
+    process.env.LEGAL_PUBLICATION_MODE = 'hold';
     const render = (document: 'privacy' | 'works/privacy') =>
       renderToStaticMarkup(
         createElement(LegalPage, {
@@ -255,6 +257,9 @@ describe('WorksとOSの法務承認境界', () => {
         '/contact?product=works&amp;intent=support'
       );
       process.env.WORKS_LEGAL_PUBLICATION_MODE = 'hold';
+      expect(render('works/privacy')).not.toContain('BODY_SENTINEL');
+      process.env.LEGAL_PUBLICATION_MODE = 'approved';
+      expect(render('privacy')).toContain('BODY_SENTINEL');
       expect(render('works/privacy')).not.toContain('BODY_SENTINEL');
       expect(worksDocumentMetadata('works/privacy', '合成試験').robots).toEqual(
         { index: false, follow: false }
