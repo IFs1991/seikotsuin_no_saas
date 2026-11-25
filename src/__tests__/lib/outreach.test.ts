@@ -61,7 +61,7 @@ function createCandidateQuery(rows: CustomerCandidateRow[]) {
     eq: jest.fn(() => query),
     not: jest.fn(() => query),
     gte: jest.fn(() => query),
-    lte: jest.fn(() => query),
+    lt: jest.fn(() => query),
     order: jest.fn(() => query),
     limit: jest.fn(() => query),
     returns: jest.fn(
@@ -96,7 +96,7 @@ function createRecipientCustomerQuery(rows: CustomerRecipientRow[]) {
     eq: jest.fn(() => query),
     not: jest.fn(() => query),
     gte: jest.fn(() => query),
-    lte: jest.fn(() => query),
+    lt: jest.fn(() => query),
     in: jest.fn(() => query),
     returns: jest.fn(
       async (): Promise<QueryResult<CustomerRecipientRow[]>> => ({
@@ -332,68 +332,96 @@ describe('outreach dormant segment', () => {
       today: '2026-07-06',
       dateFrom: '2026-05-07',
       dateTo: '2026-06-06',
+      startInclusive: '2026-05-06T15:00:00.000Z',
+      endExclusive: '2026-06-06T15:00:00.000Z',
     });
   });
 
-  it('fetches only clinic-scoped marketing-consented LINE candidates', async () => {
-    const query = createCandidateQuery([
-      {
-        id: CUSTOMER_ID,
-        name: '休眠 太郎',
-        last_visit_date: '2026-05-20',
-        total_visits: 4,
-        lifetime_value: 32000,
-        line_display_name: 'LINE太郎',
-        line_user_id: 'U111',
-        line_credential_generation_id: CREDENTIAL_GENERATION_ID,
-      },
-    ]);
-    const failedLineQuery = createFailedLineQuery([{ line_user_id: 'U111' }]);
-    const credentialQuery = createCredentialQuery();
-    const from = jest.fn((table: string) => {
-      if (table === 'clinic_line_credentials') {
-        return { select: jest.fn(() => credentialQuery) };
-      }
-      if (table === 'customers') {
-        return { select: jest.fn(() => query) };
-      }
-      if (table === 'line_message_outbox') {
-        return { select: jest.fn(() => failedLineQuery) };
-      }
-      throw new Error(`Unexpected table: ${table}`);
-    });
+  it.each<[string, string, number]>([
+    ['2026-05-06T15:00:00Z', '2026-05-07', 60],
+    ['2026-06-06T14:59:59.999999+00:00', '2026-06-06', 30],
+  ])(
+    'returns the JST visit date and calendar age for %s',
+    async (timestamp, visitDate, elapsedDays) => {
+      const query = createCandidateQuery([
+        {
+          id: CUSTOMER_ID,
+          name: '休眠 太郎',
+          last_visit_date: timestamp,
+          total_visits: 4,
+          lifetime_value: 32000,
+          line_display_name: 'LINE太郎',
+          line_user_id: 'U111',
+          line_credential_generation_id: CREDENTIAL_GENERATION_ID,
+        },
+        {
+          id: 'no-last-visit',
+          name: '来院歴なし',
+          last_visit_date: null,
+          total_visits: 0,
+          lifetime_value: null,
+          line_display_name: null,
+          line_user_id: 'U222',
+          line_credential_generation_id: CREDENTIAL_GENERATION_ID,
+        },
+      ]);
+      const failedLineQuery = createFailedLineQuery([{ line_user_id: 'U111' }]);
+      const credentialQuery = createCredentialQuery();
+      const from = jest.fn((table: string) => {
+        if (table === 'clinic_line_credentials') {
+          return { select: jest.fn(() => credentialQuery) };
+        }
+        if (table === 'customers') {
+          return { select: jest.fn(() => query) };
+        }
+        if (table === 'line_message_outbox') {
+          return { select: jest.fn(() => failedLineQuery) };
+        }
+        throw new Error(`Unexpected table: ${table}`);
+      });
 
-    const result = await fetchDormantCandidates(
-      { from },
-      { clinic_id: CLINIC_ID, days_from: 30, days_to: 60 },
-      new Date('2026-07-06T00:00:00.000Z')
-    );
+      const result = await fetchDormantCandidates(
+        { from },
+        { clinic_id: CLINIC_ID, days_from: 30, days_to: 60 },
+        new Date('2026-07-06T00:00:00.000Z')
+      );
 
-    expect(query.eq).toHaveBeenCalledWith('clinic_id', CLINIC_ID);
-    expect(query.eq).toHaveBeenCalledWith('consent_marketing', true);
-    expect(query.eq).toHaveBeenCalledWith(
-      'line_credential_generation_id',
-      CREDENTIAL_GENERATION_ID
-    );
-    expect(query.not).toHaveBeenCalledWith('line_user_id', 'is', null);
-    expect(query.gte).toHaveBeenCalledWith('last_visit_date', '2026-05-07');
-    expect(query.lte).toHaveBeenCalledWith('last_visit_date', '2026-06-06');
-    expect(failedLineQuery.eq).toHaveBeenCalledWith('message_type', 'outreach');
-    expect(failedLineQuery.eq).toHaveBeenCalledWith('status', 'failed');
-    expect(failedLineQuery.gte).toHaveBeenCalledWith('attempts', 3);
-    expect(result.candidates).toEqual([
-      {
-        customer_id: CUSTOMER_ID,
-        name: '休眠 太郎',
-        last_visit_date: '2026-05-20',
-        days_since_last_visit: 47,
-        total_visits: 4,
-        lifetime_value: 32000,
-        line_display_name: 'LINE太郎',
-        line_delivery_warning: true,
-      },
-    ]);
-  });
+      expect(query.eq).toHaveBeenCalledWith('clinic_id', CLINIC_ID);
+      expect(query.eq).toHaveBeenCalledWith('is_deleted', false);
+      expect(query.eq).toHaveBeenCalledWith('consent_marketing', true);
+      expect(query.eq).toHaveBeenCalledWith(
+        'line_credential_generation_id',
+        CREDENTIAL_GENERATION_ID
+      );
+      expect(query.not).toHaveBeenCalledWith('line_user_id', 'is', null);
+      expect(query.gte).toHaveBeenCalledWith(
+        'last_visit_date',
+        '2026-05-06T15:00:00.000Z'
+      );
+      expect(query.lt).toHaveBeenCalledWith(
+        'last_visit_date',
+        '2026-06-06T15:00:00.000Z'
+      );
+      expect(failedLineQuery.eq).toHaveBeenCalledWith(
+        'message_type',
+        'outreach'
+      );
+      expect(failedLineQuery.eq).toHaveBeenCalledWith('status', 'failed');
+      expect(failedLineQuery.gte).toHaveBeenCalledWith('attempts', 3);
+      expect(result.candidates).toEqual([
+        {
+          customer_id: CUSTOMER_ID,
+          name: '休眠 太郎',
+          last_visit_date: visitDate,
+          days_since_last_visit: elapsedDays,
+          total_visits: 4,
+          lifetime_value: 32000,
+          line_display_name: 'LINE太郎',
+          line_delivery_warning: true,
+        },
+      ]);
+    }
+  );
 
   it('reads the completed-visit cache of customers, not patient_visit_summary', async () => {
     // spec-os-customer-stat-authority-v0.1: dormant candidates use the
@@ -436,8 +464,6 @@ describe('outreach dormant segment', () => {
       ])
     );
     expect(selected).not.toContain('total_revenue');
-    expect(query.gte).toHaveBeenCalledWith('last_visit_date', '2026-05-07');
-    expect(query.lte).toHaveBeenCalledWith('last_visit_date', '2026-06-06');
     expect(result.candidates).toEqual([]);
   });
 
@@ -469,7 +495,7 @@ describe('outreach dormant segment', () => {
       {
         id: CUSTOMER_ID,
         name: '休眠 太郎',
-        last_visit_date: '2026-05-20',
+        last_visit_date: '2026-06-06T14:59:59.999999+00:00',
         line_user_id: 'U111',
         line_credential_generation_id: CREDENTIAL_GENERATION_ID,
       },
@@ -489,6 +515,19 @@ describe('outreach dormant segment', () => {
       new Date('2026-07-06T00:00:00.000Z')
     );
 
+    expect(fixture.customerQuery.gte).toHaveBeenCalledWith(
+      'last_visit_date',
+      '2026-05-06T15:00:00.000Z'
+    );
+    expect(fixture.customerQuery.lt).toHaveBeenCalledWith(
+      'last_visit_date',
+      '2026-06-06T15:00:00.000Z'
+    );
+    expect(fixture.customerQuery.eq).toHaveBeenCalledWith(
+      'clinic_id',
+      CLINIC_ID
+    );
+    expect(fixture.customerQuery.eq).toHaveBeenCalledWith('is_deleted', false);
     expect(fixture.customerQuery.eq).toHaveBeenCalledWith(
       'consent_marketing',
       true

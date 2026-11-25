@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import type { Database } from '@/types/supabase';
 import { processApiRequest } from '@/lib/api-helpers';
 import { AppError, ERROR_CODES } from '@/lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
@@ -144,6 +145,85 @@ describe('outreach API routes', () => {
       }
     );
   });
+
+  it.each([
+    { timestamp: '2026-05-19T15:00:00+00:00', status: 200 },
+    { timestamp: '2026-02-30T00:00:00Z', status: 500 },
+    { timestamp: 'invalid', status: 500 },
+  ])(
+    'GET dormant-candidates maps the database timestamp $timestamp',
+    async ({ timestamp, status }) => {
+      const { createClient } = jest.requireActual<
+        typeof import('@supabase/supabase-js')
+      >('@supabase/supabase-js');
+      const generationId = '44444444-4444-4444-8444-444444444444';
+      const client = createClient<Database>('http://localhost:1', 'test-key', {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: {
+          fetch: async input => {
+            const { pathname } = new URL(new Request(input).url);
+            switch (pathname) {
+              case '/rest/v1/clinic_line_credentials':
+                return Response.json([
+                  { credential_generation_id: generationId },
+                ]);
+              case '/rest/v1/customers':
+                return Response.json([
+                  {
+                    id: CUSTOMER_ID,
+                    name: 'テスト',
+                    last_visit_date: timestamp,
+                    total_visits: 1,
+                    lifetime_value: null,
+                    line_display_name: null,
+                    line_user_id: 'U111',
+                    line_credential_generation_id: generationId,
+                  },
+                ]);
+              case '/rest/v1/line_message_outbox':
+                return Response.json([]);
+              default:
+                throw new Error(`Unexpected request: ${pathname}`);
+            }
+          },
+        },
+      });
+      createAdminClientMock.mockReturnValueOnce(client);
+      const actual =
+        jest.requireActual<typeof import('@/lib/outreach')>('@/lib/outreach');
+      fetchDormantCandidatesMock.mockImplementationOnce((db, query) =>
+        actual.fetchDormantCandidates(
+          db,
+          query,
+          new Date('2026-07-06T00:00:00Z')
+        )
+      );
+      const { GET } =
+        await import('@/app/api/outreach/dormant-candidates/route');
+      const response = await GET(
+        buildGetRequest(
+          `/api/outreach/dormant-candidates?clinic_id=${CLINIC_ID}&days_from=30&days_to=60`
+        )
+      );
+      expect(response.status).toBe(status);
+      if (status === 200) {
+        expect(await response.json()).toMatchObject({
+          success: true,
+          data: {
+            candidates: [
+              {
+                customer_id: CUSTOMER_ID,
+                last_visit_date: '2026-05-20',
+                days_since_last_visit: 47,
+              },
+            ],
+          },
+        });
+      } else {
+        expect(await response.json()).toMatchObject({ success: false });
+      }
+    }
+  );
 
   it('GET dormant-candidates returns 403 when clinic scope fails', async () => {
     ensureClinicAccessMock.mockRejectedValue(
