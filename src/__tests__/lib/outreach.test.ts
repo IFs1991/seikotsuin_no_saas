@@ -61,7 +61,6 @@ function createCandidateQuery(rows: CustomerCandidateRow[]) {
     eq: jest.fn(() => query),
     not: jest.fn(() => query),
     gte: jest.fn(() => query),
-    lte: jest.fn(() => query),
     lt: jest.fn(() => query),
     order: jest.fn(() => query),
     limit: jest.fn(() => query),
@@ -97,7 +96,6 @@ function createRecipientCustomerQuery(rows: CustomerRecipientRow[]) {
     eq: jest.fn(() => query),
     not: jest.fn(() => query),
     gte: jest.fn(() => query),
-    lte: jest.fn(() => query),
     lt: jest.fn(() => query),
     in: jest.fn(() => query),
     returns: jest.fn(
@@ -334,10 +332,12 @@ describe('outreach dormant segment', () => {
       today: '2026-07-06',
       dateFrom: '2026-05-07',
       dateTo: '2026-06-06',
+      startInclusive: '2026-05-06T15:00:00.000Z',
+      endExclusive: '2026-06-06T15:00:00.000Z',
     });
   });
 
-  it.each([
+  it.each<[string, string, number]>([
     ['2026-05-06T15:00:00Z', '2026-05-07', 60],
     ['2026-06-06T14:59:59.999999+00:00', '2026-06-06', 30],
   ])(
