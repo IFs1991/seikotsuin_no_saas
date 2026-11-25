@@ -329,11 +329,10 @@ describe('dashboard bootstrap through the clinic guard and Supabase transport', 
       }
       expect(
         hits.filter(
-          hit =>
-            hit.client === 'scoped' &&
-            ['/rest/v1/clinics', '/rest/v1/daily_reports'].includes(
-              hit.url.pathname
-            )
+          ({ url }) =>
+            url.pathname === '/rest/v1/daily_reports' ||
+            (url.pathname === '/rest/v1/clinics' &&
+              url.searchParams.get('select') === 'name')
         )
       ).toEqual([]);
     }

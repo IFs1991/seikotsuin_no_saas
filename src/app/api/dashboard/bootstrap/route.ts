@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     }
 
     const tAccess = nowMs();
-    const { supabase, user } = await ensureClinicAccess(
+    const { supabase, user, accessContext } = await ensureClinicAccess(
       request,
       PATH,
       clinicId
@@ -69,9 +69,6 @@ export async function GET(request: NextRequest) {
     logPerf('dashboardBootstrap.ensureClinicAccess', tAccess, { clinicId });
 
     const tProfile = nowMs();
-    const accessContext = await getUserAccessContext(user.id, supabase, {
-      user,
-    });
     const clinicName = await fetchClinicNameWithClient(supabase, clinicId);
     const profile = buildProfileResponse({
       user,
