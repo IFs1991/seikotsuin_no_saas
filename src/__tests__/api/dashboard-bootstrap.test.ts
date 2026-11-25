@@ -36,7 +36,7 @@ const createClientMock = createClient as jest.Mock;
 const getCurrentUserMock = getCurrentUser as jest.Mock;
 const getUserAccessContextMock = getUserAccessContext as jest.Mock;
 const ensureClinicAccessMock = ensureClinicAccess as jest.Mock;
-const buildProfileResponseMock = buildProfileResponse as jest.Mock;
+const buildProfileResponseMock = jest.mocked(buildProfileResponse);
 const fetchClinicNameWithClientMock = fetchClinicNameWithClient as jest.Mock;
 const fetchDailyReportsReadModelMock = fetchDailyReportsReadModel as jest.Mock;
 
@@ -83,6 +83,7 @@ describe('GET /api/dashboard/bootstrap', () => {
     ensureClinicAccessMock.mockResolvedValue({
       supabase: scopedSupabase,
       user,
+      accessContext,
       permissions: accessContext.permissions,
     });
     fetchClinicNameWithClientMock.mockResolvedValue('新宿院');
@@ -108,6 +109,10 @@ describe('GET /api/dashboard/bootstrap', () => {
       },
     });
     expect(createClientMock).not.toHaveBeenCalled();
+    expect(getUserAccessContextMock).not.toHaveBeenCalled();
+    expect(buildProfileResponseMock.mock.calls[0]?.[0].accessContext).toBe(
+      accessContext
+    );
     expect(ensureClinicAccessMock).toHaveBeenCalledWith(
       request,
       '/api/dashboard/bootstrap',
@@ -126,15 +131,10 @@ describe('GET /api/dashboard/bootstrap', () => {
   });
 
   it('resolves fallback clinic_id before calling ensureClinicAccess', async () => {
-    getUserAccessContextMock
-      .mockResolvedValueOnce({
-        ...accessContext,
-        clinicId: 'clinic-fallback',
-      })
-      .mockResolvedValueOnce({
-        ...accessContext,
-        clinicId: 'clinic-fallback',
-      });
+    getUserAccessContextMock.mockResolvedValueOnce({
+      ...accessContext,
+      clinicId: 'clinic-fallback',
+    });
 
     const { GET } = await import('@/app/api/dashboard/bootstrap/route');
     const request = new NextRequest('http://localhost/api/dashboard/bootstrap');
@@ -142,6 +142,7 @@ describe('GET /api/dashboard/bootstrap', () => {
     const response = await GET(request);
 
     expect(response.status).toBe(200);
+    expect(getUserAccessContextMock).toHaveBeenCalledTimes(1);
     expect(getUserAccessContextMock).toHaveBeenNthCalledWith(
       1,
       'user-1',
