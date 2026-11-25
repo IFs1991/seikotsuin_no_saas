@@ -93,7 +93,7 @@ jobs:
   # --------------------------------------------------------------------------
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [quality]
     steps:
       - name: Checkout
@@ -337,7 +337,7 @@ jobs:
   # --------------------------------------------------------------------------
   app-e2e:
     name: App E2E (Local Supabase + Chromium)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [quality, database-contract]
     timeout-minutes: 35
     steps:
