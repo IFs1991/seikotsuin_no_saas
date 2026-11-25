@@ -8,6 +8,8 @@
 
 export const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const TIMESTAMP_WITH_OFFSET_PATTERN =
+  /^(\d{4}-\d{2}-\d{2})T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 
 const WEEKDAY_KEYS = [
   'sunday',
@@ -48,6 +50,15 @@ export function parseJSTDateStart(value: string): Date {
   }
 
   return new Date(`${value}T00:00:00+09:00`);
+}
+
+/** PostgREST の timestamptz を JST の暦日に変換する。 */
+export function jstDateFromTimestamp(value: string): string {
+  const datePart = TIMESTAMP_WITH_OFFSET_PATTERN.exec(value)?.[1];
+  if (!datePart || !isJSTDateString(datePart)) {
+    throw new Error('Expected timestamp with time zone');
+  }
+  return toJSTDateString(new Date(value));
 }
 
 export function addJSTCalendarDays(value: string, days: number): string {

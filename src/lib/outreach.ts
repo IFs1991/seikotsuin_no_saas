@@ -5,6 +5,8 @@ import { env } from '@/lib/env';
 import {
   addJSTCalendarDays,
   differenceInJSTCalendarDays,
+  jstDateFromTimestamp,
+  parseJSTDateStart,
   toJSTDateString,
 } from '@/lib/jst';
 import type { LineMessagePayload } from '@/lib/notifications/line-outbox';
@@ -260,16 +262,22 @@ export function resolveDormantCandidateDateRange(
   daysFrom: number,
   daysTo: number,
   now: Date = new Date()
-): { today: string; dateFrom: string; dateTo: string } {
+) {
   if (daysTo < daysFrom) {
     throw new Error('daysTo must be greater than or equal to daysFrom');
   }
 
   const today = toJSTDateString(now);
+  const dateFrom = addJSTCalendarDays(today, -daysTo);
+  const dateTo = addJSTCalendarDays(today, -daysFrom);
   return {
     today,
-    dateFrom: addJSTCalendarDays(today, -daysTo),
-    dateTo: addJSTCalendarDays(today, -daysFrom),
+    dateFrom,
+    dateTo,
+    startInclusive: parseJSTDateStart(dateFrom).toISOString(),
+    endExclusive: parseJSTDateStart(
+      addJSTCalendarDays(dateTo, 1)
+    ).toISOString(),
   };
 }
 
@@ -278,18 +286,16 @@ function mapCandidateRow(
   today: string,
   failedLineUserIds: ReadonlySet<string>
 ): DormantCandidate | null {
-  if (!row.last_visit_date || !row.line_user_id) {
+  if (row.last_visit_date === null || !row.line_user_id) {
     return null;
   }
 
+  const lastVisitDate = jstDateFromTimestamp(row.last_visit_date);
   return {
     customer_id: row.id,
     name: row.name,
-    last_visit_date: row.last_visit_date,
-    days_since_last_visit: differenceInJSTCalendarDays(
-      row.last_visit_date,
-      today
-    ),
+    last_visit_date: lastVisitDate,
+    days_since_last_visit: differenceInJSTCalendarDays(lastVisitDate, today),
     total_visits: row.total_visits,
     lifetime_value: row.lifetime_value,
     line_display_name: row.line_display_name,
@@ -344,11 +350,8 @@ export async function fetchDormantCandidates(
   input: DormantCandidatesQuery,
   now: Date = new Date()
 ): Promise<DormantCandidatesResponse> {
-  const { today, dateFrom, dateTo } = resolveDormantCandidateDateRange(
-    input.days_from,
-    input.days_to,
-    now
-  );
+  const { today, dateFrom, dateTo, startInclusive, endExclusive } =
+    resolveDormantCandidateDateRange(input.days_from, input.days_to, now);
 
   const credentialGenerationId = await fetchCurrentLineCredentialGeneration(
     supabase,
@@ -376,8 +379,8 @@ export async function fetchDormantCandidates(
     .eq('consent_marketing', true)
     .eq('line_credential_generation_id', credentialGenerationId)
     .not('line_user_id', 'is', null)
-    .gte('last_visit_date', dateFrom)
-    .lte('last_visit_date', dateTo)
+    .gte('last_visit_date', startInclusive)
+    .lt('last_visit_date', endExclusive)
     .order('last_visit_date', { ascending: true })
     .limit(MAX_OUTREACH_RECIPIENTS)
     .returns<CustomerCandidateRow[]>();
@@ -457,11 +460,8 @@ export async function createOutreachDraft(
     );
   }
 
-  const { dateFrom, dateTo } = resolveDormantCandidateDateRange(
-    input.days_from,
-    input.days_to,
-    now
-  );
+  const { dateFrom, dateTo, startInclusive, endExclusive } =
+    resolveDormantCandidateDateRange(input.days_from, input.days_to, now);
   const createdAt = now.toISOString();
   const credentialGenerationId = await fetchCurrentLineCredentialGeneration(
     supabase,
@@ -483,8 +483,8 @@ export async function createOutreachDraft(
     .eq('consent_marketing', true)
     .eq('line_credential_generation_id', credentialGenerationId)
     .not('line_user_id', 'is', null)
-    .gte('last_visit_date', dateFrom)
-    .lte('last_visit_date', dateTo)
+    .gte('last_visit_date', startInclusive)
+    .lt('last_visit_date', endExclusive)
     .in('id', uniqueCustomerIds)
     .returns<CustomerRecipientRow[]>();
 
