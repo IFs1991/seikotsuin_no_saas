@@ -7,6 +7,7 @@ import {
   createSuccessResponse,
 } from '@/lib/api-helpers';
 import { isAiInsightsEnabled } from '@/lib/feature-flags';
+import { toJSTDateString } from '@/lib/jst';
 import { AnalyticsReadService } from '@/lib/services/analytics-read-service';
 
 type InsightImpact = 'high' | 'mid' | 'low';
@@ -243,12 +244,13 @@ async function requestAiInsights(
 }
 
 function getDateRange(periodDays: number) {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(end.getDate() - Math.max(periodDays - 1, 0));
+  const endDate = toJSTDateString();
+  // JSTの暦日をUTCの年月日として計算する。小数期間は従来どおり日付引数の小数部を取り除く。
+  const start = new Date(`${endDate}T00:00:00Z`);
+  start.setUTCDate(start.getUTCDate() - Math.max(periodDays - 1, 0));
   return {
     startDate: start.toISOString().split('T')[0],
-    endDate: end.toISOString().split('T')[0],
+    endDate,
   };
 }
 
