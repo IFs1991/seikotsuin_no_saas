@@ -1,13 +1,36 @@
 # 稼働アプリと通知永続化migrationの対応照合（#145）
 
 - Issue: [#145](https://github.com/IFs1991/seikotsuin_no_saas/issues/145)（親: [#134](https://github.com/IFs1991/seikotsuin_no_saas/issues/134)、関連: [#136](https://github.com/IFs1991/seikotsuin_no_saas/issues/136) / [#139](https://github.com/IFs1991/seikotsuin_no_saas/issues/139)）
-- 種別: INVESTIGATION / read-only / docs-only。本文書の作成で production DB・deployment・環境変数・worker・outbox・通知配送には一切触れていない。本ブランチの push で Vercel の **Preview** deployment が自動作成されたが、production ではなく cron も動かない。
+
+## 2026-11-26 の本番照合
+
+**総合判定 MISMATCH**。2026-11-26 00:41–00:45 UTC に、本番アプリが要求する通知永続化用のtriggerとfunctionが、接続先DBに存在しないことを確認した。
+
+| ID  | 照合項目                                | 判定     | 観測結果                                                                                                                                                                                                                                                                                                       |
+| --- | --------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1  | 本番aliasと配信コード                   | MATCH    | `www.tiramisu-app.com` と `seikotsuin-no-saas.vercel.app` はともに `dpl_5uWXsTszogerYzs3aE5bq6b6UfTm`。Vercelのtargetは `production`、状態は `READY`。作成日時は2026-11-25 23:45:18 UTC。Gitのリポジトリは `IFs1991/seikotsuin_no_saas`、ブランチは `main`、SHAは `04cd5827c9062fbbcd04343f15a63449cbc04a2e`。 |
+| P2  | 配信アプリのDB接続先                    | MATCH    | Productionの `NEXT_PUBLIC_SUPABASE_URL` のホストと、本番aliasが配信する公開静的JSのホスト定数は、ともに `qnanuoqveidwvacvbhqp.supabase.co`。確認後もaliasのdeployment IDは同じだった。                                                                                                                         |
+| P3  | 監査対象DBの同一性                      | MATCH    | P2のrefと、Supabaseの `seikotsuin-management` のref `qnanuoqveidwvacvbhqp` が一致した。以下のカタログ照会はこのrefに限定した。                                                                                                                                                                                 |
+| P4  | migration履歴                           | MISMATCH | 配信SHAのSQLファイル70版と `supabase_migrations.schema_migrations.version` の69版を集合比較。DB側で欠ける版は `20260906003219` の1件、DB側だけの版は0件。                                                                                                                                                      |
+| P5  | 通知trigger                             | MISMATCH | `public.reservation_notifications` は存在する。ユーザー定義triggerは有効な `reservation_notifications_updated_at_trigger`（BEFORE UPDATE）のみ。要求されるAFTER trigger `reservation_notification_durable_enqueue` は存在しない。                                                                              |
+| P6  | 意図をoutboxに永続化するfunction        | MISMATCH | `to_regprocedure('app_private.persist_reservation_notification_outbox()')` はNULL。                                                                                                                                                                                                                            |
+| P7  | メールoutboxのリビジョンとリース用index | MISMATCH | `public.update_email_outbox_updated_at()` は `now()`、SECURITY DEFINER、`search_path=public, auth, extensions`。契約は旧値より最低1µs進めるSECURITY INVOKER、空のsearch_path。`public.email_outbox_processing_lease_idx` も存在しない。                                                                        |
+
+配信SHAの `persistNotificationIntent` は、新規取得または再取得したclaimを同じ院・通知IDで読み直し、`enqueued` を確認できなければ例外を投げる。対象となるclaimが残っていない場合は `duplicate` を返す。期待するmigrationは、claimとoutboxの保存を同一トランザクションで確定する。**配信件数・失敗件数・患者への影響は UNKNOWN**。今回のDB照会はmigration履歴と `pg_catalog` に限定した。実通知、患者行、outbox行、宛先、通知本文は検証対象外とした。 [配信コード](https://github.com/IFs1991/seikotsuin_no_saas/blob/04cd5827c9062fbbcd04343f15a63449cbc04a2e/src/lib/notifications/reservation-notifications.ts#L145)・[期待するSQL](https://github.com/IFs1991/seikotsuin_no_saas/blob/04cd5827c9062fbbcd04343f15a63449cbc04a2e/supabase/migrations/20260906003219_post_core100_notification_durability.sql)・[Vercel deployment](https://vercel.com/toshus-projects-6d4af08c/seikotsuin-no-saas/5uWXsTszogerYzs3aE5bq6b6UfTm)
+
+再照合には、Vercelのalias・deployment・単一の公開URL設定、公開ページ `/invite` が参照する静的ファイル `page-c139438b21088aa9.js` を使用した。サーバー側のセッションクライアントと管理クライアントも同じURL設定を読む。DB側では対象triggerの名前・状態・定義、対象functionの存在・定義・権限属性、indexの存在を比較した。 [サーバー接続の定義](https://github.com/IFs1991/seikotsuin_no_saas/blob/04cd5827c9062fbbcd04343f15a63449cbc04a2e/src/lib/supabase/server.ts#L42)
+
+#145の次の判断は、本番変更の担当者が隔離環境で適用順と失敗時の扱いを検証し、既存の本番承認手続きにかけること。過去の通知の再送には個別の判断が必要となる。本PRでの変更は監査記録のみで、取り消しもこの文書のrevertで完了する。
+
+## 2026-10-20 の初回調査（当時の記録）
+
+- 種別: INVESTIGATION / read-only / docs-only。初回調査時は production DB・deployment・環境変数・worker・outbox・通知配送を操作していない。本ブランチの push で Vercel の Preview deployment が自動作成された。
 - 確認日時: 2026-10-20T17:30Z〜18:00Z（UTC）
 - 基準main: `8e7ab4c139d749eadf883eecb6f475bed00dc147`（2026-09-20T21:29:29+09:00 commit。確認時点の `origin/main` と同一）
 - 対象migration: `supabase/migrations/20260906003219_post_core100_notification_durability.sql`
 - 総合判定: **UNKNOWN**（現在の production alias が指す deployment と、接続DBの migration 履歴・catalog をこのsessionから確認できなかったため）
 
-## 1. 判定一覧
+### 1. 判定一覧
 
 | ID  | 照合項目                                                                                                                                    | 判定        | 根拠                                                                                                                                                                                                          | 判定に必要な確認元                                                                                          |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
@@ -22,7 +45,7 @@
 
 MISMATCH と判定した項目はない。P4/P5 の監査観測は MISMATCH を示唆するが、本sessionで同じ catalog を再確認できていないため UNKNOWN のまま扱い、推測で埋めない。
 
-## 2. 稼働コードの migration 依存（固定SHAのソースで確定）
+### 2. 稼働コードの migration 依存（固定SHAのソースで確定）
 
 - 依存コードと migration は同じ commit `8602f6e`（PR-D ブランチ上、2026-09-06）で作られ、main には merge `fcb64ec`（[PR #121](https://github.com/IFs1991/seikotsuin_no_saas/pull/121)、2026-09-06T12:33:50+09:00）で入った。判定は時刻ではなく祖先関係で行う（`git merge-base --is-ancestor 8602f6e <SHA>`）。main の first-parent 上では `fcb64ec` 以降が依存あり、`fcb64ec^1` 以前（`f8dd988`、`d636e71`、`03fc8b6`、`c028573` など）は依存なし。
 - GitHub Deployments の Production 記録で最新の `8e7ab4c` は依存を含む（§3.1）。
@@ -31,9 +54,9 @@ MISMATCH と判定した項目はない。P4/P5 の監査観測は MISMATCH を�
 - [`docs/stabilization/spec-post-core100-notification-durability-v0.1.md:17-19`](https://github.com/IFs1991/seikotsuin_no_saas/blob/8e7ab4c139d749eadf883eecb6f475bed00dc147/docs/stabilization/spec-post-core100-notification-durability-v0.1.md#L17-L19) は「migration を先に承認・検証し、その後アプリを展開する」順序を定めている。
 - repo の結果記録 [`docs/stabilization/post-core100-remediation-result.md`](https://github.com/IFs1991/seikotsuin_no_saas/blob/8e7ab4c139d749eadf883eecb6f475bed00dc147/docs/stabilization/post-core100-remediation-result.md)（2026-09-06 時点の記録）は、L18 の PR-D 行で配備先 migration 適用・実通知・worker 停止復帰を「未実施」、L99・L125 で配備先DB・Notifications を BLOCKED として記録している。
 
-## 3. 本sessionで確認した事実と手段
+### 3. 本sessionで確認した事実と手段
 
-### 3.1 deployment metadata
+#### 3.1 deployment metadata
 
 - GitHub commit status（PR #133 head `3c03e3f95489d2f656c8a975beb9e0482c96a267`）: context `Vercel`、`Deployment has completed`、2026-09-20T12:19:40Z。これは PR の **Preview**。
 - GitHub Deployments（`environment=Production`、vercel[bot]）: 独立reviewが read-only の GitHub REST（`GET /repos/IFs1991/seikotsuin_no_saas/deployments?environment=Production`、`GET .../deployments/6552792468/statuses`）で取得し、再reviewで再確認した値。作成者sessionの GitHub MCP には deployments 取得手段がなく、自分では再取得していない。
@@ -43,11 +66,11 @@ MISMATCH と判定した項目はない。P4/P5 の監査観測は MISMATCH を�
   - PR #121 の merge からおよそ6分で依存コードが Production へ自動 deploy されていたことになるが、現在のDB状態の証拠ではない。
 - Vercel / Supabase connector は org では接続済みだが、このsessionでは無効（`enabledInChat: false`）。有効化はこの作業の許可範囲外の設定変更のため行っていない。
 
-### 3.2 実施していないこと
+#### 3.2 実施していないこと
 
 production DB・Auth・migration履歴・catalog への接続、環境変数の参照、deployment の promote/rollback、worker/cron の起動、outbox/通知行・患者行・宛先・本文の読取、実通知。いずれも NOT_RUN。
 
-### 3.3 repo 内整合（P8 補助）の手段と限界
+#### 3.3 repo 内整合（P8 補助）の手段と限界
 
 - Docker image の取得が registry/proxy 制限で失敗したため、`supabase start` / `supabase test db` はローカルで使えなかった。代わりに npm 配布の PostgreSQL 17.6 バイナリで使い捨てクラスタを作り、Supabase の role/auth/拡張の最小shimを入れて、`supabase/migrations/*.sql` を0から順に適用し `supabase/seed.sql` を投入した（`supabase db reset` / `db push` / `migration up` は不使用）。
 - 観測した catalog（shim 上の値）:
@@ -58,7 +81,7 @@ production DB・Auth・migration履歴・catalog への接続、環境変数の�
   - `supabase_migrations.schema_migrations`: 68 行
 - 既存 pgTAP 全21 file / 858 test PASS（`pg_prove`）。shim は Supabase 公式 image と同一ではないため補助証跡に留める。
 
-## 4. 「契約差分」と「実際の患者通知障害」の区別
+### 4. 「契約差分」と「実際の患者通知障害」の区別
 
 確定しているのは §2 のコード依存だけである。次は **条件付きの影響** で、実測していない。
 
@@ -75,7 +98,7 @@ production DB・Auth・migration履歴・catalog への接続、環境変数の�
 - いずれの失敗経路でも `reservation_notifications` に `status='claimed'` の行が残り、`detail.enqueue` に宛先と payload（氏名・日時・メニュー・担当）を含む一時intentが除去されずに残る可能性がある（trigger が除去を担うため）。
 - 「現在通知が届いていない」とは断定しない。断定には別承認の read-only 集計（§5.1）が必要。
 
-## 5. MISMATCH 確定時の別作業の提案（本Issueでは実施しない）
+### 5. MISMATCH 確定時の別作業の提案（本Issueでは実施しない）
 
 以下は新しい独立Issue（Risk: **High**、通知・患者データ・production DB）として扱う提案である。
 
@@ -95,7 +118,7 @@ production DB・Auth・migration履歴・catalog への接続、環境変数の�
 5. **復旧方針**: 当該 migration の rollback は `supabase/rollbacks/20260906003219_post_core100_notification_durability_rollback.sql` が設計上ブロックしている。問題時は reviewed forward-fix のみ。
 6. **完了ゲート**: High のため、既存 SQL suite 相当の実DB検証（email/LINE の atomic enqueue、clinic A/B、途中失敗 rollback、重複/順序逆転、claim 再試行、PHI intent 除去）と、未適用状態で enqueue 確認が fail-closed になる RED、2件の独立 read-only review、spec・rollback/forward-fix runbook、production 承認者の記録を必須とする。read-only 照合（本文書）をこれらの PASS に流用しない。
 
-## 6. 受入条件の状況と再開に必要な情報
+### 6. 受入条件の状況と再開に必要な情報
 
 | 受入条件（#145）                                                                | 状況                                                                      |
 | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
