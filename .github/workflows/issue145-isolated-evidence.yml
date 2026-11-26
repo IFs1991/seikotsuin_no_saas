@@ -1,0 +1,61 @@
+name: Issue 145 isolated notification migration rehearsal
+
+on:
+  push:
+    branches: [codex/issue145-isolated-evidence-20261126]
+
+permissions:
+  contents: read
+
+jobs:
+  rehearsal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      DO_NOT_TRACK: '1'
+      SUPABASE_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 16
+          persist-credentials: false
+      - uses: supabase/setup-cli@v2
+        with:
+          version: 2.109.0
+      - name: Prepare isolated repository fixture
+        run: |
+          set -euo pipefail
+          test "$(supabase --version)" = "$(cat .supabase-cli-version)"
+          python3 .github/issue145-rehearsal/prepare.py
+          docker network create --driver bridge --subnet 198.18.145.0/28 \
+            --opt com.docker.network.bridge.host_binding_ipv4=127.0.0.1 os145rehearsal261126a_net
+          sudo iptables -I FORWARD 1 -s 198.18.145.0/28 ! -d 198.18.145.0/28 -m conntrack --ctstate NEW -j REJECT
+          sudo iptables -I INPUT 1 -s 198.18.145.0/28 -m conntrack --ctstate NEW -j REJECT
+      - name: Bootstrap the missing-version Supabase database
+        run: |
+          set -euo pipefail
+          cd "${RUNNER_TEMP}/issue-145-db"
+          # Keep generated local credentials out of Actions logs and artifacts.
+          if ! supabase start --workdir "$PWD" --network-id os145rehearsal261126a_net \
+            --exclude analytics,edge-runtime,functions,imgproxy,inbucket,meta,realtime,studio,vector \
+            >"${RUNNER_TEMP}/issue145-bootstrap.log" 2>&1; then
+            grep -Ei 'error|failed|fatal|timeout|cannot|not found' "${RUNNER_TEMP}/issue145-bootstrap.log" \
+              | grep -Eiv 'token|api.?key|secret|password|postgres(ql)?://|eyJ' | tail -n 12 || true
+            exit 1
+          fi
+      - name: Rehearse lock failure, recovery, late apply and committed handoffs
+        run: |
+          set -euo pipefail
+          cd "${RUNNER_TEMP}/issue-145-db"
+          for stage in baseline dryrun locks interrupted_cli apply post tap rollback; do
+            echo "::group::$stage"
+            python3 verify.py "$stage"
+            echo "::endgroup::"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: issue145-catalog-and-synthetic-results
+          path: ${{ runner.temp }}/issue-145-db/results.json
+          if-no-files-found: warn
+          retention-days: 14
