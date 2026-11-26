@@ -1,0 +1,255 @@
+{
+  "source": "04cd5827c9062fbbcd04343f15a63449cbc04a2e",
+  "migration_blob": "5e348a5aa0dd6dc7acd71704c61db02338a44465",
+  "when_start": "2026-11-26T01:44:07+00:00",
+  "engine": "17.6",
+  "environment": {
+    "loopback_port": 57432,
+    "dedicated_github_hosted_runner": true,
+    "subnet_new_egress_rejected": true,
+    "project": "os145rehearsal261126a",
+    "supabase_cli": "2.109.0",
+    "seed": false
+  },
+  "baseline": {
+    "versions": 69,
+    "later": ["20261020170757", "20261023064851"],
+    "version_digest": "276f4324b7ea095b7621aa9c7c2cd17447cc8879dc5041418b5f91b5b7f067f0",
+    "catalog": {
+      "handoff": null,
+      "boundaries": [
+        {
+          "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+          "rls": true,
+          "force": false,
+          "table": "email_outbox",
+          "policy_digest": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+          "rls": true,
+          "force": false,
+          "table": "line_message_outbox",
+          "policy_digest": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+          "rls": true,
+          "force": false,
+          "table": "reservation_notifications",
+          "policy_digest": "d41d8cd98f00b204e9800998ecf8427e"
+        }
+      ],
+      "lease_index": null,
+      "old_triggers": [
+        {
+          "name": "email_outbox_updated_at_trigger",
+          "table": "email_outbox",
+          "enabled": "O",
+          "definition": "CREATE TRIGGER email_outbox_updated_at_trigger BEFORE UPDATE ON public.email_outbox FOR EACH ROW EXECUTE FUNCTION update_email_outbox_updated_at()"
+        },
+        {
+          "name": "reservation_notifications_updated_at_trigger",
+          "table": "reservation_notifications",
+          "enabled": "O",
+          "definition": "CREATE TRIGGER reservation_notifications_updated_at_trigger BEFORE UPDATE ON public.reservation_notifications FOR EACH ROW EXECUTE FUNCTION update_reservation_notifications_updated_at()"
+        }
+      ],
+      "mail_revision": {
+        "acl": "{postgres=X/postgres,service_role=X/postgres}",
+        "body": "\nbegin\n  new.updated_at = now();\n  return new;\nend;\n",
+        "owner": "postgres",
+        "config": ["search_path=public, auth, extensions"],
+        "definer": true
+      },
+      "target_trigger": null
+    },
+    "synthetic_workload": {
+      "email_rows": 10000,
+      "processing": 1000
+    },
+    "legacy_claim": {
+      "status": "claimed",
+      "has_intent": true,
+      "outbox_count": 0,
+      "outbox_id_null": true
+    }
+  },
+  "dry_run": {
+    "without_include_all_exit": 1,
+    "without_include_all": "WARN: config section [inbucket] is deprecated. Please use [local_smtp] instead.\nDRY RUN: migrations will *not* be pushed to the database.\nConnecting to local database...\nFound local migration files to be inserted before the last migration on remote database.\n\nRerun the command with --include-all flag to apply these migrations:\nsupabase/migrations/20260906003219_post_core100_notification_durability.sql\n",
+    "with_include_all_exit": 0,
+    "planned": ["20260906003219_post_core100_notification_durability.sql"]
+  },
+  "lock_trial": {
+    "method": "psql canonical SQL; natural transaction rollback on ON_ERROR_STOP/session close",
+    "locks": [
+      {
+        "mode": "ShareLock",
+        "table": "email_outbox",
+        "granted": true
+      },
+      {
+        "mode": "ShareRowExclusiveLock",
+        "table": "reservation_notifications",
+        "granted": false
+      }
+    ],
+    "migration_blocked_by_ledger_writer": true,
+    "ddl_sqlstate": "55P03",
+    "ddl_lock_timeout_ms": 12000,
+    "ddl_wall_ms": 12031,
+    "reader_wall_ms": 27,
+    "read_email_rows": 10000,
+    "read_ledger_rows": 1,
+    "writers": {
+      "email": {
+        "sqlstate": "55P03",
+        "timeout_ms": 1600,
+        "wall_ms": 1626,
+        "blocked_by_migration": true
+      },
+      "ledger": {
+        "sqlstate": "55P03",
+        "timeout_ms": 1600,
+        "wall_ms": 1627,
+        "blocked_by_migration": true
+      }
+    },
+    "after_failure": {
+      "baseline_catalog_equal": true,
+      "history_count": 69,
+      "legacy_claim_equal": true,
+      "probe_writes": 0
+    }
+  },
+  "cli_interruption": {
+    "method": "pinned CLI, explicit loopback-only DSN; unique application marker, backend start time, canonical CREATE TRIGGER and blocking holder checked before cancellation",
+    "cli_exit": 1,
+    "cancellation_requested": true,
+    "error": "user cancellation",
+    "sqlstate_text_observed": "57014",
+    "baseline_catalog_equal": true,
+    "history_count": 69,
+    "legacy_claim_equal": true
+  },
+  "applied": {
+    "method": "Supabase CLI db push --local --include-all --yes",
+    "cli_exit": 0,
+    "cli_wall_ms": 387,
+    "history_count": 70,
+    "version_digest": "34745455b7654a210ea26b69ddcb62b2ef6db4a19fb96d2cd81e719667ff11de",
+    "catalog": {
+      "handoff": {
+        "acl": "{postgres=X/postgres,service_role=X/postgres}",
+        "anon": false,
+        "owner": "postgres",
+        "config": ["search_path=\"\""],
+        "definer": false,
+        "service": true,
+        "authenticated": false,
+        "definition_md5": "849fdb0d8b56f711e300e9815aa1e69a"
+      },
+      "boundaries": [
+        {
+          "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+          "rls": true,
+          "force": false,
+          "table": "email_outbox",
+          "policy_digest": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+          "rls": true,
+          "force": false,
+          "table": "line_message_outbox",
+          "policy_digest": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+          "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+          "rls": true,
+          "force": false,
+          "table": "reservation_notifications",
+          "policy_digest": "d41d8cd98f00b204e9800998ecf8427e"
+        }
+      ],
+      "lease_index": {
+        "ready": true,
+        "valid": true,
+        "predicate": "(status = 'processing'::text)",
+        "definition": "CREATE INDEX email_outbox_processing_lease_idx ON public.email_outbox USING btree (updated_at, id) WHERE (status = 'processing'::text)"
+      },
+      "old_triggers": [
+        {
+          "name": "email_outbox_updated_at_trigger",
+          "table": "email_outbox",
+          "enabled": "O",
+          "definition": "CREATE TRIGGER email_outbox_updated_at_trigger BEFORE UPDATE ON public.email_outbox FOR EACH ROW EXECUTE FUNCTION update_email_outbox_updated_at()"
+        },
+        {
+          "name": "reservation_notifications_updated_at_trigger",
+          "table": "reservation_notifications",
+          "enabled": "O",
+          "definition": "CREATE TRIGGER reservation_notifications_updated_at_trigger BEFORE UPDATE ON public.reservation_notifications FOR EACH ROW EXECUTE FUNCTION update_reservation_notifications_updated_at()"
+        }
+      ],
+      "mail_revision": {
+        "acl": "{postgres=X/postgres,service_role=X/postgres}",
+        "body": "\nbegin\n  new.updated_at := greatest(clock_timestamp(), old.updated_at + interval '1 microsecond');\n  return new;\nend;\n",
+        "owner": "postgres",
+        "config": ["search_path=\"\""],
+        "definer": false
+      },
+      "target_trigger": {
+        "enabled": "O",
+        "definition": "CREATE TRIGGER reservation_notification_durable_enqueue AFTER INSERT OR UPDATE OF status, detail ON public.reservation_notifications FOR EACH ROW EXECUTE FUNCTION app_private.persist_reservation_notification_outbox()"
+      }
+    },
+    "legacy_claim_unchanged": true,
+    "next_dry_run_exit": 0,
+    "next_plan_files": []
+  },
+  "persisted": {
+    "isolation": "separate real DB sessions at READ COMMITTED",
+    "before_commit": {
+      "raw_email_claims": 0,
+      "raw_line_claims": 0,
+      "email_ledgers": 0,
+      "email_jobs": 0,
+      "line_ledgers": 0,
+      "line_jobs": 0
+    },
+    "after_commit_fresh_session": {
+      "line_jobs": 1,
+      "email_jobs": 1,
+      "line_ledgers": 1,
+      "email_ledgers": 1,
+      "raw_line_claims": 1,
+      "raw_email_claims": 1
+    },
+    "duplicate_observed_blocked": true,
+    "duplicate_inserted_email": 0,
+    "duplicate_inserted_line": 0,
+    "cross_clinic_rejected": "23514",
+    "partial_ledger": 0,
+    "partial_email_jobs": 0,
+    "legacy_still_unenqueued": true
+  },
+  "pgtap": {
+    "run": "canonical SQL, PostgreSQL pgTAP extension, psql; extension bootstrap inside the rolled-back test transaction",
+    "passed": 31,
+    "failed": 0,
+    "planned": 31,
+    "exit": 0,
+    "fixture_counts_unchanged": true
+  },
+  "post_commit_rollback": {
+    "sqlstate": "P0001",
+    "canonical_guard_refused": true,
+    "catalog_equal": true,
+    "history_equal": true,
+    "committed_fixture_counts_equal": true,
+    "forward_fix_required": true
+  },
+  "when_end": "2026-11-26T01:44:23+00:00"
+}

@@ -20,7 +20,46 @@
 
 再照合には、Vercelのalias・deployment・単一の公開URL設定、公開ページ `/invite` が参照する静的ファイル `page-c139438b21088aa9.js` を使用した。サーバー側のセッションクライアントと管理クライアントも同じURL設定を読む。DB側では対象triggerの名前・状態・定義、対象functionの存在・定義・権限属性、indexの存在を比較した。 [サーバー接続の定義](https://github.com/IFs1991/seikotsuin_no_saas/blob/04cd5827c9062fbbcd04343f15a63449cbc04a2e/src/lib/supabase/server.ts#L42)
 
-#145の次の判断は、本番変更の担当者が隔離環境で適用順と失敗時の扱いを検証し、既存の本番承認手続きにかけること。過去の通知の再送には個別の判断が必要となる。本PRでの変更は監査記録のみで、取り消しもこの文書のrevertで完了する。
+11月26日 10:31 JST に本番を再照合した。配信SHAは同じで、PostgreSQL 17.6 の履歴は69版、対象版・通知trigger・永続化function・リース用indexはいずれも存在しなかった。本番照会は引き続き読み取り専用で、患者行、通知本文、宛先、配信ログは取得していない。
+
+## 2026-11-26 の隔離Supabase適用リハーサル
+
+**隔離DBでの適用・復旧・通知永続化はPASS。本番は未適用。** 10:44 JST、GitHubの使い捨てRunnerで本番と同じPostgreSQL 17.6、リポジトリ指定のSupabase CLI 2.109.0を使用した。検証専用DBはloopbackに公開し、専用Dockerサブネットから外部・ホストに向かう新規IPv4接続を拒否した。アプリのseed、配送worker、外部プロバイダーは使用していない。 [実行ログ](https://github.com/IFs1991/seikotsuin_no_saas/actions/runs/45737598106)・[実測値と前後のカタログ](notification-migration-rehearsal-2026-11-26.json)・[実行した検証コード](https://github.com/IFs1991/seikotsuin_no_saas/blob/1b199ab2cc7939fc11e00ea89cfcc00ef9bfc041/.github/issue145-rehearsal/verify.py)
+
+取得したartifactの原本 `results.json` のSHA-256は `0a287cdb26cf6aad07e001dcda91c7f8563d852acf6b41ffb77779ed18e536d2`。同梱JSONは全フィールドが原本と一致する。
+
+### 適用手順と判定
+
+1. 配信SHA `04cd5827` の70版から対象の `20260906003219` だけを除いて新規DBを初期化した。後続の `20261020170757` と `20261023064851` を含む69版と履歴が全件一致した。trigger・function・indexの欠落と旧更新時刻関数も確認した。
+2. 正本のSQLをそのまま戻した。専用workdirでの `supabase db push --local --dry-run` は後続版が適用済みのため終了コード1。`supabase db push --local --include-all --dry-run` は対象ファイル1本だけを列挙し、履歴は69版のままだった。
+3. 次節のロック待ちとCLI中断を別々に発生させた。各試験で接続を解放してから、適用前のカタログ・履歴・旧claimに戻ったことを確認した。
+4. `supabase db push --local --include-all --yes` が成功し、履歴は70版の正本と全件一致した。再度のdry-runで未適用ファイルは0件。競合がない状態でのCLI経過時間は**387 ms**だった。fixtureはメールoutbox 10,000件（うちprocessing 1,000件）と旧方式のclaim 1件で、すべて合成データを使用した。
+
+### ロック中の読み書きと失敗時の復旧
+
+別接続のUPDATEトランザクションが `reservation_notifications` の書き込みロックを保持する状態で正本のSQLを開始した。migrationは通常のindex作成で `email_outbox` の **ShareLock** を取得したまま、trigger作成に必要な `reservation_notifications` の **ShareRowExclusiveLock** を待った。`pg_locks` の取得・待機状態と `pg_blocking_pids()` の両方で確認した。 [PostgreSQL 17のテーブルロック](https://www.postgresql.org/docs/17/explicit-locking.html#LOCKING-TABLES)
+
+| 操作                     | 隔離DBでの実測                                                                                                                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2表を読む別接続          | 27 msで成功。outbox 10,000件、通知台帳1件を読み取れた                                                                                                                                       |
+| 後から開始したUPDATE     | outbox・通知台帳の両方がmigrationを待機。1,600 msの `lock_timeout` に対して1,626 ms・1,627 msで `55P03`。通知台帳では行に当たらないUPDATEを使い、テーブルロック待ちを確認した               |
+| 正本SQLのタイムアウト    | `lock_timeout` 12秒、経過12,031 msで `55P03`。関数・index・triggerは適用前に戻り、履歴69版、既存claimも同一。試験用UPDATEの反映は0件                                                        |
+| 実CLIの中断              | 専用loopback接続で最終triggerの待機を確認し、そのCLI接続のみキャンセル。SQLSTATE `57014`、CLI終了コード1。対象オブジェクト・旧更新時刻関数・69版の履歴・既存claimを再照合し、元の状態を確認 |
+| 適用コミット後のrollback | 正本のrollback SQLは設計どおり `P0001` で拒否。70版の履歴、カタログ、コミット済みの通知・outbox件数を保持した。復旧には行と配送所有権を保持するレビュー済みforward-fixが必要                |
+
+経過時間にはクライアントと接続処理が含まれる。本番で書き込みが待つ時間は、既存トランザクションやテーブル規模に左右される。試験の1.6秒・12秒・387 msを本番の所要時間や許容値としては扱えない。
+
+### 適用後の通知永続化
+
+- メールとLINEをservice_roleで同一トランザクションに投入した。コミット前に独立接続から見えたclaim・outboxは両チャネルとも0件。コミット後の新規接続では各チャネルに `enqueued` のclaim 1件とリンクされた `pending` のoutbox 1件があり、台帳の一時intentは消えていた。LINEのcredential世代と予約revisionも一致した。
+- 同じ通知を別接続から重ね、最初のメールINSERTが先行トランザクションのコミットを待つことを確認した。後続トランザクションが追加したclaimはメール・LINEとも0件。院外の合成患者IDを指定すると `23514` で拒否され、通知とoutboxの部分保存は0件だった。
+- migration前からの `claimed` 行は適用直後も `claimed` で、一時intentが残り、outboxは0件だった。migration自体は既存行を再処理しない。稼働中のリマインダーcronには最大24時間分を再走査する経路があり、適用後のその挙動・実配送は今回の検証範囲外である。 [リマインダーの再走査期間](https://github.com/IFs1991/seikotsuin_no_saas/blob/04cd5827c9062fbbcd04343f15a63449cbc04a2e/src/lib/notifications/reservation-reminders.ts#L75)
+- AFTER triggerの発火条件、リース用partial indexのready/valid・列順・述語、更新時刻の単調増加、両対象関数の `SECURITY INVOKER` と空の `search_path` を確認した。永続化関数はanon/authenticatedに実行権限がなく、service_roleにはある。メール・LINEのoutboxと通知台帳の3表では、既存RLS・ポリシー・表ACLが一致した。メールoutboxと通知台帳の既存時刻triggerも同一定義で有効だった。
+- 対象のpgTAPは **31/31成功**。院境界、無効intentの原子性、重複、LINEの旧revision、古いworkerのCAS拒否を含む。隔離DBで検証した範囲はoutboxへの引き渡しまで。本番の患者への到達、過去の未達件数、予約コミット直後から引き渡し開始前までの停止は別途の確認事項になる。 [対象pgTAP](https://github.com/IFs1991/seikotsuin_no_saas/blob/04cd5827c9062fbbcd04343f15a63449cbc04a2e/supabase/tests/20260906003219_post_core100_notification_durability_test.sql)・[正本spec](https://github.com/IFs1991/seikotsuin_no_saas/blob/04cd5827c9062fbbcd04343f15a63449cbc04a2e/docs/stabilization/spec-post-core100-notification-durability-v0.1.md)
+
+### 本番への引継ぎ
+
+本番への適用は人間の承認待ち。担当者は適用直前に接続先・配信SHA・履歴・実DDLを再照合し、対象が1版だけであること、バックアップ、書込影響を許容できる時間帯・待機上限を確認する。失敗や通信断でコミット結果が不明なら、履歴と実DDLの両方を確認する。片方だけ進んでいる場合や別の差異があれば再適用を止め、outboxを保全するforward-fixを判断する。既存claimの補正・再送には個別の承認が必要となる。 [正本のrollback方針](https://github.com/IFs1991/seikotsuin_no_saas/blob/04cd5827c9062fbbcd04343f15a63449cbc04a2e/supabase/rollbacks/20260906003219_post_core100_notification_durability_rollback.sql)
 
 ## 2026-10-20 の初回調査（当時の記録）
 
