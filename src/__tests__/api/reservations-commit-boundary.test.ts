@@ -1,4 +1,8 @@
 import { NextRequest } from 'next/server';
+import {
+  reservationInsertSchema,
+  reservationUpdateSchema,
+} from '@/app/api/reservations/schema';
 
 const clinicId = '123e4567-e89b-12d3-a456-426614174000';
 const reservationId = '123e4567-e89b-12d3-a456-426614174001';
@@ -9,6 +13,12 @@ const version = '2026-09-06T01:00:00.123456+00:00';
 const mockCreated = jest.fn(async (..._args: unknown[]) => undefined);
 const mockChanged = jest.fn(async (..._args: unknown[]) => undefined);
 const mockCapture = jest.fn(async (..._args: unknown[]) => undefined);
+const mockReservationWrite = jest.fn(
+  (_row: Record<string, unknown>) => undefined
+);
+const mockFrom = jest.fn((table: string) => new Query(table));
+let mockMenuPrice: number | null | undefined;
+let mockNominationFee: number | null | undefined;
 let mockProjection: 'error' | 'missing' | 'ok' = 'error';
 let mockConcurrent = false;
 let mockWrites = 0;
@@ -27,10 +37,17 @@ const savedRow = {
   start_time: '2026-09-06T10:00:00Z',
   end_time: '2026-09-06T10:30:00Z',
   notes: '保存済みメモ',
-  selected_options: [],
+  selected_options: [
+    {
+      optionId: 'existing',
+      name: '既存',
+      priceDelta: 25.5,
+      durationDeltaMinutes: 5,
+    },
+  ],
   intake_responses: [],
-  is_staff_requested: false,
-  staff_nomination_fee: 0,
+  is_staff_requested: true,
+  staff_nomination_fee: 100,
   updated_at: version,
   booker_phone: 'PRIVATE-PHONE',
   created_by: 'PRIVATE-ACTOR',
@@ -47,12 +64,14 @@ class Query {
     this.filters.set(key, value);
     return this;
   }
-  insert() {
+  insert(row: Record<string, unknown>) {
     this.operation = 'insert';
+    mockReservationWrite(row);
     return this;
   }
-  update() {
+  update(row: Record<string, unknown>) {
     this.operation = 'update';
+    mockReservationWrite(row);
     return this;
   }
   async maybeSingle() {
@@ -94,14 +113,14 @@ class Query {
         is_deleted: false,
         is_active: true,
         is_bookable: true,
-        nomination_fee: 0,
-        price: 1000,
+        nomination_fee: mockNominationFee,
+        price: mockMenuPrice,
       },
       error: null,
     };
   }
 }
-const mockClient = { from: (table: string) => new Query(table) };
+const mockClient = { from: mockFrom };
 
 jest.mock('@/lib/route-helpers', () => ({
   ...jest.requireActual('@/lib/route-helpers'),
@@ -152,21 +171,28 @@ jest.mock('@/lib/mobile-uiux/flags', () => ({
 }));
 
 describe.each(['standard', 'mobile'] as const)('%s 予約の保存境界', route => {
+  const createDto = {
+    clinic_id: clinicId,
+    customerId,
+    menuId,
+    staffId,
+    startTime: savedRow.start_time,
+    endTime: savedRow.end_time,
+    channel: 'phone',
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
+    mockProjection = 'ok';
+    mockMenuPrice = 1000;
+    mockNominationFee = 175.5;
     mockConcurrent = false;
     mockWrites = 0;
     mockProjectionReads = 0;
     mockUpdateFilters = new Map();
     mockDto = {
-      clinic_id: clinicId,
+      ...createDto,
       id: reservationId,
-      customerId,
-      menuId,
-      staffId,
-      startTime: savedRow.start_time,
-      endTime: savedRow.end_time,
-      channel: 'phone',
       status: 'cancelled',
     };
   });
@@ -180,6 +206,140 @@ describe.each(['standard', 'mobile'] as const)('%s 予約の保存境界', route
       new NextRequest('http://localhost/api/reservations', { method })
     );
   }
+
+  const options = [
+    {
+      optionId: 'extra',
+      name: '延長',
+      priceDelta: 250.5,
+      durationDeltaMinutes: 10,
+    },
+    {
+      optionId: 'discount',
+      name: '割引',
+      priceDelta: -50.25,
+      durationDeltaMinutes: 0,
+    },
+  ];
+
+  it.each([
+    { requested: true, fee: 175.5, price: 1375.75 },
+    { requested: false, fee: 0, price: 1200.25 },
+  ])(
+    'POST saves signed option prices and the requested fee ($requested)',
+    async ({ requested, fee, price }) => {
+      mockDto = reservationInsertSchema.parse({
+        ...createDto,
+        selectedOptions: options,
+        isStaffRequested: requested,
+      });
+      expect((await invoke('POST')).status).toBe(201);
+      expect(mockReservationWrite).toHaveBeenCalledWith(
+        expect.objectContaining({
+          selected_options: options,
+          is_staff_requested: requested,
+          staff_nomination_fee: fee,
+          price,
+        })
+      );
+    }
+  );
+
+  it.each([
+    { menu: null, fee: undefined, savedFee: 0, price: 0 },
+    { menu: NaN, fee: Infinity, savedFee: 0, price: 0 },
+    { menu: -100.25, fee: -10.5, savedFee: -10.5, price: -110.75 },
+  ])(
+    'POST preserves the pricing rules for menu=$menu fee=$fee',
+    async ({ menu, fee, savedFee, price }) => {
+      mockMenuPrice = menu;
+      mockNominationFee = fee;
+      mockDto = reservationInsertSchema.parse({
+        ...createDto,
+        isStaffRequested: true,
+      });
+      expect((await invoke('POST')).status).toBe(201);
+      expect(mockReservationWrite).toHaveBeenCalledWith(
+        expect.objectContaining({
+          selected_options: [],
+          is_staff_requested: true,
+          staff_nomination_fee: savedFee,
+          price,
+        })
+      );
+    }
+  );
+
+  it.each([
+    {
+      change: { selectedOptions: options },
+      expected: {
+        selected_options: options,
+        is_staff_requested: true,
+        staff_nomination_fee: 175.5,
+        price: 1375.75,
+      },
+    },
+    {
+      change: { selectedOptions: [] },
+      expected: {
+        selected_options: [],
+        is_staff_requested: true,
+        staff_nomination_fee: 175.5,
+        price: 1175.5,
+      },
+    },
+    {
+      change: { isStaffRequested: false },
+      expected: {
+        is_staff_requested: false,
+        staff_nomination_fee: 0,
+        price: 1025.5,
+      },
+    },
+    {
+      change: { staffId },
+      expected: {
+        staff_id: staffId,
+        is_staff_requested: true,
+        staff_nomination_fee: 175.5,
+        price: 1201,
+      },
+    },
+  ])(
+    'PATCH recalculates only supplied pricing inputs and reuses stored options: $change',
+    async ({ change, expected }) => {
+      mockDto = reservationUpdateSchema.parse({
+        clinic_id: clinicId,
+        id: reservationId,
+        ...change,
+      });
+      expect((await invoke('PATCH')).status).toBe(200);
+      expect(mockReservationWrite).toHaveBeenCalledWith(expected);
+    }
+  );
+
+  it.each([
+    { change: { status: 'arrived' }, expected: { status: 'arrived' } },
+    { change: { notes: '更新' }, expected: { notes: '更新' } },
+    {
+      change: { startTime: savedRow.start_time },
+      expected: { start_time: savedRow.start_time },
+    },
+  ])(
+    'PATCH preserves the stored price without a pricing lookup: $change',
+    async ({ change, expected }) => {
+      mockDto = reservationUpdateSchema.parse({
+        clinic_id: clinicId,
+        id: reservationId,
+        ...change,
+      });
+      expect((await invoke('PATCH')).status).toBe(200);
+      expect(mockReservationWrite).toHaveBeenCalledWith(expected);
+      expect(mockFrom).not.toHaveBeenCalledWith('menus');
+      expect(mockFrom).not.toHaveBeenCalledWith('resources');
+    }
+  );
 
   it.each(['POST', 'PATCH'] as const)(
     '%s 保存後のview障害を再保存不要な成功として返す',

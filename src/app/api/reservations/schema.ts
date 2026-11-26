@@ -7,17 +7,14 @@ import {
   decodeReservationCursor,
 } from '@/lib/reservations/pagination';
 import type { Database } from '@/types/supabase';
+import type { ReservationPricingSnapshot } from '@/lib/reservations/pricing';
+
+export type { ReservationPricingSnapshot };
 
 type ReservationInsertRow =
   Database['public']['Tables']['reservations']['Insert'];
 type ReservationUpdateRow =
   Database['public']['Tables']['reservations']['Update'];
-
-export type ReservationPricingSnapshot = {
-  isStaffRequested: boolean;
-  staffNominationFee: number;
-  price: number;
-};
 
 const statusEnum = z.enum([
   'tentative',

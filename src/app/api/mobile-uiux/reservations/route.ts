@@ -12,7 +12,6 @@ import {
   reservationUpdateSchema,
   mapReservationInsertToRow,
   mapReservationUpdateToRow,
-  type ReservationPricingSnapshot,
 } from '@/app/api/reservations/schema';
 import { ADMIN_USER_ROLE_VALUES, STAFF_ROLES } from '@/lib/constants/roles';
 import {
@@ -62,7 +61,11 @@ import {
   type SupabaseServerClient,
 } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
-import type { ReservationOptionSelection } from '@/types/reservation';
+import {
+  buildReservationPricingSnapshot,
+  normalizeDtoSelectedOptions,
+  normalizePriceAmount,
+} from '@/lib/reservations/pricing';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -159,57 +162,6 @@ function buildRealDataDisabledResponse() {
     'FORBIDDEN',
     'モバイル UI/UX の実データ参照は無効です'
   );
-}
-
-function normalizePriceAmount(value: number | null | undefined): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
-}
-
-function getSelectedOptionsPriceDelta(
-  selectedOptions: ReservationOptionSelection[]
-): number {
-  return selectedOptions.reduce(
-    (sum, option) => sum + normalizePriceAmount(option.priceDelta),
-    0
-  );
-}
-
-function normalizeDtoSelectedOptions(
-  selectedOptions:
-    | {
-        optionId?: string;
-        name?: string;
-        priceDelta?: number;
-        durationDeltaMinutes?: number;
-      }[]
-    | undefined
-): ReservationOptionSelection[] {
-  return (selectedOptions ?? []).map(option => ({
-    optionId: option.optionId ?? '',
-    name: option.name ?? '',
-    priceDelta: option.priceDelta ?? 0,
-    durationDeltaMinutes: option.durationDeltaMinutes ?? 0,
-  }));
-}
-
-function buildReservationPricingSnapshot(params: {
-  isStaffRequested: boolean;
-  menuPrice: number;
-  staffNominationFee: number;
-  selectedOptions: ReservationOptionSelection[];
-}): ReservationPricingSnapshot {
-  const staffNominationFee = params.isStaffRequested
-    ? normalizePriceAmount(params.staffNominationFee)
-    : 0;
-
-  return {
-    isStaffRequested: params.isStaffRequested,
-    staffNominationFee,
-    price:
-      normalizePriceAmount(params.menuPrice) +
-      getSelectedOptionsPriceDelta(params.selectedOptions) +
-      staffNominationFee,
-  };
 }
 
 function isUsableReservationResource(

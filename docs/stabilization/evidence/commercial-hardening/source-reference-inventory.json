@@ -7,7 +7,7 @@
     "clientModule records an explicit use-client directive, not the full import graph."
   ],
   "summary": {
-    "scannedSourceFiles": 690,
+    "scannedSourceFiles": 691,
     "catalogTables": 86,
     "catalogTablesWithLiteralReferences": 68,
     "literalRpcNames": 38
@@ -871,12 +871,12 @@
         },
         {
           "path": "src/app/api/mobile-uiux/reservations/route.ts",
-          "line": 238,
+          "line": 190,
           "clientModule": false
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 292,
+          "line": 245,
           "clientModule": false
         },
         {
@@ -1568,7 +1568,7 @@
         },
         {
           "path": "src/app/api/mobile-uiux/reservations/route.ts",
-          "line": 246,
+          "line": 198,
           "clientModule": false
         },
         {
@@ -1588,7 +1588,7 @@
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 327,
+          "line": 280,
           "clientModule": false
         },
         {
@@ -1965,7 +1965,7 @@
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 482,
+          "line": 435,
           "clientModule": false
         },
         {
@@ -2078,32 +2078,32 @@
         },
         {
           "path": "src/app/api/mobile-uiux/reservations/route.ts",
-          "line": 581,
+          "line": 533,
           "clientModule": false
         },
         {
           "path": "src/app/api/mobile-uiux/reservations/route.ts",
+          "line": 636,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/mobile-uiux/reservations/route.ts",
+          "line": 743,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/reservations/route.ts",
           "line": 684,
           "clientModule": false
         },
         {
-          "path": "src/app/api/mobile-uiux/reservations/route.ts",
-          "line": 791,
+          "path": "src/app/api/reservations/route.ts",
+          "line": 767,
           "clientModule": false
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 731,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/reservations/route.ts",
-          "line": 814,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/reservations/route.ts",
-          "line": 908,
+          "line": 861,
           "clientModule": false
         },
         {
@@ -2349,7 +2349,7 @@
         },
         {
           "path": "src/app/api/mobile-uiux/reservations/route.ts",
-          "line": 253,
+          "line": 205,
           "clientModule": false
         },
         {
@@ -2364,22 +2364,22 @@
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 358,
+          "line": 311,
           "clientModule": false
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 428,
+          "line": 381,
           "clientModule": false
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 499,
+          "line": 452,
           "clientModule": false
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 527,
+          "line": 480,
           "clientModule": false
         },
         {
@@ -2910,7 +2910,7 @@
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 452,
+          "line": 405,
           "clientModule": false
         },
         {
@@ -3450,7 +3450,7 @@
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 463,
+          "line": 416,
           "clientModule": false
         },
         {
@@ -4240,12 +4240,12 @@
         },
         {
           "path": "src/app/api/mobile-uiux/reservations/route.ts",
-          "line": 437,
+          "line": 389,
           "clientModule": false
         },
         {
           "path": "src/app/api/reservations/route.ts",
-          "line": 589,
+          "line": 542,
           "clientModule": false
         },
         {
